@@ -53,8 +53,8 @@ knitr::knit_hooks$set(message = local({
 }))
 # Helpers for inline text only. They keep a sentence grammatical whatever a
 # later render returns, including an empty set of equations.
-name_list <- function(x) {
-  if (!length(x)) return("none")
+name_list <- function(x, empty = "none") {
+  if (!length(x)) return(empty)
   x <- paste0("`", x, "`")
   if (length(x) == 1) x else
     paste(paste(x[-length(x)], collapse = ", "), "and", x[length(x)])
@@ -77,10 +77,12 @@ two-block response). Here we run one analysis from the data through to a
 reportable estimate, taking the steps in the order in which they occur:
 
 1. Prepare the data and choose the family.
-2. Choose the candidate set and its priors, and fit it.
+2. Choose the candidate set, fit it under the default priors, and read its
+   summary.
 3. Check the sampler, and screen out the models that did not sample adequately.
-4. Check the fit of the models that remain.
-5. Assess the influence of the priors, and report.
+4. Refit the set under regularising priors, and check the sampler again.
+5. Check the fit of the models that remain.
+6. Assess the influence of the priors, and report.
 
 The construction of the default priors, and `check_priors()`, are described in
 the [*Priors*](https://open-aims.github.io/bayesnec/articles/example3.html)
@@ -141,10 +143,11 @@ appropriate response to each is different.
 
 ## Coverage
 
-Steps 1 to 5 are worked on the 2050 climate scenario of `coral_colour`, with the
-candidate set fitted under both the default and the regularising priors. The
-coral analysis ends with a draft of the methods and results text a paper might
-give for it, in which steps 1 to 5 are presented as the supplementary material.
+Steps 1 to 6 are worked on the 2050 climate scenario of `coral_colour`, with the
+candidate set fitted first under the default priors and then, in step 4, under
+the regularising priors. The coral analysis ends with a draft of the methods and
+results text a paper might give for it, in which steps 1 to 6 are presented as
+the supplementary material.
 Two further responses follow. The first is a count response, for which both the
 choice of family and the sampler screen take a different form. The second is a
 response whose coefficient of variation is not constant, although the family
@@ -250,7 +253,7 @@ response would have fallen further. We retain the default
 curve was reached within the tested range. A decline of `r top_decline` per cent
 places the EC50 inside the tested range, but the design cannot show whether the
 response had levelled off by `r top_dose` µg/L, and this is one of the
-assumptions on which the estimates in step 5 depend. `bnec()` tests the
+assumptions on which the estimates in step 6 depend. `bnec()` tests the
 change between the two highest concentrations before fitting, and we read its
 message in step 2.
 
@@ -281,7 +284,7 @@ scale of the colour proportion, whereas a logit link would fit the
 concentration-response equation to the logit of the mean. Because `Beta`
 estimates its own dispersion parameter, a dispersion check before fitting is not
 needed here, and we instead compare the simulated and observed spread within
-each concentration after fitting (step 4). The count response below uses a
+each concentration after fitting (step 5). The count response below uses a
 family whose variance is fixed by its mean, so there the dispersion question
 bears on the choice of family.
 
@@ -309,7 +312,7 @@ response. The data show no rise above the control at low concentrations, so the
 hormesis equations (which allow such a rise) are not requested. This broad set
 exposes the difficulty of estimating the shape of a curve from `r length(doses)`
 concentrations. An equation that fits or samples poorly is not made suitable by
-being assigned a small model weight, and steps 3 and 4 check each one.
+being assigned a small model weight, and steps 3 to 5 check each one.
 
 Some equations in `decline` estimate a lower asymptote (`bot`), whereas others
 do not, and without observations on a flat lower limb the data may not
@@ -333,21 +336,15 @@ coral_formula <- proportion ~ crf(log(diuron_adj), model = "decline") +
   ogl(chamber)
 prior_default <- get_priors(coral_formula, data = colour_2050, family = fam,
                             prior_type = "uninformative")
-prior_regular <- get_priors(coral_formula, data = colour_2050, family = fam,
-                            prior_type = "regularizing")
 names(prior_default)
 ```
 
-We fit these `r length(prior_default)` equations twice, under the default
-`"uninformative"` priors and under `"regularizing"` priors. The regularising
-priors are narrower, and they centre `top` and `bot` on the mean response at the
-lowest and the highest concentrations (`?bnec` describes both sets). They
-therefore provide the sampler with more information about plausible parameter
-values, and we use them to show whether more equations can be fitted
-successfully when the priors provide that information. The screened regularising
-set is the one we use for inference (step 5), and the default priors provide the
-comparison that shows how much the additional information changes the estimates.
-For example, the `ec50` and `top` entries for `ecxwb1p3` are:
+We fit these `r length(prior_default)` equations first under the default
+`"uninformative"` priors (`?bnec` describes the set). Step 4 fits them again
+under the `"regularizing"` priors, which provide the sampler with more
+information about plausible parameter values, to test whether that information
+allows the equations that fail the screen of step 3 to be sampled. For example,
+the default `ec50` and `top` entries for `ecxwb1p3` are:
 
 ```{r coral-prior-entries}
 selected_priors <- function(x, label) {
@@ -356,18 +353,12 @@ selected_priors <- function(x, label) {
          c("nlpar", "prior", "lb", "ub")]
   data.frame(prior_type = label, p, row.names = NULL)
 }
-rbind(selected_priors(prior_default, "uninformative"),
-      selected_priors(prior_regular, "regularizing"))
+selected_priors(prior_default, "uninformative")
 ```
 
 The `ec50` entry is a normal prior on log concentration, bounded below by the
 logged control and (because `asymptote_observed = TRUE`) above by the logged
-highest concentration, and its standard deviation is much smaller under the
-regularising priors. The `top` entry is a beta prior on the response scale,
-which the regularising priors concentrate around the mean response at the lowest
-concentrations. Narrower priors may stabilise sampling on sparse data, but they
-can also narrow the reported interval where the likelihood provides little
-information.
+highest concentration. The `top` entry is a beta prior on the response scale.
 [*Priors*](https://open-aims.github.io/bayesnec/articles/example3.html) explains
 how the entries are constructed and how to compare them with the posterior.
 
@@ -375,10 +366,11 @@ how the entries are constructed and how to compare them with the posterior.
 
 `bnec()` uses four chains and 10,000 iterations per chain by default. Under its
 warmup rule the first 8,000 iterations of each chain are discarded, so 8,000
-post-warmup draws remain across the four chains. We use these defaults for both
-prior choices, with identical data and seed. The `seed` argument controls Stan's
-sampler, whereas `set.seed()` controls the initial values `bayesnec` generates
-in R, so both are set. The precompiled vignette uses the `cmdstanr` backend
+post-warmup draws remain across the four chains. We use these defaults here and
+for the refit under the regularising priors in step 4, with identical data and
+seed. The `seed` argument controls Stan's sampler, whereas `set.seed()` controls
+the initial values `bayesnec` generates in R, so both are set. The precompiled
+vignette uses the `cmdstanr` backend
 (through `options(brms.backend = "cmdstanr")`); without that option `brms` uses
 `rstan`, and the diagnostic counts below may differ.
 
@@ -388,36 +380,29 @@ fit_default <- bnec(coral_formula, data = colour_2050, family = fam,
                     prior_type = "uninformative", seed = 228, refresh = 0)
 ```
 
-```{r coral-fit-regular, results = "hide"}
-set.seed(228)
-fit_regular <- bnec(coral_formula, data = colour_2050, family = fam,
-                    prior_type = "regularizing", seed = 228, refresh = 0)
-```
-
-The messages shown are those of the first fit, and the second fit prints the
-corresponding messages for the regularising priors. While fitting, `bnec()` also
-prints a line as it begins and completes each equation, and the sampler prints
-its own warnings, including the number of divergent transitions; those lines are
-omitted above, and step 3 examines the same diagnostics with `check_sampling()`.
-Before fitting, `bnec()`
+While fitting, `bnec()` also prints a line as it begins and completes each
+equation, and the sampler prints its own warnings, including the number of
+divergent transitions; those lines are omitted above, and step 3 examines the
+same diagnostics with `check_sampling()`. Before fitting, `bnec()`
 names the equations it drops, for the reasons given above. It then compares the
 mean colour at the two highest concentrations, and its message states that the
 response is still declining at the top of the series. This test cannot tell
 whether the curve flattens at `r top_dose` µg/L or continues to fall beyond it.
 We keep the default declaration for the reason given in step 1, while
-recognising that one concentration cannot establish a plateau. The next message describes what the declaration does to the
-priors: the `bot` prior is derived from the observed response, and the `nec` and
-`ec50` priors are bounded to the tested range, so that a threshold above it is
-excluded. Setting `asymptote_observed = FALSE` would be a different prior
-assumption, because under it the `bot` prior changes and the `nec` and `ec50`
-priors have no upper bound. The message asks for that assumption to be examined,
-and does not change it.
+recognising that one concentration cannot establish a plateau. The next message
+describes what the declaration does to the priors: the `bot` prior is derived
+from the observed response, and the `nec` and `ec50` priors are bounded to the
+tested range, so that a threshold above it is excluded. Setting
+`asymptote_observed = FALSE` would be a different prior assumption, because
+under it the `bot` prior changes and the `nec` and `ec50` priors have no upper
+bound. The message asks for that assumption to be examined, and does not change
+it.
 
 The messages after fitting concern the fitted equations. They report, where any
 occur, the draws for which a curve does not fall to the NSEC reference within
 the tested range (those draws are censored in the NSEC summary), the chambers
-whose Pareto *k* is at or above 0.7 (step 3), and the equations whose control mean or
-spread is not reproduced within 15% (step 4).
+whose Pareto *k* is at or above 0.7 (step 3), and the equations whose control
+mean or spread is not reproduced within 15% (step 5).
 
 ```{r coral-record}
 record_default <- bnec_record(fit_default)
@@ -430,13 +415,49 @@ above, and any value changed to make the response compatible with the family
 (`substitutions`, which is `NULL` here because the 2050 colour values are inside
 the Beta support). Every requested equation is either excluded or `attempted`,
 and an attempted equation that did not fit remains in `attempted`.
-`failed_models()` lists such equations: in this run
-`r which_failed(fit_regular)` failed to fit under the regularising priors, and
-`r which_failed(fit_default)` under the uninformative priors. It also keeps the
-priors and initial values used for each failed equation, which are useful when
+`failed_models()` lists such equations, and in this run
+`r which_failed(fit_default)` failed to fit. It also keeps the priors and
+initial values used for each failed equation, which are useful when
 investigating the failure. A different initialisation or prior may allow such a
 fit to start, although that does not show that the resulting posterior is
 identified by these concentrations.
+
+## The summary of the fitted set
+
+`summary()` gives the model weights, computed from leave-one-chamber-out scores,
+the model-averaged *N(S)EC*, and the Bayesian R² and number of divergent
+transitions of each equation. It ends with a warning that names each equation
+whose maximum Rhat exceeds 1.01 or which has more than ten divergent
+transitions, and each equation whose control mean or spread is not reproduced
+within 15%.
+
+```{r coral-summary, warning = TRUE}
+summary_default <- summary(fit_default)
+summary_default
+```
+
+```{r coral-summary-text, include = FALSE}
+flag_default <- with(check_sampling(fit_default),
+                     model[which(max_rhat > 1.01 | n_divergent > 10)])
+flag_weight <- sum(summary_default$mod_weights[flag_default, "wi"])
+flag_text <- if (!length(flag_default)) {
+  paste("In this run no equation exceeds the Rhat or divergence cutoff,",
+        "although step 3 also applies an ESS cutoff that the summary does not",
+        "report.")
+} else {
+  paste0("In this run the warning names ", length(flag_default), " of the ",
+         length(fit_default$success_models), " fitted equations for their ",
+         "Rhat or divergent transitions, and together they hold ",
+         sprintf("%.2f", flag_weight), " of the model weight. The ",
+         "model-averaged *N(S)EC* in the summary therefore includes equations ",
+         "whose posteriors the sampler may not have explored reliably, and it ",
+         "is not an estimate to report.")
+}
+```
+
+These weights are computed over every fitted equation, including any that the
+warning names. `r flag_text` Step 3 examines the sampler diagnostics of each
+equation and removes those that fail them before any estimate is read.
 
 # 3. Sampler diagnostics and screening
 
@@ -448,28 +469,26 @@ transitions. The Rhat and ESS cutoffs follow the recommendations of
 convention (Stan regards any divergence as evidence that some part of the
 posterior was not explored). A screen result is specific to the data, priors,
 sampler settings and seed. The table gives the curve parameters of each valid
-equation and, for each prior, its maximum Rhat, minimum ESS and number of
-divergent transitions, followed by the screen result.
+equation, its maximum Rhat, minimum ESS and number of divergent transitions
+under the default priors, and whether it failed the screen.
 
 ```{r coral-sampling}
-sampling_default <- check_sampling(fit_default)
-sampling_regular <- check_sampling(fit_regular)
-diagnostic_label <- function(tab, model) {
-  i <- match(model, tab$model)
-  if (is.na(i)) return("did not fit")
-  x <- tab[i, ]
-  sprintf("%.3f / %.0f / %d %s", x$max_rhat, x$min_ess, x$n_divergent,
-          if (x$failed) "fail" else "pass")
+round_cols <- function(x, digits = 3) {
+  num <- vapply(x, is.numeric, logical(1))
+  x[num] <- lapply(x[num], round, digits)
+  x
 }
+sampling_default <- check_sampling(fit_default)
 valid <- names(prior_default)
 curve_parameters <- lapply(valid, function(m) names(show_params(m)[[1]]$pforms))
+first_run <- sampling_default[match(valid, sampling_default$model), ]
 data.frame(
   model = valid,
   parameters = vapply(curve_parameters, paste, character(1), collapse = ", "),
-  uninformative = vapply(valid, diagnostic_label, character(1),
-                         tab = sampling_default),
-  regularizing = vapply(valid, diagnostic_label, character(1),
-                        tab = sampling_regular),
+  max_rhat = round(first_run$max_rhat, 3),
+  min_ess = round(first_run$min_ess),
+  n_divergent = first_run$n_divergent,
+  failed = first_run$failed,
   row.names = NULL
 )
 ```
@@ -479,77 +498,25 @@ passed <- function(tab) tab$model[!tab$failed]
 bot_models <- valid[vapply(curve_parameters, function(p) "bot" %in% p,
                            logical(1))]
 n_divergence_fail <- function(tab) sum(tab$failed & tab$n_divergent > 10)
-both_failed <- intersect(sampling_default$model[sampling_default$failed],
-                         sampling_regular$model[sampling_regular$failed])
-fewer_divergences <- sum(
-  sampling_regular$n_divergent[match(both_failed, sampling_regular$model)] <
-    sampling_default$n_divergent[match(both_failed, sampling_default$model)]
-)
 ```
 
-"Did not fit" marks an attempted equation with no draws, which is distinct from
-a fitted equation that missed a cutoff. Under the uninformative priors
+A row of `NA` marks an attempted equation with no draws, which is distinct from
+a fitted equation that missed a cutoff. Under the default priors
 `r length(passed(sampling_default))` of the `r nrow(sampling_default)` fitted
-equations passed (`r name_list(passed(sampling_default))`), and under the
-regularising priors `r length(passed(sampling_regular))` of the
-`r nrow(sampling_regular)` fitted equations passed
-(`r name_list(passed(sampling_regular))`). Of the
-`r sum(sampling_default$failed)` failures under the uninformative priors,
-`r n_divergence_fail(sampling_default)` included more than ten divergent
-transitions, as did `r n_divergence_fail(sampling_regular)` of the
-`r sum(sampling_regular$failed)` under the regularising priors.
+equations passed (`r name_list(passed(sampling_default))`), and
+`r n_divergence_fail(sampling_default)` of the
+`r sum(sampling_default$failed)` that failed had more than ten divergent
+transitions.
 
 An equation with a `bot` parameter has to estimate the lower asymptote, or the
 shape of the lower limb, from the response at the single highest concentration
 (`r top_dose` µg/L), where the decline has not been shown to have levelled off,
-so it may sample poorly on this design. Of
-the `r length(bot_models)` equations with a `bot` parameter,
-`r sum(bot_models %in% passed(sampling_default))` passed under the uninformative
-priors and `r sum(bot_models %in% passed(sampling_regular))` under the
-regularising priors, against
-`r sum(setdiff(valid, bot_models) %in% passed(sampling_default))` and
-`r sum(setdiff(valid, bot_models) %in% passed(sampling_regular))` of the
+so it may sample poorly on this design. Of the `r length(bot_models)` equations
+with a `bot` parameter, `r sum(bot_models %in% passed(sampling_default))`
+passed, against
+`r sum(setdiff(valid, bot_models) %in% passed(sampling_default))` of the
 `r length(valid) - length(bot_models)` equations without one. The diagnostics do
-not show which parameter is responsible for a failure. The regularising priors
-provide more information about plausible parameter values, and of the
-`r length(both_failed)` equations that failed under both priors,
-`r fewer_divergences` had fewer divergent transitions under the regularising
-priors, although each still failed a cutoff on the first run.
-
-Stan also records the time each chain spent in warmup and in sampling, and
-`rstan::get_elapsed_time()` reads it from the `stanfit` held in each equation's
-`brmsfit`. The table gives the sum over the four chains, in seconds, for the
-same first run. These times exclude compiling each Stan program and searching
-for initial values, and they depend on the machine and on what else it was
-running, so they are given for comparison between equations and prior sets
-only.
-
-```{r coral-sampling-time}
-sampling_seconds <- function(fit) {
-  vapply(valid, function(m) {
-    if (!m %in% fit$success_models) return(NA_real_)
-    sum(rstan::get_elapsed_time(pull_brmsfit(fit, model = m)$fit))
-  }, numeric(1))
-}
-seconds_default <- sampling_seconds(fit_default)
-seconds_regular <- sampling_seconds(fit_regular)
-data.frame(model = valid, uninformative = round(seconds_default),
-           regularizing = round(seconds_regular), row.names = NULL)
-```
-
-```{r coral-sampling-time-text, include = FALSE}
-total_minutes <- function(s) signif(sum(s, na.rm = TRUE) / 60, 2)
-failed_share <- function(s, tab) {
-  failed <- names(s) %in% tab$model[tab$failed]
-  sprintf("%.0f", 100 * sum(s[failed], na.rm = TRUE) / sum(s, na.rm = TRUE))
-}
-```
-
-Warmup and sampling took `r total_minutes(seconds_default)` min in total under
-the uninformative priors and `r total_minutes(seconds_regular)` min under the
-regularising priors, and `r failed_share(seconds_default, sampling_default)`%
-and `r failed_share(seconds_regular, sampling_regular)`% of those totals were
-spent on the equations that failed the screen.
+not show which parameter is responsible for a failure.
 
 ## Kinds of failure
 
@@ -607,48 +574,26 @@ refit_failed <- function(fit, retry, tune) {
   do.call(c, c(longer, tuned, list(fit)))
 }
 retry_default <- retry_models(sampling_default)
-retry_regular <- retry_models(sampling_regular)
 tune_default <- tune_models(sampling_default)
-tune_regular <- tune_models(sampling_regular)
 set.seed(228)
-fit_default <- refit_failed(fit_default, retry_default, tune_default)
-set.seed(228)
-fit_regular <- refit_failed(fit_regular, retry_regular, tune_regular)
-sampling_default <- check_sampling(fit_default)
-sampling_regular <- check_sampling(fit_regular)
+refit_default <- refit_failed(fit_default, retry_default, tune_default)
+sampling_default_refit <- check_sampling(refit_default)
 ```
 
 ```{r coral-retried}
-refit_default <- c(retry_default, tune_default)
-refit_regular <- c(retry_regular, tune_regular)
-retried <- rbind(
-  sampling_default[sampling_default$model %in% refit_default, ],
-  sampling_regular[sampling_regular$model %in% refit_regular, ]
-)
-if (nrow(retried)) {
-  cbind(prior_type = rep(c("uninformative", "regularizing"),
-                         c(sum(sampling_default$model %in% refit_default),
-                           sum(sampling_regular$model %in% refit_regular))),
-        retried)
+refitted_default <- c(retry_default, tune_default)
+if (length(refitted_default)) {
+  round_cols(sampling_default_refit[sampling_default_refit$model %in%
+                                      refitted_default, ])
 }
 ```
 
-```{r coral-retried-text, include = FALSE}
-tune_text <- if (setequal(tune_default, tune_regular)) {
-  paste(name_list(tune_default), "under both priors")
-} else {
-  paste(name_list(tune_default), "under the uninformative priors and to",
-        name_list(tune_regular), "under the regularising priors")
-}
-```
+In this run the longer refit was applied to
+`r name_list(retry_default, "no equation")`, and the refit at a higher
+`adapt_delta` to `r name_list(tune_default, "no equation")`.
+`r if (length(refitted_default)) "The table above gives the diagnostics of each refitted equation after its refit, and the screen below uses those." else "No equation was refitted, so no table is shown."`
 
-In this run the longer refit was applied to `r name_list(retry_default)` under
-the uninformative priors and to `r name_list(retry_regular)` under the
-regularising priors, and the refit at a higher `adapt_delta` to
-`r tune_text`.
-`r if (nrow(retried)) "The table above gives the diagnostics of each refitted equation after its refit, and the screen below uses those." else "No equation was refitted, so no table is shown."`
-
-## Screening the model sets
+## Screening the model set
 
 `screen_models()` drops each equation that misses any cutoff, names it with the
 cutoffs it failed, and recomputes the model weights over the equations that
@@ -660,30 +605,13 @@ observed response. If every fitted equation fails, the function stops with the
 reasons instead of returning a model average.
 
 ```{r coral-screen, message = TRUE}
-screened_default <- screen_models(fit_default)
-screened_regular <- screen_models(fit_regular)
+screened_default <- screen_models(refit_default)
 ```
 
-```{r coral-screen-counts, include = FALSE}
-n_kept <- c(uninformative = length(screened_default$success_models),
-            regularizing = length(screened_regular$success_models))
-effect <- if (n_kept[["regularizing"]] > n_kept[["uninformative"]]) {
-  "increased"
-} else if (n_kept[["regularizing"]] == n_kept[["uninformative"]]) {
-  "did not change"
-} else {
-  "reduced"
-}
-kept_clause <- paste("so on these data the regularising priors", effect,
-                     "the number of equations available for the model average")
-```
-
-After the refit, the screen retained `r n_kept[["uninformative"]]` equations
-under the uninformative priors (`r name_list(screened_default$success_models)`)
-and `r n_kept[["regularizing"]]` under the regularising priors
-(`r name_list(screened_regular$success_models)`), `r kept_clause`. Step 5
-assesses what the additional information in the regularising priors does to the
-estimates.
+After the refits, the screen retained
+`r length(screened_default$success_models)` of the
+`r nrow(sampling_default)` fitted equations
+(`r name_list(screened_default$success_models)`).
 
 ## Chamber-level model weights
 
@@ -693,48 +621,38 @@ Because `ogl(chamber)` is in the formula, the default model weights instead
 leave out a whole chamber at a time, and are computed from those
 leave-one-chamber-out scores by the default pseudo-BMA method. Pareto *k*
 assesses whether the importance-sampling approximation to each left-out score is
-reliable, and the score of a chamber with *k* at or above 0.7 is unreliable until an
-exact refit replaces it. `check_fit()` returns these diagnostics for each
-equation as its `"pareto"` attribute, and we show the model weight, the number
-of chambers at or above 0.7 and the largest *k* for each retained equation. This check
-belongs after screening, because the weights of models whose posterior was not
-sampled adequately should not be interpreted.
+reliable, and the score of a chamber with *k* at or above 0.7 is unreliable
+until an exact refit replaces it. `check_fit()` returns these diagnostics for
+each equation as its `"pareto"` attribute, and we show the model weight, the
+number of chambers at or above 0.7 and the largest *k* for each retained
+equation. This check belongs after screening, because the weights of models
+whose posterior was not sampled adequately should not be interpreted.
 
 ```{r coral-pareto}
-round_cols <- function(x, digits = 3) {
-  num <- vapply(x, is.numeric, logical(1))
-  x[num] <- lapply(x[num], round, digits)
-  x
-}
-pareto_rows <- function(x, label) {
+pareto_rows <- function(x) {
   p <- attr(check_fit(x, ndraws = 100), "pareto")
   if (anyNA(p$n_high_k)) stop("Pareto diagnostics are unavailable")
-  data.frame(prior_type = label, p[, c("model", "weight", "n_high_k", "max_k")])
+  p[, c("model", "weight", "n_high_k", "max_k")]
 }
-pareto <- rbind(pareto_rows(screened_default, "uninformative"),
-                pareto_rows(screened_regular, "regularizing"))
-round_cols(pareto)
+pareto_default <- pareto_rows(screened_default)
+round_cols(pareto_default)
 ```
 
-In this run `r sum(pareto$n_high_k > 0)` of the `r nrow(pareto)` retained
-equations had at least one chamber with *k* at or above 0.7 (the largest *k* was
-`r sprintf("%.2f", max(pareto$max_k))`). Where any chamber has a *k* at or above the cutoff,
-`amend(x, loo_controls = list(refit = TRUE))` refits each affected equation
-without that chamber and recomputes the weights from the exact scores. The chunk
-below does so for each set that needs it, and gives the final weights.
+In this run `r sum(pareto_default$n_high_k > 0)` of the
+`r nrow(pareto_default)` retained equations had at least one chamber with *k* at
+or above 0.7 (the largest *k* was
+`r sprintf("%.2f", max(pareto_default$max_k))`). Where any chamber has a *k* at
+or above the cutoff, `amend(x, loo_controls = list(refit = TRUE))` refits each
+affected equation without that chamber and recomputes the weights from the
+exact scores. The chunk below does so where it is needed, and the table after it
+gives the final weights.
 
 ```{r coral-reloo, results = "hide"}
-refit_high_k <- function(x, label) {
-  if (any(pareto$n_high_k[pareto$prior_type == label] > 0)) {
-    amend(x, loo_controls = list(refit = TRUE))
-  } else {
-    x
-  }
+refit_high_k <- function(x, p) {
+  if (any(p$n_high_k > 0)) amend(x, loo_controls = list(refit = TRUE)) else x
 }
 set.seed(228)
-screened_default <- refit_high_k(screened_default, "uninformative")
-set.seed(228)
-screened_regular <- refit_high_k(screened_regular, "regularizing")
+screened_default <- refit_high_k(screened_default, pareto_default)
 ```
 
 ```{r coral-weights}
@@ -742,35 +660,32 @@ weights_of <- function(x, label) {
   w <- summary(x)$mod_weights
   setNames(data.frame(rownames(w), w[, "wi"]), c("model", label))
 }
-coral_weights <- merge(weights_of(screened_default, "uninformative"),
-                       weights_of(screened_regular, "regularizing"), all = TRUE)
-round_cols(coral_weights)
+weights_default <- weights_of(screened_default, "uninformative")
+round_cols(weights_default)
 ```
 
 ```{r coral-weights-lead, include = FALSE}
-lead_regular <- coral_weights$model[which.max(coral_weights$regularizing)]
+lead_default <- weights_default$model[which.max(weights_default$uninformative)]
 ```
 
 The weights are the share of the model-averaged prediction assigned to each
-equation, and sum to one within each set (an equation absent from a set is
-`NA`). Under the regularising priors `r name_list(lead_regular)` has the highest
-weight (`r sprintf("%.2f", max(coral_weights$regularizing, na.rm = TRUE))`). A
-small weight does not validate an equation that sampled poorly (e.g., an
-equation with many divergent transitions can still be given a large weight),
-which is why the weights are read only after screening.
+equation, and sum to one. `r name_list(lead_default)` has the highest weight
+(`r sprintf("%.2f", max(weights_default$uninformative))`). A small weight does
+not validate an equation that sampled poorly (e.g., an equation with many
+divergent transitions can still be given a large weight), which is why the
+weights are read only after screening.
 
 ## Chain mixing
 
 The screen summarises each chain in a few numbers, whereas the traces show the
-draws themselves. Here we inspect the traces for the highest-weighted equation
-of the regularising set:
+draws themselves. Here we inspect the traces for the highest-weighted equation:
 
 ```{r coral-chains, out.width = "90%"}
-best_regular <- pull_best(screened_regular)
-check_chains(best_regular)
+best_default <- pull_best(screened_default)
+check_chains(best_default)
 ```
 
-For `r name_list(best_regular$model)` the four chains overlap throughout a
+For `r name_list(best_default$model)` the four chains overlap throughout a
 stable range in the trace panels, with brief excursions to larger values of some
 parameters in single chains, and in the autocorrelation panels the dependence
 between successive draws falls close to zero within about 5 lags. A
@@ -779,30 +694,249 @@ reporting a model average we would inspect the traces of each retained equation.
 `check_chains()` can write one page per equation to a PDF for that review:
 
 ```{r coral-all-chains, eval = FALSE}
-check_chains(screened_regular, filename = "coral_2050_chains")
+check_chains(screened_default, filename = "coral_2050_chains")
 ```
 
-# 4. Fit diagnostics
+# 4. The regularising priors
+
+```{r coral-remaining, include = FALSE}
+still_failed <- sampling_default_refit$model[sampling_default_refit$failed]
+remaining_text <- if (length(still_failed)) {
+  paste0("After the refits of step 3, ", length(still_failed), " of the ",
+         nrow(sampling_default_refit), " fitted equations still failed the ",
+         "screen under the default priors (", name_list(still_failed), ").")
+} else {
+  paste("After the refits of step 3, every fitted equation passed the screen",
+        "under the default priors, so here the regularising priors are fitted",
+        "only for the comparison of step 6.")
+}
+```
+
+`r remaining_text` The `"regularizing"` priors (`?bnec`) are narrower than the
+defaults, and they centre `top` and `bot` on the mean response at the lowest
+and the highest concentrations. They therefore provide the sampler with more
+information about plausible parameter values, and refitting under them tests
+whether the equations that failed can be sampled when the priors provide that
+information. The entries for `ecxwb1p3` that correspond to those of step 2 are:
+
+```{r coral-prior-regular}
+prior_regular <- get_priors(coral_formula, data = colour_2050, family = fam,
+                            prior_type = "regularizing")
+selected_priors(prior_regular, "regularizing")
+```
+
+The `ec50` entry keeps the bounds of the default entry, and its standard
+deviation is much smaller. The `top` entry is concentrated around the mean
+response at the lowest concentrations. Narrower priors may stabilise sampling on
+sparse data, but they can also narrow the reported interval where the likelihood
+provides little information.
+
+We refit the whole candidate set under these priors, and not only the equations
+that failed. Step 6 compares the estimates of the equations that pass under both
+prior sets, which requires each of them to be fitted under both. The model
+weights of a set that combined equations fitted under different priors would
+depend on those priors as well as on the shapes of the curves, so such a set
+could not be reported as fitted under one prior set.
+
+```{r coral-fit-regular, results = "hide"}
+set.seed(228)
+fit_regular <- bnec(coral_formula, data = colour_2050, family = fam,
+                    prior_type = "regularizing", seed = 228, refresh = 0)
+```
+
+This fit prints the same kinds of message as the fit of step 2, and they are not
+shown. In this run `r which_failed(fit_regular)` failed to fit under the
+regularising priors.
+
+## Sampler diagnostics under both prior sets
+
+The table compares the first run under each prior set, before any refit. Each
+entry gives the maximum Rhat, the minimum ESS and the number of divergent
+transitions, followed by the screen result, and "did not fit" marks an attempted
+equation with no draws.
+
+```{r coral-sampling-compare}
+sampling_regular <- check_sampling(fit_regular)
+diagnostic_label <- function(tab, model) {
+  i <- match(model, tab$model)
+  if (is.na(i)) return("did not fit")
+  x <- tab[i, ]
+  sprintf("%.3f / %.0f / %d %s", x$max_rhat, x$min_ess, x$n_divergent,
+          if (x$failed) "fail" else "pass")
+}
+data.frame(
+  model = valid,
+  uninformative = vapply(valid, diagnostic_label, character(1),
+                         tab = sampling_default),
+  regularizing = vapply(valid, diagnostic_label, character(1),
+                        tab = sampling_regular),
+  row.names = NULL
+)
+```
+
+```{r coral-sampling-compare-text, include = FALSE}
+both_failed <- intersect(sampling_default$model[sampling_default$failed],
+                         sampling_regular$model[sampling_regular$failed])
+fewer_divergences <- sum(
+  sampling_regular$n_divergent[match(both_failed, sampling_regular$model)] <
+    sampling_default$n_divergent[match(both_failed, sampling_default$model)]
+)
+only_regular_first <- setdiff(passed(sampling_regular), passed(sampling_default))
+only_default_first <- setdiff(passed(sampling_default), passed(sampling_regular))
+first_run_text <- if (!length(only_regular_first) && !length(only_default_first)) {
+  ", and the same equations passed under both"
+} else {
+  paste0(", and ", paste(c(
+    if (length(only_regular_first)) {
+      paste(name_list(only_regular_first),
+            "passed only under the regularising priors")
+    },
+    if (length(only_default_first)) {
+      paste(name_list(only_default_first),
+            "passed only under the default priors")
+    }), collapse = " whereas "))
+}
+```
+
+On the first run `r length(passed(sampling_regular))` of the
+`r nrow(sampling_regular)` fitted equations passed under the regularising
+priors, against `r length(passed(sampling_default))` of
+`r nrow(sampling_default)` under the default priors`r first_run_text`. Of the
+`r length(bot_models)` equations with a `bot` parameter,
+`r sum(bot_models %in% passed(sampling_regular))` passed under the regularising
+priors. Of the `r length(both_failed)` equations that failed under both prior
+sets, `r fewer_divergences` had fewer divergent transitions under the
+regularising priors, although each still failed a cutoff.
+
+Stan also records the time each chain spent in warmup and in sampling, and
+`rstan::get_elapsed_time()` reads it from the `stanfit` held in each equation's
+`brmsfit`. The table gives the sum over the four chains, in seconds, for the
+same first run. These times exclude compiling each Stan program and searching
+for initial values, and they depend on the machine and on what else it was
+running, so they are given for comparison between equations and prior sets
+only.
+
+```{r coral-sampling-time}
+sampling_seconds <- function(fit) {
+  vapply(valid, function(m) {
+    if (!m %in% fit$success_models) return(NA_real_)
+    sum(rstan::get_elapsed_time(pull_brmsfit(fit, model = m)$fit))
+  }, numeric(1))
+}
+seconds_default <- sampling_seconds(fit_default)
+seconds_regular <- sampling_seconds(fit_regular)
+data.frame(model = valid, uninformative = round(seconds_default),
+           regularizing = round(seconds_regular), row.names = NULL)
+```
+
+```{r coral-sampling-time-text, include = FALSE}
+total_minutes <- function(s) signif(sum(s, na.rm = TRUE) / 60, 2)
+failed_share <- function(s, tab) {
+  failed <- names(s) %in% tab$model[tab$failed]
+  sprintf("%.0f", 100 * sum(s[failed], na.rm = TRUE) / sum(s, na.rm = TRUE))
+}
+```
+
+Warmup and sampling took `r total_minutes(seconds_default)` min in total under
+the default priors and `r total_minutes(seconds_regular)` min under the
+regularising priors, and `r failed_share(seconds_default, sampling_default)`%
+and `r failed_share(seconds_regular, sampling_regular)`% of those totals were
+spent on the equations that failed the screen.
+
+## Refits and screening under the regularising priors
+
+The equations that failed under the regularising priors are refitted by the
+rules of step 3, and the set is then screened, and its chamber-level weights
+checked, in the same way.
+
+```{r coral-retry-regular, results = "hide"}
+retry_regular <- retry_models(sampling_regular)
+tune_regular <- tune_models(sampling_regular)
+set.seed(228)
+refit_regular <- refit_failed(fit_regular, retry_regular, tune_regular)
+sampling_regular_refit <- check_sampling(refit_regular)
+```
+
+```{r coral-screen-regular, message = TRUE}
+screened_regular <- screen_models(refit_regular)
+```
+
+```{r coral-pareto-regular}
+pareto_regular <- pareto_rows(screened_regular)
+round_cols(pareto_regular)
+```
+
+```{r coral-reloo-regular, results = "hide"}
+set.seed(228)
+screened_regular <- refit_high_k(screened_regular, pareto_regular)
+```
+
+```{r coral-weights-both}
+coral_weights <- merge(weights_default,
+                       weights_of(screened_regular, "regularizing"), all = TRUE)
+round_cols(coral_weights)
+```
+
+In this run the longer refit was applied to
+`r name_list(retry_regular, "no equation")` under the regularising priors, and
+the refit at a higher `adapt_delta` to
+`r name_list(tune_regular, "no equation")`. After these refits the screen
+retained `r length(screened_regular$success_models)` equations
+(`r name_list(screened_regular$success_models)`), against
+`r length(screened_default$success_models)` under the default priors. Under
+the regularising priors `r sum(pareto_regular$n_high_k > 0)` of the retained
+equations had at least one chamber with *k* at or above 0.7, and the scores of
+any such chamber were replaced by exact refits, as in step 3, before the weights
+above were computed. The weights sum to one within each set, and an equation
+absent from a set is `NA`.
+
+## The set used for inference
+
+We use the regularising set for inference only if its screen retains more
+equations than the screen of the default set, because only then do its stronger
+assumptions make more of the candidate set usable. Otherwise the default set is
+used for inference, and the regularising set provides the comparison of step 6.
+The rule depends on the screens alone, so the choice of prior set does not
+depend on the estimates.
+
+```{r coral-final-set}
+use_regular <- length(screened_regular$success_models) >
+  length(screened_default$success_models)
+screened_final <- if (use_regular) screened_regular else screened_default
+```
+
+```{r coral-final-set-text, include = FALSE}
+final_label <- if (use_regular) "regularising" else "default"
+final_col <- if (use_regular) "regularizing" else "uninformative"
+final_step <- if (use_regular) "4" else "3"
+lead_final <- coral_weights$model[which.max(coral_weights[[final_col]])]
+```
+
+The screen retained `r length(screened_default$success_models)` equations under
+the default priors and `r length(screened_regular$success_models)` under the
+regularising priors, so the analysis continues with the `r final_label` set.
+
+# 5. Fit diagnostics
 
 Sampler diagnostics concern the posterior draws, whereas `check_fit()` compares
 the observed and simulated response within each concentration. We apply it to
-the screened regularising set used for inference, so that each retained equation
-is checked. The table shows the control rows (because the *N(S)EC* and ECx use
-the fitted control mean as a reference) and any other row flagged by its
-posterior predictive p-value.
+the screened set chosen for inference in step 4, so that each retained equation
+is checked. The table shows the control rows (because the *N(S)EC* and ECx use the
+fitted control mean as a reference) and any other row flagged by its posterior
+predictive p-value.
 
 ```{r coral-checkfit}
-cf_regular <- check_fit(screened_regular)
+cf_final <- check_fit(screened_final)
 fit_cols <- c("model", "wi", "group", "obs_mean", "sim_mean",
               "obs_sd", "sim_sd", "sd_ratio", "ppp_mean", "ppp_sd")
-flagged_regular <- cf_regular$ppp_mean < 0.05 | cf_regular$ppp_mean > 0.95 |
-  cf_regular$ppp_sd < 0.05 | cf_regular$ppp_sd > 0.95
-round_cols(as.data.frame(cf_regular[cf_regular$control | flagged_regular,
-                                    fit_cols]))
+flagged_final <- cf_final$ppp_mean < 0.05 | cf_final$ppp_mean > 0.95 |
+  cf_final$ppp_sd < 0.05 | cf_final$ppp_sd > 0.95
+round_cols(as.data.frame(cf_final[cf_final$control | flagged_final,
+                                  fit_cols]))
 ```
 
 ```{r coral-checkfit-text, include = FALSE}
-ctrl_ratio <- cf_regular$sd_ratio[cf_regular$control]
+ctrl_ratio <- cf_final$sd_ratio[cf_final$control]
 control_text <- if (all(ctrl_ratio > 1)) {
   paste("so each simulates less spread at the control than was observed. A fit",
         "that simulates too little spread at the control places the NSEC",
@@ -817,25 +951,25 @@ control_text <- if (all(ctrl_ratio > 1)) {
   paste("so the retained equations differ in whether they simulate more or",
         "less spread at the control than was observed")
 }
-flag_where <- if (any(flagged_regular)) {
-  paste0(", at ", paste(unique(cf_regular$group[flagged_regular]),
+flag_where <- if (any(flagged_final)) {
+  paste0(", at ", paste(unique(cf_final$group[flagged_final]),
                         collapse = " and "), " µg/L")
 } else {
   ""
 }
-control_flags <- sum(flagged_regular & cf_regular$control)
+control_flags <- sum(flagged_final & cf_final$control)
 ```
 
 The posterior predictive p-value is the fraction of simulated group statistics
 at least as large as the observed statistic, so values outside [0.05, 0.95]
-identify concentrations worth inspecting. Of the `r nrow(cf_regular)` rows
-(`r length(unique(cf_regular$model))` equations by `r length(doses)`
-concentrations), `r sum(flagged_regular)` were flagged`r flag_where`. At the
+identify concentrations worth inspecting. Of the `r nrow(cf_final)` rows
+(`r length(unique(cf_final$model))` equations by `r length(doses)`
+concentrations), `r sum(flagged_final)` were flagged`r flag_where`. At the
 control `r control_flags` rows were flagged, and the ratio of observed to
 simulated standard deviation is
-`r range_text(cf_regular$sd_ratio[cf_regular$control])` across the retained
-equations, `r control_text`. With up to `r colour_design$fragments[1]` fragments in
-`r colour_design$chambers[1]` chambers at each concentration, a flag is not by
+`r range_text(cf_final$sd_ratio[cf_final$control])` across the retained
+equations, `r control_text`. With up to `r colour_design$fragments[1]` fragments
+in `r colour_design$chambers[1]` chambers at each concentration, a flag is not by
 itself a reason to exclude an equation, but it shows whether a discrepancy
 concerns the mean or the spread, and where. `check_fit()` simulates each
 fragment with the fitted deviation of its chamber, so the comparison of means
@@ -846,30 +980,31 @@ are the observed group statistics and the bars are 95% intervals of the
 statistics simulated from that equation.
 
 ```{r coral-checkfit-plot, out.width = "85%"}
-cf_best <- cf_regular[cf_regular$model == best_regular$model, , drop = FALSE]
+best_final <- pull_best(screened_final)
+cf_best <- cf_final[cf_final$model == best_final$model, , drop = FALSE]
 plot(cf_best)
 ```
 
 A point may lie just inside its 95% interval even when its posterior predictive
 p-value is beyond the [0.05, 0.95] flag threshold, because the table uses the
 p-values whereas the plot shows the direction and size of a discrepancy. For
-`r name_list(best_regular$model)` the observed means lie within their intervals
+`r name_list(best_final$model)` the observed means lie within their intervals
 at
 `r sum(cf_best$obs_mean >= cf_best$sim_mean_lo & cf_best$obs_mean <= cf_best$sim_mean_hi)`
 of the `r nrow(cf_best)` concentrations, and the observed standard deviations at
 `r sum(cf_best$obs_sd >= cf_best$sim_sd_lo & cf_best$obs_sd <= cf_best$sim_sd_hi)`.
 
-# 5. Prior sensitivity and reporting
+# 6. Prior sensitivity and reporting
 
 ## The influence of the priors
 
-Model averages over the uninformative and regularising sets differ both in their
+Model averages over the default and regularising sets differ both in their
 priors and in the equations that passed the screen. To isolate the effect of the
 priors, we compare the estimates from the smooth (ECx) equations that passed
 under both priors, excluding `ecxflat`. The passing equations may depend on the
 sampler backend and seed, so we take their intersection from the screened sets,
 and recompute the weights for that common set (with the Pareto *k* check and
-refit of step 3).
+refit of steps 3 and 4).
 
 ```{r coral-common-set, results = "hide"}
 shared_models <- intersect(names(models(screened_default)),
@@ -922,12 +1057,12 @@ Each pair of rows estimates one quantity from the common set
 (`r name_list(shared_models)`), fitted to identical observations, so the
 difference between rows can be attributed to the priors within those equations.
 The median NSEC is `r sprintf("%.2f", pe("NSEC", "uninformative"))` µg/L under
-the uninformative priors and `r sprintf("%.2f", pe("NSEC", "regularizing"))`
+the default priors and `r sprintf("%.2f", pe("NSEC", "regularizing"))`
 µg/L under the regularising priors, and the median EC50 is
 `r sprintf("%.2f", pe("EC50", "uninformative"))` and
 `r sprintf("%.2f", pe("EC50", "regularizing"))` µg/L. The upper bound of the
 EC50 is `r sprintf("%.2f", pe("EC50", "uninformative", "Q97.5"))` µg/L under the
-uninformative priors and
+default priors and
 `r sprintf("%.2f", pe("EC50", "regularizing", "Q97.5"))` µg/L under the
 regularising priors, and the width of the NSEC interval is
 `r sprintf("%.2f", interval_width("NSEC", "uninformative"))` and
@@ -938,10 +1073,10 @@ presented as precision supplied solely by the experiment. The control fit, from
 which the NSEC reference is read, can be compared in the same way (the ratio of
 observed to simulated standard deviation at the control is
 `r range_text(control_ratio_default)` across the common equations under the
-uninformative priors, and `r range_text(control_ratio_regular)` under the
+default priors, and `r range_text(control_ratio_regular)` under the
 regularising priors).
 
-The final regularising set can contain equations that are not in the common set
+The set used for inference can contain equations that are not in the common set
 (e.g., `ecxflat`, which the comparison excludes), so its model-averaged
 estimates also reflect their weights and cannot be interpreted as a pure effect
 of the priors.
@@ -951,12 +1086,13 @@ the posterior.
 
 ## The final model-averaged fit
 
-We use the screened regularising set for inference. The first figure shows each
-equation retained after screening, on the measured diuron scale, and the second
-shows the model-averaged curve with its 95% credible band.
+We report the estimates of the screened set fitted under the `r final_label`
+priors, which step 4 chose for inference. The first figure shows each equation
+retained after screening, on the measured diuron scale, and the second shows the
+model-averaged curve with its 95% credible band.
 
 ```{r coral-curves, fig.asp = 1, out.width = "95%"}
-autoplot(screened_regular, model = screened_regular$success_models,
+autoplot(screened_final, model = screened_final$success_models,
          average = FALSE, nec = FALSE) +
     scale_x_continuous(transform = "log10",
                      breaks = sort(unique(colour_2050$diuron_adj)),
@@ -965,18 +1101,26 @@ autoplot(screened_regular, model = screened_regular$success_models,
        y = "Coral colour proportion")
 ```
 
+```{r coral-curves-text, include = FALSE}
+flat_text <- if ("ecxflat" %in% screened_final$success_models) {
+  paste0(" The constant equation `ecxflat` does not follow the decline (its ",
+         "weight is ", sprintf("%.2f", coral_weights[[final_col]][
+           coral_weights$model == "ecxflat"]), ").")
+} else {
+  ""
+}
+```
+
 `autoplot()` draws one panel for each equation named in `model`, and
 `average = FALSE` omits the model-averaged panel. The control is drawn at 0.1
-µg/L, the value substituted before logging. The constant equation `ecxflat` does
-not follow the decline (its weight is
-`r sprintf("%.2f", coral_weights$regularizing[coral_weights$model == "ecxflat"])`).
-The other retained equations agree closely from the control to
-`r doses[length(doses) - 2]` µg/L, where the response is flat. Above that
-concentration, where the response falls, the shapes of their declines differ,
-and that difference is the model uncertainty the average incorporates.
+µg/L, the value substituted before logging.`r flat_text` The other retained
+equations agree closely from the control to `r doses[length(doses) - 2]` µg/L,
+where the response is flat. Above that concentration, where the response falls,
+the shapes of their declines differ, and that difference is the model
+uncertainty the average incorporates.
 
 ```{r coral-final-plot, fig.asp = 0.75, out.width = "85%"}
-autoplot(screened_regular, nec = FALSE) +
+autoplot(screened_final, nec = FALSE) +
     scale_x_continuous(transform = "log10",
                      breaks = sort(unique(colour_2050$diuron_adj)),
                      labels = function(x) signif(x, 2)) +
@@ -994,9 +1138,9 @@ of NEC and NSEC draws that `summary()` labels N(S)EC.
 
 ```{r coral-final-estimates, message = TRUE, warning = TRUE}
 coral_estimates <- rbind(
-  EC10 = ecx(screened_regular, ecx_val = 10),
-  EC50 = ecx(screened_regular, ecx_val = 50),
-  NSEC = nsec(screened_regular)
+  EC10 = ecx(screened_final, ecx_val = 10),
+  EC50 = ecx(screened_final, ecx_val = 50),
+  NSEC = nsec(screened_final)
 )[, c("Q50", "Q2.5", "Q97.5")]
 round(coral_estimates, 3)
 ```
@@ -1017,7 +1161,7 @@ warnings above report how many draws were censored.
 
 These values depend on the substitution of 0.1 µg/L for the control before
 logging, on `asymptote_observed = TRUE`, on the candidate set, and on the
-regularising priors. In particular, no concentration above `r top_dose` µg/L
+`r final_label` priors. In particular, no concentration above `r top_dose` µg/L
 was tested, so the estimates rest on the assumption that the response had
 reached its lower asymptote by that concentration. The flatness
 message from `bnec()` and the comparison of priors above should be reported with
@@ -1030,12 +1174,20 @@ modelled on the way @flores2021 reported the original analysis of these data.
 That paper summarised its model fitting in a few sentences of the methods,
 reported each EC50 with its interval in the results, and placed further detail
 in supplementary material. Our analysis includes more checks than theirs, and
-the draft refers to steps 1 to 5 of this vignette as Supplementary Material S1
-to S5 (e.g., the sampler diagnostics table of step 3 would be Table S3). The
+the draft refers to steps 1 to 6 of this vignette as Supplementary Material S1
+to S6 (e.g., the sampler diagnostics table of step 3 would be Table S3). The
 values are those computed above, and would update with any change to the
 analysis.
 
 ## Statistical analysis
+
+```{r coral-methods-text, include = FALSE}
+regular_reason <- if (length(still_failed)) {
+  "Because equations still failed after these refits, the"
+} else {
+  "The"
+}
+```
 
 Concentrations of diuron that reduced the colour index of *A. millepora* by 10%
 and 50% (EC10 and EC50), and the no-significant-effect concentration (NSEC;
@@ -1049,60 +1201,70 @@ group-level intercept for chamber
 chamber and `r colour_design$chambers[1]` chambers per concentration; S1). The
 candidate model set comprised the `r length(prior_default)` equations of the
 `bayesnec` `decline` group that are valid for these data (declining equations
-and one constant equation; S2), fitted with the package's regularising priors.
-Each equation was fitted with four chains of 10,000 iterations, of which the
-first 8,000 were discarded as warmup. Equations were excluded where the maximum
-R-hat exceeded 1.01 or the minimum bulk or tail effective sample size was below
-400 [@Vehtari2021], or where more than ten divergent transitions occurred; an
-equation that failed only on R-hat or effective sample size was first refitted
-with twice the number of iterations, and one with more than ten divergent
-transitions with a target acceptance rate (`adapt_delta`) of 0.99, or 0.999
-where the default fit had already used 0.99 (S3). Posterior predictions from the
-retained equations were combined using pseudo-Bayesian model averaging weights
-[@Yao2018] calculated from leave-one-chamber-out cross-validation
-[@vehtari2017], with exact refits for chambers where the Pareto *k* diagnostic
-was at or above 0.7 (S3). The fit of each retained equation was assessed by comparing
+and one constant equation; S2), fitted first with the package's default
+(uninformative) priors. Each equation was fitted with four chains of 10,000
+iterations, of which the first 8,000 were discarded as warmup. Equations were
+excluded where the maximum R-hat exceeded 1.01 or the minimum bulk or tail
+effective sample size was below 400 [@Vehtari2021], or where more than ten
+divergent transitions occurred; an equation that failed only on R-hat or
+effective sample size was first refitted with twice the number of iterations,
+and one with more than ten divergent transitions with a target acceptance rate
+(`adapt_delta`) of 0.99, or 0.999 where the first fit had already used 0.99
+(S3). `r regular_reason` candidate set was refitted with the package's
+regularising priors, which are narrower and centre the upper and lower response
+levels on the mean response at the lowest and highest concentrations, and
+screened in the same way (S4). The set fitted with the regularising priors was
+to be used for inference only if more of its equations passed the screen.
+Posterior predictions from the retained equations of the set used for inference
+were combined using pseudo-Bayesian model averaging weights [@Yao2018]
+calculated from leave-one-chamber-out cross-validation [@vehtari2017], with
+exact refits for chambers where the Pareto *k* diagnostic was at or above 0.7
+(S`r final_step`). The fit of each retained equation was assessed by comparing
 the observed mean and standard deviation of the response at each concentration
-with those simulated from the posterior (S4). The sensitivity of the estimates
-to the priors was assessed by also fitting the candidate set with the package's
-default (uninformative) priors, and comparing the estimates from the smooth
-(ECx) equations that passed the screen under both prior sets (S5). Both prior
-sets assumed that the lower asymptote of the response was reached within the
-tested concentration range (the package default), which bounds the NEC and EC50
-priors to that range.
+with those simulated from the posterior (S5). The sensitivity of the estimates
+to the priors was assessed by comparing the estimates from the smooth (ECx)
+equations that passed the screen under both prior sets (S6). Both prior sets
+assumed that the lower asymptote of the response was reached within the tested
+concentration range (the package default), which bounds the NEC and EC50 priors
+to that range.
 
 ## Results
 
 ```{r coral-results-text, include = FALSE}
-kept_regular <- screened_regular$success_models
 kept_default <- screened_default$success_models
-screen_text <- if (setequal(kept_regular, kept_default)) {
-  paste0("The sampler screen retained the same ", length(kept_regular),
-         " of the ", length(valid), " candidate equations under both prior ",
-         "sets (", name_list(kept_regular), "; S3), so the regularising ",
-         "priors did not change the equations available for model averaging.")
+kept_regular <- screened_regular$success_models
+screen_text <- paste0(
+  "Under the default priors the sampler screen retained ", length(kept_default),
+  " of the ", length(valid), " candidate equations (", name_list(kept_default),
+  "; S3)."
+)
+time_text <- paste0(
+  "Under the regularising priors the total sampling time was ",
+  total_minutes(seconds_regular), " min, against ",
+  total_minutes(seconds_default), " min under the default priors"
+)
+regular_text <- if (setequal(kept_regular, kept_default)) {
+  paste0(" ", time_text, ", and the screen retained the same equations (S4).")
 } else {
   only_regular <- setdiff(kept_regular, kept_default)
   only_default <- setdiff(kept_default, kept_regular)
-  paste0("The sampler screen retained ", length(kept_regular), " of the ",
-         length(valid), " candidate equations under the regularising priors (",
-         name_list(kept_regular), ") and ", length(kept_default),
-         " under the uninformative priors (S3), and ",
-         paste(c(if (length(only_regular)) {
-                   paste(name_list(only_regular),
-                         "passed only under the regularising priors")
-                 },
-                 if (length(only_default)) {
-                   paste(name_list(only_default),
-                         "passed only under the uninformative priors")
-                 }), collapse = " whereas "), ".")
+  paste0(" ", time_text, ", and the screen retained ", length(kept_regular),
+         " equations (S4).",
+         if (length(only_regular)) {
+           paste0(" ", name_list(only_regular),
+                  " passed only under the regularising priors.")
+         },
+         if (length(only_default)) {
+           paste0(" ", name_list(only_default),
+                  " passed only under the default priors.")
+         })
 }
 unfit <- function(tab, label) {
   m <- setdiff(valid, tab$model)
   if (length(m)) paste(name_list(m), "under the", label, "priors")
 }
-unfit_parts <- c(unfit(sampling_regular, "regularising"),
-                 unfit(sampling_default, "uninformative"))
+unfit_parts <- c(unfit(sampling_default, "default"),
+                 unfit(sampling_regular, "regularising"))
 unfit_text <- if (length(unfit_parts)) {
   paste0(" No posterior draws were obtained for ",
          paste(unfit_parts, collapse = " or for "), ".")
@@ -1124,19 +1286,25 @@ bot_text <- if (!length(bot_regular) && !length(bot_default)) {
          " is zero.")
 } else {
   paste0("Of the ", length(bot_models), " equations that estimate a lower ",
-         "asymptote, ", named_count(bot_regular), " passed the screen under ",
-         "the regularising priors and ", named_count(bot_default),
-         " under the uninformative priors.")
+         "asymptote, ", named_count(bot_default), " passed the screen under ",
+         "the default priors and ", named_count(bot_regular),
+         " under the regularising priors.")
 }
+final_text <- paste0(
+  "The model average was therefore formed from the set fitted with the ",
+  final_label, " priors, in which the highest-weighted equation was ",
+  name_list(lead_final), " (weight ",
+  sprintf("%.2f", max(coral_weights[[final_col]], na.rm = TRUE)), "; S",
+  final_step, ")."
+)
 ```
 
 Colour index declined from a mean of
 `r sprintf("%.2f", colour_design$mean_proportion[1])` in the controls to
 `r sprintf("%.3f", colour_design$mean_proportion[length(doses)])` at
 `r top_dose` µg/L, with most of the decline occurring between `r next_dose` and
-`r top_dose` µg/L (Fig. S1). `r screen_text``r unfit_text` `r bot_text` The
-highest-weighted retained equation was `r name_list(lead_regular)` (weight
-`r sprintf("%.2f", max(coral_weights$regularizing, na.rm = TRUE))`; S3).
+`r top_dose` µg/L (Fig. S1). `r screen_text``r regular_text``r unfit_text`
+`r bot_text` `r final_text`
 
 The modelled concentrations that reduced colour index by 10% and 50% (EC10 and
 EC50) were
@@ -1147,13 +1315,13 @@ and `r sprintf("%.2f", coral_estimates["EC50", "Q50"])`
 µg/L, respectively, and the NSEC was
 `r sprintf("%.2f", coral_estimates["NSEC", "Q50"])`
 (`r sprintf("%.2f", coral_estimates["NSEC", "Q2.5"])`–`r sprintf("%.2f", coral_estimates["NSEC", "Q97.5"])`)
-µg/L (Table S5). For the smooth equations that passed under both prior sets
+µg/L (Table S6). For the smooth equations that passed under both prior sets
 (`r name_list(shared_models)`), the median NSEC was
-`r sprintf("%.2f", pe("NSEC", "regularizing"))` µg/L under the regularising
-priors and `r sprintf("%.2f", pe("NSEC", "uninformative"))` µg/L under the
-uninformative priors, with upper 95% bounds of
-`r sprintf("%.2f", pe("NSEC", "regularizing", "Q97.5"))` and
-`r sprintf("%.2f", pe("NSEC", "uninformative", "Q97.5"))` µg/L (S5). Because
+`r sprintf("%.2f", pe("NSEC", "uninformative"))` µg/L under the default priors
+and `r sprintf("%.2f", pe("NSEC", "regularizing"))` µg/L under the regularising
+priors, with upper 95% bounds of
+`r sprintf("%.2f", pe("NSEC", "uninformative", "Q97.5"))` and
+`r sprintf("%.2f", pe("NSEC", "regularizing", "Q97.5"))` µg/L (S6). Because
 the design has no concentration above `r top_dose` µg/L, the shape of the lower
 part of the curve, and hence the EC50, depends on the assumption that the colour
 index had reached its lower asymptote within the tested range.
@@ -1469,7 +1637,7 @@ legible instead of stacked.
 
 # A non-constant coefficient of variation {#a-non-constant-coefficient-of-variation}
 
-In step 4 we compared the fitted spread with the observed spread within each
+In step 5 we compared the fitted spread with the observed spread within each
 concentration. Here we work through a third response, whose coefficient of
 variation changes systematically across concentrations although the family
 fitted first assumes that it is constant. No convergence diagnostic detects this
@@ -1884,10 +2052,11 @@ different estimates from the same data.
 # Summary
 
 The sampler screen gave a different outcome for each fit in this vignette. On
-the 2050 colour data, after the refits of step 3, it removed
-`r sum(sampling_default$failed)` of the `r nrow(sampling_default)` fitted
-equations under the uninformative priors and `r sum(sampling_regular$failed)` of
-`r nrow(sampling_regular)` under the regularising priors. On `nassarius` it
+the 2050 colour data, after the refits of steps 3 and 4, it removed
+`r sum(sampling_default_refit$failed)` of the
+`r nrow(sampling_default_refit)` fitted equations under the default priors and
+`r sum(sampling_regular_refit$failed)` of `r nrow(sampling_regular_refit)` under
+the regularising priors. On `nassarius` it
 removed `r sum(nass_sampling$failed)` of `r nrow(nass_sampling)`, and on the
 copper plate `r sum(check_sampling(set_const)$failed)` of
 `r nrow(check_sampling(set_const))` under constant dispersion and
@@ -1922,7 +2091,7 @@ wrong spread at the concentration from which both estimators are referenced.
 
 Several decisions made around the fits also determine the estimates. For the
 colour index, the family was chosen on the support of the data and not on a
-test, the influence of the priors was assessed in step 5,
+test, the influence of the priors was assessed in step 6,
 `asymptote_observed = TRUE` was declared although this design cannot verify it,
 and the control was substituted before logging. For the counts, `binomial` was
 retained after examining dispersion across the fitted equations. None of these
