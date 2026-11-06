@@ -133,14 +133,29 @@ test_that("check_fit accepts an explicit singleton group", {
   expect_warning(ggplot2::ggplot_build(plot(out)), NA)
 })
 
-test_that("ppp_value is the tail probability, and handles degenerate input", {
+test_that("ppp_value splits ties and handles degenerate input", {
   expect_equal(bayesnec:::ppp_value(c(1, 2, 3, 4), 2.5), 0.5)
   expect_equal(bayesnec:::ppp_value(c(1, 2, 3, 4), 0), 1)
   expect_equal(bayesnec:::ppp_value(c(1, 2, 3, 4), 99), 0)
+  expect_equal(bayesnec:::ppp_value(rep(0, 4), 0), 0.5)
+  expect_equal(bayesnec:::ppp_value(c(0, 0, 1, 1), 0), 0.75)
+  expect_equal(bayesnec:::ppp_value(10 + 1e-14, 10), 0.5)
+  expect_equal(bayesnec:::ppp_value(10 - 1e-14, 10), 0.5)
+  expect_equal(bayesnec:::ppp_value(10 + 1e-10, 10), 1)
+  expect_equal(bayesnec:::ppp_value(10 - 1e-10, 10), 0)
   # a statistic that could not be computed must not become a silent 0 or 1
   expect_true(is.na(bayesnec:::ppp_value(numeric(0), 1)))
   expect_true(is.na(bayesnec:::ppp_value(c(1, 2), NA_real_)))
   expect_equal(bayesnec:::ppp_value(c(1, NA, 3), 2), 0.5)
+})
+
+test_that("identical binomial counts give a mid-p for mean and SD", {
+  y <- rep(10, 3)
+  yrep <- matrix(10, nrow = 20, ncol = length(y))
+  mu <- rep(10, length(y))
+  out <- bayesnec:::check_fit_stats(y, yrep, mu, factor(rep(0, 3)), FALSE)
+  expect_equal(out$ppp_mean, 0.5)
+  expect_equal(out$ppp_sd, 0.5)
 })
 
 test_that("a bayesmanecfit reports per-model rows carrying their weights", {

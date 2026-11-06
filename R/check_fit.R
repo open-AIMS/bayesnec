@@ -73,6 +73,10 @@
 #' therefore reported alongside the averaged rows, or the table could not say
 #' which model is doing the damage.
 #'
+#' Posterior predictive p-values count a simulated statistic above the
+#' observed statistic as one and a tie as one half. Ties are common for count
+#' families because their statistics take few distinct values.
+#'
 #' @return A \code{\link[base]{data.frame}} with one row per group (per model,
 #' for a \code{\link{bayesmanecfit}}), carrying the group, the number of
 #' observations, the observed and simulated mean and standard deviation, their
@@ -148,8 +152,9 @@ check_fit_groups <- function(predictor, group = NULL) {
 
 #' Posterior predictive p-value
 #'
-#' \code{P(T(yrep) >= T(y))}. Values near 0 or 1 both indicate misfit, in
-#' opposite directions; 0.5 is perfect agreement.
+#' The proportion above the observed statistic plus half the proportion tied
+#' with it. Values near 0 or 1 both indicate misfit, in opposite directions;
+#' 0.5 is perfect agreement.
 #'
 #' @param sim A \code{\link[base]{numeric}} vector of simulated statistics.
 #' @param obs A \code{\link[base]{numeric}} vector of length 1.
@@ -162,7 +167,10 @@ ppp_value <- function(sim, obs) {
   if (!length(sim) || !is.finite(obs)) {
     return(NA_real_)
   }
-  mean(sim >= obs)
+  # SDs computed by different arithmetic paths can differ by rounding alone.
+  tolerance <- 64 * .Machine$double.eps * max(1, abs(obs))
+  difference <- sim - obs
+  mean(difference > tolerance) + 0.5 * mean(abs(difference) <= tolerance)
 }
 
 #' The per-group table for one brmsfit

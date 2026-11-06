@@ -122,6 +122,10 @@ for the control. For a \code{\link{bayesmanecfit}} the per-model rows are
 therefore reported alongside the averaged rows, or the table could not say
 which model is doing the damage.
 
+Posterior predictive p-values count a simulated statistic above the
+observed statistic as one and a tie as one half. Ties are common for count
+families because their statistics take few distinct values.
+
 For a \code{\link{bayesnechurdlefit}} one table is returned per
 component, following the precedent \code{\link{dispersion}} sets. The two
 carry different response vectors --- growth is fitted on survivors only,

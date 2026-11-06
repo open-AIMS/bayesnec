@@ -1,5 +1,7 @@
 # bayesnec 2.2.0
 
+- `check_fit()` counts ties as one half when calculating posterior predictive
+  p-values. Identical observed and simulated count statistics now give 0.5.
 - `check_fit()` now returns mean statistics for groups with one observation and
   records their undefined standard deviation statistics as `NA`. The plot shows
   these groups in the mean panel only (#558).
