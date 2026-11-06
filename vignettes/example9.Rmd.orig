@@ -1282,8 +1282,9 @@ band is its 95% credible interval, both returned on the recorded concentration
 scale although the formula fitted `log(conc)`. The vertical lines mark the
 model-averaged *N(S)EC* and its bounds. That estimate mixes the sampled NEC of
 any monotone threshold equation retained (`nec3param` or `nec4param`) with an
-NSEC read off the fitted curve for each smooth equation and for the hormesis
-threshold equations `nechorme` and `nechorme4`. The table gives the median and
+NSEC read off the fitted curve for each smooth equation and for any hormesis
+threshold equation retained (`nechorme` or `nechorme4`). The table gives the
+median and
 equal-tailed 95% credible interval of the EC10, EC50 and NSEC (mg/L) from this
 set, for which `nsec()` applies one control-reference definition to every
 retained equation.
