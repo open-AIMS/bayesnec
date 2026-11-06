@@ -22,6 +22,8 @@
 #' the original data passed to \code{bnec_group()}, in its original order. It
 #' is split by fitted level before the checks. The fitted-level factor is not
 #' the predictor grouping used within each level.
+#' For a \code{bayesnechurdlefit}, an explicit vector has one value per exposed
+#' row; the growth check uses the values for surviving rows.
 #' @param ndraws A \code{\link[base]{numeric}} vector of length 1, the number of
 #' posterior draws to simulate from. Reduced silently to the number the fit
 #' actually holds where that is smaller.
@@ -215,7 +217,7 @@ ppp_value <- function(sim, obs) {
 #'
 #' @noRd
 is_tie <- function(a, b) {
-  abs(a - b) <= 64 * .Machine$double.eps * pmax(1, abs(a), abs(b))
+  abs(a - b) <= 64 * .Machine$double.eps * pmax(abs(a), abs(b))
 }
 
 #' The censoring of each fitted row, as the model treats it
@@ -593,15 +595,28 @@ print.checkfit <- function(x, ...) {
 #' set rather than onto its own data, since it is fitted on survivors only.
 #' Where either component is a model set, the third table has one block of rows
 #' per pair of growth and survival equations, named \code{"growth / survival"}
-#' in the column \code{model}, with the pair's weight from
-#' \code{\link{crossed_weights}} in the column \code{wi}.
+#' in the column \code{model}. When one component has one equation, \code{wi}
+#' is the other component's model weight. With model sets in both components,
+#' \code{wi} is available under pseudo-BMA through
+#' \code{\link{crossed_weights}}; it is omitted for other weighting methods.
 #'
 #' @export
 check_fit.bayesnechurdlefit <- function(x, group = NULL, ndraws = 1000,
                                         seed = 10, combined = TRUE, ...) {
   chk_lgl(combined)
   chk_number(seed)
-  out <- list(growth = check_fit(x$growth, group = group, ndraws = ndraws,
+  growth_group <- group
+  if (!is.null(group) && length(group) > 1L) {
+    n_exposed <- nrow(component_fits(x$survival)[[1]]$fit$data)
+    if (!is.atomic(group) || !is.null(dim(group)) ||
+        length(group) != n_exposed || anyNA(group)) {
+      stop("`group` must have one non-missing value per exposed row, in",
+           " its original order.", call. = FALSE)
+    }
+    growth_group <- group[hurdle_observed_response(x) > 0]
+  }
+  out <- list(growth = check_fit(x$growth, group = growth_group,
+                                 ndraws = ndraws,
                                  seed = seed),
               survival = check_fit(x$survival, group = group, ndraws = ndraws,
                                    seed = seed))
@@ -671,9 +686,20 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
   })
   cens <- hurdle_exposed_cens(gb, y_obs)
   ctrl <- levels(grp)[which.min(tapply(predictor, grp, min))]
-  weights <- crossed_weights(x)
   pairs <- expand.grid(growth = names(g_fits), survival = names(s_fits),
                        stringsAsFactors = FALSE)
+  methods <- unique(unlist(lapply(list(x$growth, x$survival),
+                                  fit_weights_method)))
+  show_weights <- nrow(pairs) > 1L &&
+    (length(g_fits) == 1L || length(s_fits) == 1L ||
+       length(methods) == 0L || identical(methods, "pseudobma"))
+  if (nrow(pairs) > 1L && !show_weights) {
+    warning("Combined model-pair weights are unavailable when both",
+            " components have model sets and either uses weights other than",
+            " pseudo-BMA; the table omits `wi`.",
+            call. = FALSE)
+  }
+  weights <- if (show_weights) crossed_weights(x) else NULL
   out <- lapply(seq_len(nrow(pairs)), function(i) {
     g <- pairs$growth[i]
     s <- pairs$survival[i]
@@ -684,8 +710,12 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
                            is_mixture = TRUE, cens = cens)
     res$control <- res$group == ctrl
     if (nrow(pairs) > 1) {
-      res <- data.frame(model = paste(g, s, sep = " / "),
-                        wi = weights[g, s], res)
+      if (show_weights) {
+        res <- data.frame(model = paste(g, s, sep = " / "),
+                          wi = weights[g, s], res)
+      } else {
+        res <- data.frame(model = paste(g, s, sep = " / "), res)
+      }
     }
     res
   })

@@ -143,6 +143,9 @@ test_that("ppp_value splits ties and handles degenerate input", {
   expect_equal(bayesnec:::ppp_value(10 - 1e-14, 10), 0.5)
   expect_equal(bayesnec:::ppp_value(10 + 1e-10, 10), 1)
   expect_equal(bayesnec:::ppp_value(10 - 1e-10, 10), 0)
+  # The rounding allowance must scale with the response units.
+  expect_equal(bayesnec:::ppp_value(rep(2e-16, 4), 1e-16), 1)
+  expect_equal(bayesnec:::ppp_value(rep(1e-16, 4), 2e-16), 0)
   # a statistic that could not be computed must not become a silent 0 or 1
   expect_true(is.na(bayesnec:::ppp_value(numeric(0), 1)))
   expect_true(is.na(bayesnec:::ppp_value(c(1, 2), NA_real_)))
@@ -913,6 +916,21 @@ test_that("the combined hurdle table marks the control, so it can be plotted", {
   expect_warning(ggplot2::ggplot_build(p), NA)
 })
 
+test_that("explicit hurdle groups follow the exposed and surviving rows", {
+  skip_on_cran()
+  f <- hurdle_fixture()
+  group <- rep(c("A", "B"), length.out = nrow(f$dat))
+  out <- check_fit(f$fit, group = group, ndraws = 20, combined = FALSE)
+  expect_identical(as.character(out$growth$group), c("A", "B"))
+  expect_identical(as.character(out$survival$group), c("A", "B"))
+  expect_equal(out$growth$n,
+               as.integer(table(factor(group[f$dat$y > 0], levels = c("A", "B")))))
+  expect_equal(out$survival$n,
+               as.integer(table(factor(group, levels = c("A", "B")))))
+  expect_error(check_fit(f$fit, group = group[-1L], combined = FALSE),
+               "one non-missing value per exposed row")
+})
+
 test_that("a hurdle fit with a model set checks every pair of equations", {
   skip_on_cran()
   fit <- hurdle_fixture()$fit
@@ -940,6 +958,38 @@ test_that("a hurdle fit with a model set checks every pair of equations", {
   expect_s3_class(plot(out), "ggplot")
 })
 
+test_that("combined hurdle checks omit crossed weights under stacking", {
+  skip_on_cran()
+  fit <- hurdle_fixture()$fit
+  g <- fit$growth
+  s <- fit$survival
+  fit$growth <- structure(
+    list(mod_fits = setNames(list(g, g), c(g$model, "copy")),
+         mod_stats = data.frame(wi = c(0.6, 0.4),
+                                row.names = c(g$model, "copy"))),
+    class = c("bayesmanecfit", "bnecfit")
+  )
+  attr(fit$growth$mod_stats$wi, "method") <- "stacking"
+  single_survival <- fit
+  single_survival$survival <- s
+  expect_warning(single <- bayesnec:::check_fit_combined(
+    single_survival, group = 3, ndraws = 20, seed = 7
+  ), NA)
+  expect_equal(unique(single$wi), c(0.6, 0.4))
+  fit$survival <- structure(
+    list(mod_fits = setNames(list(s, s), c(s$model, "copy")),
+         mod_stats = data.frame(wi = c(0.7, 0.3),
+                                row.names = c(s$model, "copy"))),
+    class = c("bayesmanecfit", "bnecfit")
+  )
+  expect_warning(out <- bayesnec:::check_fit_combined(
+    fit, group = 3, ndraws = 20, seed = 7
+  ), "omits `wi`")
+  expect_false("wi" %in% names(out))
+  expect_length(unique(out$model), 4L)
+  expect_s3_class(plot(out), "ggplot")
+})
+
 test_that("a tie at the bound survives rounding in the last place", {
   # mean() and rowMeans() can differ in the last place, which on some platforms
   # turns a tie at the bound into a flag.
@@ -957,6 +1007,17 @@ test_that("a tie at the bound survives rounding in the last place", {
                                     factor(rep("a", 12)), FALSE, cens)
   expect_equal(out$ppp_mean, 0.5)
   expect_equal(out$mean_ratio, 1)
+})
+
+test_that("a small held response retains a twofold discrepancy", {
+  y <- rep(1e-16, 4)
+  yrep <- matrix(2e-16, nrow = 20, ncol = 4)
+  cens <- list(code = rep(-1L, 4), bound = y,
+               may_be_zero = rep(TRUE, 4))
+  out <- bayesnec:::check_fit_stats(y, yrep, rep(0, 4),
+                                    factor(rep("a", 4)), FALSE, cens)
+  expect_equal(out$mean_ratio, 0.5)
+  expect_equal(out$ppp_mean, 1)
 })
 
 test_that("a wholly held control is not read as a discrepancy", {

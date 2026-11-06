@@ -38,7 +38,9 @@ warning.
 For a \code{bayesnecgroupfit}, an explicit vector has one value per row of
 the original data passed to \code{bnec_group()}, in its original order. It
 is split by fitted level before the checks. The fitted-level factor is not
-the predictor grouping used within each level.}
+the predictor grouping used within each level.
+For a \code{bayesnechurdlefit}, an explicit vector has one value per exposed
+row; the growth check uses the values for surviving rows.}
 
 \item{ndraws}{A \code{\link[base]{numeric}} vector of length 1, the number of
 posterior draws to simulate from. Reduced silently to the number the fit
@@ -60,8 +62,10 @@ actually observed. The growth component is predicted onto the full exposed
 set rather than onto its own data, since it is fitted on survivors only.
 Where either component is a model set, the third table has one block of rows
 per pair of growth and survival equations, named \code{"growth / survival"}
-in the column \code{model}, with the pair's weight from
-\code{\link{crossed_weights}} in the column \code{wi}.}
+in the column \code{model}. When one component has one equation, \code{wi}
+is the other component's model weight. With model sets in both components,
+\code{wi} is available under pseudo-BMA through
+\code{\link{crossed_weights}}; it is omitted for other weighting methods.}
 }
 \value{
 A \code{\link[base]{data.frame}} with one row per group (per model,
