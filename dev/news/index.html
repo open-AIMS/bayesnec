@@ -93,7 +93,11 @@
     <div class="section level2">
 <h2 class="page-header" data-toc-text="2.2.0" id="bayesnec-220">bayesnec 2.2.0<a class="anchor" aria-label="anchor" href="#bayesnec-220"></a></h2>
 <ul><li>
+<code><a href="../reference/check_fit.html">check_fit()</a></code> now counts ties as one half when calculating posterior predictive p-values. Identical observed and simulated count statistics give a p-value of 0.5 rather than 1. When the observed statistic and the median simulated statistic are both zero, their ratio is reported as 1 so that the control check does not flag agreement (<a href="https://github.com/open-aims/bayesnec/issues/568" class="external-link">#568</a>).</li>
+<li>
 <code><a href="../reference/check_fit.html">check_fit()</a></code> now returns mean statistics for groups with one observation and records their undefined standard deviation statistics as <code>NA</code>. The plot shows these groups in the mean panel only (<a href="https://github.com/open-aims/bayesnec/issues/558" class="external-link">#558</a>).</li>
+<li>
+<code><a href="../reference/check_fit.html">check_fit()</a></code> now accounts for readings censored through <code>cens()</code>. A censored reading is recorded at its bound, whereas the responses simulated from the fit are not censored, so a group with censored readings was flagged because of the censoring rather than the curve. In each such group the observed and simulated values beyond the censoring bound are now set to that bound before the statistics are computed, and a new column, <code>n_cens</code>, gives the number of censored readings in each group. This applies to single fits, model sets, grouped fits and the growth and combined tables of a hurdle fit. The censoring treatment applies only to groups with censored readings (<a href="https://github.com/open-aims/bayesnec/issues/566" class="external-link">#566</a>).</li>
 <li>
 <code><a href="../reference/bnec.html">bnec()</a></code> and <code><a href="../reference/amend.html">amend()</a></code> now reject malformed priors before fitting instead of silently replacing them with defaults.</li>
 </ul><div class="section level3">
