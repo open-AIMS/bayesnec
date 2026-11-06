@@ -590,6 +590,19 @@ curve. Without a deviation on the position of each plate's curve (e.g. with
 each plate's shift along the concentration axis. We call D the arm structure,
 because it is the structure fitted to each metal below.
 
+A plate spans the series, so `ecx()` and `nsec()` read a fit with a plate term
+from each observed plate's own curve, with all of that plate's deviations, and
+measure each plate against its own control (its fitted mean at its lowest
+concentration). The plates are then pooled by mixing their posterior draws in
+proportion to each plate's number of observations, so the estimate describes
+the 17 plates that were tested and not a new plate. The
+band that `autoplot()` and `ggbnec_data()` draw is a mixture of the plates'
+curves in the same proportions. `pool` selects another combination (e.g. one estimate per plate
+with `pool = "none"`), and `x_control` sets the concentration at which each
+plate's control is read (see `?ecx`). The cell term in D is set to zero in
+these predictions, as on the single plate, because each cell is observed at one
+concentration, so its deviation remains part of the uncertainty in the control.
+
 
 ``` r
 fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") +
@@ -647,9 +660,9 @@ each fit.
 |Panel |Plate structure                |Equations retained |Weight of 0.05 or more                                             |EC10, mg/L        |NSEC, mg/L         |
 |:-----|:------------------------------|:------------------|:------------------------------------------------------------------|:-----------------|:------------------|
 |A     |None                           |13 of 15           |`ecxwb1` 0.78, `ecxll3` 0.16                                       |0.28 (0.21--0.74) |0.16 (0.038--0.57) |
-|B     |`ogl(plate)`                   |13 of 15           |`ecxll5` 0.64, `ecxwb1` 0.36                                       |0.35 (0.31--0.38) |0.70 (0.17--1.2)   |
-|C     |`pgl(plate)`                   |10 of 15           |`ecxll3` 0.43, `ecxhormebc4` 0.42, `ecxll4` 0.08, `ecx4param` 0.07 |0.51 (0.45--0.57) |0.85 (0.31--1.3)   |
-|D     |`pgl(plate) + ogl(conc_group)` |12 of 15           |`ecxll5` 0.96                                                      |0.38 (0.28--0.47) |0.77 (0.19--1.3)   |
+|B     |`ogl(plate)`                   |13 of 15           |`ecxll5` 0.64, `ecxwb1` 0.36                                       |0.35 (0.32--0.38) |0.14 (0.040--0.24) |
+|C     |`pgl(plate)`                   |10 of 15           |`ecxll3` 0.43, `ecxhormebc4` 0.42, `ecxll4` 0.08, `ecx4param` 0.07 |0.50 (0.37--0.71) |0.29 (0.12--0.53)  |
+|D     |`pgl(plate) + ogl(conc_group)` |12 of 15           |`ecxll5` 0.96                                                      |0.38 (0.24--0.57) |0.27 (0.077--0.47) |
 
 
 
@@ -689,51 +702,50 @@ ggplot() +
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-fig-plate-terms-1.png" alt="The zinc readings at 15 minutes fitted with each plate structure (panels A to D). Each point is one well, and each thin line joins one plate's observed means, coloured by plate; these do not change between panels. The dashed black line is the model-averaged population curve and the grey band its 95% credible interval. The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds." width="100%" />
-<p class="caption">The zinc readings at 15 minutes fitted with each plate structure (panels A to D). Each point is one well, and each thin line joins one plate's observed means, coloured by plate; these do not change between panels. The dashed black line is the model-averaged population curve and the grey band its 95% credible interval. The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds.</p>
+<img src="vignette-fig-fig-plate-terms-1.png" alt="The zinc readings at 15 minutes fitted with each plate structure (panels A to D). Each point is one well, and each thin line joins one plate's observed means, coloured by plate; these do not change between panels. The dashed black line is the median of the model-averaged curve and the grey band its 95% credible interval, taken in panels B to D over the mixture of the observed plates' curves. The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds." width="100%" />
+<p class="caption">The zinc readings at 15 minutes fitted with each plate structure (panels A to D). Each point is one well, and each thin line joins one plate's observed means, coloured by plate; these do not change between panels. The dashed black line is the median of the model-averaged curve and the grey band its 95% credible interval, taken in panels B to D over the mixture of the observed plates' curves. The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds.</p>
 </div>
 
 
 
 The observations, and the thin lines that join each plate's observed means, do
-not change between panels. The panels differ only in the population curve
-fitted to those data, its band, and the EC10 and NSEC read from that curve.
+not change between panels. The panels differ only in the fitted curve, its band,
+and the EC10 and NSEC.
 
 Without a plate term (panel A), the differences in gain between plates are
-counted as residual variation, and the population curve is fitted to the wells
-of all 17 plates as though they came from one plate.
-Its band is therefore narrow, with an upper bound 1.14
-times its lower bound at the lowest concentration. With a plate term (panels B
-to D), the band at the lowest concentration widens to a ratio of
-1.54 to 1.57 between its
-bounds, because the population curve then describes a typical plate, and its
-height is estimated from plates that differ in gain. The EC10 interval changes
-the other way. It is widest in panel A, with an upper bound
-3.6 times its lower bound, and under each plate term the
-ratio is 1.2 to 1.7.
-On the single plate, however, the cell term widened the EC10 interval, so the
-direction of the change may differ from one grouping to another. The likely
-reason is that a cell has no curve of its own, so a cell term adds variation
-that the curve cannot account for, whereas a plate spans the series, and a plate
-term removes the differences between plates from the residual variation.
+counted as residual variation, and one curve is fitted to the wells of all
+17 plates as though they came from one plate. Its band
+is therefore narrow, with an upper bound 1.14 times its
+lower bound at the lowest concentration. With a plate term (panels B to D), the
+band is that of the mixture of the plates' curves, so at the lowest
+concentration it includes the differences in gain between plates as well as the
+uncertainty in each plate's curve, and its upper bound is
+5.0 to 5.4 times its lower
+bound.
+
+The EC10 interval depends on the kind of plate term. `ogl(plate)` (B) scales
+each plate's curve by one factor, which cancels in an effect measured from that
+plate's own control, so in each draw the plates' EC10s differ little, and the
+upper bound of the interval is 1.2 times its lower
+bound. Under `pgl(plate)` (C and D), the plates' curves also differ in position
+and slope, so the interval includes the differences between the plates' EC10s,
+and the ratio is 1.9 and 2.4,
+respectively. Without a plate term (A), the ratio is
+3.6, the widest of the four, probably because the differences between plates are then counted as residual variation.
 
 The four structures also give the curve different positions. Across the panels
-the median EC10 ranges from 0.28 to 0.51
-mg/L (a factor of 1.8) and the median NSEC
-from 0.16 to 0.85 (a factor of
-5.2), so the NSEC changed more with the
-structure than the EC10. The NSEC is lowest in panel A, where the band at the
-lowest concentration is narrowest (compare the orange lines of panel A with
-those of panels B to D). As on the single plate, the NSEC is read against the 0.01
-quantile of the posterior of the control, and a wider posterior places that
-quantile further below the fitted control, so the curve is likely to cross it
-at a higher concentration. A report should therefore state the structure as
-well as the estimate. The weights changed as well, and no equation was given
-most of the weight under every structure. Under `pgl(plate)` (panel C) the
-weight was spread over 4 equations and the EC10 was
-0.51 (0.45--0.57) mg/L, whereas adding the cell term (panel D) gave
+the median EC10 ranges from 0.28 to 0.50
+mg/L (a factor of 1.8) and the median NSEC from
+0.14 to 0.29 (a factor of
+2.0), so the EC10 and the NSEC changed by similar factors. In each panel the median NSEC is below the median EC10 (orange and blue lines in
+the figure). Under a plate term, each plate's control is read from that plate's own curve, which the plate's wells determine closely, so the 0.01 quantile of the posterior of its control is close to the fitted control, and the curve crosses it before it has fallen by 10 per cent. A plate term therefore does not place the NSEC above the EC10, as the cell term did on the single plate, because a plate's deviations apply to its control and to each of its treatments, whereas each cell has a deviation of its own. The median NSEC is closest to the median EC10 in panel D (a ratio of 0.70, against 0.42 to 0.58 in the other panels), probably because its cell term adds the cells' deviations to the uncertainty in the control. Because the estimates
+differ between structures, a report should state the structure as well as the
+estimate. The weights changed as well, and no
+equation was given most of the weight under every structure. Under
+`pgl(plate)` (panel C) the weight was spread over 4 equations and the EC10 was
+0.50 (0.37--0.71) mg/L, whereas adding the cell term (panel D) gave
 `ecxll5` 0.96 of the weight and an EC10
-of 0.38 (0.28--0.47) mg/L.
+of 0.38 (0.24--0.57) mg/L.
 
 The table below gives the group-level SDs of `fit_pgl_cell` (structure D) from
 `group_level_sd()`, for each equation given at least 0.01 of the weight. Each SD
@@ -814,10 +826,10 @@ fits_tox <- screen_models(fits_tox, group_action = "per_level")
 
 
 
-|Toxicant |Equations retained |Weight of 0.01 or more                                        |EC10, mg/L           |NSEC, mg/L          |
-|:--------|:------------------|:-------------------------------------------------------------|:--------------------|:-------------------|
-|Cu       |10 of 15           |`ecxll5` 0.72, `ecxll4` 0.16, `ecx4param` 0.10, `ecxwb1` 0.02 |0.065 (0.048--0.082) |0.086 (0.048--0.11) |
-|Zn       |12 of 15           |`ecxll5` 0.96, `ecxwb1` 0.04                                  |0.38 (0.28--0.46)    |0.77 (0.19--1.3)    |
+|Toxicant |Equations retained |Weight of 0.01 or more                                        |EC10, mg/L          |NSEC, mg/L          |
+|:--------|:------------------|:-------------------------------------------------------------|:-------------------|:-------------------|
+|Cu       |10 of 15           |`ecxll5` 0.72, `ecxll4` 0.16, `ecx4param` 0.10, `ecxwb1` 0.02 |0.062 (0.038--0.15) |0.061 (0.030--0.16) |
+|Zn       |12 of 15           |`ecxll5` 0.96, `ecxwb1` 0.04                                  |0.38 (0.24--0.57)   |0.27 (0.075--0.47)  |
 
 
 
@@ -839,26 +851,68 @@ autoplot(fits_tox, nec = FALSE, point_alpha = 0.5) +
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-fig-metals-1.png" alt="The copper and zinc readings at 15 minutes, with the model-averaged curve of each metal's separate fit (dashed line) and its 95% credible interval (grey band). The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds." width="95%" />
-<p class="caption">The copper and zinc readings at 15 minutes, with the model-averaged curve of each metal's separate fit (dashed line) and its 95% credible interval (grey band). The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds.</p>
+<img src="vignette-fig-fig-metals-1.png" alt="The copper and zinc readings at 15 minutes, with the model-averaged curve of each metal's separate fit (dashed line, the median over the mixture of that metal's plates) and its 95% credible interval (grey band). The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds." width="95%" />
+<p class="caption">The copper and zinc readings at 15 minutes, with the model-averaged curve of each metal's separate fit (dashed line, the median over the mixture of that metal's plates) and its 95% credible interval (grey band). The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds.</p>
 </div>
 
 The screen retained 10 equations for copper and
 12 for zinc, and the equation given the most
 weight was `ecxll5` at both levels
-(table above). The EC10 is 0.065 (0.048--0.082) mg/L for copper
-and 0.38 (0.28--0.46) mg/L for zinc, so copper is the more potent
-metal, as @luter2025 report. The NSEC is 0.086 (0.048--0.11) mg/L
-for copper and 0.77 (0.19--1.3) mg/L for zinc. For both metals
-it is above the EC10 (orange and blue lines in the figure), as it is under the
-arm structure in panel D of the plate figure, for the reason given there. Each
-panel has its own response axis, because the plates
-of each metal were read at different gains, and their relative light units are
-not comparable between metals. Under the equation given the most weight, the
+(table above). The EC10 is 0.062 (0.038--0.15) mg/L for copper
+and 0.38 (0.24--0.57) mg/L for zinc, so copper is the more potent
+metal, as @luter2025 report. The NSEC is 0.061 (0.030--0.16) mg/L
+for copper and 0.27 (0.075--0.47) mg/L for zinc, so its median is
+within 5 per cent of the median EC10 for copper and below it for zinc (orange and blue lines in the figure). The upper bound of
+copper's EC10 interval is 4.0 times its lower bound,
+against 2.4 for zinc, most likely because the mixture over copper's plates includes the two 1Oct24 plates, whose curves fall at higher concentrations than those of the other copper plates (figure of plate-relative means).
+Each panel has its own response axis, because the plates of each metal were
+read at different gains, and their relative light units are not comparable
+between metals. Under the equation given the most weight, the
 left-out score is approximate (Pareto *k* at or above 0.7) for 22 of
 the 176 copper cells and 22 of the 187 zinc cells, so these
 weights are approximate as well, and `loo_controls = list(refit = TRUE)` would
 replace the flagged scores by refitting the equation once for each flagged cell.
+
+`check_fit()` compares the observed mean and residual SD of each group of
+readings with those of responses simulated from each equation of a set, and on
+a `bnec_group()` fit it computes the check within each level. Each batch was
+dosed separately, so we group the readings by dilution step (`conc_rank`) and
+not by concentration, and a censored reading is held at its bound in both the
+observed and the simulated responses (see `?check_fit`). The rows below are
+those of the equation given the most weight for copper: the number of censored
+readings at each step, and the ratio of the observed to the simulated mean and
+residual SD, each with its posterior predictive p-value.
+
+
+``` r
+checks_tox <- check_fit(fits_tox, group = zn_cu_15$conc_rank, ndraws = 1000,
+                        seed = 228)
+cu_check <- as.data.frame(checks_tox$fits[["Cu"]])
+print(cu_check[cu_check$model == level_top[["Cu"]],
+               c("group", "n_cens", "mean_ratio", "ppp_mean", "sd_ratio",
+                 "ppp_sd")], digits = 2, row.names = FALSE)
+#>  group n_cens mean_ratio ppp_mean sd_ratio ppp_sd
+#>      1      0       1.01    0.150     0.66  1.000
+#>      2      0       1.00    0.534     0.68  0.998
+#>      3      0       1.00    0.640     0.55  1.000
+#>      4      0       0.99    0.772     0.54  1.000
+#>      5      0       0.99    0.671     1.09  0.244
+#>      6      0       1.03    0.090     1.54  0.001
+#>      7      2       0.84    0.957     1.07  0.329
+#>      8      6       1.96    0.003     1.12  0.361
+#>      9     38       0.39    1.000     0.32  1.000
+#>     10     39       0.61    0.969     0.43  0.986
+#>     11     21       0.69    0.927     0.37  0.998
+```
+
+
+
+For zinc, under `ecxll5`, the observed mean is within the
+simulated span at every dilution step,
+and the residual SD is below the simulated span at steps 4, 5 and 7. For copper, the observed mean is
+outside the simulated span at steps 8 and 9 (from 0.66 mg/L, against an EC10 of 0.062 mg/L), where 6 and 38 of the 64 readings, respectively, are censored at the instrument's floor,
+and the residual SD is below the simulated span at steps 1, 2, 3, 4, 9, 10 and 11 and above it at step 6. `ecxll5` therefore does not follow copper's readings as they approach the floor, well above the concentrations at which the EC10 and NSEC are read.
+At copper's control the simulated SD is larger than the observed one, and *Why the control row matters* in `?check_fit` explains how an overstated spread at the control can place the NSEC at a higher concentration.
 
 Each metal's model average is formed over its own equations, so a different
 equation may describe each metal. Because the metals share no parameter, the
@@ -1052,38 +1106,47 @@ report for 15 minutes.
 
 |Toxicant |Joint refit        |Separate fits, model average |Luter et al. (2025), mean of per-plate EC50s (range) |
 |:--------|:------------------|:----------------------------|:----------------------------------------------------|
-|Copper   |0.12 (0.078--0.20) |0.12 (0.096--0.14)           |0.109 (0.069--0.201; 16 plates)                      |
-|Zinc     |1.8 (1.1--2.8)     |1.6 (1.4--1.9)               |1.546 (1.207--2.076; 17 plates)                      |
+|Copper   |0.11 (0.079--0.26) |0.11 (0.076--0.27)           |0.109 (0.069--0.201; 16 plates)                      |
+|Zinc     |1.6 (1.2--2.5)     |1.6 (1.2--2.4)               |1.546 (1.207--2.076; 17 plates)                      |
 
 
 
-The EC50 is 0.12 (0.078--0.20) mg/L for copper and
-1.8 (1.1--2.8) mg/L for zinc in the joint refit, against
-0.12 (0.096--0.14) and 1.6 (1.4--1.9) from the
+The EC50 is 0.11 (0.079--0.26) mg/L for copper and
+1.6 (1.2--2.5) mg/L for zinc in the joint refit, against
+0.11 (0.076--0.27) and 1.6 (1.2--2.4) from the
 separate fits, and
 all four medians lie
 within the range of the per-plate EC50s that @luter2025 report. The intervals of
-the joint refit are wider than those of the separate fits, although the joint
-refit conditions on one equation. The likely reason is the batch term: each
-metal's population `ec50` is now estimated across five batches, and the
-uncertainty in their poorly determined SD widens its interval. The estimates
-also differ in what they describe: the published values average a separate fit
-to each plate of the normalised response, whereas `ecx()` reads the population
-curve of a model that estimates the variation between plates and between
-batches.
+the joint refit are similar in width to those of the separate fits, although the joint refit conditions on one equation. Both estimates are mixtures over each
+metal's observed plates, so their intervals include the differences between
+plates as well as the uncertainty in each plate's curve. The published values
+are also read from each plate's own curve. However, they average a separate fit
+to each plate of the normalised response, whereas `ecx()` mixes the plates'
+curves from one model, in which the plates of a metal share information through
+the plate SDs.
 
-Because the levels are estimated in one posterior, a contrast between them can
-be taken draw by draw, which keeps any dependence between the metals' estimates
-that the shared terms introduce. Here we take the ratio of zinc's EC10 to
-copper's:
+Because the metals are estimated in one posterior, `compare_posterior()`
+compares their EC10s draw by draw. Each metal is read at its own observed
+plates, as `ecx()` reads it. The plates are matched on the batches the metals
+share: at each draw both metals are read in the same batch as far as their
+numbers of observations per batch allow, so that the comparison is made within
+a batch, as in a paired design. The function returns the probability that
+copper's EC10 exceeds zinc's in `prob_diff`. It returns each metal's EC10 draws
+in `posterior_list`, in which the draws at one position come from the same
+iteration of the joint posterior. We take the ratio of zinc's EC10 to copper's
+from those draws:
 
 
 ``` r
-ec10_joint <- ecx(fits_tox_joint, ecx_val = 10, posterior = TRUE)
+cmp_joint <- compare_posterior(fits_tox_joint, comparison = "ecx", ecx_val = 10)
+cmp_joint$prob_diff
+#>   comparison prob prob_lower prob_upper censored_first censored_second
+#> 1      Cu-Zn    0          0          0              0               0
+ec10_joint <- cmp_joint$posterior_list
 zn_cu_ratio <- ec10_joint[["Zn"]] / ec10_joint[["Cu"]]
 quantile(zn_cu_ratio, c(0.5, 0.025, 0.975), na.rm = TRUE)
 #>      50%     2.5%    97.5% 
-#> 6.024101 4.548482 7.800390
+#> 6.279024 2.806012 9.889286
 ```
 
 
@@ -1102,25 +1165,23 @@ ggplot(data.frame(ratio = zn_cu_ratio), aes(x = ratio)) +
 <p class="caption">plot of chunk fig-ratio-joint</p>
 </div>
 
-Zinc's EC10 is 6.0 (4.5--7.8) times copper's, and the ratio
-exceeds 1 in more than 99.9 per cent of
-the draws. The interval of the ratio spans a factor of
-1.7 between its bounds, whereas the EC10
-interval of each metal spans a factor of 2.7 for copper and 2.8 for zinc. The metals' EC10s are correlated
-across draws (0.85 on the log scale), most likely because the shared
-batch deviations shift both curves together, so much of their uncertainty
-cancels in the ratio. Each draw of the ratio is taken from one draw of the joint
-posterior, which keeps that correlation, whereas the separate fits of
-`fits_tox` share no parameter, so a ratio formed from their draws could not
-include it.
+Zinc's EC10 is 6.3 (2.8--9.9) times copper's, and the
+probability that it exceeds copper's, one minus the `prob` of `prob_diff`, is
+more than 99.9 per cent. Both metals are read in the same batch at
+95 per cent of the draws. Their log EC10s have a
+correlation of 0.27 across draws, so part of their uncertainty cancels in the ratio. The interval of the
+ratio spans a factor of 3.5 between its bounds,
+as wide as the EC10 interval of copper and wider than that of zinc, which span a factor of 3.5 for copper and 2.3 for zinc. The separate fits
+of `fits_tox` share no parameter, so a ratio formed from their draws could
+include no dependence between the metals.
 
 
 
 A joint refit conditions on one equation per level, so the model uncertainty
 that the per-level averages represent is absent from it. `ecxll5` was given only
 part of the weight at each level, so the intervals of the joint refit omit the
-uncertainty that the other equations represent (more for copper than for zinc), even
-where, as here, the batch term makes them wider overall. The refit recorded
+uncertainty that the other equations represent (more for copper than for zinc). The
+refit recorded
 1 divergent transition in 8000 post-warmup draws,
 with a largest R-hat of 1.002 and a smallest
 bulk effective sample size of 1098 over the

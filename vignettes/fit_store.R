@@ -274,28 +274,37 @@ fit_store_shim <- function(fn_name, store) {
   }
 }
 
-## Rebuild the stored bands and no-effect summaries of a fit saved before
-## bayesnec read a group term that spans the series from its observed levels.
+## Rebuild the stored values of a fit saved before either of two bayesnec
+## changes: bands and no-effect summaries read at the observed levels of a group
+## term that spans the series, and the NSEC as the no-effect estimate of a
+## hormesis threshold equation.
 ##
-## amend() rebuilds them from the stored draws without sampling, so the object
-## holds the display values bnec() now stores. A fit already on that basis, or
-## with no such term, is returned unchanged.
+## amend() rebuilds both from the stored draws without sampling, so the object
+## holds the values bnec() now stores. A current fit is returned unchanged.
 fit_store_rebuild_display <- function(obj) {
   ns <- asNamespace("bayesnec")
-  # Earlier bayesnec versions have no observed-level basis to rebuild to.
-  if (!exists("needs_observed_rebuild", envir = ns, inherits = FALSE)) {
+  # A bayesnec version without a test has nothing of that kind to rebuild.
+  tests <- c("needs_observed_rebuild", "needs_ne_rebuild")
+  tests <- tests[vapply(tests, exists, logical(1), envir = ns,
+                        inherits = FALSE)]
+  if (!length(tests)) {
     return(obj)
   }
-  stale <- get("needs_observed_rebuild", envir = ns)
+  tests <- lapply(tests, get, envir = ns)
+  stale <- function(fit) {
+    any(vapply(tests, function(test) isTRUE(test(fit)), logical(1)))
+  }
   rebuild <- function(fit) {
     if (!inherits(fit, c("bayesmanecfit", "bayesnecfit")) || !stale(fit)) {
       return(fit)
     }
     stored <- if (inherits(fit, "bayesmanecfit")) fit$w_pred_vals else
       fit$pred_vals
-    message("fit store: rebuilding the observed-level display values")
+    message("fit store: rebuilding the stored display and no-effect values")
     bayesnec::amend(fit, resolution = nrow(stored$data))
   }
+  # A grouped fit holds only its level fits and their metadata, so rebuilding
+  # each level is what amend() on the grouped fit does.
   if (inherits(obj, "bayesnecgroupfit")) {
     obj$fits <- lapply(obj$fits, rebuild)
     return(obj)

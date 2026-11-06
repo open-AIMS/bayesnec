@@ -1436,12 +1436,16 @@ level_span_text <- if (identical(fmt(level_span[["Cu"]]),
         "for zinc")
 }
 ratio_span <- ratio_q[[3]] / ratio_q[[2]]
-span_text <- if (ratio_span < min(level_span)) {
-  "narrower than the EC10 intervals of both metals"
-} else if (ratio_span > max(level_span)) {
-  "wider than the EC10 intervals of both metals"
+# Compare the spans as printed, so that the text never calls 3.5 wider than 3.5.
+span_order <- sign(as.numeric(fmt(ratio_span)) -
+                     vapply(level_span, function(x) as.numeric(fmt(x)), 1))
+span_word <- setNames(c("narrower than", "as wide as", "wider than")[span_order + 2],
+                      names(span_order))
+span_text <- if (span_order[["Cu"]] == span_order[["Zn"]]) {
+  paste(span_word[[1]], "the EC10 intervals of both metals")
 } else {
-  "between the widths of the two metals' EC10 intervals"
+  paste(span_word[["Cu"]], "the EC10 interval of copper and", span_word[["Zn"]],
+        "that of zinc")
 }
 cor_text <- if (log_cor >= 0.5) {
   ", so much of their uncertainty cancels in the ratio"
