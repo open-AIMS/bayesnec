@@ -29,4 +29,19 @@ test_that("a hormesis threshold fit reports its declining-limb NSEC", {
                as.numeric(nsec(fit, resolution = 1000)), tolerance = 0.03)
   expect_gt(unname(ecnsec(fit, nsec = reported[1])[1]), 0)
   expect_identical(rownames(summary(fit, check_fit = FALSE)$nec_vals), "NSEC")
+
+  wide_range <- c(-0.25, max(x))
+  pre <- list(fit = fit$fit, model = fit$model,
+              bayesnecformula = fit$bayesnecformula)
+  wide <- bayesnec:::allot_class(
+    suppressMessages(bayesnec:::expand_nec(
+      pre, pre$bayesnecformula, x_range = wide_range, resolution = 300,
+      model = fit$model
+    )), c("bayesnecfit", "bnecfit")
+  )
+  expect_equal(as.numeric(suppressWarnings(nec(wide))),
+               as.numeric(suppressWarnings(nsec(
+                 wide, x_range = wide_range, resolution = 300
+               ))), tolerance = 0.01)
+  expect_equal(attr(wide$ne_posterior, "censored")$lower, min(x))
 })

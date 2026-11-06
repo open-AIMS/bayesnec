@@ -84,15 +84,23 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # on. Used for smooth equations, hormesis threshold equations, and any
   # two-block fit whose combined endpoint has no flat no-effect region.
   nsec_off_curve <- function(post) {
-    reference <- quantile(post[, 1], sig_val)
-    # The start is the first grid point, not the lowest observed predictor as
-    # in nsec.bayesnecfit(); the two differ where bnec() received an x_range.
-    out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1],
-                               post[, 1])
+    control_x <- min(fit$data[[grid$x_var]])
+    control <- if (identical(pred_data$x[1], control_x)) {
+      post[, 1]
+    } else {
+      control_nd <- new_dat[1, , drop = FALSE]
+      control_nd[[grid$x_var]] <- control_x
+      factorised_count_epred(fit, formula, newdata = control_nd,
+                            re_formula = NA)[, 1]
+    }
+    reference <- quantile(control, sig_val)
+    out <- nsec_from_posterior(post, reference, pred_data$x, control_x,
+                               control)
     below <- attr(out, "below_range")
     above <- is.na(out) & !below
     cens <- xform_censoring(
-      censoring_record(max(grid_recorded), min(grid_recorded), above, below),
+      censoring_record(max(grid_recorded), attr(out, "x_searched_from"),
+                       above, below),
       to_fitted_scale
     )
     if (sum(above) > 0) {
@@ -284,6 +292,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     # blocks rather than on the response block alone.
     ne_type <- hurdle_parts$ne_type
   }
+  object$ne_type <- NULL
   out <- c(object, list(pred_vals = pred_vals), extracted_params,
            list(dispersion = od, predicted_y = predicted_y,
                 residuals = residuals, ne_posterior = ne_posterior,
@@ -511,17 +520,6 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
          ". Refit with matching retained draw counts; set thin during fitting ",
          "if the iteration counts differ.", call. = FALSE)
   }
-  # Classify the no-effect estimate: a hormesis equation has a nec parameter
-  # but the stored estimate is read from its declining limb.
-  has_nec <- vapply(names(object), function(m) {
-    sampled_nec_is_no_effect(m, object[[m]]$fit)
-  }, logical(1))
-  ne_lab <- "NEC"
-  if (!any(has_nec)) {
-    ne_lab <- "NSEC"
-  } else if (!all(has_nec)) {
-    ne_lab <- "N(S)EC"
-  }
   # define_loo_controls(), not validate_loo_controls(), on both branches.
   # Validation leaves `method` NULL, and loo::loo_model_weights() then
   # defaults to stacking. Every route that assembles a set reaches this line,
@@ -541,6 +539,18 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
                  model = success_models[i])
     )
   })
+  for (m in success_models) {
+    mod_fits[[m]]$ne_type <- object[[m]]$ne_type
+  }
+  # A two-block equation's type depends on both blocks, not its response name.
+  types <- vapply(object, function(part) part$ne_type, character(1))
+  ne_lab <- if (all(types == "NEC")) {
+    "NEC"
+  } else if (all(types == "NSEC")) {
+    "NSEC"
+  } else {
+    "N(S)EC"
+  }
   mod_dat <- model.frame(formula[[1]], data = object[[1]]$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   disp <-  do_wrapper(object, extract_dispersion, fct = "rbind")

@@ -132,6 +132,39 @@ test_that("expand_manec defaults work correctly", {
   expect_equal(range(tt4$w_pred_vals$data$x), c(0.01, 4))
 })
 
+test_that("model averages retain each expanded no-effect type", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # A two-block component can have a monotone response equation and a
+  # curve-read combined estimate when its survival block is smooth.
+  real_expand <- expand_nec
+  expand_with_type <- function(kind) {
+    with_mocked_bindings(
+      suppressMessages(suppressWarnings(expand_manec(
+        tt1, formulas, resolution = 30
+      ))),
+      expand_nec = function(object, ...) {
+        part <- real_expand(object, ...)
+        if (identical(object$model, "nec4param")) part$ne_type <- kind
+        part
+      },
+      .package = "bayesnec"
+    )
+  }
+  out <- expand_with_type("N(S)EC")
+  expect_identical(out$ne_type, "N(S)EC")
+  expect_identical(out$mod_fits$nec4param$ne_type, "N(S)EC")
+  expect_identical(out$mod_fits$ecx4param$ne_type, "NSEC")
+  out <- bayesnec:::allot_class(out, c("bayesmanecfit", "bnecfit"))
+  expect_identical(bayesnec:::manec_ne_types(out), c("NSEC", "NSEC"))
+
+  # Check that the aggregate uses the expanded types, including when they
+  # differ from the response equation names used by the old classifier.
+  all_curve_read <- expand_with_type("NSEC")
+  expect_identical(all_curve_read$ne_type, "NSEC")
+})
+
 test_that("new loo_controls are incorporated", {
   get_new_method <- function(x) {
     attributes(x$mod_stats$wi)$method

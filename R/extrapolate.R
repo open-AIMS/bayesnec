@@ -406,9 +406,9 @@ stored_resolution <- function(object) {
 
 #' The no-effect posterior of a single fit, released to a pair of limits
 #'
-#' A threshold posterior is released by comparison alone. A no-effect estimate
-#' read off a curve, which on a \code{\link{bayesnecfit}} arises only for a
-#' joint two-block fit with a smooth block, is re-evaluated by
+#' A sampled NEC posterior is released by comparison alone. A no-effect
+#' estimate read off a curve, including one from a hormesis threshold equation
+#' or a joint two-block fit with a smooth block, is re-evaluated by
 #' \code{\link{nsec}} over the extended \code{x_range}, without a refit.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
@@ -429,12 +429,11 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
     # changes nothing, and the result matches extrapolate = FALSE.
     return(object$ne_posterior)
   }
-  # After the early return: advice to widen the prior has no bearing on a
-  # stored estimate returned unchanged.
-  report_bounded_ne_prior(
-    setNames(list(ne_prior_bounds(object$fit)), object$model), fitted_lims
-  )
   if (identical(necfit_ne_type(object), "NEC")) {
+    # A bound on the sampled breakpoint cannot limit a curve-read NSEC.
+    report_bounded_ne_prior(
+      setNames(list(ne_prior_bounds(object$fit)), object$model), fitted_lims
+    )
     out <- object$ne_posterior
     check_releasable(as.numeric(out), object$model)
     attr(out, "censored") <- recensor_sampled(as.numeric(out), fitted_lims)
