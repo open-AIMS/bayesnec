@@ -606,3 +606,16 @@ test_that("amend() records a refit and reuses the stored scores", {
   expect_true(attr(out, "bnec_expand_args")$loo_controls$refit)
   expect_equal(out$mod_stats$elpd, fit$mod_stats$elpd)
 })
+
+test_that("the lower-threshold Pareto k message counts the flagged units", {
+  crit <- structure(
+    list(diagnostics = list(pareto_k = c(0.68, 0.1, 0.2, 0.1, 0.3)),
+         pointwise = matrix(0, nrow = 5, ncol = 1)),
+    dims = c(1000, 5)
+  )
+  expect_message(
+    report_weight_k(list(eqA = crit), wi = 1, leave_out = "observation"),
+    "threshold for 1 of 5 observations in eqA", fixed = TRUE
+  )
+})
+
