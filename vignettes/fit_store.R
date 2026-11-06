@@ -268,10 +268,39 @@ fit_store_shim <- function(fn_name, store) {
     # the earlier fit call in the vignette source, which is a different route to
     # the same string -- and two routes that agree is the property the whole
     # store rests on.
-    obj <- readRDS(path)
+    obj <- fit_store_rebuild_display(readRDS(path))
     attr(obj, "fit_store_key") <- key
     obj
   }
+}
+
+## Rebuild the stored bands and no-effect summaries of a fit saved before
+## bayesnec read a group term that spans the series from its observed levels.
+##
+## amend() rebuilds them from the stored draws without sampling, so the object
+## holds the display values bnec() now stores. A fit already on that basis, or
+## with no such term, is returned unchanged.
+fit_store_rebuild_display <- function(obj) {
+  ns <- asNamespace("bayesnec")
+  # Earlier bayesnec versions have no observed-level basis to rebuild to.
+  if (!exists("needs_observed_rebuild", envir = ns, inherits = FALSE)) {
+    return(obj)
+  }
+  stale <- get("needs_observed_rebuild", envir = ns)
+  rebuild <- function(fit) {
+    if (!inherits(fit, c("bayesmanecfit", "bayesnecfit")) || !stale(fit)) {
+      return(fit)
+    }
+    stored <- if (inherits(fit, "bayesmanecfit")) fit$w_pred_vals else
+      fit$pred_vals
+    message("fit store: rebuilding the observed-level display values")
+    bayesnec::amend(fit, resolution = nrow(stored$data))
+  }
+  if (inherits(obj, "bayesnecgroupfit")) {
+    obj$fits <- lapply(obj$fits, rebuild)
+    return(obj)
+  }
+  rebuild(obj)
 }
 
 ## The key of the fit a joint refit was handed.
