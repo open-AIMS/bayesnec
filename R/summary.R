@@ -127,8 +127,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     ecs <- summary_ecx_rows(..., .fit = x, .ecx_vals = ecx_vals,
                             .stored_range = range(x$pred_vals$data$x))
   }
-  # Classify by the equation's parameters, as nec() does, not by its group or
-  # name.
+  # is_ecx names the equation class. The no-effect estimate may be an NSEC
+  # even where a hormesis threshold equation samples a nec breakpoint.
   is_ecx <- !has_nec_parameter(x$model, x$fit)
   ecx_mod <- NULL
   if (is_ecx) {
@@ -204,7 +204,6 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     ecs <- summary_ecx_rows(..., .fit = x, .ecx_vals = ecx_vals,
                             .stored_range = range(x$w_pred_vals$data$x))
   }
-  # As in summary.bayesnecfit(): the parameters, not group membership.
   no_nec <- !vapply(x$success_models, function(m) {
     has_nec_parameter(m, x$mod_fits[[m]]$fit)
   }, logical(1))

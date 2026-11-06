@@ -30,20 +30,24 @@
 #' \code{extrapolate} limit requires a curve to be re-evaluated, and are
 #' otherwise unused.
 #' @param no_effect For a \code{\link{bayesnecjointfit}} only, a
-#' \code{\link[base]{logical}} value. \code{FALSE}, the default, reports the
-#' \code{nec} parameter alone, so a level whose equation has none returns
-#' \code{NA}. \code{TRUE} reports instead the no-effect estimate each level's
-#' own equation supports --- the \code{nec} parameter for a threshold equation,
-#' the NSEC of the fitted curve for a smooth one --- labelled by type in an
-#' \code{ne_type} column. The other classes have no such argument and reject it
-#' rather than discarding it.
+#' \code{\link[base]{logical}} value. \code{FALSE}, the default, returns
+#' \code{NA} for a smooth equation with no \code{nec} parameter. A monotone
+#' threshold equation returns its sampled NEC, and a hormesis threshold
+#' equation returns the NSEC of its declining curve. \code{TRUE} additionally
+#' returns the NSEC of each smooth equation. The \code{ne_type} column labels
+#' every estimate. The other classes reject this argument.
 #'
 #' @seealso \code{\link{bnec}}, \code{\link{nsec}}, \code{\link{summary}}
 #'
-#' @details The NEC is a parameter in a threshold model (for example,
-#' see Fox 2010), and is a true measure
-#' of No-effect-concentration (the minimum concentration above which an effect
-#' is predicted to occur.
+#' @details For a monotone threshold equation, the sampled \code{nec}
+#' parameter is the last concentration before the fitted response declines
+#' from its control level (Fox 2010). In a hormesis threshold equation the
+#' same parameter marks the end of the rising limb when stimulation is fitted.
+#' It is a curve parameter, available through \code{\link{curve_params}}, and is not used as
+#' the no-effect estimate. The reported estimate is the NSEC on the declining
+#' limb, where the curve falls below the lower \code{sig_val} quantile of the
+#' fitted control. This extends the NSEC definition of Fisher and Fox (2023),
+#' which was developed for monotone curves, to a hormetic curve.
 #'
 #' Under a fitted group term whose levels span concentrations, the NEC is
 #' read for each observed level, including its deviation on the parameter.
@@ -59,8 +63,12 @@
 #' (2023):
 #'
 #' \itemize{
-#'   \item For a \code{\link{bayesnecfit}} holding a threshold (\code{nec}-type)
-#'     model, the \bold{NEC}: the \code{nec} parameter itself.
+#'   \item For a \code{\link{bayesnecfit}} holding a monotone threshold
+#'     equation, the \bold{NEC}: the \code{nec} parameter itself.
+#'   \item For a \code{\link{bayesnecfit}} holding a hormesis threshold
+#'     equation, the \bold{NSEC}: the first decreasing crossing of the
+#'     control reference, after the peak where the curve rises. The sampled
+#'     \code{nec} parameter remains available through \code{\link{curve_params}}.
 #'   \item For a \code{\link{bayesnecfit}} holding a smooth (\code{ecx}-type)
 #'     model, which has no threshold parameter, the \bold{NSEC} (Fisher and Fox
 #'     2023) -- the concentration at which the fitted curve falls below a
@@ -68,8 +76,9 @@
 #'     posterior. This is computed when the model is fitted, using the
 #'     \code{sig_val} passed to \code{\link{bnec}}.
 #'   \item For a \code{\link{bayesmanecfit}} whose model set contains both
-#'     kinds, the weighted posterior mixes NEC draws from the threshold models
-#'     with NSEC draws from the smooth ones, in proportion to the model
+#'     kinds, the weighted posterior mixes sampled NEC draws from monotone
+#'     threshold equations with NSEC draws from smooth or hormesis equations,
+#'     in proportion to the model
 #'     weights. The result is the model-averaged \bold{N(S)EC}, and a message is
 #'     emitted to say so. It is not a pure NEC and should not be reported as
 #'     one.
@@ -79,9 +88,10 @@
 #'     the type of the estimate in an \code{ne_type} column. A composed joint
 #'     refit fits one equation per level, so each level's estimate is a NEC or
 #'     an NSEC and never a mixture of the two. \code{no_effect = FALSE}, the
-#'     default, therefore reports the \code{nec} parameter and \code{NA} where
-#'     the level's equation has none, and \code{no_effect = TRUE} reports a NEC
-#'     at a threshold level and the NSEC of the fitted curve at a smooth one.
+#'     default, reports a sampled NEC for a monotone threshold equation, a
+#'     curve-read NSEC for a hormesis threshold equation and \code{NA} for a
+#'     smooth equation. \code{no_effect = TRUE} also reports the NSEC of a
+#'     smooth equation.
 #'     The \code{ne_type} column is what a model-averaged N(S)EC cannot report.
 #' }
 #'
@@ -92,7 +102,7 @@
 #' type.
 #'
 #' Where \code{crf()} transforms the predictor inline, as in
-#' \code{crf(log(concentration))}, the \code{nec} parameter is sampled on the
+#' \code{crf(log(concentration))}, a sampled \code{nec} parameter is on the
 #' transformed scale. Without \code{xform} it is returned on the recorded
 #' scale, a concentration, by the inverse of the transformation. The inverse
 #' is exact for \code{log}, \code{log10}, \code{log2}, \code{log1p},
@@ -262,8 +272,9 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = NULL,
         object, level_spec, "nec",
         function(level, control_value, range_override) {
           # A mixed two-block endpoint has no combined sampled threshold.
-          if (!is.null(object$hurdle) &&
-              !identical(object$hurdle$ne_type, "NEC")) {
+          if ((!is.null(object$hurdle) &&
+               !identical(object$hurdle$ne_type, "NEC")) ||
+              identical(object$ne_type, "NSEC")) {
             args <- recorded_expand_args(list(object))
             nsec(level, sig_val = args$sig_val,
                  resolution = args$resolution, posterior = TRUE,
@@ -328,7 +339,7 @@ necfit_ne <- function(object, posterior = FALSE, xform = NULL,
   # reports the same censoring as summary().
   cens <- attr(nec_out, "censored")
   map <- recorded_xform(object, xform, extrapolate)
-  nec_out <- map_draws(nec_out, map, cens, "NEC")
+  nec_out <- map_draws(nec_out, map, cens, ne_label(object))
   cens <- xform_censoring(cens, map)
   attr(nec_out, "censored") <- cens
   # The stored posterior can hold draws beyond the prediction range: a
@@ -387,16 +398,9 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
     } else {
       dots$sig_val
     }
-    if (!all(vapply(names(object$mod_fits), function(m) {
-      has_nec_parameter(m, object$mod_fits[[m]]$fit)
-    }, logical(1)))) {
-      message("This bayesmanecfit contains smooth (ecx) models, which have no",
-              " threshold parameter, so the returned estimate is a weighted",
-              " mixture of NEC and NSEC draws -- the model-averaged N(S)EC",
-              " rather than a NEC. See ?nec and summary(), which labels it.")
-    }
+    report_manec_ne_type(object)
     per_model <- function(f) {
-      if (has_nec_parameter(f$model, f$fit)) {
+      if (sampled_nec_is_no_effect(f$model, f$fit)) {
         nec(f, posterior = TRUE, xform = xform, prob_vals = prob_vals,
             extrapolate = extrapolate, pool = pool)
       } else {
@@ -427,16 +431,7 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
     attr(estimate, "toxicity_estimate") <- "nec"
     return(estimate)
   }
-  # Classify each equation by its parameters, as nec.bayesnecfit() does.
-  # ecxflat has no nec parameter, so a set holding it is a mixture.
-  if (!all(vapply(names(object$mod_fits), function(m) {
-    has_nec_parameter(m, object$mod_fits[[m]]$fit)
-  }, logical(1)))) {
-    message("This bayesmanecfit contains smooth (ecx) models, which have no",
-            " threshold parameter, so the returned estimate is a weighted",
-            " mixture of NEC and NSEC draws -- the model-averaged N(S)EC",
-            " rather than a NEC. See ?nec and summary(), which labels it.")
-  }
+  report_manec_ne_type(object)
   nec_out <- object$w_ne_posterior
   # Check the limits against every equation, not the set's label: an infinite
   # limit depends on whether each component samples a NEC. As in
@@ -505,4 +500,48 @@ has_nec_parameter <- function(model, fit = NULL) {
     return(!all(is.na(extract_pars("nec", fit))))
   }
   !isTRUE(any(grepl("ecx", model, fixed = TRUE)))
+}
+
+#' Whether the sampled breakpoint is a no-effect concentration
+#'
+#' A hormesis equation samples a nec parameter at the end of its potential
+#' rising limb.
+#' Its no-effect estimate is read from the declining limb instead. Keep this
+#' distinct from has_nec_parameter(), which describes the equation.
+#'
+#' @param model The equation name.
+#' @param fit A fitted model, used for an unrecognised equation name.
+#'
+#' @return TRUE when the no-effect estimate is the sampled nec parameter.
+#' @noRd
+sampled_nec_is_no_effect <- function(model, fit = NULL) {
+  has_nec_parameter(model, fit) &&
+    !model %in% intersect(mod_groups$nec, mod_groups$hormesis)
+}
+
+#' Name the no-effect mixture returned by nec()
+#'
+#' Read the component kind from the stored object when available. A set built
+#' before ne_type was recorded falls back to its equation name.
+#'
+#' @param object A bayesmanecfit.
+#'
+#' @return NULL, invisibly.
+#' @noRd
+report_manec_ne_type <- function(object) {
+  kinds <- vapply(names(object$mod_fits), function(model) {
+    part <- object$mod_fits[[model]]
+    if (!is.null(part$ne_type)) return(part$ne_type)
+    if (sampled_nec_is_no_effect(model, part$fit)) "NEC" else "NSEC"
+  }, character(1))
+  if (all(kinds == "NEC")) return(invisible(NULL))
+  if (all(kinds == "NSEC")) {
+    message("This bayesmanecfit uses curve-read NSEC estimates for every",
+            " equation. See ?nec and summary(), which labels them.")
+  } else {
+    message("This bayesmanecfit combines sampled NEC and curve-read NSEC",
+            " draws, so the returned estimate is the model-averaged N(S)EC.",
+            " See ?nec and summary(), which labels it.")
+  }
+  invisible(NULL)
 }

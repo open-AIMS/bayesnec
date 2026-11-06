@@ -43,8 +43,11 @@ columns \code{model}, \code{wi}, \code{dpar}, \code{link}, \code{parameter},
 
 \code{Estimate} is the posterior median and the interval is equal-tailed,
 which is what \code{\link[brms]{fixef}(robust = TRUE)} reports for the same
-fit. For a single-block threshold fit the \code{nec} row is therefore the
-same number \code{\link{nec}} returns; for a two-block fit \code{nec()}
+fit. For a single-block monotone threshold fit the \code{nec} row is the
+same number \code{\link{nec}} returns. For a hormesis threshold fit it is
+the end of the potential rising limb; \code{nec()} returns the curve-read
+NSEC. For a
+two-block fit \code{nec()}
 returns the combined threshold rather than either block's, and for a
 \code{\link{bayesmanecfit}} it returns the model-averaged estimate, neither
 of which is a row here.
@@ -118,6 +121,10 @@ model weight is reported beside each row instead, so a reader can see what
 share of the model average each curve holds, and no quantity is reported
 that the weights do not support. The model-averaged estimates are returned
 by \code{\link{nec}}, \code{\link{nsec}} and \code{\link{ecx}} on the set.
+For a hormesis threshold equation, the sampled \code{nec} parameter marks
+the end of the potential rising limb. Where the response rises it is the
+stimulation peak. Its no-effect estimate is the NSEC on the declining limb,
+so the \code{nec} row here and \code{nec(fit)} answer different questions.
 
 \code{\link{show_params}} names the parameters of each equation without
 fitting anything; this function reports their estimates from a fit.

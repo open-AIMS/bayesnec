@@ -39,7 +39,8 @@
 #' gives a warning when they are displayed.
 #' @slot top The estimate for parameter "top" in the fitted model.
 #' @slot beta The estimate for parameter "beta" in the fitted model.
-#' @slot ne The estimated NEC.
+#' @slot ne The no-effect estimate, a NEC for a monotone threshold equation
+#' and an NSEC for a smooth or hormesis threshold equation.
 #' @slot f The estimate for parameter "f" in the fitted model, NA if
 #' absent for the fitted model type.
 #' @slot bot The estimate for parameter "bot" in the fitted model, NA if
@@ -53,13 +54,14 @@
 #' @slot dispersion An estimate of dispersion.
 #' @slot predicted_y The predicted values for the observed data.
 #' @slot residuals Residual values of the observed data from the fitted model.
-#' @slot ne_posterior A full posterior estimate of the NEC.
+#' @slot ne_posterior The posterior of that no-effect estimate.
 #' @slot ne_type A \code{\link[base]{character}} vector indicating the type of
-#' no-effect toxicity estimate. Where the fitted model is an NEC model
-#' (threshold model, containing a step function) the no-effect estimate is
-#' a true no-effect-concentration (\code{NEC}, see Fox 2010). Where the fitted
-#' model is a smooth ECx model with no step function, the no-effect estimate is
-#' a no-significant-effect-concentration (\code{NSEC}, see Fisher and Fox 2023).
+#' no-effect toxicity estimate. A monotone threshold equation contributes its
+#' sampled no-effect-concentration (\code{NEC}, see Fox 2010). A smooth or
+#' hormesis threshold equation contributes a curve-read
+#' no-significant-effect-concentration (\code{NSEC}, see Fisher and Fox 2023).
+#' A hormesis threshold equation still samples a \code{nec} parameter at the
+#' end of its potential rising limb; \code{\link{curve_params}} returns it.
 #'
 #' @seealso
 #'   \code{\link{bayesnec}},

@@ -535,9 +535,9 @@ print.hurdlesummary <- function(x, ...) {
   print_row_censoring_notes(attr(ne_mat, "censored_summary"),
                             rownames(ne_mat))
   if (any(x$ne_types != "NEC", na.rm = TRUE)) {
-    cat("\nNSEC values appear where a model set contains smooth (ECx) models,",
-        "which\ncarry no threshold parameter; N(S)EC is a model-averaged",
-        "combination\nof the two (Fisher et al. 2023).\n")
+    cat("\nNSEC values come from smooth or hormesis equations; N(S)EC",
+        " combines\nsampled NEC and curve-read NSEC estimates",
+        " (Fisher et al. 2023).\n")
   }
   if (!is.null(x$ecs)) {
     cat("\nECx estimates\n")

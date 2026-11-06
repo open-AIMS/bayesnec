@@ -64,10 +64,10 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   pred_data <- data.frame(x = x_seq, Estimate = y_pred_m[, "Estimate"],
                           Q2.5 = y_pred_m[, "Q2.5"],
                           Q97.5 = y_pred_m[, "Q97.5"])
-  if (is.na(extracted_params$ne["Estimate"])) {
-    mod_class <- "ecx"
-  } else {
+  if (sampled_nec_is_no_effect(object$model, fit)) {
     mod_class <- "nec"
+  } else {
+    mod_class <- "ecx"
   }
   # The bounds on both scales. A curve is searched on the recorded grid, so its
   # censoring record is built there and remapped with xform_censoring(), which
@@ -81,8 +81,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   ne_lower <- min(grid_fitted)
   to_fitted_scale <- function(value) sub_x_transformation(value, formula)
   # NSEC read off a fitted curve, on the predictor scale the user supplied it
-  # on. Used for smooth (ecx-type) models, which carry no threshold parameter,
-  # and for any two-block fit where at least one block is smooth.
+  # on. Used for smooth equations, hormesis threshold equations, and any
+  # two-block fit whose combined endpoint has no flat no-effect region.
   nsec_off_curve <- function(post) {
     reference <- quantile(post[, 1], sig_val)
     # The start is the first grid point, not the lowest observed predictor as
@@ -170,7 +170,14 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     # The two blocks may carry different equations (see the model_survival
     # argument of bnec), so each has its own class and the combined threshold
     # is derived differently depending on the pair.
-    hu_class <- if (is.null(hu_ne_posterior)) "ecx" else "nec"
+    hu_model <- dpar_models(object)[[hu_dpar]]
+    hu_sampled <- if (is.character(hu_model) && length(hu_model) == 1 &&
+                      !is.na(hu_model)) {
+      sampled_nec_is_no_effect(hu_model)
+    } else {
+      !is.null(hu_ne_posterior)
+    }
+    hu_class <- if (hu_sampled) "nec" else "ecx"
     if (mod_class == "nec" && hu_class == "nec") {
       # Below both thresholds mu sits at top and (1 - hu) at its control value,
       # so the product is flat; it leaves that plateau at whichever threshold
@@ -504,10 +511,10 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
          ". Refit with matching retained draw counts; set thin during fitting ",
          "if the iteration counts differ.", call. = FALSE)
   }
-  # Classify by each equation's parameters, as nec() does, not by group
-  # membership or name.
+  # Classify the no-effect estimate: a hormesis equation has a nec parameter
+  # but the stored estimate is read from its declining limb.
   has_nec <- vapply(names(object), function(m) {
-    has_nec_parameter(m, object[[m]]$fit)
+    sampled_nec_is_no_effect(m, object[[m]]$fit)
   }, logical(1))
   ne_lab <- "NEC"
   if (!any(has_nec)) {

@@ -70,6 +70,10 @@ print.necsummary <- function(x, ...) {
   if (x$is_ecx) {
     cat("NB: Model", x$model, "is an ECx model, thus",
         "the NEC estimate is an\n", "   NSEC surrogate.\n", sep = " ")
+  } else if (identical(x$ne_type, "NSEC")) {
+    cat("NB: The sampled nec parameter marks the end of a potential rise. The",
+        " no-effect estimate is the NSEC on the declining limb;",
+        " use curve_params() for the breakpoint.\n")
   } else if (identical(x$ne_type, "N(S)EC")) {
     # Reachable only for a two-block fit whose blocks use different equation
     # types, such as a threshold response block with a smooth survival block.
@@ -128,9 +132,8 @@ print.manecsummary <- function(x, ...) {
   neclab <- rownames(x$nec_vals)
   cat("Summary of weighted", neclab, "posterior estimates:\n", sep = " ")
   if (neclab == "N(S)EC") {
-    cat("NB: Model set contains a combination of ECx and NEC\n",
-        "    models, and is therefore a model averaged\n",
-        "    combination of NEC and NSEC estimates.\n", sep = "")
+    cat("NB: Model set combines sampled NEC and curve-read NSEC\n",
+        "    estimates in proportion to model weight.\n", sep = "")
   }
   print_mat(x$nec_vals)
   print_censoring_note(attr(x$nec_vals, "censored_summary"), neclab)

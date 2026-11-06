@@ -579,13 +579,9 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
 
 #' The class of no-effect estimate each equation of a set contributes
 #'
-#' Derived from the equation name, as \code{expand_manec()} derives the label
-#' of the set, rather than by expanding every component. For joint two-block
-#' fits the name describes the response block only, so a set whose survival
-#' blocks hold a smooth equation is labelled \code{"NEC"} here, as
-#' \code{expand_manec()} labels it. \code{extrapolated_manec_ne()} catches that
-#' case on the posterior instead, so that \code{\link{nec}} and
-#' \code{\link{summary}} agree about the set.
+#' Uses each component's stored type where available, falling back to its
+#' equation name for a component without that record. This keeps a hormesis
+#' threshold equation's curve-read NSEC distinct from its sampled breakpoint.
 #'
 #' @param object A \code{\link{bayesmanecfit}}.
 #'
@@ -593,7 +589,13 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
 #' equation.
 #' @noRd
 manec_ne_types <- function(object) {
-  ifelse(object$success_models %in% mod_groups$nec, "NEC", "NSEC")
+  vapply(object$success_models, function(model) {
+    part <- object$mod_fits[[model]]
+    if (!is.null(part$ne_type)) {
+      return(if (identical(part$ne_type, "NEC")) "NEC" else "NSEC")
+    }
+    if (sampled_nec_is_no_effect(model, part$fit)) "NEC" else "NSEC"
+  }, character(1))
 }
 
 #' The class of no-effect estimate a single fit holds
@@ -613,7 +615,7 @@ necfit_ne_type <- function(object) {
     return(if (identical(label, "NEC")) "NEC" else "NSEC")
   }
   if (is.null(object$hurdle) && !is_hurdle_family(object$fit$family) &&
-        has_nec_parameter(object$model, object$fit)) {
+        sampled_nec_is_no_effect(object$model, object$fit)) {
     "NEC"
   } else {
     "NSEC"

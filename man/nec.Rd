@@ -46,13 +46,12 @@ order. See the \emph{Extrapolation} section of \code{\link{nec}}.}
 otherwise unused.}
 
 \item{no_effect}{For a \code{\link{bayesnecjointfit}} only, a
-\code{\link[base]{logical}} value. \code{FALSE}, the default, reports the
-\code{nec} parameter alone, so a level whose equation has none returns
-\code{NA}. \code{TRUE} reports instead the no-effect estimate each level's
-own equation supports --- the \code{nec} parameter for a threshold equation,
-the NSEC of the fitted curve for a smooth one --- labelled by type in an
-\code{ne_type} column. The other classes have no such argument and reject it
-rather than discarding it.}
+\code{\link[base]{logical}} value. \code{FALSE}, the default, returns
+\code{NA} for a smooth equation with no \code{nec} parameter. A monotone
+threshold equation returns its sampled NEC, and a hormesis threshold
+equation returns the NSEC of its declining curve. \code{TRUE} additionally
+returns the NSEC of each smooth equation. The \code{ne_type} column labels
+every estimate. The other classes reject this argument.}
 
 \item{pool}{How observed group levels are combined: \code{"none"} returns
 per-level estimates, \code{"mixture"} samples levels in proportion to their
@@ -75,10 +74,15 @@ Extracts the predicted NEC value as desired from an object of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
 \details{
-The NEC is a parameter in a threshold model (for example,
-see Fox 2010), and is a true measure
-of No-effect-concentration (the minimum concentration above which an effect
-is predicted to occur.
+For a monotone threshold equation, the sampled \code{nec}
+parameter is the last concentration before the fitted response declines
+from its control level (Fox 2010). In a hormesis threshold equation the
+same parameter marks the end of the rising limb when stimulation is fitted.
+It is a curve parameter, available through \code{\link{curve_params}}, and is not used as
+the no-effect estimate. The reported estimate is the NSEC on the declining
+limb, where the curve falls below the lower \code{sig_val} quantile of the
+fitted control. This extends the NSEC definition of Fisher and Fox (2023),
+which was developed for monotone curves, to a hormetic curve.
 
 Under a fitted group term whose levels span concentrations, the NEC is
 read for each observed level, including its deviation on the parameter.
@@ -94,8 +98,12 @@ fitted model(s) support, following the convention set out in Fisher et al.
 (2023):
 
 \itemize{
-\item For a \code{\link{bayesnecfit}} holding a threshold (\code{nec}-type)
-model, the \bold{NEC}: the \code{nec} parameter itself.
+\item For a \code{\link{bayesnecfit}} holding a monotone threshold
+equation, the \bold{NEC}: the \code{nec} parameter itself.
+\item For a \code{\link{bayesnecfit}} holding a hormesis threshold
+equation, the \bold{NSEC}: the first decreasing crossing of the
+control reference, after the peak where the curve rises. The sampled
+\code{nec} parameter remains available through \code{\link{curve_params}}.
 \item For a \code{\link{bayesnecfit}} holding a smooth (\code{ecx}-type)
 model, which has no threshold parameter, the \bold{NSEC} (Fisher and Fox
 2023) -- the concentration at which the fitted curve falls below a
@@ -103,8 +111,9 @@ reference taken from the \code{sig_val} quantile of the control
 posterior. This is computed when the model is fitted, using the
 \code{sig_val} passed to \code{\link{bnec}}.
 \item For a \code{\link{bayesmanecfit}} whose model set contains both
-kinds, the weighted posterior mixes NEC draws from the threshold models
-with NSEC draws from the smooth ones, in proportion to the model
+kinds, the weighted posterior mixes sampled NEC draws from monotone
+threshold equations with NSEC draws from smooth or hormesis equations,
+in proportion to the model
 weights. The result is the model-averaged \bold{N(S)EC}, and a message is
 emitted to say so. It is not a pure NEC and should not be reported as
 one.
@@ -114,9 +123,10 @@ factor, the equation fitted at that level in a \code{model} column and
 the type of the estimate in an \code{ne_type} column. A composed joint
 refit fits one equation per level, so each level's estimate is a NEC or
 an NSEC and never a mixture of the two. \code{no_effect = FALSE}, the
-default, therefore reports the \code{nec} parameter and \code{NA} where
-the level's equation has none, and \code{no_effect = TRUE} reports a NEC
-at a threshold level and the NSEC of the fitted curve at a smooth one.
+default, reports a sampled NEC for a monotone threshold equation, a
+curve-read NSEC for a hormesis threshold equation and \code{NA} for a
+smooth equation. \code{no_effect = TRUE} also reports the NSEC of a
+smooth equation.
 The \code{ne_type} column is what a model-averaged N(S)EC cannot report.
 }
 
@@ -127,7 +137,7 @@ the joint refit \code{nec} returns an unlabelled vector. Use
 type.
 
 Where \code{crf()} transforms the predictor inline, as in
-\code{crf(log(concentration))}, the \code{nec} parameter is sampled on the
+\code{crf(log(concentration))}, a sampled \code{nec} parameter is on the
 transformed scale. Without \code{xform} it is returned on the recorded
 scale, a concentration, by the inverse of the transformation. The inverse
 is exact for \code{log}, \code{log10}, \code{log2}, \code{log1p},

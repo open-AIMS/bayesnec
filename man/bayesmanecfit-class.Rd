@@ -88,16 +88,12 @@ retains its earlier values and gives a warning when they are displayed.}
 w_ne_posterior.}
 
 \item{\code{ne_type}}{A \code{\link[base]{character}} vector indicating the type of
-no-effect toxicity estimate. Where the fitted model(s) are NEC models
-(threshold models, containing a step function) the no-effect estimate is
-a true no-effect-concentration (\code{NEC}, see Fox 2010). Where the fitted
-model(s) are
-smooth ECx models with no step function, the no-effect estimate is a
+no-effect toxicity estimate. A monotone threshold equation contributes its
+sampled no-effect-concentration (\code{NEC}, see Fox 2010). A smooth or
+hormesis threshold equation contributes a curve-read
 no-significant-effect-concentration (\code{NSEC}, see Fisher and Fox 2023).
-In the
-case of a \code{\link{bayesmanecfit}} that contains a mixture of both NEC and
-ECx models, the no-effect estimate is a model averaged combination of the NEC
-and NSEC estimates, and is reported as the \code{N(S)EC}
+A set containing both contributions reports their model-averaged mixture as
+the \code{N(S)EC}
 (see Fisher et al. 2023).}
 }}
 

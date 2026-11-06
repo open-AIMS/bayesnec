@@ -1,5 +1,13 @@
 # bayesnec 2.2.0
 
+- The no-effect estimate of the six hormesis threshold equations is now the
+  NSEC at the first decreasing crossing of the fitted control reference.
+  Their sampled `nec` parameter marks the end of a potential rising limb and
+  remains available through
+  `curve_params()`. `nec()`, `summary()` and model-averaged N(S)EC values change
+  when these equations contribute. A monotone threshold equation still uses
+  its sampled NEC; `ecx()` and explicit `nsec()` retain their control reference
+  (#570).
 - `check_fit()` now counts ties as one half when calculating posterior
   predictive p-values. Identical observed and simulated count statistics give
   a p-value of 0.5 rather than 1. When the observed statistic and the median
