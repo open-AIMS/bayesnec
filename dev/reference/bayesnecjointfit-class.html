@@ -134,10 +134,11 @@ matching the grouped fit.</p>
 <p><code><a href="nec.html">nec</a></code> adds two columns, because a composed refit fits one
 equation per level and only some equations estimate a <code>nec</code> parameter:
 <code>model</code> names the equation fitted at that level and <code>ne_type</code> the
-type of the estimate reported there. By default the estimate is the
-<code>nec</code> parameter, which is <code>NA</code> at a level whose equation has none;
-<code>nec(x, no_effect = TRUE)</code> reports instead the NSEC of that level's own
-fitted curve there, and labels the row <code>"NSEC"</code>. One equation per level
+type of the estimate reported there. By default the estimate is the sampled
+<code>nec</code> parameter for a monotone threshold equation, the curve-read NSEC
+for a hormesis threshold equation and <code>NA</code> for a smooth equation;
+<code>nec(x, no_effect = TRUE)</code> also returns the NSEC of a smooth equation.
+One equation per level
 is what makes that label possible: the model-averaged estimate of a
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> mixes NEC and NSEC draws in proportion to the
 model weights and so has no single type to report.</p>

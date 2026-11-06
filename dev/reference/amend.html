@@ -250,6 +250,13 @@ dropping models does not discard it.
 When an update changes the backend or algorithm, <span class="pkg">brms</span> does not reuse
 the previous <code>control</code> or <code>seed</code>. Only settings supplied to that
 update are then recorded for subsequent additions.</p>
+<p>A fit saved before the no-effect estimate of a hormesis threshold equation
+became its NSEC stores that equation's <code>nec</code> parameter instead, and
+<code><a href="nec.html">nec</a></code>, <code><a href="summary.html">summary</a></code> and the plots warn about it.
+<code>amend(object)</code>, with no other argument, rebuilds the estimate from
+the stored fits without refitting any model.</p>
+<p>A <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> is amended level by level, with the same
+arguments applied to the fit of each level.</p>
     </div>
 
     <div id="ref-examples">

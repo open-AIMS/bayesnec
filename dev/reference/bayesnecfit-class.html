@@ -165,7 +165,8 @@ gives a warning when they are displayed.</p></dd>
 
 
 <dt><code>ne</code></dt>
-<dd><p>The estimated NEC.</p></dd>
+<dd><p>The no-effect estimate, a NEC for a monotone threshold equation
+and an NSEC for a smooth or hormesis threshold equation.</p></dd>
 
 
 <dt><code>f</code></dt>
@@ -206,16 +207,18 @@ absent for the fitted model type.</p></dd>
 
 
 <dt><code>ne_posterior</code></dt>
-<dd><p>A full posterior estimate of the NEC.</p></dd>
+<dd><p>The posterior of that no-effect estimate.</p></dd>
 
 
 <dt><code>ne_type</code></dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> vector indicating the type of
-no-effect toxicity estimate. Where the fitted model is an NEC model
-(threshold model, containing a step function) the no-effect estimate is
-a true no-effect-concentration (<code>NEC</code>, see Fox 2010). Where the fitted
-model is a smooth ECx model with no step function, the no-effect estimate is
-a no-significant-effect-concentration (<code>NSEC</code>, see Fisher and Fox 2023).</p></dd>
+no-effect toxicity estimate. A monotone threshold equation contributes its
+sampled no-effect-concentration (<code>NEC</code>, see Fox 2010). A smooth or
+hormesis threshold equation contributes a curve-read
+no-significant-effect-concentration (<code>NSEC</code>, see Fisher and Fox 2023).
+A hormesis threshold equation still samples a <code>nec</code> parameter, the
+concentration at which its decline term starts; <code><a href="curve_params.html">curve_params</a></code>
+returns it.</p></dd>
 
 
 </dl></div>

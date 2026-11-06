@@ -153,11 +153,12 @@ columns <code>model</code>, <code>wi</code>, <code>dpar</code>, <code>link</code
 <code>wi</code> and then by the parameter order given above.</p>
 <p><code>Estimate</code> is the posterior median and the interval is equal-tailed,
 which is what <code><a href="https://rdrr.io/pkg/nlme/man/fixed.effects.html" class="external-link">fixef</a>(robust = TRUE)</code> reports for the same
-fit. For a single-block threshold fit the <code>nec</code> row is therefore the
-same number <code><a href="nec.html">nec</a></code> returns; for a two-block fit <code><a href="nec.html">nec()</a></code>
-returns the combined threshold rather than either block's, and for a
-<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> it returns the model-averaged estimate, neither
-of which is a row here.</p>
+fit. For a single-block monotone threshold fit the <code>nec</code> row is the
+same number <code><a href="nec.html">nec</a></code> returns. For a hormesis threshold fit
+<code><a href="nec.html">nec()</a></code> returns the NSEC read off the fitted curve, for a two-block
+fit it returns the combined threshold rather than either block's, and for
+a <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> it returns the model-averaged estimate. None
+of these is a row here.</p>
 <p><code>wi</code> is the model weight <code><a href="summary.html">summary</a></code> reports, under whichever
 method the set was weighted by — pseudo-BMA unless <code>loo_controls</code>
 asked for stacking. It is 1 for a <code><a href="bayesnecfit-class.html">bayesnecfit</a></code>, which is the
@@ -216,7 +217,11 @@ not sum to 1 and would sum to something different for the next number. The
 model weight is reported beside each row instead, so a reader can see what
 share of the model average each curve holds, and no quantity is reported
 that the weights do not support. The model-averaged estimates are returned
-by <code><a href="nec.html">nec</a></code>, <code><a href="nsec.html">nsec</a></code> and <code><a href="ecx.html">ecx</a></code> on the set.</p>
+by <code><a href="nec.html">nec</a></code>, <code><a href="nsec.html">nsec</a></code> and <code><a href="ecx.html">ecx</a></code> on the set.
+For a hormesis threshold equation, the <code>nec</code> parameter is the
+concentration at which the decline term starts, and the curve can continue
+to rise beyond it. Its no-effect estimate is the NSEC, so the <code>nec</code>
+row here and <code>nec(fit)</code> answer different questions.</p>
 <p><code><a href="show_params.html">show_params</a></code> names the parameters of each equation without
 fitting anything; this function reports their estimates from a fit.</p>
 <p><b>The parameters are on the scale the model was fitted on.</b>

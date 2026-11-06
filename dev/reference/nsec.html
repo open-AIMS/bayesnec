@@ -223,7 +223,11 @@ the control being the predicted mean at the lowest concentration in the
 supplied predictor. That holds for every equation, hormetic ones included:
 the <code>hormesis_def</code> argument selected between the control and the
 maximum of the predicted curve and has been removed, because a target
-below the control is crossed exactly once whatever the curve does above it.</p>
+below the control is crossed exactly once whatever the curve does above it.
+For a hormesis threshold equation, <code><a href="nec.html">nec</a></code> uses this NSEC as its
+no-effect estimate. Its <code>nec</code> parameter, the concentration at which
+the decline term starts, remains available through
+<code><a href="curve_params.html">curve_params</a></code>.</p>
 <p>The curve is searched on a grid of recorded concentrations. Where
 <code>crf()</code> transforms the predictor inline, as in
 <code>crf(log(concentration))</code>, the NSEC is therefore returned on the

@@ -197,14 +197,17 @@ divergent transitions.</p>
     <h2>Details</h2>
     <p>The summary method for both <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> and
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> also returns a no-effect toxicity
-estimate. Where the fitted model(s) are NEC models (threshold models,
-containing a step function) the no-effect estimate is a true
-no-effect-concentration (NEC, see Fox 2010). Where the fitted model(s) are
-smooth ECx models with no step function, the no-effect estimate is a
-no-significant-effect-concentration (NSEC, see Fisher and Fox 2023). In the
-case of a <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> that contains a mixture of both NEC and
-ECx models, the no-effect estimate is a model averaged combination of the NEC
-and NSEC estimates, and is reported as the N(S)EC (see Fisher et al. 2023).</p>
+estimate. For a monotone threshold equation (<code>nec3param</code>,
+<code>nec4param</code>, <code>neclin</code> or <code>necsigm</code>) it is the sampled
+<code>nec</code> parameter, a no-effect-concentration (NEC, see Fox 2010). For a
+smooth ECx equation, and for a hormesis threshold equation
+(<code>nechorme</code>, <code>nechorme4</code>, <code>neclinhorme</code>,
+<code>nechormepwr</code>, <code>nechorme4pwr</code> or <code>nechormepwr01</code>), it is
+a no-significant-effect-concentration read off the fitted curve (NSEC, see
+Fisher and Fox 2023); <code><a href="nec.html">nec</a></code> explains why. In the case of a
+<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> that contains both kinds of equation, the
+no-effect estimate is a model averaged combination of the NEC and NSEC
+estimates, and is reported as the N(S)EC (see Fisher et al. 2023).</p>
 <p>With <code>ecx = TRUE</code>, each ECx row is computed by <code><a href="ecx.html">ecx</a></code> over
 the prediction grid stored with the fit, which is the grid the no-effect
 estimate is censored at. An <code>x_range</code> supplied in <code>...</code> replaces
@@ -261,9 +264,8 @@ and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.</
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Summary of weighted N(S)EC posterior estimates:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> NB: Model set contains a combination of ECx and NEC</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     models, and is therefore a model averaged</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     combination of NEC and NSEC estimates.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> NB: Model set combines sampled NEC and curve-read NSEC</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     estimates in proportion to model weight.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        Estimate Q2.5 Q97.5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> N(S)EC     1.45 0.75  1.53</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
