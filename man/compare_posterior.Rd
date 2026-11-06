@@ -148,6 +148,9 @@ taken through \code{...}, and \code{make_newdata = FALSE} requires
 \code{newdata}. \code{seed} changes the result only where \code{ndraws}
 selects the draws.
 
+The estimate comparisons take no further arguments through \code{...}, and
+refuse any that are supplied.
+
 \code{comparison = "nec"} requires a \code{nec} parameter at every level.
 Where a level fits a smooth equation, \code{"n(s)ec"} compares the
 no-effect estimate each level's equation supports.

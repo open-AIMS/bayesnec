@@ -192,6 +192,9 @@ compare_posterior.bayesnecgroupfit <- function(x, ...) {
 #' \code{newdata}. \code{seed} changes the result only where \code{ndraws}
 #' selects the draws.
 #'
+#' The estimate comparisons take no further arguments through \code{...}, and
+#' refuse any that are supplied.
+#'
 #' \code{comparison = "nec"} requires a \code{nec} parameter at every level.
 #' Where a level fits a smooth equation, \code{"n(s)ec"} compares the
 #' no-effect estimate each level's equation supports.
@@ -220,6 +223,15 @@ compare_posterior.bayesnecjointfit <- function(x, comparison = "n(s)ec",
   if (identical(comparison, "fitted")) {
     return(compare_joint_fitted(x, resolution, x_range, make_newdata,
                                 seed, ...))
+  }
+  if (...length()) {
+    given <- names(list(...))
+    if (is.null(given)) given <- rep("", ...length())
+    given <- ifelse(nzchar(given), paste0("`", given, "`"),
+                    "an unnamed argument")
+    stop("Only comparison = \"fitted\" takes further arguments through",
+         " `...`, but this call supplied ", paste(given, collapse = ", "),
+         ".", call. = FALSE)
   }
   chk_numeric(ecx_val)
   chk_numeric(sig_val)

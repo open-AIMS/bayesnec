@@ -104,6 +104,9 @@ test_that("a joint nec comparison refuses a level without a nec parameter", {
   joint$models <- list(low = "nec4param", high = "ecx4param")
   expect_error(compare_posterior(joint, comparison = "nec"),
                "\"high\".*n\\(s\\)ec")
+  expect_error(compare_posterior(joint, comparison = "ecx",
+                                 x_control = "shared"),
+               "`x_control`")
 })
 
 test_that("a joint fitted comparison asks for the rows it predicts", {
