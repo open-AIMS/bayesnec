@@ -283,16 +283,16 @@ round(cv_obs, 3)
 
 ```{r zinc-cv-text, include = FALSE}
 # The concentrations up to the last whose coefficient of variation is within
-# twice the largest of the five lowest.
-n_steady <- max(which(cv_obs <= 2 * max(cv_obs[1:5])))
+# one and a half times the largest of the five lowest.
+n_steady <- max(which(cv_obs <= 1.5 * max(cv_obs[1:5])))
 cv_high <- cv_obs[-seq_len(n_steady)]
 ```
 
 Up to `r signif(conc_levels[n_steady], 2)` mg/L the coefficient of variation is
 between `r sprintf("%.2f", min(cv_obs[seq_len(n_steady)]))` and
-`r sprintf("%.2f", max(cv_obs[seq_len(n_steady)]))`, and at the
-`r length(cv_high)` higher concentrations it is
-`r paste(sprintf("%.2f", cv_high), collapse = " and ")`, as the response falls
+`r sprintf("%.2f", max(cv_obs[seq_len(n_steady)]))`, and at
+`r if (length(cv_high) == 1) "the highest concentration" else paste("the", length(cv_high), "higher concentrations")`
+it is `r paste(sprintf("%.2f", cv_high), collapse = " and ")`, as the response falls
 towards zero. One `shape` cannot describe both, so each fit below includes
 `disp("power")`, which lets the dispersion parameter change with the fitted mean
 (see *Non-constant dispersion* in [*Single model
@@ -1160,7 +1160,7 @@ round_cols(scale_summary)
 The table gives, for each retained equation, its weight (`wi`), the ratio of
 observed to simulated standard deviation at the control (`ctrl_ratio`) and the
 number of concentrations flagged for spread (`n_flag`). The control ratio is
-between `r range_text(scale_summary$ctrl_ratio)` across the
+`r range_text(scale_summary$ctrl_ratio)` across the
 `r nrow(scale_summary)` equations, and
 `r sum(scale_summary$n_flag > 1)` of them have more than one flagged
 concentration.
