@@ -25,8 +25,9 @@ number can be taken without being visible anywhere a new session would look.
 | 7 | `example7` | negative growth rates and the zero boundary | #193 | `dev` |
 | 8 | `example8` | grouping and factor covariates | #6, #33 | `issue-6-33-grouping-vignette` |
 | 9 | `example9` | a complete analysis workflow | #219 | `dev` |
+| 10 | `example10` | hormesis estimands for guideline values | #570 | `issue-570-hormesis-paper` |
 
-**Next free number: 10.**
+**Next free number: 11.**
 
 ## Rules
 
