@@ -86,7 +86,7 @@ Where two estimates come from one posterior and share a parameter, for example
 two levels of a `bnec_joint()` refit with a common group-level term, they can
 be correlated. `compare_posterior()` takes such a refit directly and subtracts
 the levels' estimates at the same posterior draw, so that the differences
-include any correlation between them. Where the levels are read at their
+reflect any correlation between them. Where the levels are read at their
 observed group levels and were tested in shared batches, both are read in the
 same batch at each draw, as far as their numbers of observations per batch
 allow, so that the comparison is made within a batch. The

@@ -1450,12 +1450,15 @@ cor_text <- if (log_cor >= 0.5) {
 } else if (log_cor > -0.1) {
   ", so almost none of their uncertainty cancels in the ratio"
 } else {
-  ", which widens the interval of the ratio"
+  paste(", so the interval of the ratio is wider than it would be for",
+        "independent draws")
 }
-# The largest share of draws at which both metals can be read in one batch:
-# the sum over batches of the smaller of the metals' shares of observations.
-batch_share <- prop.table(table(zn_cu_15$toxicant, zn_cu_15$batch), 1)
-same_batch <- sum(apply(batch_share, 2, min))
+# The share of draws at which both metals were read in the same batch. The
+# "level" attribute names the plate and batch each draw was read at.
+draw_batch <- lapply(ec10_joint, function(d) {
+  sub("^.*batch=([^,]*).*$", "\\1", attr(d, "level"))
+})
+same_batch <- mean(draw_batch[["Cu"]] == draw_batch[["Zn"]])
 # prob is the probability that copper's EC10 exceeds zinc's. Where censoring
 # leaves it unidentified, prob is NA and prob_lower and prob_upper bound it.
 pd <- cmp_joint$prob_diff[cmp_joint$prob_diff$comparison == "Cu-Zn", ]
