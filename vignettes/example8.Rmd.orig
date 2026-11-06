@@ -1212,13 +1212,14 @@ to each plate of the normalised response, whereas `ecx()` reads the population
 curve of a model that estimates the variation between plates and between
 batches.
 
-Because the levels are estimated in one posterior, a contrast between them can
-be taken draw by draw, which keeps any dependence between the metals' estimates
-that the shared terms introduce. Here we take the ratio of zinc's EC10 to
-copper's:
+Because the levels are estimated in one posterior, `compare_posterior()`
+subtracts their EC10s at matching draws and retains any dependence between the
+metals' estimates that the shared terms introduce. We use the aligned draws it
+returns to take the ratio of zinc's EC10 to copper's:
 
 ```{r ratio-joint}
-ec10_joint <- ecx(fits_tox_joint, ecx_val = 10, posterior = TRUE)
+cmp_joint <- compare_posterior(fits_tox_joint, comparison = "ecx", ecx_val = 10)
+ec10_joint <- cmp_joint$posterior_list
 zn_cu_ratio <- ec10_joint[["Zn"]] / ec10_joint[["Cu"]]
 quantile(zn_cu_ratio, c(0.5, 0.025, 0.975), na.rm = TRUE)
 ```

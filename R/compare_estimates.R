@@ -5,6 +5,8 @@
 #' compares these by randomly pairing their posterior draws.
 #'
 #' @inheritParams compare_posterior
+#' @param x A named \code{\link[base]{list}} of
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} objects.
 #' 
 #' @importFrom chk chk_numeric chk_number
 #'
@@ -190,16 +192,25 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
       subset_draws(m, sample(seq_along(m), n_samples, replace = FALSE))
     }, n_samples = n_samples)
   })
+  compare_estimate_draws(posterior_list, r_posterior_list)
+}
+
+#' Compare posterior estimates after their draws have been paired
+#' @param posterior_list Named estimator output, including censoring records.
+#' @param paired_draws Draws in the order used for each comparison.
+#' @return The comparison output of \code{compare_estimates()}.
+#' @noRd
+compare_estimate_draws <- function(posterior_list, paired_draws) {
   # Keep names such as "2018" as given; data.frame() would return "X2018".
-  posterior_data <- do.call("cbind", r_posterior_list) |>
+  posterior_data <- do.call("cbind", paired_draws) |>
     data.frame(check.names = FALSE) |>
     pivot_longer(cols = everything(), names_to = "model") |>
     arrange(.data$model) |>
     data.frame()
-  all_combn <- combn(names(x), 2, simplify = FALSE)
+  all_combn <- combn(names(posterior_list), 2, simplify = FALSE)
   pair_signs <- lapply(all_combn, function(a, r_list) {
     difference_sign(r_list[[a[1]]], r_list[[a[2]]])
-  }, r_list = r_posterior_list)
+  }, r_list = paired_draws)
   diff_list <- lapply(pair_signs, `[[`, "diff")
   names(diff_list) <- sapply(all_combn, function(m) paste0(m[1], "-", m[2]))
   diff_data_out <- bind_rows(diff_list, .id = "comparison") |>
@@ -238,7 +249,7 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
     data.frame(prob = prob, prob_lower = prob_lower, prob_upper = prob_upper,
                censored_first = censored_fraction(r_list[[a[1]]]),
                censored_second = censored_fraction(r_list[[a[2]]]))
-  }, r_list = r_posterior_list)
+  }, r_list = paired_draws)
   names(prob_diff) <- names(diff_list)
   prob_diff_out <- bind_rows(prob_diff, .id = "comparison") |>
     data.frame()

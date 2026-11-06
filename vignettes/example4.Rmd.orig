@@ -84,10 +84,10 @@ fits to separate data that share no parameter, such as the levels of a
 
 Where two estimates come from one posterior and share a parameter, for example
 two levels of a `bnec_joint()` refit with a common group-level term, they can
-be correlated, and pairing their draws at random discards that correlation. The
-contrast is then taken draw by draw, from the draws that `ecx()` returns for
-each level of the refit under `posterior = TRUE`, as shown for copper and zinc
-in the [Grouping and factor covariates][e8] vignette. Where two fits share
+be correlated. `compare_posterior()` takes that joint refit directly and
+subtracts matching draws, retaining their correlation. The copper and zinc
+example in the [Grouping and factor covariates][e8] vignette uses its aligned
+EC10 draws to obtain a ratio. Where two fits share
 data, such as two equations of one model set, `prob_diff` describes how far
 their posteriors overlap and cannot be read directly as a posterior probability
 (see the section *What the comparison estimates* in `?compare_posterior`).

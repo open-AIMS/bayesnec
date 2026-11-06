@@ -49,6 +49,11 @@
 
 ## Estimates from observed group levels
 
+- `compare_posterior()` now accepts a `bayesnecjointfit` and subtracts the
+  matching posterior draws of its levels for NEC, N(S)EC, NSEC and ECx
+  comparisons. Fitted-curve comparisons predict every level in one call on a
+  common concentration grid, preserving draw pairing. Separate fits continue
+  to pair draws at random (#571).
 - For a group term whose levels span concentrations, `ecx()`, `nsec()`,
   `ecnsec()` and `nec()` now read the observed level curves, including their
   fitted group deviations. A level observed at only one concentration is

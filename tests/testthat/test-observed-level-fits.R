@@ -198,6 +198,23 @@ test_that("the toxicant mixtures of a joint refit pair by posterior draw", {
   rank_a <- as.integer(factor(attr(pooled$a, "level")))
   rank_b <- as.integer(factor(attr(pooled$b, "level")))
   expect_lt(mean(rank_a == rank_b), 0.6)
+
+  comparison <- suppressMessages(compare_posterior(
+    fit, comparison = "ecx", resolution = 30
+  ))
+  expect_equal(comparison$posterior_list, pooled)
+  expect_equal(comparison$diff_list[["a-b"]],
+               bayesnec:::difference_sign(pooled$a, pooled$b)$diff)
+  no_effect <- suppressMessages(compare_posterior(
+    fit, comparison = "n(s)ec", resolution = 30
+  ))
+  direct_nsec <- suppressMessages(nsec(fit, posterior = TRUE,
+                                       resolution = 30))
+  expect_equal(no_effect$posterior_list$a, direct_nsec$a)
+  expect_equal(no_effect$posterior_list$b, direct_nsec$b)
+  fitted <- compare_posterior(fit, comparison = "fitted", resolution = 5)
+  expect_equal(fitted$diff_list[["a-b"]],
+               fitted$posterior_list$a - fitted$posterior_list$b)
 })
 
 test_that("stored smooth no-effect draws use the recorded significance", {

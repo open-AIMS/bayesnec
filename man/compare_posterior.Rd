@@ -3,6 +3,7 @@
 \name{compare_posterior.default}
 \alias{compare_posterior.default}
 \alias{compare_posterior.bayesnecgroupfit}
+\alias{compare_posterior.bayesnecjointfit}
 \alias{compare_posterior}
 \title{compare_posterior}
 \usage{
@@ -21,12 +22,25 @@
 
 \method{compare_posterior}{bayesnecgroupfit}(x, ...)
 
+\method{compare_posterior}{bayesnecjointfit}(
+  x,
+  comparison = "n(s)ec",
+  ecx_val = 10,
+  type = "absolute",
+  sig_val = 0.01,
+  resolution,
+  x_range = NA,
+  make_newdata = TRUE,
+  seed = 10,
+  ...
+)
+
 compare_posterior(x, ...)
 }
 \arguments{
-\item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
-\code{\link{bnec}}.}
+\item{x}{A named \code{\link[base]{list}} of \code{\link{bayesnecfit}}
+or \code{\link{bayesmanecfit}} objects, a \code{\link{bayesnecgroupfit}},
+or a \code{\link{bayesnecjointfit}}.}
 
 \item{comparison}{The posterior predictions to compare, takes values of
 "nec", "n(s)ec", "nsec", "ecx" or "fitted".}
@@ -57,12 +71,13 @@ If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
 to TRUE. See details.}
 
 \item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
-\code{\link[base]{set.seed}} before the draws of the posteriors being
-compared are paired, so that two calls on the same fits return the same
-answer. The caller's saved RNG state is restored afterwards, and a
-\code{\link[base]{set.seed}} in the session therefore does not change the
-result. A different value gives another realisation of the same Monte
-Carlo approximation. \code{NULL} is refused, because
+\code{\link[base]{set.seed}} before separate posteriors are paired or
+joint fitted values are predicted, so that two calls on the same fits
+return the same answer. The caller's saved RNG state is restored afterwards.
+A \code{\link[base]{set.seed}} in the session therefore does not change the
+result. A different value changes the random pairing of separate fits or
+stochastic fitted predictions. Joint estimate contrasts retain their draw
+pairing for every seed. \code{NULL} is refused, because
 \code{set.seed(NULL)} re-initialises the stream from the clock.
 Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
 to \code{sample.kind = "Rejection"}. The saved RNG state is restored,
@@ -75,14 +90,11 @@ after an odd number of preceding normal draws. Use R's default
 \code{\link[brms]{posterior_epred}}.}
 }
 \value{
-A named \code{\link[base]{list}} containing paired differences
-in posterior predictions of the \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
+A named \code{\link[base]{list}} containing posterior differences,
+probabilities and the draws for each fit or level. See Details.
 }
 \description{
-Extracts posterior predicted values from a list of class
-\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
-compares these by randomly pairing their posterior draws.
+Compares posterior estimates from separate fits or levels of one joint refit.
 }
 \details{
 For a \code{\link{bayesnecgroupfit}} the comparison is across the
@@ -100,6 +112,15 @@ differing in where the threshold falls, and vice versa.
 The levels are fitted to separate data and share no parameters, so the
 posteriors are independent and the pairwise probabilities are read directly,
 with no multiple-comparison adjustment implied.
+
+For a \code{\link{bayesnecjointfit}}, differences are taken at
+matching posterior draw positions. Each level is estimated from the same
+fitted posterior. Where an observed group term spans concentrations, each
+draw is assigned one observed level in proportion to its observation count;
+the draw remains at its original position in every joint-level estimate.
+The \code{seed} argument controls stochastic fitted predictions but does
+not permute joint posterior draws. Observed-level mixture assignments are
+reproducible from their level labels and observation counts.
 
 \code{type} is passed to \code{\link{ecx}} and takes the same four
 values, all measured from the control --- the predicted mean at the lowest
@@ -121,8 +142,9 @@ an additional data.frame via the \code{newdata} argument. For guidance
 on how to structure \code{newdata}, see for example
 \code{\link[brms]{posterior_epred}}.
 
-Every comparison other than "fitted" is made by
-\code{\link{compare_estimates}}, which describes the elements returned. A
+For separate fits, every comparison other than "fitted" is made by
+\code{\link{compare_estimates}}, which describes the elements returned.
+Joint-level estimates have the same output structure. A
 posterior draw that lies beyond the prediction range is not deleted from
 the comparison. Where the censoring leaves the sign of some paired
 differences unknown, \code{prob_diff} reports the probability as a lower
