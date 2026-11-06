@@ -1,0 +1,167 @@
+---
+title: "Hormesis in concentration–response analysis: estimands for guideline values"
+output:
+  rmarkdown::html_vignette:
+vignette: >
+  %\VignetteIndexEntry{Hormesis in concentration–response analysis: estimands for guideline values}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bayesnec.bib
+---
+
+```{r setup, include=FALSE}
+stopifnot(require(knitr))
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", warning = FALSE,
+                      message = FALSE, fig.path = "vignette-fig-",
+                      fig.asp = 0.7, out.width = "75%", fig.align = "center",
+                      dev = "png", dpi = 150)
+```
+
+# Abstract
+
+Low concentrations of a toxicant may increase a measured biological response before higher concentrations reduce it. A threshold equation that allows this pattern can estimate a breakpoint at the response maximum, although the response has already changed from its unexposed value before that point. This creates an ambiguity when the breakpoint is used as a no-effect concentration in deriving water quality guideline values. We distinguish the peak, the descending return to the control, a control-based effect concentration and a proposed post-peak no-significant-effect concentration (NSEC). We review international and jurisdictional methods, conduct an exploratory design simulation, and examine individual growth responses from a tropical marine symbiont and lettuce. A control-based NSEC is a more coherent default no-effect *estimand* for a fitted hormetic curve than its peak parameter. However, the existing Australian and New Zealand definition of NSEC applies to monotone curves, and evidence from these case studies cannot establish that the proposed extension is safe for guideline derivation.
+
+# Introduction
+
+Water quality guideline values often begin with a chronic toxicity estimate for each tested species. The Australian and New Zealand method prefers no-effect concentrations (NECs) and no-significant-effect concentrations (NSECs) where the estimate is defensible, before fitting a species sensitivity distribution [@warne2025]. A parameter called `nec` in a threshold model ordinarily locates the concentration where a declining response starts. In a hormesis equation, `nec` instead locates the maximum of an initial rise. If that value is passed to guideline derivation as a no-effect concentration, its name and biological interpretation disagree.
+
+Low-dose stimulation and high-dose inhibition form the descriptive response pattern termed hormesis [@canada2007alga; @usepa2012plants]. It does not by itself establish a beneficial effect or a mechanism. For example, a nutrient introduced with a mixture can increase growth, while an organism may allocate resources to growth with reduced performance in reproduction or another trait [@jager2013]. For this reason, the measured endpoint, the true control and other available endpoints must be examined before the rising limb is interpreted as ecologically harmless. Statistical treatment can be specified separately from that biological judgement.
+
+The issue was exposed by a mercury growth-rate series in which several low concentrations exceeded the control before a decline. That series is privately shared and is excluded here while permission for its redistribution is checked. A publicly available *Cladocopium goreaui* growth series offers a related marine case. It was excluded from the case study in @fisher2023ieam because of its hormetic shape, although its observations were released with @negri2021condensate. We also use the small `lettuce` example distributed with `drc` as a transparent comparison [@Ritz2016]. These assays differ in organism, chemical, endpoint and replication, so they illustrate estimation questions without serving as interchangeable guideline inputs.
+
+# Definitions
+
+Let $m(c)$ be the fitted mean of an endpoint for which a decrease represents poorer performance, at concentration $c$. We use the fitted mean at the unexposed treatment (the true control), $m(0)$, as the control response. A hormetic curve has an initial region with $m(c)>m(0)$ and a subsequent region in which the mean falls. Four locations can then be distinguished:
+
+| Location | Definition | Interpretation |
+| --- | --- | --- |
+| Peak | $c_{peak}=\arg\max m(c)$ | Maximum fitted response; the `nec` parameter in a threshold hormesis equation may locate it. |
+| Control return | First descending $c>c_{peak}$ with $m(c)=m(0)$ | The fitted response has returned to the unexposed mean. |
+| Control-based ECx | First descending $c$ with $m(c)=m(0)(1-x/100)$ when zero is the effect target | A specified loss from the fitted control, not from the stimulated peak. |
+| Post-peak NSEC | First descending $c$ at which $m(c)$ falls to a lower posterior quantile of $m(0)$ | Proposed extension of the NSEC test to a nonmonotone response. |
+
+For a positive peak and a control reference whose lower quantile is below $m(0)$, the peak precedes the control return, which in turn precedes the post-peak NSEC, provided all three crossings occur in the searched range. The ordering follows from the definitions. It does not imply that the unexposed mean is an ecological safety boundary. An NSEC also depends on the specified tail probability (`sig_val`) and the precision of the experiment [@fisherfox2023]. For example, imprecise controls can shift the lower reference away from the mean, changing the location of its crossing. The NSEC is a statistical no-effect estimate, not a biological proof of no harm.
+
+In `bayesnec`, the fitted control is the reference for `ecx()` across the model set. `nsec()` likewise uses a lower quantile of the control posterior and finds a decreasing crossing. For a threshold hormesis equation, `nec` is a sampled curve parameter describing the peak, while the proposed default no-effect estimate is the control-based NSEC. This crossing is post-peak for draws with a fitted rise; a draw without stimulation may cross the reference without an intervening peak. The model and the location reported should always be identified in a guideline data table. The 2025 ANZG glossary defines NSEC using a *monotonically decreasing* model [@warne2025]; the hormetic definition is therefore a proposed extension that requires validation before its routine use under that method.
+
+# Technical guidance and previous work
+
+The revised OECD algal growth test guideline recommends fitting both a standard monotone and an appropriate hormesis model when stimulation is observed, choosing between them using fit diagnostics and reporting the decision [@oecd2026tg201]. It permits stimulation to be ignored only where it is less than 10% above the control and is not statistically significant. It also asks for regression on individual replicate responses (not treatment means), uncertainty around effect concentrations, and explicit reporting of growth stimulation. Its advice addresses how to analyse and report the curve; it does not select an NSEC definition for hormesis.
+
+Environment Canada's statistical methods give more direct guidance on the reference point. Their preferred point-estimate procedure fits a model that accommodates hormesis and compares inhibition with the *true control*, keeping the stimulated observations in the fit [@canada2005stats]. The algal test method also distinguishes a stimulatory response from hormesis, which requires later inhibition, and treats replacement of stimulated responses by control values as an interpolation fallback [@canada2007alga]. The Canadian guidance acknowledges that a statistical comparison cannot decide whether stimulation is biologically deleterious. Thus, a control-based calculation has regulatory precedent, while the adverse-effect interpretation remains endpoint specific.
+
+European advice has developed in stages. Commission Regulation (EU) 2016/266 cautions that small stimulation may be ignored for EC50, but low ECx can need a hormesis model or another special procedure [@eu2016alga]. The European Chemicals Agency's metals appendix specifically calls for considering hormesis in EC10 estimation and identifies Brain–Cousens-type curves as an alternative to a conventional log-logistic model [@echa2008metals]. For metals, exposure concentration, background and medium chemistry (e.g., pH and dissolved organic carbon) also affect whether a fitted curve is credible. US EPA plant-test guidance defines hormesis as low-dose stimulation followed by toxicity at higher doses and defines inhibition concentrations relative to the control [@usepa2012plants]. None of these documents endorses a post-peak NSEC for an aquatic guideline value.
+
+The statistical models also differ. Brain and Cousens modified a log-logistic model to allow a rising limb [@braincousens1989]; van Ewijk and Hoekstra examined effect concentrations when stimulation is present [@vanewijk1993]; and Cedergreen and colleagues extended empirical descriptions of the curve [@cedergreen2005]. A threshold hormesis equation makes a peak parameter explicit, whereas a smooth Brain–Cousens curve generally does not have a parameter named `nec`. Model comparison should therefore use a common control-based effect estimand across candidate equations and report any difference in fit to the stimulated and declining regions. For example, agreement in EC10 does not establish agreement in NSEC if the descending limbs differ near the control response.
+
+# Methods
+
+## Exploratory simulation
+
+We generated a continuous response with a known peak and a declining limb,
+
+$$m(c)=1+a(c/p)\exp(1-c/p)-b\max(c-p,0),$$
+
+where the peak location $p=1$, decline coefficient $b=0.15$, and stimulation amplitude $a$ was either 0.10 or 0.25. Gaussian observation error had a standard deviation of 0.08. We varied the number of positive concentrations (five or nine) and the replicates per concentration (three or ten), with 250 independent datasets for each of eight designs. The positive concentrations were logarithmically spaced from 0.1 to 4; each design also contained an unexposed control.
+
+For each dataset we fitted the generating family by bounded least squares and calculated its peak, descending return to the fitted control, and control-based EC10. We also located a lower-reference crossing using the fitted control minus 2.326 standard errors (an approximate one-sided 1% Gaussian reference). This last calculation is a **plug-in proxy**, not `bayesnec`'s posterior NSEC. The simulation checks the separation of the locations and whether the design resolves them. For example, a design whose highest treatment remains above the control cannot identify a descending control return. It cannot establish posterior coverage, model selection performance or guideline protection. The reproducible script is `data-raw/hormesis_simulation.R` in the package source.
+
+```{r simulation-table}
+sim <- read.csv(system.file("extdata", "hormesis_simulation_summary.csv",
+                            package = "bayesnec"))
+show <- subset(sim, amplitude == 0.1 & replicates == 3 & levels == 6 |
+                    amplitude == 0.25 & replicates == 10 & levels == 10)
+show <- show[, c("amplitude", "replicates", "levels", "metric",
+                 "fit_success", "median", "q025", "q975")]
+show[, 5:8] <- round(show[, 5:8], 2)
+knitr::kable(show, caption = "Exploratory fitted locations across 250 datasets per design. The last two columns are simulation quantiles, not credible intervals.")
+```
+
+## Case-study observations
+
+The [public workbook](https://data.aims.gov.au/data-download/615e208d-f6c7-4b2f-b99e-d4fc50614e48/Negri_etal_2021_Experimental-data_Toxicity-thresholds-gas-condensate-oils.xlsx) accompanying @negri2021condensate contains 65 individual specific growth rates for *C. goreaui* [@aims2020condensatedata]. The paper describes ten no-WAF controls; the workbook codes their total aromatic hydrocarbons (TAH) concentration as 1 $\mu$g/L. We retain that source value and subtract 1 $\mu$g/L from all concentrations to set the no-WAF treatment at zero. We then divide by 1000 and report estimates in mg/L TAH relative to this source-coded control. This shift is an analysis convention; the workbook alone does not establish that 1 $\mu$g/L was measured background. The dataset catalogue labels the workbook [CC BY-NC 3.0 Australia](https://researchdata.edu.au/condensate-toxicity-testing/1702929), so the individual observations are imported locally by `data-raw/hormesis_negri.R` and are not redistributed with the GPL-2 package.
+
+The `drc::lettuce` dataset contains shoot biomass after 21 days of exposure to isobutyl alcohol in a nutrient solution, with two observations at each of seven concentrations from zero to 100 mg/L. We copied those 14 observations from the current CRAN source of `drc` (GPL-2). Under the installed `drc` licence text, its datasets are not copyright; no separate restriction appeared with `lettuce.rda`. We cite the original dataset context and `drc` [@vanewijk1993; @Ritz2016]. The small sample and terrestrial endpoint make this a methods example, not an aquatic guideline-value input.
+
+```{r case-plot, fig.width=8, fig.height=3.5, out.width="100%", fig.cap="A theoretical hormetic response (left) and the 14 individual lettuce biomass observations (right). Vertical lines mark the theoretical peak, return to control and crossing of a lower reference value of 0.95. The lettuce concentration axis is log10(concentration + 0.1); its line joins treatment means for visual orientation, not as a fitted model."}
+lettuce <- read.csv(system.file("extdata", "hormesis_lettuce_1993.csv",
+                                package = "bayesnec"))
+op <- par(mfrow = c(1, 2), mar = c(4.3, 4.4, 1, 0.5))
+x <- seq(0, 4, length.out = 400)
+mu <- 1 + 0.25 * x * exp(1 - x) - 0.15 * pmax(x - 1, 0)
+plot(x, mu, type = "l", lwd = 2, xlab = "Relative concentration",
+     ylab = "Mean response", ylim = c(0.7, 1.3))
+abline(h = 1, lty = 2)
+return_c <- uniroot(function(z) 1 + 0.25 * z * exp(1 - z) -
+                      0.15 * (z - 1) - 1, c(1.01, 4))$root
+lower_c <- uniroot(function(z) 1 + 0.25 * z * exp(1 - z) -
+                     0.15 * (z - 1) - 0.95, c(1.01, 4))$root
+abline(v = c(1, return_c, lower_c), lty = c(3, 4, 5))
+legend("topright", legend = c("Peak", "Control return", "Lower crossing"),
+       lty = c(3, 4, 5), bty = "n", cex = 0.7)
+plot(lettuce$weight ~ log10(lettuce$conc + 0.1), pch = 16,
+     col = "#A25D3A88", xaxt = "n", xlab = "Isobutyl alcohol (mg/L)",
+     ylab = "Shoot biomass")
+axis(1, at = log10(sort(unique(lettuce$conc)) + 0.1),
+     labels = sort(unique(lettuce$conc)), cex.axis = 0.75)
+with(aggregate(weight ~ conc, lettuce, mean),
+     lines(log10(conc + 0.1), weight, lwd = 2))
+par(op)
+```
+
+For both datasets, a Gaussian response family permits negative fitted values where the measured endpoint can be negative, as it is for the *C. goreaui* growth rates. We used `neclinhorme` to examine the breakpoint and `ecxhormebc4` as a smooth hormesis sensitivity model (the Brain–Cousens form). A monotone candidate must also be assessed under the OECD procedure before a final model choice. The following code gives the threshold fit and the two different estimates; `curve_params()` exposes the sampled curve parameter independently of the no-effect summary.
+
+```{r case-fits, eval=FALSE}
+library(bayesnec)
+source("data-raw/hormesis_negri.R") # run from a source checkout
+negri <- read.csv("ignore/hormesis_data/hormesis_negri_2021.csv")
+negri$conc <- (negri$source_conc_ug_l_tah - 1) / 1000
+set.seed(570)
+fit_negri <- bnec(sgr ~ crf(conc, model = "neclinhorme"),
+                  data = negri, family = gaussian(),
+                  chains = 4, cores = 4, iter = 2000, warmup = 1000,
+                  control = list(adapt_delta = 0.995, max_treedepth = 12))
+curve_params(fit_negri)
+nec(fit_negri) # the reported no-effect estimate
+nsec(fit_negri, sig_val = 0.01)
+ecx(fit_negri, ecx_val = 10)
+
+set.seed(570)
+fit_negri_smooth <- bnec(sgr ~ crf(conc, model = "ecxhormebc4"),
+                         data = negri, family = gaussian(),
+                         chains = 4, cores = 4, iter = 2000, warmup = 1000,
+                         control = list(adapt_delta = 0.995,
+                                        max_treedepth = 12))
+nsec(fit_negri_smooth, sig_val = 0.01)
+
+set.seed(570)
+fit_lettuce <- bnec(weight ~ crf(conc, model = "neclinhorme"),
+                    data = lettuce, family = gaussian(),
+                    chains = 4, cores = 4, iter = 2000, warmup = 1000,
+                    control = list(adapt_delta = 0.99))
+curve_params(fit_lettuce)
+nsec(fit_lettuce, sig_val = 0.01)
+ecx(fit_lettuce, ecx_val = 10)
+```
+
+# Results
+
+## Simulation study
+
+With weak stimulation, three replicates and only six concentrations, the simulated median peak was 1.01, the descending return was 1.62 and the lower-reference crossing was 2.06 (Table 1). The respective 2.5–97.5% ranges were broad; the peak reached the fit's upper bound of 3 in at least 2.5% of datasets. With stronger stimulation, ten replicates and ten concentrations, the median return was 2.15 and the lower-reference crossing was 2.33; the true return of the generating curve was 2.14. These contrasts demonstrate the intended ordering and show why a peak cannot be substituted for a control-based no-effect location. They do not measure how well the Bayesian NSEC performs, because the proxy uses a Gaussian plug-in uncertainty calculation.
+
+## Marine and terrestrial cases
+
+In the *C. goreaui* series, the highest treatment mean specific growth rate was approximately 22% above the control mean, with a decline to negative growth rates at the highest TAH concentrations. The lettuce mean at 1 mg/L was approximately 28% above the control mean, followed by lower biomass at high concentrations (Figure 1). These descriptive rises exceed the 10% size condition in OECD TG 201; the guideline also requires a statistical test before deciding whether stimulation could be ignored. The biological explanation differs between the assays and is not resolved by these data.
+
+Preliminary four-chain threshold fits gave a *C. goreaui* peak parameter of 0.94 mg/L TAH relative to the source-coded control (95% credible interval 0.57–1.48) and a post-peak NSEC of 1.98 mg/L TAH (1.79–2.17). The fitted NSEC corresponded to an estimated 10.5% decline from the control at the posterior median. One divergent transition remained after warm-up, although no transition reached the maximum tree depth of 12. A smooth Brain–Cousens fit had no divergent transitions and gave an NSEC of 2.36 mg/L TAH (1.91–2.67), showing that model choice also affects this estimate. The respective EC10 medians were 1.97 and 2.50 mg/L TAH. These values illustrate the difference between estimands and should not be used in guideline derivation without a monotone comparison and further model checks. The lettuce threshold fit was less stable: its peak parameter was weakly resolved and 20 transitions diverged (with `adapt_delta = 0.99`). We therefore do not interpret its threshold or NSEC numerically here. The two-observation treatment groups and uncertain descending shape limit what this example can establish.
+
+# Discussion
+
+The regulatory sources converge on a practical calculation for a hormetic endpoint: retain the observed stimulated responses, fit a curve capable of describing them, and measure subsequent inhibition relative to the true control [@canada2005stats; @oecd2026tg201]. The peak is a useful shape parameter, especially when a threshold model makes it explicit. However, calling it a no-effect concentration would treat an already changed endpoint as unchanged. A post-peak NSEC has the more relevant statistical meaning for guideline-value work because it requires a decline beyond the control's lower reference bound. The accompanying ECx and the percent effect at NSEC should be reported, since a statistically defined crossing may correspond to a nontrivial reduction in response.
+
+This preference does not resolve the ecological meaning of stimulation. If increased growth draws resources from reproduction, a growth-based NSEC could miss an adverse effect below the peak [@jager2013]. If the stimulus comes from nutrients in a mixture, the curve may describe a mixture effect whose relevance changes with receiving-water chemistry. A chemical-specific guideline must therefore examine exposure measurement, endpoint relevance, other traits and the evidence for the mechanism. An estimate censored above the tested concentrations or dependent on a poorly fitting declining limb should be reported as unresolved, even if a point value can be calculated.
+
+The ANZG 2025 NSEC definition refers to a monotonically decreasing model [@warne2025]. Before a hormetic extension is used as a routine chronic input to an Australian and New Zealand species sensitivity distribution, a full Bayesian simulation should evaluate bias, posterior coverage, censoring, model misspecification, weak stimulation, concentration placement and replicate allocation. The exploratory simulation here isolates the geometric and design question; the marine case supplies a previously deferred analysis, while lettuce exposes the limitations of a small, freely available example. Together they provide a reproducible basis for the additional validation and a clear distinction between a curve parameter and the guideline estimand.
+
+# References
