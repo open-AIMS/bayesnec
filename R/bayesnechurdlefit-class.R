@@ -62,16 +62,24 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
                              resolution, x_range, x_control)
     })
     n <- min(vapply(levels, function(x) nrow(x$combined), integer(1)))
-    idx <- mixture_draw_indices(rep(n, length(levels)), spec$n, n,
-                                labels = level_labels(spec$combinations))
-    # Row d of each combined matrix holds draw d.
-    by_draw <- order(unlist(idx, use.names = FALSE))
-    combine <- function(name) do.call(rbind, Map(function(x, take) {
-      x[[name]][take, , drop = FALSE]
-    }, levels, idx))[by_draw, , drop = FALSE]
-    controls <- function(name) unlist(Map(function(x, take) {
-      x$control[[name]][take]
-    }, levels, idx), use.names = FALSE)[by_draw]
+    owner <- observed_assignment(spec, n)
+    # Row d of each combined matrix holds draw d of the level it was given to.
+    combine <- function(name) {
+      out <- levels[[1]][[name]][seq_len(n), , drop = FALSE]
+      for (i in seq_along(levels)) {
+        take <- which(owner == i)
+        out[take, ] <- levels[[i]][[name]][take, , drop = FALSE]
+      }
+      out
+    }
+    controls <- function(name) {
+      out <- levels[[1]]$control[[name]][seq_len(n)]
+      for (i in seq_along(levels)) {
+        take <- which(owner == i)
+        out[take] <- levels[[i]]$control[[name]][take]
+      }
+      out
+    }
     return(list(x = levels[[1]]$x, growth = combine("growth"),
                 survival = combine("survival"), combined = combine("combined"),
                 control = list(growth = controls("growth"),

@@ -138,8 +138,17 @@ validate_pool <- function(pool, what) {
   pool
 }
 
+#' Pool the draws of several levels into one posterior
+#' @param draws One posterior vector per level.
+#' @param weights Observation counts at each level.
+#' @param pool \code{"mixture"} or \code{"mean_estimate"}.
+#' @param seed Seed for the mixture where \code{assignment} is \code{NULL}.
+#' @param assignment Optional level at each draw, as
+#' \code{observed_assignment()} returns it, for levels of equal length.
+#' @return The pooled draws.
 #' @noRd
-pool_estimate_draws <- function(draws, weights, pool, seed = 216) {
+pool_estimate_draws <- function(draws, weights, pool, seed = 216,
+                                assignment = NULL) {
   if (length(draws) != length(weights) || !length(draws) ||
       any(!is.finite(weights)) || any(weights <= 0)) {
     stop("Each level needs a positive observation count.", call. = FALSE)
@@ -149,8 +158,15 @@ pool_estimate_draws <- function(draws, weights, pool, seed = 216) {
   weights <- weights / sum(weights)
   if (identical(pool, "mixture")) {
     draw_lengths <- vapply(draws, length, integer(1))
-    slots <- mixture_draw_indices(draw_lengths, weights, n, seed,
-                                  labels = names(draws))
+    slots <- if (is.null(assignment)) {
+      mixture_draw_indices(draw_lengths, weights, n, seed)
+    } else {
+      if (any(draw_lengths != length(assignment))) {
+        stop("The assignment does not match the levels' draws.",
+             call. = FALSE)
+      }
+      unname(split(seq_len(n), factor(assignment, levels = seq_along(draws))))
+    }
     # With unequal lengths, sample each full posterior so longer levels do
     # not lose valid draws.
     indices <- if (all(draw_lengths == n)) slots else
