@@ -71,6 +71,10 @@
 #' the \code{hormesis_def} argument selected between the control and the
 #' maximum of the predicted curve and has been removed, because a target
 #' below the control is crossed exactly once whatever the curve does above it.
+#' For a hormesis threshold equation, \code{\link{nec}} uses this NSEC as its
+#' no-effect estimate. Its \code{nec} parameter, the concentration at which
+#' the decline term starts, remains available through
+#' \code{\link{curve_params}}.
 #'
 #' The curve is searched on a grid of recorded concentrations. Where
 #' \code{crf()} transforms the predictor inline, as in

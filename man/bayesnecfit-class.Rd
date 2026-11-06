@@ -53,7 +53,8 @@ gives a warning when they are displayed.}
 
 \item{\code{beta}}{The estimate for parameter "beta" in the fitted model.}
 
-\item{\code{ne}}{The estimated NEC.}
+\item{\code{ne}}{The no-effect estimate, a NEC for a monotone threshold equation
+and an NSEC for a smooth or hormesis threshold equation.}
 
 \item{\code{f}}{The estimate for parameter "f" in the fitted model, NA if
 absent for the fitted model type.}
@@ -76,14 +77,16 @@ absent for the fitted model type.}
 
 \item{\code{residuals}}{Residual values of the observed data from the fitted model.}
 
-\item{\code{ne_posterior}}{A full posterior estimate of the NEC.}
+\item{\code{ne_posterior}}{The posterior of that no-effect estimate.}
 
 \item{\code{ne_type}}{A \code{\link[base]{character}} vector indicating the type of
-no-effect toxicity estimate. Where the fitted model is an NEC model
-(threshold model, containing a step function) the no-effect estimate is
-a true no-effect-concentration (\code{NEC}, see Fox 2010). Where the fitted
-model is a smooth ECx model with no step function, the no-effect estimate is
-a no-significant-effect-concentration (\code{NSEC}, see Fisher and Fox 2023).}
+no-effect toxicity estimate. A monotone threshold equation contributes its
+sampled no-effect-concentration (\code{NEC}, see Fox 2010). A smooth or
+hormesis threshold equation contributes a curve-read
+no-significant-effect-concentration (\code{NSEC}, see Fisher and Fox 2023).
+A hormesis threshold equation still samples a \code{nec} parameter, the
+concentration at which its decline term starts; \code{\link{curve_params}}
+returns it.}
 }}
 
 \references{

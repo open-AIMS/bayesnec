@@ -1,5 +1,21 @@
 # bayesnec 2.2.0
 
+- The no-effect estimate of the six hormesis threshold equations, `nechorme`,
+  `nechorme4`, `neclinhorme`, `nechormepwr`, `nechorme4pwr` and
+  `nechormepwr01`, is now their NSEC: the concentration at which the fitted
+  curve, after any rise, falls below the `sig_val` quantile of the fitted
+  control. Their `nec` parameter is the concentration at which the decline
+  term starts, where the response can be above the control, and it remains
+  available through `curve_params()`. `nec()`, `summary()`, the plots and the
+  model-averaged N(S)EC change wherever these equations contribute. `ecx()`
+  and `nsec()` return the same values as without this change, and `nec()`
+  still returns the sampled NEC of the monotone threshold equations
+  `nec3param`, `nec4param`, `neclin` and `necsigm`. Because the estimate of
+  these six equations is read off a curve, `nec(extrapolate = TRUE)` is
+  refused for a fit or a set that contains one of them. A fit saved by an
+  earlier version stores the `nec` parameter instead; `nec()`, `summary()` and
+  the plots warn about it, and `amend(x)` rebuilds the estimate without
+  refitting (#570).
 - `check_fit()` now counts ties as one half when calculating posterior
   predictive p-values. Identical observed and simulated count statistics give
   a p-value of 0.5 rather than 1. When the observed statistic and the median
@@ -1529,7 +1545,10 @@
   is read at the lowest *observed* concentration rather than at the first column
   of the prediction grid, on the `bayesnechurdlefit` class as well as the
   single-fit one, so supplying `x_range` no longer changes any reported
-  estimate.
+  estimate. The NSEC stored with a fit for a smooth or hormesis threshold
+  equation, which `nec()`, `summary()` and the plots report, is computed with
+  the control at the same concentration, and so agrees with `nsec()` given the
+  same `x_range`.
 
 - **`type` is a four-value vocabulary.** `"absolute"` (the default) measures
   control to 0; `"relative"` measures control to the equation's theoretical

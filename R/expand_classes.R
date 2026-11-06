@@ -64,10 +64,10 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   pred_data <- data.frame(x = x_seq, Estimate = y_pred_m[, "Estimate"],
                           Q2.5 = y_pred_m[, "Q2.5"],
                           Q97.5 = y_pred_m[, "Q97.5"])
-  if (is.na(extracted_params$ne["Estimate"])) {
-    mod_class <- "ecx"
-  } else {
+  if (sampled_nec_is_no_effect(object$model, fit)) {
     mod_class <- "nec"
+  } else {
+    mod_class <- "ecx"
   }
   # The bounds on both scales. A curve is searched on the recorded grid, so its
   # censoring record is built there and remapped with xform_censoring(), which
@@ -81,18 +81,26 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   ne_lower <- min(grid_fitted)
   to_fitted_scale <- function(value) sub_x_transformation(value, formula)
   # NSEC read off a fitted curve, on the predictor scale the user supplied it
-  # on. Used for smooth (ecx-type) models, which carry no threshold parameter,
-  # and for any two-block fit where at least one block is smooth.
+  # on. Used for smooth equations, hormesis threshold equations, and any
+  # two-block fit whose combined endpoint has no flat no-effect region.
   nsec_off_curve <- function(post) {
-    reference <- quantile(post[, 1], sig_val)
-    # The start is the first grid point, not the lowest observed predictor as
-    # in nsec.bayesnecfit(); the two differ where bnec() received an x_range.
-    out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1],
-                               post[, 1])
+    control_x <- min(fit$data[[grid$x_var]])
+    control <- if (identical(pred_data$x[1], control_x)) {
+      post[, 1]
+    } else {
+      control_nd <- new_dat[1, , drop = FALSE]
+      control_nd[[grid$x_var]] <- control_x
+      factorised_count_epred(fit, formula, newdata = control_nd,
+                            re_formula = NA)[, 1]
+    }
+    reference <- quantile(control, sig_val)
+    out <- nsec_from_posterior(post, reference, pred_data$x, control_x,
+                               control)
     below <- attr(out, "below_range")
     above <- is.na(out) & !below
     cens <- xform_censoring(
-      censoring_record(max(grid_recorded), min(grid_recorded), above, below),
+      censoring_record(max(grid_recorded), attr(out, "x_searched_from"),
+                       above, below),
       to_fitted_scale
     )
     if (sum(above) > 0) {
@@ -170,7 +178,14 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     # The two blocks may carry different equations (see the model_survival
     # argument of bnec), so each has its own class and the combined threshold
     # is derived differently depending on the pair.
-    hu_class <- if (is.null(hu_ne_posterior)) "ecx" else "nec"
+    hu_model <- dpar_models(object)[[hu_dpar]]
+    hu_sampled <- if (is.character(hu_model) && length(hu_model) == 1 &&
+                      !is.na(hu_model)) {
+      sampled_nec_is_no_effect(hu_model)
+    } else {
+      !is.null(hu_ne_posterior)
+    }
+    hu_class <- if (hu_sampled) "nec" else "ecx"
     if (mod_class == "nec" && hu_class == "nec") {
       # Below both thresholds mu sits at top and (1 - hu) at its control value,
       # so the product is flat; it leaves that plateau at whichever threshold
@@ -277,6 +292,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     # blocks rather than on the response block alone.
     ne_type <- hurdle_parts$ne_type
   }
+  object$ne_type <- NULL
   out <- c(object, list(pred_vals = pred_vals), extracted_params,
            list(dispersion = od, predicted_y = predicted_y,
                 residuals = residuals, ne_posterior = ne_posterior,
@@ -504,17 +520,6 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
          ". Refit with matching retained draw counts; set thin during fitting ",
          "if the iteration counts differ.", call. = FALSE)
   }
-  # Classify by each equation's parameters, as nec() does, not by group
-  # membership or name.
-  has_nec <- vapply(names(object), function(m) {
-    has_nec_parameter(m, object[[m]]$fit)
-  }, logical(1))
-  ne_lab <- "NEC"
-  if (!any(has_nec)) {
-    ne_lab <- "NSEC"
-  } else if (!all(has_nec)) {
-    ne_lab <- "N(S)EC"
-  }
   # define_loo_controls(), not validate_loo_controls(), on both branches.
   # Validation leaves `method` NULL, and loo::loo_model_weights() then
   # defaults to stacking. Every route that assembles a set reaches this line,
@@ -534,6 +539,18 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
                  model = success_models[i])
     )
   })
+  for (m in success_models) {
+    mod_fits[[m]]$ne_type <- object[[m]]$ne_type
+  }
+  # A two-block equation's type depends on both blocks, not its response name.
+  types <- vapply(object, function(part) part$ne_type, character(1))
+  ne_lab <- if (all(types == "NEC")) {
+    "NEC"
+  } else if (all(types == "NSEC")) {
+    "NSEC"
+  } else {
+    "N(S)EC"
+  }
   mod_dat <- model.frame(formula[[1]], data = object[[1]]$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   disp <-  do_wrapper(object, extract_dispersion, fct = "rbind")

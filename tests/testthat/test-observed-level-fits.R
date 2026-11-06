@@ -143,6 +143,25 @@ test_that("stored smooth no-effect draws use the recorded significance", {
   expect_true(isTRUE(rebuilt$pred_vals$observed_levels))
 })
 
+test_that("a saved observed-level hormesis fit reads each level's NSEC", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- suppressMessages(pull_out(observed_fit_cache(), model = "nec3param"))
+  # Relabel the threshold fit as a hormesis equation saved before the change,
+  # whose stored type is NEC.
+  stale <- fit
+  stale$model <- "nechorme"
+  current <- stale
+  current$ne_type <- "NSEC"
+  expect_true(bayesnec:::needs_ne_rebuild(stale))
+  expect_equal(suppressWarnings(suppressMessages(nec(stale, pool = "none"))),
+               suppressWarnings(suppressMessages(nec(current, pool = "none"))))
+  expect_false(isTRUE(all.equal(
+    suppressWarnings(suppressMessages(nec(stale, pool = "none"))),
+    suppressWarnings(suppressMessages(nec(fit, pool = "none")))
+  )))
+})
+
 test_that("logged predictors store no-effect draws on the fitted scale", {
   skip_on_cran()
   skip_if_not_installed("rstan")

@@ -538,6 +538,7 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   chk_lgl(add_ecx)
   check_xform(xform)
   warn_stale_observed_display(x)
+  warn_stale_ne_type(x)
   brms_fit <- x$fit
   stored <- x$pred_vals$data
   e_df <- data.frame(x_e = c(stored$x, rev(stored$x)),
@@ -608,6 +609,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   # an error that names neither the argument nor the remedy.
   check_xform(xform)
   warn_stale_observed_display(x)
+  warn_stale_ne_type(x)
   e_df <- x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
                      y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),
@@ -671,7 +673,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                          xform = NULL, ..., group = NULL) {
   panel_group <- is.null(group) || identical(group, x$group_var)
-  pieces <- lapply(seq_along(x$fits), function(i) {
+  pieces <- once_stale_ne_warning(x, lapply(seq_along(x$fits), function(i) {
     out <- ggbnec_data(x$fits[[i]], add_nec = add_nec, add_ecx = add_ecx,
                        xform = xform, ...,
                        group = if (panel_group) NULL else group)
@@ -680,7 +682,7 @@ ggbnec_data.bayesnecgroupfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
       out$group <- out$panel
     }
     out
-  })
+  }))
   group_fitted <- if (panel_group) TRUE else attr(pieces[[1]], "group_fitted")
   out <- do.call(rbind, pieces)
   rownames(out) <- NULL

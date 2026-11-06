@@ -406,9 +406,9 @@ stored_resolution <- function(object) {
 
 #' The no-effect posterior of a single fit, released to a pair of limits
 #'
-#' A threshold posterior is released by comparison alone. A no-effect estimate
-#' read off a curve, which on a \code{\link{bayesnecfit}} arises only for a
-#' joint two-block fit with a smooth block, is re-evaluated by
+#' A sampled NEC posterior is released by comparison alone. A no-effect
+#' estimate read off a curve, including one from a hormesis threshold equation
+#' or a joint two-block fit with a smooth block, is re-evaluated by
 #' \code{\link{nsec}} over the extended \code{x_range}, without a refit.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
@@ -429,12 +429,11 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
     # changes nothing, and the result matches extrapolate = FALSE.
     return(object$ne_posterior)
   }
-  # After the early return: advice to widen the prior has no bearing on a
-  # stored estimate returned unchanged.
-  report_bounded_ne_prior(
-    setNames(list(ne_prior_bounds(object$fit)), object$model), fitted_lims
-  )
   if (identical(necfit_ne_type(object), "NEC")) {
+    # A bound on the sampled breakpoint cannot limit a curve-read NSEC.
+    report_bounded_ne_prior(
+      setNames(list(ne_prior_bounds(object$fit)), object$model), fitted_lims
+    )
     out <- object$ne_posterior
     check_releasable(as.numeric(out), object$model)
     attr(out, "censored") <- recensor_sampled(as.numeric(out), fitted_lims)
@@ -577,31 +576,47 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
   mark_extrapolated(out)
 }
 
-#' The class of no-effect estimate each equation of a set contributes
+#' The no-effect type each equation of a set recorded
 #'
-#' Derived from the equation name, as \code{expand_manec()} derives the label
-#' of the set, rather than by expanding every component. For joint two-block
-#' fits the name describes the response block only, so a set whose survival
-#' blocks hold a smooth equation is labelled \code{"NEC"} here, as
-#' \code{expand_manec()} labels it. \code{extrapolated_manec_ne()} catches that
-#' case on the posterior instead, so that \code{\link{nec}} and
-#' \code{\link{summary}} agree about the set.
+#' The type \code{expand_manec()} stored on each component. A set saved
+#' without those types built its stored draws by whether each equation has a
+#' \code{nec} parameter, so that rule labels them until \code{amend()}
+#' rebuilds the set.
 #'
 #' @param object A \code{\link{bayesmanecfit}}.
 #'
-#' @return A \code{\link[base]{character}} vector, one entry per successful
-#' equation.
+#' @return A \code{\link[base]{character}} vector of \code{"NEC"},
+#' \code{"NSEC"} or \code{"N(S)EC"}, one entry per successful equation.
+#' @noRd
+manec_component_types <- function(object) {
+  vapply(object$success_models, function(model) {
+    part <- object$mod_fits[[model]]
+    if (is.character(part$ne_type) && length(part$ne_type) == 1) {
+      return(part$ne_type)
+    }
+    if (has_nec_parameter(model, part$fit)) "NEC" else "NSEC"
+  }, character(1), USE.NAMES = FALSE)
+}
+
+#' The class of no-effect estimate each equation of a set contributes
+#'
+#' @param object A \code{\link{bayesmanecfit}}.
+#'
+#' @return A \code{\link[base]{character}} vector, \code{"NEC"} where the
+#' equation contributes sampled draws and \code{"NSEC"} otherwise, one entry
+#' per successful equation.
 #' @noRd
 manec_ne_types <- function(object) {
-  ifelse(object$success_models %in% mod_groups$nec, "NEC", "NSEC")
+  ifelse(manec_component_types(object) == "NEC", "NEC", "NSEC")
 }
 
 #' The class of no-effect estimate a single fit holds
 #'
 #' \code{expand_nec()} records it in \code{ne_type}, taking both blocks of a
 #' two-block fit into account, and that record decides. For an object saved
-#' before the slot existed, only a single-block equation with a \code{nec}
-#' parameter is treated as sampling its threshold.
+#' before the slot existed, a single-block equation with a \code{nec}
+#' parameter is treated as sampling its threshold, because its stored draws
+#' were built that way.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
 #'
