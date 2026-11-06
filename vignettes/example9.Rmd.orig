@@ -961,7 +961,8 @@ rule_text <- with(prior_rule, {
            final_label, " priors.")
   } else {
     paste0("Both screens retained ", retained[1], " equations after ",
-           refits[1], " refits each, and the sampler took ", minutes[1],
+           refits[1], if (refits[1] == 1) " refit" else " refits",
+           " each, and the sampler took ", minutes[1],
            " min under the default priors against ", minutes[2], " min under ",
            "the regularising priors, so the analysis continues with the ",
            final_label, " priors.")
