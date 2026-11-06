@@ -62,13 +62,16 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
                              resolution, x_range, x_control)
     })
     n <- min(vapply(levels, function(x) nrow(x$combined), integer(1)))
-    idx <- mixture_draw_indices(rep(n, length(levels)), spec$n, n)
+    idx <- mixture_draw_indices(rep(n, length(levels)), spec$n, n,
+                                labels = level_labels(spec$combinations))
+    # Row d of each combined matrix holds draw d.
+    by_draw <- order(unlist(idx, use.names = FALSE))
     combine <- function(name) do.call(rbind, Map(function(x, take) {
       x[[name]][take, , drop = FALSE]
-    }, levels, idx))
+    }, levels, idx))[by_draw, , drop = FALSE]
     controls <- function(name) unlist(Map(function(x, take) {
       x$control[[name]][take]
-    }, levels, idx), use.names = FALSE)
+    }, levels, idx), use.names = FALSE)[by_draw]
     return(list(x = levels[[1]]$x, growth = combine("growth"),
                 survival = combine("survival"), combined = combine("combined"),
                 control = list(growth = controls("growth"),
