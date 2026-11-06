@@ -20,6 +20,17 @@ saved_hormesis_fit <- function(model = "neclinhorme") {
   out
 }
 
+# The same for a set: nec4param relabelled as nechorme, with no stored types.
+saved_hormesis_set <- function() {
+  out <- manec_example
+  names(out$mod_fits)[names(out$mod_fits) == "nec4param"] <- "nechorme"
+  out$mod_fits$nechorme$model <- "nechorme"
+  out$success_models[out$success_models == "nec4param"] <- "nechorme"
+  out
+}
+
+is_stale <- function(w) grepl("amend(x)", w, fixed = TRUE)
+
 test_that("a saved hormesis fit warns, and keeps the type of its draws", {
   stale <- saved_hormesis_fit()
   expect_identical(bayesnec:::stale_ne_models(stale), "neclinhorme")
@@ -31,7 +42,6 @@ test_that("a saved hormesis fit warns, and keeps the type of its draws", {
   expect_identical(bayesnec:::necfit_ne_type(stale), "NEC")
   # The fixture also fails the Rhat check in summary(), so collect every
   # warning and look for this one.
-  is_stale <- function(w) grepl("amend(x)", w, fixed = TRUE)
   got <- collect_warnings(summary(stale))
   expect_identical(sum(is_stale(got$warnings)), 1L)
   expect_identical(rownames(got$value$nec_vals), "NEC")
@@ -52,10 +62,7 @@ test_that("a saved hormesis fit warns, and keeps the type of its draws", {
 })
 
 test_that("a saved hormesis set labels its draws by the rule that built them", {
-  stale <- manec_example
-  names(stale$mod_fits)[names(stale$mod_fits) == "nec4param"] <- "nechorme"
-  stale$mod_fits$nechorme$model <- "nechorme"
-  stale$success_models[stale$success_models == "nec4param"] <- "nechorme"
+  stale <- saved_hormesis_set()
   expect_false(bayesnec:::needs_ne_rebuild(manec_example))
   expect_identical(bayesnec:::stale_ne_models(stale), "nechorme")
   # The stored mixture took the nec parameter of nechorme as a NEC.
@@ -80,13 +87,77 @@ test_that("a hurdle fit with a saved hormesis component warns once", {
     class = c("bayesnechurdlefit", "bnecfit")
   )
   expect_identical(bayesnec:::stale_ne_models(pair), "neclinhorme")
-  is_stale <- function(w) grepl("amend(x)", w, fixed = TRUE)
   got <- collect_warnings(suppressMessages(nec(pair)))
   expect_identical(sum(is_stale(got$warnings)), 1L)
   got <- collect_warnings(suppressMessages(summary(pair)))
   expect_identical(sum(is_stale(got$warnings)), 1L)
+  # A component that `which` does not read is not checked.
+  got <- collect_warnings(suppressMessages(nec(pair, which = "growth")))
+  expect_identical(sum(is_stale(got$warnings)), 1L)
+  got <- collect_warnings(suppressMessages(nec(pair, which = "survival")))
+  expect_identical(sum(is_stale(got$warnings)), 0L)
   pair$growth <- nec4param
   expect_false(bayesnec:::needs_ne_rebuild(pair))
+})
+
+test_that("a group with saved hormesis levels warns once and amends each", {
+  group <- bayesnec:::allot_class(
+    list(fits = list(a = saved_hormesis_fit(), b = saved_hormesis_set()),
+         group_var = "g", levels = c("a", "b"), n = c(100L, 100L)),
+    c("bayesnecgroupfit", "bnecfit")
+  )
+  expect_setequal(bayesnec:::stale_ne_models(group),
+                  c("neclinhorme", "nechorme"))
+  got <- collect_warnings(suppressMessages(nec(group)))
+  expect_identical(sum(is_stale(got$warnings)), 1L)
+  got <- collect_warnings(suppressMessages(summary(group)))
+  expect_identical(sum(is_stale(got$warnings)), 1L)
+  got <- collect_warnings(suppressMessages(ggbnec_data(group)))
+  expect_identical(sum(is_stale(got$warnings)), 1L)
+
+  seen <- list()
+  local_mocked_bindings(
+    amend = function(object, ...) {
+      seen[[length(seen) + 1]] <<- list(...)
+      object$ne_type <- "NSEC"
+      for (m in names(object$mod_fits)) object$mod_fits[[m]]$ne_type <- "NSEC"
+      object
+    },
+    .package = "bayesnec"
+  )
+  out <- bayesnec:::amend.bayesnecgroupfit(group, sig_val = 0.2)
+  expect_length(seen, 2)
+  expect_identical(vapply(seen, `[[`, numeric(1), "sig_val"), c(0.2, 0.2))
+  expect_s3_class(out, "bayesnecgroupfit")
+  expect_false(bayesnec:::needs_ne_rebuild(out))
+})
+
+test_that("an observed-level NSEC takes the caller's curve arguments", {
+  seen <- NULL
+  local_mocked_bindings(
+    observed_level_spec = function(object) list(combinations = 1),
+    estimate_observed_levels = function(object, spec, what, fun, ...) {
+      fun(object, "own", NA)
+    },
+    nsec = function(object, ...) {
+      seen <<- list(...)
+      1
+    },
+    .package = "bayesnec"
+  )
+  fit <- saved_hormesis_fit()
+  attr(fit, "bnec_expand_args") <- list(sig_val = 0.2, resolution = 40,
+                                        x_range = c(0.1, 3))
+  args <- c("sig_val", "resolution", "x_range")
+  nec(fit)
+  expect_identical(seen[args], list(sig_val = 0.2, resolution = 40,
+                                    x_range = c(0.1, 3)))
+  nec(fit, sig_val = 0.05, resolution = 30, x_range = c(0, 3))
+  expect_identical(seen[args], list(sig_val = 0.05, resolution = 30,
+                                    x_range = c(0, 3)))
+  # An NA x_range, as compare_posterior() passes by default, means none.
+  nec(fit, x_range = NA)
+  expect_identical(seen$x_range, c(0.1, 3))
 })
 
 test_that("extrapolation re-reads an NSEC at the recorded sig_val", {
@@ -223,6 +294,19 @@ test_that("amend() rebuilds a saved hormesis fit and set", {
   expect_false(bayesnec:::needs_ne_rebuild(rebuilt))
   expect_identical(bayesnec:::manec_component_types(rebuilt),
                    bayesnec:::manec_component_types(set))
+
+  # A group whose levels are the saved fit and set warns once, and amend()
+  # rebuilds every level.
+  group <- bayesnec:::allot_class(
+    list(fits = list(a = old, b = stale), group_var = "g",
+         levels = c("a", "b"), n = c(64L, 64L)),
+    c("bayesnecgroupfit", "bnecfit")
+  )
+  got <- collect_warnings(suppressMessages(nec(group)))
+  expect_identical(sum(is_stale(got$warnings)), 1L)
+  rebuilt <- suppressWarnings(suppressMessages(amend(group)))
+  expect_false(bayesnec:::needs_ne_rebuild(rebuilt))
+  expect_equal(nec(rebuilt$fits$a), nec(fit))
 
   # A saved set of threshold equations only was labelled NEC. Its message and
   # summary agree with that label until the set is rebuilt.

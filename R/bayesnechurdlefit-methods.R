@@ -1173,7 +1173,9 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
   }
   axis_x <- hurdle_axis_xform(x, xform)
   if (add_nec) {
-    warn_stale_ne_type(x)
+    # Check only the components the panels read.
+    warn_stale_ne_type(if (identical(panels, "growth") ||
+                             identical(panels, "survival")) x[[panels]] else x)
     ne_map <- hurdle_ne_axis_map(x, xform)
   }
   for (w in panels) {

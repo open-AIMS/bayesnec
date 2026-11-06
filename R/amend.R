@@ -103,6 +103,9 @@
 #' \code{amend(object)}, with no other argument, rebuilds the estimate from
 #' the stored fits without refitting any model.
 #'
+#' A \code{\link{bayesnecgroupfit}} is amended level by level, with the same
+#' arguments applied to the fit of each level.
+#'
 #' @return All successfully fitted model fits. A \code{\link{bayesmanecfit}} if
 #' more than one model remains, otherwise a \code{\link{bayesnecfit}}.
 #'

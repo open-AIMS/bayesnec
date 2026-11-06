@@ -144,6 +144,9 @@ became its NSEC stores that equation's \code{nec} parameter instead, and
 \code{\link{nec}}, \code{\link{summary}} and the plots warn about it.
 \code{amend(object)}, with no other argument, rebuilds the estimate from
 the stored fits without refitting any model.
+
+A \code{\link{bayesnecgroupfit}} is amended level by level, with the same
+arguments applied to the fit of each level.
 }
 \examples{
 library(bayesnec)

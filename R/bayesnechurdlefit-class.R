@@ -231,7 +231,8 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
       return(result)
     }
   }
-  warn_stale_ne_type(object)
+  # Check only the component or components that `which` reads.
+  warn_stale_ne_type(if (which == "combined") object else object[[which]])
   # Muffle the component censoring and stale-estimate warnings, which are
   # raised once for the whole fit. `extrapolate` goes to each component, which
   # has its own prediction range, and a refusal is re-raised naming that

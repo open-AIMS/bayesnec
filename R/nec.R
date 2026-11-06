@@ -278,6 +278,15 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = NULL,
   if (is.null(object$observed_group)) {
     level_spec <- observed_level_spec(object)
     if (!is.null(level_spec)) {
+      # A curve-read level takes the caller's sig_val, resolution and x_range,
+      # and otherwise those the fit recorded. An NA x_range means none given.
+      args <- recorded_expand_args(list(object))
+      dots <- list(...)
+      for (arg in c("sig_val", "resolution", "x_range")) {
+        if (!is.null(dots[[arg]]) && !all(is.na(dots[[arg]]))) {
+          args[[arg]] <- dots[[arg]]
+        }
+      }
       return(estimate_observed_levels(
         object, level_spec, "nec",
         function(level, control_value, range_override) {
@@ -287,10 +296,9 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = NULL,
           if ((!is.null(object$hurdle) &&
                !identical(object$hurdle$ne_type, "NEC")) ||
               !sampled_nec_is_no_effect(object$model, object$fit)) {
-            args <- recorded_expand_args(list(object))
             nsec(level, sig_val = args$sig_val,
-                 resolution = args$resolution, posterior = TRUE,
-                 xform = xform, prob_vals = prob_vals,
+                 resolution = args$resolution, x_range = args$x_range,
+                 posterior = TRUE, xform = xform, prob_vals = prob_vals,
                  extrapolate = extrapolate, pool = "none")
           } else {
             nec(level, posterior = TRUE, xform = xform,
@@ -419,13 +427,17 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
     report_manec_ne_type(ifelse(vapply(names(object$mod_fits), function(m) {
       sampled_nec_is_no_effect(m, object$mod_fits[[m]]$fit)
     }, logical(1)), "NEC", "NSEC"))
+    # A caller's resolution and x_range reach the curve-read equations too.
+    curve_dots <- dots[names(dots) %in% c("resolution", "x_range")]
     per_model <- function(f) {
       if (sampled_nec_is_no_effect(f$model, f$fit)) {
         nec(f, posterior = TRUE, xform = xform, prob_vals = prob_vals,
             extrapolate = extrapolate, pool = pool)
       } else {
-        nsec(f, sig_val = sig_val, posterior = TRUE, xform = xform,
-             prob_vals = prob_vals, extrapolate = extrapolate, pool = pool)
+        do.call(nsec, c(list(f, sig_val = sig_val, posterior = TRUE,
+                             xform = xform, prob_vals = prob_vals,
+                             extrapolate = extrapolate, pool = pool),
+                        curve_dots))
       }
     }
     if (identical(pool, "none") && is.null(object$observed_group)) {
@@ -560,8 +572,8 @@ sampled_nec_is_no_effect <- function(model, fit = NULL) {
 #' \code{ne_type} \code{"NEC"} or none, and such a set records no type for
 #' each equation. \code{amend()} rebuilds the estimate.
 #'
-#' @param object A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}} or
-#' \code{\link{bayesnechurdlefit}}.
+#' @param object A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}},
+#' \code{\link{bayesnechurdlefit}} or \code{\link{bayesnecgroupfit}}.
 #'
 #' @return A \code{\link[base]{character}} vector of equation names, empty
 #' where the object is current.
@@ -572,6 +584,9 @@ stale_ne_models <- function(object) {
   if (is_bayesnechurdlefit(object)) {
     return(unique(c(stale_ne_models(object$growth),
                     stale_ne_models(object$survival))))
+  }
+  if (is_bayesnecgroupfit(object)) {
+    return(as.character(unique(unlist(lapply(object$fits, stale_ne_models)))))
   }
   hormesis <- hormesis_threshold_models()
   # The survival block of a two-block fit can hold a hormesis equation too.
@@ -644,6 +659,28 @@ without_stale_ne_warning <- function(expr) {
     expr,
     bayesnec_stale_ne = function(w) invokeRestart("muffleWarning")
   )
+}
+
+#' Raise the stale no-effect warning once for a call over several fits
+#'
+#' Muffles the warning from each fit \code{expr} reads and, where any was
+#' raised, warns once for \code{object} after \code{expr} returns.
+#'
+#' @param object The object the call was made on.
+#' @param expr An expression.
+#' @return The value of \code{expr}.
+#' @noRd
+once_stale_ne_warning <- function(object, expr) {
+  seen <- FALSE
+  out <- withCallingHandlers(
+    expr,
+    bayesnec_stale_ne = function(w) {
+      seen <<- TRUE
+      invokeRestart("muffleWarning")
+    }
+  )
+  if (seen) warn_stale_ne_type(object)
+  out
 }
 
 #' Name the no-effect mixture returned by nec()
