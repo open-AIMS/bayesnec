@@ -141,8 +141,9 @@ levels towards a common curve. Neither fits one model in which every level
 has its own curve parameters estimated together, which is what this route
 adds. Where the levels share a parameter, through a group-level term in
 \code{formula} or through \code{disp_by_level = FALSE}, their posteriors are
-dependent, and a contrast between two levels is taken by subtracting aligned
-draws of that posterior. Under the defaults the levels share no parameter,
+dependent, and a contrast between two levels is taken between their draws
+from the same posterior iteration, as \code{\link{compare_posterior}} takes
+it. Under the defaults the levels share no parameter,
 so their posteriors are independent, as they are in a
 \code{\link{bnec_group}} fit.
 

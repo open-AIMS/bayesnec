@@ -53,12 +53,15 @@ equation returns the NSEC of its fitted curve. \code{TRUE} additionally
 returns the NSEC of each smooth equation. The \code{ne_type} column labels
 every estimate. The other classes reject this argument.}
 
-\item{pool}{How observed group levels are combined: \code{"none"} returns
-per-level estimates, \code{"mixture"} samples levels in proportion to their
-observation counts, and \code{"mean_estimate"} averages aligned estimates.
-\code{"mean_curve"} is unavailable for a sampled NEC parameter. A joint fit
-defaults to \code{"none"}; other fits with spanning group terms default to
-\code{"mixture"}.}
+\item{pool}{How observed group levels are combined. \code{"none"} returns
+per-level estimates. \code{"mixture"} gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw \emph{i} of the mixture comes from posterior iteration
+\emph{i}. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. \code{"mean_estimate"} averages the levels'
+estimates at each draw. \code{"mean_curve"} is unavailable for a sampled NEC
+parameter. A joint fit defaults to \code{"none"}; other fits with spanning group
+terms default to \code{"mixture"}.}
 }
 \value{
 A vector containing the estimated no-effect value, including upper
@@ -100,6 +103,14 @@ level of a spanning term observed at only one concentration is excluded from
 the estimate, with a message naming it. The default mixes the remaining
 observed levels by their observation counts;
 \code{pool = "none"} returns them separately.
+
+On a \code{\link{bayesnecjointfit}}, each level of the refit is mixed over
+its own observed group levels. A group term whose values occur in the data
+of more than one level, such as a batch in which two levels were both
+tested, is read at the same value for every level at each posterior draw,
+as often as their observation counts on that term allow. Terms they do not
+share are chosen for each level independently. The levels can therefore be
+contrasted draw by draw, as \code{\link{compare_posterior}} does.
 
 \bold{What is actually returned depends on the model set.} Despite the
 function name, \code{nec} returns a no-effect estimate of whichever type the

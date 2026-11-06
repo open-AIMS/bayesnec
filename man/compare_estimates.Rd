@@ -16,9 +16,8 @@ compare_estimates(
 )
 }
 \arguments{
-\item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
-\code{\link{bnec}}.}
+\item{x}{A named \code{\link[base]{list}} of
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} objects.}
 
 \item{comparison}{The posterior predictions to compare, takes values of
 "nec", "n(s)ec", "nsec", "ecx" or "fitted".}

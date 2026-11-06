@@ -5,6 +5,8 @@
 #' compares these across a vector of fitted values.
 #'
 #' @inheritParams compare_posterior
+#' @param x A named \code{\link[base]{list}} of
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} objects.
 #' @param make_newdata Should the
 #' user allow the package to create \code{newdata} for predictions?
 #' If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
@@ -89,14 +91,24 @@ compare_fitted <- function(x, resolution = 50, x_range = NA,
       m[sample(seq_len(nrow(m)), n_samples, replace = FALSE), ]
     }, n_samples = n_samples)
   })
+  compare_fitted_draws(posterior_list, r_posterior_list, x_vec)
+}
+
+#' Compare fitted curves after their posterior rows have been paired
+#' @param posterior_list Named posterior matrices.
+#' @param paired_draws Matrices in the order used for each comparison.
+#' @param x_vec The common prediction concentrations.
+#' @return The comparison output of \code{compare_fitted()}.
+#' @noRd
+compare_fitted_draws <- function(posterior_list, paired_draws, x_vec) {
   posterior_data <- posterior_list |>
       lapply(summarise_posterior, x_vec = x_vec) |>
       bind_rows(.id = "model") |>
       data.frame()
-  all_combn <- combn(names(x), 2, simplify = FALSE)
+  all_combn <- combn(names(posterior_list), 2, simplify = FALSE)
   diff_list <- lapply(all_combn, function(a, r_list) {
     r_list[[a[1]]] - r_list[[a[2]]]
-  }, r_list = r_posterior_list)
+  }, r_list = paired_draws)
   names(diff_list) <- sapply(all_combn, function(m) paste0(m[1], "-", m[2]))
   diff_data <- lapply(diff_list, function(m, x_vec) {
    out_diffs <- apply(m, 2, quantile, probs = c(0.5, 0.025, 0.975)) |>

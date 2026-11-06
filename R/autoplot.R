@@ -1226,7 +1226,7 @@ joint_block_ne <- function(object, dpar) {
     )[, 1])
     with_record(draws, range(level$level_x))
   })
-  pool_estimate_draws(parts, spec$n, "mixture")
+  pool_observed_draws(parts, spec)
 }
 
 #' Creates the data.frame for plotting with \code{\link{autoplot}}.

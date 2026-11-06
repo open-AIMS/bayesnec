@@ -75,6 +75,37 @@ joint_fit_cache <- local({
   }
 })
 
+# Two toxicants, each tested on three plates of its own, refitted jointly with
+# a plate term for each toxicant, as the copper and zinc fits of example8 are.
+toxicant_joint_cache <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      d <- observed_fit_data()
+      d <- d[d$plate != "p4", , drop = FALSE]
+      d_b <- d
+      d_b$y <- d_b$y * 0.7
+      d$tox <- "a"
+      d_b$tox <- "b"
+      d$plate <- paste0("a", d$plate)
+      d_b$plate <- paste0("b", d_b$plate)
+      d <- rbind(d, d_b)
+      d$tox <- factor(d$tox)
+      grouped <- suppressWarnings(suppressMessages(bnec_group(
+        y ~ crf(x, "ecx4param") + ogl(plate), data = d, group_var = "tox",
+        family = "gaussian", iter = 300, warmup = 150, chains = 2,
+        seed = 558, refresh = 0, resolution = 40
+      )))
+      cached <<- suppressWarnings(suppressMessages(bnec_joint(
+        grouped, model = "ecx4param",
+        formula = y ~ crf(x, "ecx4param") + ogl(gr(plate, by = tox)),
+        iter = 300, warmup = 150, chains = 2, seed = 558, refresh = 0
+      )))
+    }
+    cached
+  }
+})
+
 test_that("fitted spanning levels exclude one-concentration levels", {
   skip_on_cran()
   skip_if_not_installed("rstan")
@@ -109,6 +140,92 @@ test_that("fitted spanning levels exclude one-concentration levels", {
   expect_true(is.finite(unname(suppressMessages(ecx(
     fit, pool = "mean_curve", resolution = 30
   ))[1])))
+})
+
+test_that("a pooled estimate holds each level's own draw at its position", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- suppressMessages(pull_out(observed_fit_cache(), model = "ecx4param"))
+  per_level <- suppressMessages(ecx(fit, pool = "none", posterior = TRUE,
+                                    resolution = 30))
+  pooled <- suppressMessages(ecx(fit, posterior = TRUE, resolution = 30))
+  level <- attr(pooled, "level")
+  own <- vapply(seq_along(pooled), function(d) {
+    as.numeric(per_level[[level[d]]][d])
+  }, numeric(1))
+  expect_equal(as.numeric(pooled), own)
+
+  spec <- bayesnec:::observed_level_spec(fit)
+  nd <- bayesnec:::newdata_eval(fit, resolution = 5, x_range = NA)$newdata
+  band <- bayesnec:::observed_grid_posterior(fit$fit, fit$bayesnecformula, nd,
+                                             spec)
+  n <- brms::ndraws(fit$fit)
+  owner <- bayesnec:::observed_assignment(spec, n)
+  expect_equal(spec$combinations$plate[owner],
+               sub("^plate=", "", attr(pooled, "level")))
+  for (i in seq_len(nrow(spec$combinations))) {
+    nd_i <- nd
+    nd_i$plate <- spec$combinations$plate[i]
+    full <- brms::posterior_epred(fit$fit, newdata = nd_i,
+                                  re_formula = spec$re_formula)
+    take <- owner == i
+    expect_equal(band[take, ], full[take, ])
+  }
+})
+
+test_that("the toxicant mixtures of a joint refit pair by posterior draw", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- toxicant_joint_cache()
+  pooled <- suppressMessages(ecx(fit, posterior = TRUE, resolution = 30))
+  expect_named(pooled, c("a", "b"))
+  n <- brms::ndraws(fit$fit)
+  expect_equal(attr(pooled$a, "draw_id"), seq_len(n))
+  expect_equal(attr(pooled$b, "draw_id"), seq_len(n))
+  for (tox in c("a", "b")) {
+    level <- bayesnec:::joint_level_fit(fit, tox)
+    per_plate <- suppressMessages(ecx(level, pool = "none", posterior = TRUE,
+                                      resolution = 30))
+    plate <- attr(pooled[[tox]], "level")
+    own <- vapply(seq_len(n), function(d) {
+      as.numeric(per_plate[[plate[d]]][d])
+    }, numeric(1))
+    # Position d holds draw d of the plate it was given to.
+    expect_equal(as.numeric(pooled[[tox]]), own)
+  }
+  # Each toxicant's plates are given draws independently of the other's, so
+  # the first plate of one is not paired with the first plate of the other.
+  rank_a <- as.integer(factor(attr(pooled$a, "level")))
+  rank_b <- as.integer(factor(attr(pooled$b, "level")))
+  expect_lt(mean(rank_a == rank_b), 0.6)
+
+  comparison <- suppressMessages(compare_posterior(
+    fit, comparison = "ecx", resolution = 30
+  ))
+  expect_equal(comparison$posterior_list, pooled)
+  expect_equal(comparison$diff_list[["a-b"]],
+               bayesnec:::difference_sign(pooled$a, pooled$b)$diff)
+  no_effect <- suppressMessages(compare_posterior(
+    fit, comparison = "n(s)ec", resolution = 30
+  ))
+  direct_nsec <- suppressMessages(nsec(fit, posterior = TRUE,
+                                       resolution = 30))
+  expect_equal(no_effect$posterior_list$a, direct_nsec$a)
+  expect_equal(no_effect$posterior_list$b, direct_nsec$b)
+  fitted <- compare_posterior(fit, comparison = "fitted", resolution = 5)
+  expect_equal(fitted$diff_list[["a-b"]],
+               fitted$posterior_list$a - fitted$posterior_list$b)
+  # The fitted comparison reads the plates the plotted band reads.
+  x_range <- range(unlist(lapply(fit$levels, function(l) {
+    bayesnec:::joint_level_x(fit, l)
+  })))
+  for (tox in fit$levels) {
+    curve <- bayesnec:::joint_level_curve(fit, tox, resolution = 5,
+                                          x_range = x_range)
+    expect_equal(unname(apply(fitted$posterior_list[[tox]], 2,
+                              stats::median)),
+                 curve$Estimate, label = tox)
+  }
 })
 
 test_that("stored smooth no-effect draws use the recorded significance", {
@@ -305,6 +422,10 @@ test_that("a joint refit reads its spanning group levels", {
   expect_equal(nrow(suppressWarnings(suppressMessages(nec(
     fit, pool = "none"
   )))), 3L)
+  # nec() reads the plates at the draws the stored summary was built from.
+  direct <- suppressWarnings(suppressMessages(nec(fit, posterior = TRUE,
+                                                  xform = identity)))
+  expect_equal(as.numeric(direct), as.numeric(fit$ne_posterior))
   level <- bayesnec:::observed_level_fit(fit, spec, 1, with_ne = TRUE)
   nd <- bayesnec:::newdata_eval(level, 2, NA)$newdata[1, , drop = FALSE]
   mu <- brms::posterior_linpred(

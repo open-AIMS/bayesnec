@@ -3,6 +3,7 @@
 \name{compare_posterior.default}
 \alias{compare_posterior.default}
 \alias{compare_posterior.bayesnecgroupfit}
+\alias{compare_posterior.bayesnecjointfit}
 \alias{compare_posterior}
 \title{compare_posterior}
 \usage{
@@ -21,12 +22,25 @@
 
 \method{compare_posterior}{bayesnecgroupfit}(x, ...)
 
+\method{compare_posterior}{bayesnecjointfit}(
+  x,
+  comparison = "n(s)ec",
+  ecx_val = 10,
+  type = "absolute",
+  sig_val = 0.01,
+  resolution,
+  x_range = NA,
+  make_newdata = TRUE,
+  seed = 10,
+  ...
+)
+
 compare_posterior(x, ...)
 }
 \arguments{
-\item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
-\code{\link{bnec}}.}
+\item{x}{A named \code{\link[base]{list}} of \code{\link{bayesnecfit}}
+or \code{\link{bayesmanecfit}} objects, a \code{\link{bayesnecgroupfit}},
+or a \code{\link{bayesnecjointfit}}.}
 
 \item{comparison}{The posterior predictions to compare, takes values of
 "nec", "n(s)ec", "nsec", "ecx" or "fitted".}
@@ -75,14 +89,11 @@ after an odd number of preceding normal draws. Use R's default
 \code{\link[brms]{posterior_epred}}.}
 }
 \value{
-A named \code{\link[base]{list}} containing paired differences
-in posterior predictions of the \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
+A named \code{\link[base]{list}} containing posterior differences,
+probabilities and the draws for each fit or level. See Details.
 }
 \description{
-Extracts posterior predicted values from a list of class
-\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
-compares these by randomly pairing their posterior draws.
+Compares posterior estimates from separate fits or levels of one joint refit.
 }
 \details{
 For a \code{\link{bayesnecgroupfit}} the comparison is across the
@@ -100,6 +111,50 @@ differing in where the threshold falls, and vice versa.
 The levels are fitted to separate data and share no parameters, so the
 posteriors are independent and the pairwise probabilities are read directly,
 with no multiple-comparison adjustment implied.
+
+For a \code{\link{bayesnecjointfit}}, the levels are estimated in
+one posterior, and each difference is taken between the levels' values at
+the same posterior draw, so it keeps any dependence between them. Each
+level's estimate is computed over its own prediction range, as
+\code{\link{ecx}} computes it on a joint refit, whereas
+\code{\link{compare_estimates}} computes every fit over one range common
+to them all. The draws in \code{posterior_list} are those that
+\code{\link{ecx}}, \code{\link{nsec}} or \code{\link{nec}} return for the
+refit with \code{posterior = TRUE}.
+
+Where a group term spans concentrations, each level is read at its own
+observed group levels, as \code{\link{ecx}} reads it: each posterior draw
+is given to one observed group level, in proportion to its observation
+count. A group term is shared where one of its values, such as batch
+\code{"b1"}, occurs in the data of more than one level, and a shared term
+is read at the same value for every level at each draw. Where copper and
+zinc were tested in the same batches, for example, each draw compares them
+within one batch, as in a paired design. The levels are matched at every
+draw where their observation counts over the shared values are in the same
+proportions. Otherwise two levels are matched in the largest share of draws
+those counts allow, the sum over values of the smaller of the two levels'
+proportions, and the draws they cannot match are paired at random. With
+more than two levels, each value is matched over the levels that have it,
+so a level tested elsewhere does not reduce the matching of the others, but
+not every pair can always reach its largest share at once. Terms the levels
+do not share, such as plates that belong to one level, are chosen for each
+level independently, in proportion to its counts within the shared value.
+
+With \code{comparison = "fitted"}, every level is predicted over one grid
+spanning the levels' combined range, or at the rows of \code{newdata}, as
+the band of \code{\link{autoplot}} predicts it: at the observed group levels
+where a group term spans concentrations, and on the population curve
+otherwise. Only \code{newdata}, \code{ndraws} and \code{draw_ids} are
+taken through \code{...}, and \code{make_newdata = FALSE} requires
+\code{newdata}. \code{seed} changes the result only where \code{ndraws}
+selects the draws.
+
+The estimate comparisons take no further arguments through \code{...}, and
+refuse any that are supplied.
+
+\code{comparison = "nec"} requires a \code{nec} parameter at every level.
+Where a level fits a smooth equation, \code{"n(s)ec"} compares the
+no-effect estimate each level's equation supports.
 
 \code{type} is passed to \code{\link{ecx}} and takes the same four
 values, all measured from the control --- the predicted mean at the lowest
@@ -121,8 +176,9 @@ an additional data.frame via the \code{newdata} argument. For guidance
 on how to structure \code{newdata}, see for example
 \code{\link[brms]{posterior_epred}}.
 
-Every comparison other than "fitted" is made by
-\code{\link{compare_estimates}}, which describes the elements returned. A
+For separate fits, every comparison other than "fitted" is made by
+\code{\link{compare_estimates}}, which describes the elements returned.
+Joint-level estimates have the same output structure. A
 posterior draw that lies beyond the prediction range is not deleted from
 the comparison. Where the censoring leaves the sign of some paired
 differences unknown, \code{prob_diff} reports the probability as a lower
