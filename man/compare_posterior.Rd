@@ -118,9 +118,9 @@ the same posterior draw, so it keeps any dependence between them. Each
 level's estimate is computed over its own prediction range, as
 \code{\link{ecx}} computes it on a joint refit, whereas
 \code{\link{compare_estimates}} computes every fit over one range common
-to them all. \code{posterior_list} holds the draws that \code{\link{ecx}},
-\code{\link{nsec}} or \code{\link{nec}} return for the refit with
-\code{posterior = TRUE}.
+to them all. The draws in \code{posterior_list} are those that
+\code{\link{ecx}}, \code{\link{nsec}} or \code{\link{nec}} return for the
+refit with \code{posterior = TRUE}.
 
 Where a group term spans concentrations, each level is read at its own
 observed group levels, as \code{\link{ecx}} reads it: each posterior draw
@@ -133,11 +133,12 @@ within one batch, as in a paired design. The levels are matched at every
 draw where their observation counts over the shared values are in the same
 proportions. Otherwise two levels are matched in the largest share of draws
 those counts allow, the sum over values of the smaller of the two levels'
-proportions. With more than two levels, the share common to all of them is
-matched first, and the remaining draws are given out in a fixed order of
-the values. Terms the levels do not share, such as plates that belong to
-one level, are chosen for each level independently, in proportion to its
-counts within the shared value.
+proportions, and the draws they cannot match are paired at random. With
+more than two levels, each value is matched over the levels that have it,
+so a level tested elsewhere does not reduce the matching of the others, but
+not every pair can always reach its largest share at once. Terms the levels
+do not share, such as plates that belong to one level, are chosen for each
+level independently, in proportion to its counts within the shared value.
 
 With \code{comparison = "fitted"}, every level is predicted over one grid
 spanning the levels' combined range, or at the rows of \code{newdata}, as
