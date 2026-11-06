@@ -95,34 +95,15 @@ $$
 
 # Model types for *NEC* and *EC~x~* estimation
 
-For a monotone threshold equation, the sampled `nec` parameter marks the end
-of a flat control response, and `nec()` returns that parameter as the NEC
-[@Fox2010]. In the six hormesis threshold equations, the same parameter marks
-the end of a potential rising limb. Where a rise is fitted, the response at
-this breakpoint exceeds the control. For those equations `nec()` returns the
-NSEC on the declining limb, where the curve first
-falls below the lower quantile of the fitted control. Use `curve_params()` to
-read the sampled `nec` parameter, which remains useful for describing the
-shape of the response. This use of NSEC extends the method of @fisherfox2023
-from monotone to hormetic curves.
-
-Smooth equations have no `nec` parameter and also contribute an NSEC to the
-no-effect estimate. The default reference is the 0.01 quantile of the control
-posterior. When a model set combines sampled NEC estimates from monotone
-threshold equations with curve-read NSEC estimates from smooth or hormesis
-equations, its weighted estimate is labelled N(S)EC [@fisher2023ieam]. The
-significance level used when fitting can be changed with `amend()`.
+In principle all models provide an estimate for "no-effect" toxicity concentration. As seen above, for model strings with **nec** as a prefix, the NEC is directly estimated as parameter $\eta = \text{NEC}$ in the model, as per @Fox2010. On the other hand, model strings with **ecx** as a prefix are continuous curve models with no threshold, typically used for extracting ECx values from concentration-response data. In this instance, the NEC reported is actually the No-Significant-Effect-Concentration [NSEC, see details in @fisherfox2023], defined as the concentration at which there is a user supplied certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of the upper asymptote ($\tau = \text{top}$) of the response (i.e., the response value is significantly lower than that expected in the case of no exposure). The default value for this NSEC proportion is 0.01, which corresponds to an alpha value (Type-I error rate) of 0.01 for a one-sided test of significance. The NSEC concept has been recently explored using simulation studies and case study examples, and when combined with the NEC estimates of threshold models within a model‐
+averaging approach, can yield robust estimates of N(S)EC and of their uncertainty within a single
+analysis framework [@fisher2023ieam]. Both NEC and NSEC can be calculated from fitted models using the functions \code{nec} and \code{nsec}. The model averaged N(S)EC is automatically returned as part of the fitted model for any \code{bayesmanecfit} that contains a combination of both \code{"nec"} and \code{"ecx"} models. The significance level used can be adjusted from the default value using \code{amend}.
 
 *EC~x~* estimates can be equally obtained from both `"nec"` and `"ecx"` models. *EC~x~* estimates will usually be lower (more conservative) for `"ecx"` models fitted to the same data as `"nec"` models (see the [Comparing posterior predictions][e4]) vignette for an example. However, we recommend using `"all"` models where *EC~x~* estimation is required because `"nec"` models can fit some datasets better than `"ecx"` models and the model averaging approach will place the greatest weight for the outcome that best fits the supplied data. This approach will yield *EC~x~* estimates that are the most representative of the underlying relationship in the dataset.
 
 Every *EC~x~* is measured from the control---the predicted mean at the lowest concentration in the supplied predictor, taken per posterior draw---and the `type` argument names what the percentage is measured *towards*. For `type = "absolute"` (the default) the target is 0. For `type = "relative"` it is the equation's theoretical asymptote: the `bot` parameter where the equation has one, and 0 otherwise; it is refused where the equation has no `bot` and the family is unbounded below, because there is then no finite denominator. For `type = "range"` it is the lowest response the curve predicts over the predictor range. For `type = "direct"`, `ecx_val` is a response value rather than a percentage and the concentration at which the curve reaches it is returned.
 
-Measuring from the control makes an *EC~x~* well defined for a hormesis model
-[@Mattson2008]. The target is below the control and the rising limb is above
-it, so a hormetic curve crosses the target once on its declining limb.
-The same control reference defines the NSEC. The `hormesis_def` argument has
-been removed and the control is always the reference. `type = "range"` measures
-the decline towards the lowest fitted response in the predictor range.
+Measuring from the control is what makes an *EC~x~* well defined for a hormesis model---these allow an initial increase in the response [see @Mattson2008] and include models with the character string `horme` in their name. The target lies below the control and the rising limb lies above it, so the curve crosses the target exactly once. Up to `bayesnec` 2.1.3 the reference was the maximum of the predicted curve, which for a hormesis model is the peak at $\eta = \text{NEC}$, and a `hormesis_def` argument was documented as selecting between the two. That argument has been removed and the control is now always the reference. `type = "range"` is what `type = "relative"` computed up to 2.1.3, except that the span was taken from the maximum of the predicted curve rather than from the control.
 
 # Model suitability for response types
 
