@@ -223,8 +223,8 @@ ggplot(zn, aes(x = conc, y = rlu_cens)) +
 
 Each point is one well. The mean response rises above its control value at low
 concentrations, to `r sprintf("%.2f", mean_share[peak])` times the control at
-`r signif(conc_levels[peak], 2)` mg/L, remains above
-`r round(100 * mean_share[last_high])` per cent of the control up to
+`r signif(conc_levels[peak], 2)` mg/L, remains above 90 per cent of the
+control up to
 `r signif(conc_levels[last_high], 2)` mg/L, and falls to
 `r sprintf("%.1f", 100 * mean_share[length(mean_share)])` per cent of it at the
 highest concentration (`r signif(max(conc_levels), 3)` mg/L). Most zinc plates
@@ -963,7 +963,7 @@ Up to `r signif(conc_levels[n_steady], 2)` mg/L the coefficient of variation is
 between `r sprintf("%.3f", min(cv_obs[seq_len(n_steady)]))` and
 `r sprintf("%.3f", max(cv_obs[seq_len(n_steady)]))`, and its largest value is
 `r sprintf("%.3f", max(cv_obs))` at
-`r signif(conc_levels[which.max(cv_obs)], 2)` mg/L, which is
+`r signif(conc_levels[which.max(cv_obs)], 3)` mg/L, which is
 `r round(max(cv_obs) / cv_obs[1])` times the control value. A `Gamma` fitted
 with one `shape` returns a single value for all of them.
 
@@ -1479,7 +1479,7 @@ relative light units in the controls, rose to
 `r signif(max(conc_levels), 3)` mg/L. The coefficient of variation among the
 four wells at a concentration was `r sprintf("%.3f", cv_obs[1])` at the control
 and reached `r sprintf("%.3f", max(cv_obs))` at
-`r signif(conc_levels[which.max(cv_obs)], 2)` mg/L (S1).
+`r signif(conc_levels[which.max(cv_obs)], 3)` mg/L (S1).
 `r screen_text``r regular_text``r final_text`
 
 `r spread_text``r power_text` The modelled concentrations that reduced
