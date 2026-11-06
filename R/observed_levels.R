@@ -316,8 +316,10 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
                                      curve_args = NULL) {
   if (is.null(pool)) pool <- "mixture"
   pool <- validate_pool(pool, what)
+  # For nec(), the level draws below reset this before keep_metadata() runs.
+  label <- what
   keep_metadata <- function(result) {
-    attr(result, "toxicity_estimate") <- what
+    attr(result, "toxicity_estimate") <- label
     if (what %in% c("ecx", "nsec")) {
       attr(result, "resolution") <- curve_args$resolution
       key <- if (identical(what, "ecx")) "ecx_val" else "sig_val"
@@ -361,6 +363,10 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
         control_value, range_override)
   })
   names(draws) <- labels
+  if (identical(what, "nec")) {
+    label <- ne_estimate_label(unlist(lapply(draws, attr,
+                                             "toxicity_estimate")))
+  }
   if (identical(pool, "none")) {
     if (posterior) return(record_level_controls(keep_metadata(draws), controls))
     summaries <- lapply(draws, function(x) {
