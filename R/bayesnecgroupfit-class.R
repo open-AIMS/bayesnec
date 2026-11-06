@@ -320,7 +320,10 @@ print.bayesnecgroupfit <- function(x, ...) {
 nec.bayesnecgroupfit <- function(object, ...) {
   # Check here, so that the error names this class rather than a level's.
   check_no_effect_arg(list(...), object)
-  group_estimate_table(object, "nec", function(f, ...) nec(f, ...), ...)
+  once_stale_ne_warning(
+    object,
+    group_estimate_table(object, "nec", function(f, ...) nec(f, ...), ...)
+  )
 }
 
 #' @noRd
@@ -352,7 +355,7 @@ ecnsec.bayesnecgroupfit <- function(object, nsec, ...) {
 #' @method summary bayesnecgroupfit
 #' @export
 summary.bayesnecgroupfit <- function(object, ...) {
-  group_lapply(object, summary, ...)
+  once_stale_ne_warning(object, group_lapply(object, summary, ...))
 }
 
 #' @noRd
@@ -366,7 +369,7 @@ plot.bayesnecgroupfit <- function(x, ...) {
   # Let through only the first all_models deprecation warning. Each level maps
   # the argument itself, because the levels' equation sets can differ.
   deprecation_seen <- FALSE
-  for (i in seq_along(x$levels)) {
+  once_stale_ne_warning(x, for (i in seq_along(x$levels)) {
     withCallingHandlers(
       plot(x$fits[[i]], ...),
       bayesnec_all_models_deprecated = function(w) {
@@ -377,6 +380,44 @@ plot.bayesnecgroupfit <- function(x, ...) {
       }
     )
     title(main = paste0(x$group_var, " = ", x$levels[i]))
-  }
+  })
   invisible(x)
+}
+
+#' Amends the fit of every level of a bayesnecgroupfit
+#'
+#' Each level is a complete fit, so \code{\link{amend}} is applied to each in
+#' turn with the same arguments. An error names the level that raised it.
+#'
+#' @inheritParams amend
+#' @param object An object of class \code{\link{bayesnecgroupfit}}.
+#'
+#' @return An object of class \code{\link{bayesnecgroupfit}}.
+#'
+#' @noRd
+#' @method amend bayesnecgroupfit
+#' @export
+amend.bayesnecgroupfit <- function(object, drop, add, loo_controls,
+                                   x_range = NULL, resolution = NULL,
+                                   sig_val = NULL, priors, prior_type = NULL,
+                                   asymptote_observed = NULL, timeout = Inf,
+                                   predictor_scale = NULL) {
+  args <- list(x_range = x_range, resolution = resolution, sig_val = sig_val,
+               prior_type = prior_type,
+               asymptote_observed = asymptote_observed,
+               predictor_scale = predictor_scale, timeout = timeout)
+  if (!missing(drop)) args$drop <- drop
+  if (!missing(add)) args$add <- add
+  if (!missing(loo_controls)) args$loo_controls <- loo_controls
+  if (!missing(priors)) args$priors <- priors
+  for (i in seq_along(object$fits)) {
+    object$fits[[i]] <- tryCatch(
+      do.call(amend, c(list(object$fits[[i]]), args)),
+      error = function(e) {
+        stop("Could not amend level ", object$levels[i], ": ",
+             conditionMessage(e), call. = FALSE)
+      }
+    )
+  }
+  object
 }

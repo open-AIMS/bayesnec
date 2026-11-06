@@ -1201,7 +1201,7 @@ test_that("a curve-derived NSEC with no stored value combines as censored", {
   expect_equal(as.numeric(post), c(NA, 5, 3, 8))
   expect_identical(attr(post, "censored")$above, c(TRUE, FALSE, FALSE, FALSE))
   msgs <- testthat::capture_messages(suppressWarnings(nec(obj)))
-  expect_true(any(grepl("mixture of NEC and NSEC draws", msgs)))
+  expect_true(any(grepl("combines sampled NEC and curve-read NSEC", msgs)))
 })
 
 test_that("the hurdle summary and a decreasing xform keep the bound", {

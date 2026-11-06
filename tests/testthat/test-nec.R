@@ -110,12 +110,13 @@ test_that("an uncensored posterior is silent", {
 # No-effect argument validation
 
 test_that("no_effect is refused rather than discarded off a joint refit", {
-  # Only joint refits choose between a sampled NEC and each level
-  # equation's no-effect estimate. Other classes must reject supplied
-  # no_effect rather than silently absorb it in dots.
-  expect_error(nec(nec4param, no_effect = TRUE), "`no_effect` selects")
+  # Only joint refits add the NSEC for smooth equations. Other classes reject
+  # a supplied no_effect rather than silently absorb it in dots.
+  expect_error(nec(nec4param, no_effect = TRUE),
+               "`no_effect` adds the curve-read NSEC")
   expect_error(suppressMessages(nec(manec_example, no_effect = TRUE)),
                "bayesmanecfit")
   # Refused on its default value as well: the user typed it, so it was meant.
-  expect_error(nec(nec4param, no_effect = FALSE), "`no_effect` selects")
+  expect_error(nec(nec4param, no_effect = FALSE),
+               "`no_effect` adds the curve-read NSEC")
 })

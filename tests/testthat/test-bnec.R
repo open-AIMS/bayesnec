@@ -427,7 +427,8 @@ test_that("a set holding ecxflat mixes its NSEC draws into the N(S)EC (#419)", {
       invokeRestart("muffleMessage")
     }
   )
-  expect_true(any(grepl("contains smooth (ecx) models", msgs, fixed = TRUE)))
+  expect_true(any(grepl("combines sampled NEC and curve-read NSEC",
+                        msgs, fixed = TRUE)))
   expect_identical(summary(fit, check_fit = FALSE)$ecx_mods, "ecxflat")
   # Its segment of the model-averaged ECx is censored above in every draw, so
   # the share censored is at least its share of the draws.

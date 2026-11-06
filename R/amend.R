@@ -97,6 +97,15 @@
 #' the previous \code{control} or \code{seed}. Only settings supplied to that
 #' update are then recorded for subsequent additions.
 #'
+#' A fit saved before the no-effect estimate of a hormesis threshold equation
+#' became its NSEC stores that equation's \code{nec} parameter instead, and
+#' \code{\link{nec}}, \code{\link{summary}} and the plots warn about it.
+#' \code{amend(object)}, with no other argument, rebuilds the estimate from
+#' the stored fits without refitting any model.
+#'
+#' A \code{\link{bayesnecgroupfit}} is amended level by level, with the same
+#' arguments applied to the fit of each level.
+#'
 #' @return All successfully fitted model fits. A \code{\link{bayesmanecfit}} if
 #' more than one model remains, otherwise a \code{\link{bayesnecfit}}.
 #'
@@ -140,7 +149,8 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls,
   }
 
   if (missing(drop) && missing(add) && missing(loo_controls) &&
-        is.null(x_range) && is.null(resolution) && is.null(sig_val)) {
+        is.null(x_range) && is.null(resolution) && is.null(sig_val) &&
+        !needs_ne_rebuild(object)) {
     message(amend_general_error())
     return(object)
   }
@@ -209,7 +219,8 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls,
          " which model is fitted.", call. = FALSE)
   }
   if (missing(add) && missing(loo_controls) &&
-        is.null(x_range) && is.null(resolution) && is.null(sig_val)) {
+        is.null(x_range) && is.null(resolution) && is.null(sig_val) &&
+        !needs_ne_rebuild(object)) {
     message(amend_general_error())
     return(object)
   }
@@ -331,11 +342,11 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       model_set <- candidate
     }
   }
-  # A saved fit can need its observed-level display rebuilt with the same
-  # resolution and arguments it recorded.
+  # A saved fit can need its observed-level display or its hormesis no-effect
+  # estimate rebuilt with the same resolution and arguments it recorded.
   if (identical(model_set, names(mod_fits)) &&
         identical(expand_args, inherited) &&
-        !needs_observed_rebuild(object)) {
+        !needs_observed_rebuild(object) && !needs_ne_rebuild(object)) {
     message("Nothing to amend, please specify a model to ",
             "either add or drop that differs from the original set.")
     message(general_error)

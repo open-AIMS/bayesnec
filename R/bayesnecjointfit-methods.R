@@ -20,9 +20,8 @@ joint_level_fit <- function(object, level) {
               level_spec = object$level_spec, retained_data = NULL,
               level_x = joint_level_x(object, level))
   out <- allot_class(out, c("bayesnecjointlevel", "bayesnecfit", "bnecfit"))
-  # A NULL ne_posterior is the record that this level has no nec parameter.
-  # Decide per level: a composed refit can mix threshold and smooth equations.
-  if (joint_level_is_threshold(object, level)) {
+  # Keep the sampled breakpoint only where it is also the no-effect estimate.
+  if (sampled_nec_is_no_effect(model)) {
     out$ne_posterior <- joint_level_draws(object, "nec", level)
     out$ne_type <- "NEC"
   } else {
@@ -313,10 +312,12 @@ joint_estimate_table <- function(object, what, fun, ..., pool = "none",
 #'
 #' Each level fits one equation, so its estimate is a NEC or an NSEC, never a
 #' mixture. Under \code{no_effect = FALSE} a level without a \code{nec}
-#' parameter returns \code{NA}; under \code{no_effect = TRUE} it returns
-#' \code{\link{nsec}} on that level. Do not use \code{expand_nec()}'s
-#' \code{nsec_off_curve()} here: it reads the control at the first grid column,
-#' so its answer would differ from \code{nsec()}.
+#' parameter returns \code{NA}, while a hormesis threshold equation returns
+#' its curve-read NSEC. Under \code{no_effect = TRUE}, a smooth equation also
+#' returns \code{\link{nsec}} on that level. Do not use \code{expand_nec()}'s
+#' \code{nsec_off_curve()} here: it reads the control at the lowest
+#' concentration of every level together, and \code{nsec()} at the level's own
+#' lowest concentration.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param no_effect A \code{\link[base]{logical}} value, see
@@ -354,8 +355,10 @@ joint_ne_table <- function(object, no_effect, ..., pool = "none") {
                    USE.NAMES = FALSE)
   threshold <- vapply(levels, joint_level_is_threshold, logical(1),
                       object = object, USE.NAMES = FALSE)
+  sampled <- vapply(models, sampled_nec_is_no_effect, logical(1))
   ne_type <- rep(NA_character_, length(levels))
-  ne_type[threshold] <- "NEC"
+  ne_type[sampled] <- "NEC"
+  ne_type[threshold & !sampled] <- "NSEC"
   if (no_effect) {
     ne_type[!threshold] <- "NSEC"
   }
@@ -363,10 +366,10 @@ joint_ne_table <- function(object, no_effect, ..., pool = "none") {
   names(na_row) <- clean_names(na_row)
   est <- lapply(seq_along(levels), function(i) {
     lvl_fit <- joint_level_fit(object, levels[i])
-    if (threshold[i]) {
+    if (sampled[i]) {
       return(do.call(nec, c(list(lvl_fit), dots)))
     }
-    if (no_effect) {
+    if (threshold[i] || no_effect) {
       return(do.call(nsec, c(list(lvl_fit), dots)))
     }
     # NA per draw, not NULL or zeros: a zero-length element drops out of a
@@ -394,9 +397,9 @@ joint_ne_table <- function(object, no_effect, ..., pool = "none") {
                    collapse = ", "),
             ", where the equation fitted has no nec parameter, so those ",
             "estimates are NA. nec(x, no_effect = TRUE) returns the no-effect ",
-            "estimate each level's own equation does support -- the nec ",
-            "parameter for a threshold equation, the NSEC of the fitted curve ",
-            "for a smooth one -- labelled by type.")
+            "estimate each level's equation supports -- a sampled NEC for a ",
+            "monotone threshold equation, or the NSEC of a hormesis threshold ",
+            "or smooth curve -- labelled by type.")
   }
   if (posterior) {
     attr(est, "model") <- setNames(models, levels)
@@ -504,7 +507,7 @@ joint_level_curve <- function(object, level, resolution = 1000,
 joint_level_ne <- function(object, level, xform = identity) {
   lvl_fit <- joint_level_fit(object, level)
   if (!is.null(observed_level_spec(lvl_fit)) &&
-      joint_level_is_threshold(lvl_fit)) {
+      sampled_nec_is_no_effect(lvl_fit$model)) {
     out <- suppressWarnings(suppressMessages(nec(lvl_fit, xform = xform)))
     vals <- as.numeric(out)
     names(vals) <- c("Estimate", "Q2.5", "Q97.5")
@@ -514,7 +517,7 @@ joint_level_ne <- function(object, level, xform = identity) {
   if (!is.null(lvl_fit$ne_posterior)) {
     map <- recorded_xform(lvl_fit, xform)
     return(estimates_summary(map_draws(lvl_fit$ne_posterior, map,
-                                       what = "NEC")))
+                                       what = lvl_fit$ne_type)))
   }
   out <- suppressWarnings(suppressMessages(nsec(lvl_fit, xform = xform)))
   # Keep the censoring record, which as.numeric() drops; without it a censored
@@ -639,7 +642,11 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   # one panel and a smooth one in the next, and the annotation names what was
   # read off that panel's curve.
   lev_tag <- vapply(object$levels, function(l) {
-    if (joint_level_is_threshold(object, l)) "NEC" else "NSEC"
+    if (sampled_nec_is_no_effect(joint_level_model(object, l))) {
+      "NEC"
+    } else {
+      "NSEC"
+    }
   }, character(1))
   dat$tag <- unname(lev_tag[level])
   show_group <- !is.null(group) && !identical(group, object$group_var)
