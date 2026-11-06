@@ -963,6 +963,17 @@ test_that("joint posterior comparisons use the levels' matching draws", {
   expect_equal(fitted$diff_list[["a-b"]],
                fitted$posterior_list$a - fitted$posterior_list$b)
   expect_equal(ncol(fitted$posterior_list$a), 6L)
+  fixed <- compare_posterior(f$joint, comparison = "fitted", resolution = 6,
+                             draw_ids = 1:20)
+  for (lev in f$joint$levels) {
+    level_fit <- joint_level_fit(f$joint, lev)
+    grid <- bnec_newdata(level_fit, resolution = 6,
+                         x_range = range(f$data$x))
+    expected <- brms::posterior_epred(level_fit, newdata = grid,
+                                      re_formula = NA, draw_ids = 1:20)
+    expect_equal(fixed$posterior_list[[lev]], expected, label = lev)
+  }
+  expect_true(any(fixed$diff_list[["a-b"]] != 0))
 })
 
 test_that("per-level ecx from a joint refit agrees with bnec_group", {

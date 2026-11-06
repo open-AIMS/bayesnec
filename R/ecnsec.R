@@ -21,9 +21,11 @@
 #' return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
 #' @param pool How observed group levels are combined. `"none"` returns
-#' per-level estimates; `"mixture"` gives each posterior draw to one level, in
-#' proportion to the levels' observation counts, and keeps it at its own
-#' position; `"mean_estimate"` averages aligned estimates; and `"mean_curve"`
+#' per-level estimates; `"mixture"` selects levels in proportion to their
+#' observation counts. For equal-length levels of one fit, selected values keep
+#' matching draw positions. With unequal lengths, it samples from the full
+#' posterior of each level.
+#' `"mean_estimate"` averages aligned estimates; and `"mean_curve"`
 #' estimates from their weighted mean curve. A joint fit defaults to `"none"`;
 #' other fits with spanning group terms default to `"mixture"`.
 #' @param x_control `"own"` reads each level's lowest observed concentration;

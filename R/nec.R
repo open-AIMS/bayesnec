@@ -15,9 +15,11 @@
 #' return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
 #' @param pool How observed group levels are combined. `"none"` returns
-#' per-level estimates; `"mixture"` gives each posterior draw to one level, in
-#' proportion to the levels' observation counts, and keeps it at its own
-#' position; and `"mean_estimate"` averages aligned estimates.
+#' per-level estimates; `"mixture"` selects levels in proportion to their
+#' observation counts. For equal-length levels of one fit, selected values keep
+#' matching draw positions. With unequal lengths, it samples from the full
+#' posterior of each level.
+#' `"mean_estimate"` averages aligned estimates.
 #' `"mean_curve"` is unavailable for a sampled NEC parameter. A joint fit
 #' defaults to `"none"`; other fits with spanning group terms default to
 #' `"mixture"`.

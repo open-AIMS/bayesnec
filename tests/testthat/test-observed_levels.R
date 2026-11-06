@@ -108,6 +108,19 @@ test_that("mixtures over different levels of one posterior pair by draw", {
   expect_equal(as.numeric(mix_zn) / as.numeric(mix_cu), rep(2, n))
 })
 
+test_that("a mixture samples the full posterior when lengths differ", {
+  draws <- list(a = 1:4, b = 101:108)
+  out <- bayesnec:::pool_estimate_draws(draws, c(1, 3), "mixture", seed = 1)
+  level <- attr(out, "level")
+  draw_id <- attr(out, "draw_id")
+  expect_true(any(draw_id[level == "b"] > 4L))
+  expect_equal(as.numeric(out[level == "a"]), draws$a[draw_id[level == "a"]])
+  expect_equal(as.numeric(out[level == "b"]), draws$b[draw_id[level == "b"]])
+  expect_identical(out, bayesnec:::pool_estimate_draws(
+    draws, c(1, 3), "mixture", seed = 1
+  ))
+})
+
 test_that("a mixture keeps each censoring flag with its draw", {
   a <- c(1, 2, NA_real_, 4)
   attr(a, "censored") <- bayesnec:::censoring_record(

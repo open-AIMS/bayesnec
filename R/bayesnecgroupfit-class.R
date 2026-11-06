@@ -148,21 +148,32 @@ pool_estimate_draws <- function(draws, weights, pool, seed = 216) {
   if (n == 0L) stop("The levels have no posterior draws.", call. = FALSE)
   weights <- weights / sum(weights)
   if (identical(pool, "mixture")) {
-    indices <- mixture_draw_indices(vapply(draws, length, integer(1)),
-                                     weights, n, seed, labels = names(draws))
-    counts <- lengths(indices)
+    draw_lengths <- vapply(draws, length, integer(1))
+    slots <- mixture_draw_indices(draw_lengths, weights, n, seed,
+                                  labels = names(draws))
+    # With unequal lengths, sample each full posterior so longer levels do
+    # not lose valid draws.
+    indices <- if (all(draw_lengths == n)) slots else
+      with_preserved_rng_state({
+        set.seed(as.integer(seed %% .Machine$integer.max),
+                 sample.kind = "Rejection")
+        Map(function(length, count) sample.int(length, count),
+            draw_lengths, lengths(slots))
+      })
+    counts <- lengths(slots)
     parts <- Map(subset_draws, draws, indices)
     stacked <- unlist(lapply(parts, as.numeric), use.names = FALSE)
     cens <- concat_censoring(
       lapply(parts, attr, "censored"), vapply(parts, length, integer(1)),
       stacked
     )
-    # Put draw d at position d, so that mixtures of one posterior pair by draw.
-    by_draw <- order(unlist(indices, use.names = FALSE))
+    # Restore output slots so equal-length levels pair by source draw.
+    by_draw <- order(unlist(slots, use.names = FALSE))
     out <- stacked[by_draw]
     attr(out, "censored") <- subset_censoring(cens, by_draw)
     attr(out, "level") <- rep(names(draws), counts)[by_draw]
-    attr(out, "draw_id") <- seq_len(n)
+    attr(out, "draw_id") <- if (all(draw_lengths == n)) seq_len(n) else
+      unlist(indices, use.names = FALSE)[by_draw]
     effects <- lapply(draws, attr, "ecnsec_relativeP")
     if (all(!vapply(effects, is.null, logical(1)))) {
       attr(out, "ecnsec_relativeP") <- unlist(Map(function(x, idx) x[idx],
