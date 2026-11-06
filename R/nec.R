@@ -386,13 +386,46 @@ necfit_ne <- function(object, posterior = FALSE, xform = NULL,
                       range_label = range_label)
   nec_estimate <- summarise_censored(unlist(nec_out), prob_vals, cens)
   names(nec_estimate) <- clean_names(nec_estimate)
-  attr(nec_estimate, "toxicity_estimate") <- "nec"
-  attr(nec_out, "toxicity_estimate") <-  "nec"
+  label <- ne_estimate_label(fit_ne_types(object))
+  attr(nec_estimate, "toxicity_estimate") <- label
+  attr(nec_out, "toxicity_estimate") <- label
   if (!posterior) {
     nec_estimate
   } else {
     nec_out
   }
+}
+
+#' The no-effect estimate types a fit records
+#'
+#' @param object A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#'
+#' @return The recorded \code{ne_type}, or for an object saved before that
+#' slot existed, the type of each equation's stored draws.
+#' @noRd
+fit_ne_types <- function(object) {
+  label <- object$ne_type
+  if (is.character(label) && length(label) == 1) return(label)
+  if (inherits(object, "bayesmanecfit")) {
+    manec_component_types(object)
+  } else {
+    necfit_ne_type(object)
+  }
+}
+
+#' The "toxicity_estimate" attribute of a nec() result
+#'
+#' @param types The types of the fits or blocks whose draws make up the
+#' result: "NEC", "NSEC" or "N(S)EC", or the lower-case labels this returns.
+#'
+#' @return \code{"nec"} where every draw is a sampled NEC, \code{"nsec"} where
+#' every draw is an NSEC, and \code{"n(s)ec"} where the draws mix the two.
+#' @noRd
+ne_estimate_label <- function(types) {
+  types <- unique(toupper(types))
+  if (identical(types, "NEC")) return("nec")
+  if (identical(types, "NSEC")) return("nsec")
+  "n(s)ec"
 }
 
 #' @inheritParams nec
@@ -467,11 +500,16 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
       lapply(parts, attr, "censored"), vapply(parts, length, integer(1)),
       draws
     )
-    attr(draws, "toxicity_estimate") <- "nec"
+    # Classify as per_model() does: subset_draws() has dropped each part's
+    # label.
+    label <- ne_estimate_label(ifelse(vapply(models, function(m) {
+      sampled_nec_is_no_effect(m, object$mod_fits[[m]]$fit)
+    }, logical(1)), "NEC", "NSEC"))
+    attr(draws, "toxicity_estimate") <- label
     if (posterior) return(draws)
     estimate <- summarise_censored(draws, prob_vals)
     names(estimate) <- clean_names(estimate)
-    attr(estimate, "toxicity_estimate") <- "nec"
+    attr(estimate, "toxicity_estimate") <- label
     return(estimate)
   }
   warn_stale_ne_type(object)
@@ -514,8 +552,9 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
                       range_label = range_label)
   nec_estimate <- summarise_censored(unlist(nec_out), prob_vals, cens)
   names(nec_estimate) <- clean_names(nec_estimate)
-  attr(nec_estimate, "toxicity_estimate") <- "nec"
-  attr(nec_out, "toxicity_estimate") <-  "nec"
+  label <- ne_estimate_label(fit_ne_types(object))
+  attr(nec_estimate, "toxicity_estimate") <- label
+  attr(nec_out, "toxicity_estimate") <- label
   if (!posterior) {
     nec_estimate
   } else {

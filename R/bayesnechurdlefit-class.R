@@ -285,9 +285,8 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
     combined <- combine_censored_min(g_post, s_post, n)
     out <- combined$values
     cens <- combined$censored
-    # Read each component's kind from ne_label(), not the "toxicity_estimate"
-    # attribute, which is "nec" whatever the equation. Match the NSEC labels
-    # only: a fit that recorded no ne_type has the label "no-effect estimate".
+    # Match the NSEC labels only: a fit that recorded no ne_type has the label
+    # "no-effect estimate".
     kinds <- c(ne_label(object$growth), ne_label(object$survival))
     if (any(kinds %in% c("NSEC", "N(S)EC"))) {
       message("At least one component is a curve-read NSEC estimate, so the",
@@ -304,8 +303,10 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
   warn_censored_draws(out, "no-effect estimate", cens = cens)
   estimate <- summarise_censored(out, prob_vals, cens)
   names(estimate) <- clean_names(estimate)
-  attr(estimate, "toxicity_estimate") <- "nec"
-  attr(out, "toxicity_estimate") <- "nec"
+  parts <- if (which == "combined") c("growth", "survival") else which
+  label <- ne_estimate_label(unlist(lapply(object[parts], fit_ne_types)))
+  attr(estimate, "toxicity_estimate") <- label
+  attr(out, "toxicity_estimate") <- label
   attr(estimate, "component") <- which
   if (!posterior) estimate else out
 }

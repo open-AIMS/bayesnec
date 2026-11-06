@@ -1494,8 +1494,6 @@ test_that("the hurdle legend marks a censored no-effect estimate", {
 # The NSEC message on the combined no-effect estimate.
 
 test_that("nec() says when the combined value includes NSEC draws", {
-  # Read each component's ne_type: the toxicity_estimate attribute can say
-  # nec even when the stored values include NSEC draws.
   approx_msgs <- function(expr) {
     msgs <- testthat::capture_messages(suppressWarnings(expr))
     grep("combined value is approximate", msgs, value = TRUE)
@@ -1518,6 +1516,24 @@ test_that("nec() says when the combined value includes NSEC draws", {
   unrecorded <- nec4param
   unrecorded$ne_type <- NULL
   expect_length(approx_msgs(nec(hurdle_pair(unrecorded, unrecorded))), 0)
+})
+
+test_that("nec() labels a hurdle estimate by the components it reads", {
+  label <- function(pair, ...) {
+    attr(suppressWarnings(suppressMessages(nec(pair, ...))),
+         "toxicity_estimate")
+  }
+  expect_identical(label(hurdle_pair()), "nec")
+  expect_identical(label(hurdle_pair(ecx4param, ecx4param)), "nsec")
+  pair <- hurdle_pair(survival = ecx4param)
+  expect_identical(label(pair), "n(s)ec")
+  expect_identical(label(pair, which = "growth"), "nec")
+  expect_identical(label(pair, which = "survival"), "nsec")
+  expect_identical(label(pair, posterior = TRUE), "n(s)ec")
+  # A component saved before ne_type was recorded is read by its parameters.
+  unrecorded <- nec4param
+  unrecorded$ne_type <- NULL
+  expect_identical(label(hurdle_pair(unrecorded, unrecorded)), "nec")
 })
 
 # Mock brm() and expansion so both component amend() calls complete

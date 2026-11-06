@@ -16,6 +16,11 @@
   earlier version stores the `nec` parameter instead; `nec()`, `summary()` and
   the plots warn about it, and `amend(x)` rebuilds the estimate without
   refitting (#570).
+- The `"toxicity_estimate"` attribute of a `nec()` result now names the kind
+  of estimate returned: `"nec"` where every draw is a sampled NEC, `"nsec"`
+  where every draw is an NSEC, and `"n(s)ec"` where a model set or a hurdle fit
+  combines the two, as the row names of `summary()` do. It was `"nec"` whatever
+  the equation (#570).
 - `check_fit()` now counts ties as one half when calculating posterior
   predictive p-values. Identical observed and simulated count statistics give
   a p-value of 0.5 rather than 1. When the observed statistic and the median
@@ -2371,10 +2376,10 @@
 - `nec()` on a `bayesnechurdlefit` prints the message its help page
   describes, that the combined value is approximate, where either component
   contributes NSEC draws. The message was decided from the
-  `"toxicity_estimate"` attribute of each component's `nec()`, which both
-  `nec()` methods set to `"nec"` whatever the equation, so it was never
-  printed. The kind of each component's estimate is now read from the type
-  recorded when the component was fitted, which `summary()` prints beside each
+  `"toxicity_estimate"` attribute of each component's `nec()`, which was
+  `"nec"` whatever the equation, so it was never printed. The kind of each
+  component's estimate is now read from the type recorded when the component
+  was fitted, which `summary()` prints beside each
   row. It is printed for the combined value only. A component built by a
   version that recorded no type raises nothing (#446).
 - `update(newdata = )` refits with the family the model was fitted with,

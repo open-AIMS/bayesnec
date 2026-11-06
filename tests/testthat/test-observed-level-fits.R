@@ -277,6 +277,17 @@ test_that("a saved observed-level hormesis fit reads each level's NSEC", {
     suppressWarnings(suppressMessages(nec(stale, pool = "none"))),
     suppressWarnings(suppressMessages(nec(fit, pool = "none")))
   )))
+  label <- function(object, ...) {
+    attr(suppressWarnings(suppressMessages(nec(object, ...))),
+         "toxicity_estimate")
+  }
+  for (pool in c("none", "mixture")) {
+    expect_identical(label(fit, pool = pool), "nec")
+    expect_identical(label(current, pool = pool), "nsec")
+    expect_identical(label(stale, pool = pool), "nsec")
+  }
+  # The set holds nec3param and ecx4param.
+  expect_identical(label(observed_fit_cache()), "n(s)ec")
 })
 
 test_that("logged predictors store no-effect draws on the fitted scale", {

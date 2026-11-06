@@ -39,6 +39,7 @@ test_that("a saved hormesis fit warns, and keeps the type of its draws", {
                  class = "bayesnec_stale_ne")
   # The stored draws are the nec parameter, so they keep the NEC label.
   expect_equal(as.numeric(out), as.numeric(nec(nec4param)))
+  expect_identical(attr(out, "toxicity_estimate"), "nec")
   expect_identical(bayesnec:::necfit_ne_type(stale), "NEC")
   # The fixture also fails the Rhat check in summary(), so collect every
   # warning and look for this one.
@@ -59,6 +60,9 @@ test_that("a saved hormesis fit warns, and keeps the type of its draws", {
   current$ne_type <- "NSEC"
   expect_false(bayesnec:::needs_ne_rebuild(current))
   expect_identical(bayesnec:::necfit_ne_type(current), "NSEC")
+  expect_identical(attr(nec(current), "toxicity_estimate"), "nsec")
+  expect_identical(attr(nec(current, posterior = TRUE), "toxicity_estimate"),
+                   "nsec")
 })
 
 test_that("a saved hormesis set labels its draws by the rule that built them", {
@@ -71,6 +75,8 @@ test_that("a saved hormesis set labels its draws by the rule that built them", {
                  class = "bayesnec_stale_ne")
   expect_equal(as.numeric(out),
                as.numeric(suppressMessages(nec(manec_example))))
+  # The mixture holds NEC and NSEC draws, as summary() labels it.
+  expect_identical(attr(out, "toxicity_estimate"), "n(s)ec")
 
   stale$mod_fits$nechorme$ne_type <- "NSEC"
   stale$mod_fits$ecx4param$ne_type <- "NSEC"
@@ -225,6 +231,7 @@ test_that("a hormesis threshold fit reports its declining-limb NSEC", {
   peak <- peak$Estimate[peak$parameter == "nec"]
   reported <- nec(fit)
   expect_gt(unname(reported[1]), peak)
+  expect_identical(attr(reported, "toxicity_estimate"), "nsec")
   expect_equal(as.numeric(reported),
                as.numeric(nsec(fit, resolution = 1000)), tolerance = 0.03)
   expect_gt(unname(ecnsec(fit, nsec = reported[1])[1]), 0)
@@ -258,6 +265,7 @@ test_that("a model average with a hormesis equation has no negative ECNSEC", {
   expect_error(suppressMessages(nec(set, extrapolate = TRUE)),
                "neclinhorme.*read off a fitted curve")
   reported <- suppressMessages(nec(set))
+  expect_identical(attr(reported, "toxicity_estimate"), "n(s)ec")
   expect_gte(unname(ecnsec(set, nsec = reported[1])[1]), 0)
 })
 
