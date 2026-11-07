@@ -26,12 +26,15 @@
 #' differ only where \code{crf()} transforms the predictor inline; see
 #' Details.
 #' @param x_range A range of x values over which to consider extracting ECx.
-#' @param pool How observed group levels are combined: `"none"` returns
-#' per-level estimates, `"mixture"` samples levels in proportion to their
-#' observation counts, `"mean_estimate"` averages aligned estimates, and
-#' `"mean_curve"` estimates from their weighted mean curve. A joint fit
-#' defaults to `"none"`; other fits with spanning group terms default to
-#' `"mixture"`.
+#' @param pool How observed group levels are combined. `"none"` returns
+#' per-level estimates. `"mixture"` gives each posterior draw to one level, in
+#' proportion to the levels' observation counts, and keeps it at its position,
+#' so that draw \emph{i} of the mixture comes from posterior iteration
+#' \emph{i}. Separate fits with different numbers of draws are instead each
+#' sampled over their full posterior. `"mean_estimate"` averages the levels'
+#' estimates at each draw, and `"mean_curve"` estimates from their weighted
+#' mean curve. A joint fit defaults to `"none"`; other fits with spanning group
+#' terms default to `"mixture"`.
 #' @param x_control `"own"` reads each level's lowest observed concentration;
 #' `"shared"` reads the lowest across levels; a single finite number specifies
 #' the concentration directly. A shared control below a level's observations
@@ -64,15 +67,6 @@
 #' predicted mean at the lowest concentration in the supplied predictor, taken
 #' per posterior draw. \code{type} names what the percentage is measured
 #' \emph{towards}:
-#'
-#' With a fitted group term whose levels span concentrations, the control and
-#' curve are predicted for each observed level with its group deviations.
-#' Terms whose levels each occur at one concentration are set to zero. The
-#' level of a spanning term observed at only one concentration is excluded from
-#' the estimate, with a message naming it. The default estimate mixes the
-#' remaining observed levels by their observation counts;
-#' \code{pool = "none"} returns them separately. A grouped or joint fit already
-#' separates levels and defaults to \code{pool = "none"}.
 #'
 #' \itemize{
 #'   \item \code{"absolute"} (the default) --- control to 0.
@@ -120,6 +114,23 @@
 #' \code{xform = identity} returns that scale and \code{xform = exp} on
 #' \code{crf(log(concentration))} returns the recorded scale again.
 #' 
+#' With a fitted group term whose levels span concentrations, the control and
+#' curve are predicted for each observed level with its group deviations.
+#' Terms whose levels each occur at one concentration are set to zero. The
+#' level of a spanning term observed at only one concentration is excluded from
+#' the estimate, with a message naming it. The default estimate mixes the
+#' remaining observed levels by their observation counts;
+#' \code{pool = "none"} returns them separately. A grouped or joint fit already
+#' separates levels and defaults to \code{pool = "none"}.
+#'
+#' On a \code{\link{bayesnecjointfit}}, each level of the refit is mixed over
+#' its own observed group levels. A group term whose values occur in the data
+#' of more than one level, such as a batch in which two levels were both
+#' tested, is read at the same value for every level at each posterior draw,
+#' as often as their observation counts on that term allow. Terms they do not
+#' share are chosen for each level independently. The levels can therefore be
+#' contrasted draw by draw, as \code{\link{compare_posterior}} does.
+#'
 #' Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 #' \code{\link{compare_fitted}} do not require the same level of flexibility
 #' in the context of allowing argument \code{newdata}

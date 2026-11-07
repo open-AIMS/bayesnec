@@ -119,13 +119,22 @@ logo_slot <- function(fit, group, prep = NULL) {
 #' observation of a group is censored, the integrand has a plateau on one side
 #' of its mode and a cliff on the other.
 #'
+#' A deviation for which \code{h} returns \code{NaN} is given zero density.
+#'
 #' @return The \code{S x L} matrix of \code{log p(y_g | theta_s)}.
 #'
 #' @noRd
 logo_integrate <- function(h, r0, sd, nodes = 10, newton_steps = 2,
                            cutoff = 14) {
   sd <- matrix(sd, nrow(r0), ncol(r0))
-  hp <- function(z) h(z) + stats::dnorm(z, 0, sd, log = TRUE)
+  hp <- function(z) {
+    out <- suppressWarnings(h(z)) + stats::dnorm(z, 0, sd, log = TRUE)
+    # log_lik() returns NaN where a deviation takes the mean outside the
+    # family's support, such as above 1 for an identity-linked Beta. The model
+    # gives that deviation zero density.
+    out[is.nan(out)] <- -Inf
+    out
+  }
   spread <- matrix(apply(r0, 2, stats::sd), nrow(r0), ncol(r0), byrow = TRUE)
   mu <- r0
   tau <- pmin(sd, spread)
@@ -556,7 +565,7 @@ report_weight_k <- function(criteria, wi, leave_out, refit = FALSE,
     emit(paste0(
       "The selected LOO score has Pareto k below 0.7 but at or above loo's ",
       "draw-dependent reliability threshold for ",
-      paste0(lower[named], " of ", n_units, " ",
+      paste0(lower[i], " of ", n_units, " ",
              if (groupwise) paste0("levels of ", leave_out) else "observations",
              " in ", named, " (weight ", signif(wi[i], 2),
              "; threshold ", signif(threshold[i], 2), ")",

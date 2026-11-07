@@ -2,15 +2,17 @@
 #'
 #' Extracts posterior predicted values from a list of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
-#' compares these via bootstrap re sampling.
+#' compares these by randomly pairing their posterior draws.
 #'
 #' @inheritParams compare_posterior
+#' @param x A named \code{\link[base]{list}} of
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} objects.
 #' 
 #' @importFrom chk chk_numeric chk_number
 #'
 #' @seealso \code{\link{bnec}}
 #'
-#' @return A named \code{\link[base]{list}} containing bootstrapped differences
+#' @return A named \code{\link[base]{list}} containing paired differences
 #' in posterior predictions of the \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} model fits contained in \code{x}, with elements:
 #' \describe{
@@ -89,30 +91,52 @@
 #' data(manec_example)
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
-#' compare_estimates(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50,
-#' comparison="ecx")
+#' compare_estimates(list("nec4param" = nec4param, "ecx4param" = ecx4param),
+#'                   ecx_val = 50, comparison = "ecx")
 #' }
 #'
 #' @section Reproducibility:
-#' The draws of each posterior are paired by a random permutation, so
-#' \code{prob_diff} and the difference intervals are a Monte Carlo
-#' approximation to the difference of two \bold{independent} posteriors, using
-#' \emph{n} of the \emph{n}^2 available pairs. The permutation is drawn under
+#' The draws of each posterior are put in a random order, a longer posterior
+#' being randomly subsampled to the length of the shortest, and are then paired
+#' by position. \code{prob_diff} and the difference intervals are therefore a
+#' Monte Carlo approximation that uses \emph{n} of the \emph{n}^2 available
+#' pairs. The permutation is drawn under
 #' \code{seed}, so two calls on the same fits return the same comparison and a
 #' \code{\link[base]{set.seed}} in the session has no effect on it. A different
 #' \code{seed} gives another realisation of the same approximation;
 #' where the approximation matters, compare a few and report the spread. The
 #' caller's random number state is restored afterwards.
 #'
-#' @section The independence assumption:
-#' The pairing is valid only where the posteriors being compared come from
-#' \bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
-#' of each comes from the same sweep of the sampler --- and permuting them
-#' destroys that pairing, which discards the correlation between the levels and
-#' widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
-#' and a real difference is under-detected, which is the wrong direction to err
-#' in. A within-fit contrast needs draw-wise differencing and must not be routed
-#' through this function. See #218 and #33.
+#' @section What the comparison estimates:
+#' Where the posteriors being compared are independent, the paired differences
+#' approximate the posterior of the difference between the estimates. Fits to
+#' separate data that share no parameter, such as the levels of a
+#' \code{\link{bayesnecgroupfit}}, have independent posteriors. For such
+#' posteriors, pairing the draws by their index would approximate the same
+#' distribution, so the random permutation is one Monte Carlo pairing and is
+#' not required.
+#'
+#' Whether two estimates are independent depends on their joint posterior, not
+#' on the number of calls that fitted them. Two quantities that are dependent in
+#' one posterior, for example two levels of one fit that share a group-level
+#' term or a dispersion parameter, are contrasted by subtracting aligned draws
+#' (draw \emph{i} of each), which keeps their covariance. Pairing their draws
+#' at random removes that covariance. Depending on its sign, the difference
+#' posterior can then be wider or narrower, and \code{prob_diff} can move
+#' towards or away from 0.5. Conversely, the levels of a
+#' \code{\link{bnec_joint}} refit that share no parameter, as under its
+#' defaults, have independent posteriors although they are estimated in one fit.
+#'
+#' Where the fits share data or fitted components, the comparison is of a
+#' different kind. Two equations pulled from one \code{\link{bayesmanecfit}}
+#' with \code{\link{pull_out}}, as in the examples, are fitted to the same
+#' observations, and a model-averaged fit includes the draws of its own
+#' equations. The comparison then contrasts two estimates of one quantity from
+#' one dataset, pairing their draws as if they were independent, and
+#' \code{prob_diff} describes how far the two posteriors overlap, i.e. how much
+#' the estimate depends on the equation fitted. How far it can be read as a
+#' posterior probability is uncertain, because no joint posterior of the two
+#' estimates is defined.
 #'
 #' @export
 compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
@@ -168,16 +192,25 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
       subset_draws(m, sample(seq_along(m), n_samples, replace = FALSE))
     }, n_samples = n_samples)
   })
+  compare_estimate_draws(posterior_list, r_posterior_list)
+}
+
+#' Compare posterior estimates after their draws have been paired
+#' @param posterior_list Named estimator output, including censoring records.
+#' @param paired_draws Draws in the order used for each comparison.
+#' @return The comparison output of \code{compare_estimates()}.
+#' @noRd
+compare_estimate_draws <- function(posterior_list, paired_draws) {
   # Keep names such as "2018" as given; data.frame() would return "X2018".
-  posterior_data <- do.call("cbind", r_posterior_list) |>
+  posterior_data <- do.call("cbind", paired_draws) |>
     data.frame(check.names = FALSE) |>
     pivot_longer(cols = everything(), names_to = "model") |>
     arrange(.data$model) |>
     data.frame()
-  all_combn <- combn(names(x), 2, simplify = FALSE)
+  all_combn <- combn(names(posterior_list), 2, simplify = FALSE)
   pair_signs <- lapply(all_combn, function(a, r_list) {
     difference_sign(r_list[[a[1]]], r_list[[a[2]]])
-  }, r_list = r_posterior_list)
+  }, r_list = paired_draws)
   diff_list <- lapply(pair_signs, `[[`, "diff")
   names(diff_list) <- sapply(all_combn, function(m) paste0(m[1], "-", m[2]))
   diff_data_out <- bind_rows(diff_list, .id = "comparison") |>
@@ -216,7 +249,7 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
     data.frame(prob = prob, prob_lower = prob_lower, prob_upper = prob_upper,
                censored_first = censored_fraction(r_list[[a[1]]]),
                censored_second = censored_fraction(r_list[[a[2]]]))
-  }, r_list = r_posterior_list)
+  }, r_list = paired_draws)
   names(prob_diff) <- names(diff_list)
   prob_diff_out <- bind_rows(prob_diff, .id = "comparison") |>
     data.frame()

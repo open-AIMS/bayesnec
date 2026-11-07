@@ -41,9 +41,40 @@
   (#566).
 - `bnec()` and `amend()` now reject malformed priors before fitting instead of
   silently replacing them with defaults.
+- `autoplot()` on a joint two-block fit, from `bnec()` with a `hurdle_gamma`,
+  `zero_inflated_beta`, `hurdle_poisson` or `hurdle_negbinomial` family, takes
+  `which`. `which = "all"` draws the combined curve, the response of survivors
+  and the probability of survival in the panels drawn for a `bnec_hurdle()`
+  fit, each with the no-effect estimate and ECx of its own block, and
+  `"growth"` or `"survival"` draws one of them. Each panel is titled with the
+  equation of every block it reads, so the combined curve names both, and a
+  single panel labels its y axis with the curve it draws. A model set's
+  equations are titled the same way when drawn with `model`.
+  `ggbnec_data()` takes the same argument, and for a two-block fit it now
+  returns a `panel` column naming the curve of each row, under the default
+  `which` as well. Every `autoplot()` method now uses `xlab` and `ylab`, and
+  `autoplot()` and `ggbnec_data()` refuse `dpar` on every class, and a `which`
+  they cannot draw. Each was previously ignored without a message, except that
+  `dpar` with `ecx = TRUE` marked the ECx of one block on the combined curve
+  (#564).
+
+## Fitted predictor axes
+
+- `ggbnec_data()` and `autoplot()` accept `x_scale = "fitted"` when `crf()`
+  transforms the predictor inside the formula. The prediction grid and
+  observations use that scale, while axis labels show recorded concentrations,
+  including a zero control where the transformation is finite at zero.
+- `autoplot()` on a `bayesnechurdlefit` draws each panel's no-effect estimate
+  by default, and an ECx when `ecx = TRUE`. Vertical lines mark the estimate
+  and its credible limits (#547).
 
 ## Estimates from observed group levels
 
+- `compare_posterior()` now accepts a `bayesnecjointfit` and contrasts its
+  levels at the same posterior draw, for NEC, N(S)EC, NSEC, ECx and fitted
+  curve comparisons, so that each contrast keeps the dependence between levels
+  estimated in one posterior. Separate fits continue to pair draws at random
+  (#571).
 - For a group term whose levels span concentrations, `ecx()`, `nsec()`,
   `ecnsec()` and `nec()` now read the observed level curves, including their
   fitted group deviations. A level observed at only one concentration is
@@ -54,9 +85,13 @@
 - `pool` selects per-level estimates, an observation-weighted mixture, a
   weighted mean of estimates, or an estimate from the weighted mean curve.
   A joint refit returns levels by default; a single fit with a spanning group
-  term returns the mixture. `x_control = "own"` uses each level's lowest
-  observed concentration. `"shared"` or a numeric concentration uses one
-  control across levels and warns where that requires extrapolation.
+  term returns the mixture. The mixture gives each posterior draw to one
+  level and keeps it at its position. On a joint refit, a group term that the
+  levels share, such as a batch in which both were tested, is read at the same
+  value for every level at each draw, as often as their observation counts
+  allow (#571). `x_control = "own"` uses each level's lowest observed
+  concentration. `"shared"` or a numeric concentration uses one control across
+  levels and warns where that requires extrapolation.
 - Pooled summaries retain censoring at the common tested bounds. The grouped
   fit methods also accept `pool`, and `ecnsec()` now works on a grouped fit.
 - Fits saved before this change still hold their earlier summary and plot
@@ -119,6 +154,9 @@
   `amend(x, loo_controls = list(leave_out = "group"))` recomputes its weights.
 - `mod_stats` gains a column `elpd`, the score the weights were computed
   from, and `summary()` prints what the score left out.
+- `check_fit()` prints the stored criterion's Pareto *k* summary separately
+  from its concentration-level posterior predictive table. The complete
+  per-equation summary is in the returned table's `"pareto"` attribute.
 - `crossed_group_weights()` compares the grouped and pooled fits on the
   leave-one-group-out score, as LOOIC, where that score was computed for every
   fit over the same levels, and on WAIC otherwise.
@@ -2060,8 +2098,8 @@
   diuron under three climate scenarios, from Flores et al. (2021), the study the
   JSS article cites for `compare_posterior()`. Both are within-concentration
   designs --- a chamber sits at one concentration and so admits only a
-  displacement --- with 45 chambers of four fragments for colour and 54 chambers
-  of five to eight readings for yield. `coral_colour` has five concentrations,
+  displacement --- with 45 chambers of four fragments (171 with a colour score)
+  for colour and 54 chambers of five to eight readings for yield. `coral_colour` has five concentrations,
   which is the conventional minimum, and `vignette("example4")` fits it with
   equations of three curve parameters for that reason (#301). Exactly one
   colour observation

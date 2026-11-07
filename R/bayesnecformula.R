@@ -346,9 +346,9 @@
 #' Because \code{\link{bnec}} fits on \code{link = "identity"}, which it
 #' assigns unless a link argument is written, \pkg{brms}
 #' writes the denominator multiplicatively on the response scale rather than as
-#' a log offset on the linear predictor, so the mean \emph{is} the rate and
-#' "top", "bot" and "nec" stay directly interpretable as counts per unit
-#' exposure. The prediction grid holds the denominator at 1, so a fitted curve,
+#' a log offset on the linear predictor, so the mean \emph{is} the rate,
+#' "top" and "bot" stay directly interpretable as counts per unit exposure, and
+#' "nec" stays a concentration. The prediction grid holds the denominator at 1, so a fitted curve,
 #' an \code{\link{ecx}} and an \code{\link{nsec}} are all read on the rate
 #' scale; plots put the observations on that same scale by dividing through.
 #' \code{offset} is deliberately not offered as an alternative --- under an

@@ -249,7 +249,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
         )
         out
       })
-      pool_estimate_draws(parts, observed$n, "mixture")
+      pool_observed_draws(parts, observed)
     } else if (!is.null(hurdle_parts) || identical(mod_class, "ecx")) {
       without_censored_warning(
         nsec(level_fit, posterior = TRUE, resolution = resolution,

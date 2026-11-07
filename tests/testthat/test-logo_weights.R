@@ -75,6 +75,32 @@ test_that("logo_integrate handles a censored group", {
   expect_lt(max(abs(out - exact)), 2e-3)
 })
 
+test_that("logo_integrate gives zero density where the likelihood is NaN", {
+  # As for an identity-linked Beta whose mean a deviation pushes above 1.
+  set.seed(2)
+  n_draws <- 20
+  mu <- matrix(rnorm(n_draws * 2, 0, 0.3), n_draws, 2)
+  sd <- runif(n_draws, 0.5, 1)
+  r0 <- matrix(rnorm(n_draws * 2, 0, 0.2), n_draws, 2)
+  bound <- 0.8
+  h <- function(z) {
+    out <- dnorm(0.1, mu + z, 0.3, log = TRUE)
+    out[z > bound] <- NaN
+    out
+  }
+  out <- bayesnec:::logo_integrate(h, r0, sd)
+  expect_true(all(is.finite(out)))
+  exact <- out
+  for (s in seq_len(n_draws)) {
+    for (l in 1:2) {
+      exact[s, l] <- log(stats::integrate(function(z) {
+        dnorm(0.1, mu[s, l] + z, 0.3) * dnorm(z, 0, sd[s])
+      }, -Inf, bound, rel.tol = 1e-10)$value)
+    }
+  }
+  expect_lt(max(abs(out - exact)), 0.02)
+})
+
 # A model set as weight_criteria() reads it, without a fit: each equation's
 # group-level terms, data and stored criteria.
 fake_set <- function(ranef_rows, data, logo = NULL) {
@@ -241,6 +267,15 @@ test_that("a model set that records no leave_out was scored by observation", {
                         leave_out = "group")
   )
   args <- bayesnec:::recorded_expand_args(list(set), method = "pseudobma",
+                                          fam_tag = "gaussian")
+  expect_identical(args$loo_controls$leave_out, "group")
+  # Without a record, the weights' own attribute says what was left out.
+  unrecorded <- structure(
+    list(mod_stats = list(wi = structure(c(a = 1), leave_out = "conc_group"))),
+    class = c("bayesmanecfit", "bnecfit")
+  )
+  args <- bayesnec:::recorded_expand_args(list(unrecorded),
+                                          method = "pseudobma",
                                           fam_tag = "gaussian")
   expect_identical(args$loo_controls$leave_out, "group")
   # A single fit holds no weights, so its record is not read.
@@ -571,3 +606,16 @@ test_that("amend() records a refit and reuses the stored scores", {
   expect_true(attr(out, "bnec_expand_args")$loo_controls$refit)
   expect_equal(out$mod_stats$elpd, fit$mod_stats$elpd)
 })
+
+test_that("the lower-threshold Pareto k message counts the flagged units", {
+  crit <- structure(
+    list(diagnostics = list(pareto_k = c(0.68, 0.1, 0.2, 0.1, 0.3)),
+         pointwise = matrix(0, nrow = 5, ncol = 1)),
+    dims = c(1000, 5)
+  )
+  expect_message(
+    report_weight_k(list(eqA = crit), wi = 1, leave_out = "observation"),
+    "threshold for 1 of 5 observations in eqA", fixed = TRUE
+  )
+})
+

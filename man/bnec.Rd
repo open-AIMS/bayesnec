@@ -144,9 +144,11 @@ two rules differ. The curve-shape parameters \code{d} and \code{f} use
 \code{normal(0, 1)} under \code{"regularizing"} and \code{normal(0, 5)} under
 \code{"uninformative"}. The \code{beta} and \code{slope} parameters keep
 \code{normal(0, 5)} in both sets. Each named parameter receives the same
-entry across equations. The choice is ignored when priors are supplied
-directly via the \code{prior} argument. Both default sets assume that the
-tested concentrations reach the lower asymptote of the curve. Where the mean
+entry across equations. Applies only to the entries \code{bnec} builds: a
+prior supplied through \code{prior} is used as written, and any parameter
+or equation it omits takes its default from the selected set. Both default
+sets assume that the tested concentrations reach the lower asymptote of
+the curve. Where the mean
 response at the highest concentration is below the mean at the second
 highest by more than the contrast's standard error admits, tested one-sided
 at the 5\% level under the mean-variance relationship of the fitted family,
@@ -821,10 +823,11 @@ earlier versions.
 
 A zero concentration does still restrict what may be written inside
 \code{crf()} and \code{disp()}, because both are evaluated from the recorded
-column. \code{crf(log(x))} reaches \pkg{bayesnec}'s own data check as
-\code{-Inf} and stops there, naming the predictor. \code{disp(~log(x))} is
-evaluated by \code{brm()} instead, which \pkg{bayesnec} does not check, so
-the \code{-Inf} reaches Stan. Add the offset of your choice to the data and
+column. With \code{crf(log(x))}, the data check is given \code{-Inf} and
+stops with an error naming the predictor. A \code{disp(~log(x))} formula is
+passed to \code{brm()} unchanged, although \code{bnec()} first evaluates each
+of its terms on the data and stops with an error naming the term
+\code{log(x)}. In both cases, add the offset of your choice to the data and
 name that column in the formula.
 
 \bold{Missing values}

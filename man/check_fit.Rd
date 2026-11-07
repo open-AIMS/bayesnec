@@ -83,6 +83,22 @@ the original \code{checkfit} table for each fitted level in \code{$fits}.
 Each table retains its attributes, including any stored Pareto diagnostics.
 \code{print()} labels and prints each level; \code{plot()} returns a named
 list of plots with one plot per fitted level.
+
+The separate \code{"pareto"} attribute is a
+data frame with one row per equation. It names the stored criterion used for
+model weights, its Pareto cutoff, the count and IDs of held-out units at or
+above that cutoff, the largest k, and any successful or failed group refits.
+\code{flagged_ids}, \code{refitted_ids}, and \code{refit_failed_ids} are list
+columns of character vectors. A missing criterion has \code{status =
+"unavailable"} and missing counts, not a clean result. Single-equation fits
+have no model-weight comparison. For hurdle fits the growth and survival
+tables have their own attributes; the combined predictive table has no
+leave-one-out criterion.
+
+Pareto k assesses the approximation to a leave-one-out score. It does not
+assess sampler convergence or the posterior predictive discrepancies in the
+concentration-level table. Grouped scores use the package's 0.7 cutoff;
+observation-wise scores use the applicable \pkg{loo} cutoff.
 }
 \description{
 Reports, per group of the predictor, the observed location and scale of the

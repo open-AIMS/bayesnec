@@ -29,6 +29,14 @@ test_that("combined is the default for every curve method", {
   expect_equal(eval(formals(autoplot.bayesnechurdlefit)$which), "combined")
 })
 
+test_that("the plots of a factorised fit refuse dpar and name which", {
+  # Checked before the fit is read, so the mock reaches the refusal.
+  o <- mock_hurdle()
+  expect_error(autoplot(o, dpar = "mu"), "`which = \"growth\"`",
+               fixed = TRUE)
+  expect_error(ggbnec_data(o, dpar = "hu"), "not `dpar`", fixed = TRUE)
+})
+
 test_that("hurdle_raw_data recovers the response and a transformed predictor", {
   o <- mock_hurdle()
   d <- bayesnec:::hurdle_raw_data(o)
@@ -1764,6 +1772,102 @@ test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)
   expect_identical(drawn$legend,
                    paste0("N(S)EC: ", signif(line[1], 2), " (",
                           signif(line[2], 2), "-", signif(line[3], 2), ")"))
+})
+
+test_that("hurdle estimate lines ignore xform on an inline-transformed axis", {
+  skip_on_cran()
+  object <- relabelled_pair(
+    bnf(y ~ crf(log(x + 1), model = "nec4param"))
+  )
+  expected <- as.numeric(suppressMessages(nec(object)))
+  base <- hurdle_legend(object, xform = exp, resolution = 30)
+  expect_equal(as.numeric(base$v[[1]]), expected)
+
+  plotted <- autoplot(object, xform = exp, resolution = 30)
+  line <- Filter(function(layer) inherits(layer$geom, "GeomVline"),
+                 plotted$layers)
+  expect_length(line, 1)
+  expect_equal(line[[1]]$data$estimate, expected)
+})
+
+test_that("hurdle annotation marks censored limits as bounds", {
+  skip_on_cran()
+  object <- censored_survival_pair()
+  plotted <- suppressWarnings(autoplot(object, which = "survival",
+                                       resolution = 30))
+  line <- Filter(function(layer) inherits(layer$geom, "GeomVline"),
+                 plotted$layers)
+  label <- Filter(function(layer) inherits(layer$geom, "GeomText"),
+                  plotted$layers)
+  expect_identical(line[[1]]$data$bound[3], ">=")
+  expect_identical(line[[1]]$data$line[3], 3)
+  expect_identical(label[[1]]$data$bound, ">=")
+  expect_s3_class(ggplot2::ggplot_build(plotted), "ggplot_built")
+
+  local_mocked_bindings(
+    ecx = function(...) {
+      value <- c(2, 1, 3)
+      attr(value, "censored_summary") <- list(bound = c("", "", "<="))
+      value
+    },
+    .package = "bayesnec"
+  )
+  ec_plot <- autoplot(object, which = "survival", resolution = 30,
+                      nec = FALSE, ecx = TRUE)
+  ec_line <- Filter(function(layer) inherits(layer$geom, "GeomVline"),
+                    ec_plot$layers)
+  ec_label <- Filter(function(layer) inherits(layer$geom, "GeomText"),
+                     ec_plot$layers)
+  expect_identical(ec_line[[1]]$data$bound[3], "<=")
+  expect_identical(ec_label[[1]]$data$bound, "<=")
+})
+
+test_that("a fitted hurdle axis draws both estimates in every panel", {
+  skip_on_cran()
+  object <- relabelled_pair(
+    bnf(y ~ crf(log(x + 0.001), model = "nec4param"))
+  )
+  dat <- ggbnec_data(object, which = "all", resolution = 30,
+                     x_scale = "fitted")
+  expect_equal(dat$raw$x[seq_len(nrow(object$data))],
+               log(object$data$x + 0.001))
+  for (panel in levels(dat$curve$panel)) {
+    curve_x <- dat$curve$x[dat$curve$panel == panel]
+    expect_equal(diff(curve_x), rep(diff(curve_x)[1], length(curve_x) - 1))
+  }
+  expect_true(length(attr(dat, "x_axis")$breaks) > 0)
+
+  local_mocked_bindings(
+    nec = function(object, which, xform, ...) {
+      expect_identical(xform, identity)
+      centre <- match(which, c("combined", "growth", "survival"))
+      c(centre, centre - 0.1, centre + 0.1)
+    },
+    ecx = function(object, which, ecx_val, xform, ...) {
+      expect_identical(xform, identity)
+      expect_equal(ecx_val, 10)
+      centre <- match(which, c("combined", "growth", "survival")) + 0.5
+      c(centre, centre - 0.1, centre + 0.1)
+    },
+    .package = "bayesnec"
+  )
+  p <- autoplot(object, which = "all", resolution = 30,
+                x_scale = "fitted", ecx = TRUE)
+  lines <- Filter(function(layer) inherits(layer$geom, "GeomVline"), p$layers)
+  expect_length(lines, 2)
+  expect_equal(nrow(lines[[1]]$data), 9)
+  expect_equal(nrow(lines[[2]]$data), 9)
+  expect_equal(as.numeric(table(lines[[1]]$data$panel)), c(3, 3, 3))
+
+  abbreviated <- autoplot(object, which = "a", resolution = 30,
+                           x_scale = "fitted", ecx = TRUE)
+  short_lines <- Filter(function(layer) inherits(layer$geom, "GeomVline"),
+                        abbreviated$layers)
+  expect_length(short_lines, 2)
+  expect_identical(as.character(short_lines[[1]]$data$panel),
+                   rep(levels(dat$curve$panel), each = 3))
+  expect_identical(as.character(short_lines[[2]]$data$panel),
+                   rep(levels(dat$curve$panel), each = 3))
 })
 
 test_that("the hurdle plot maps estimates over the stored prediction range", {

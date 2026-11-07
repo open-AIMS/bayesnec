@@ -260,10 +260,11 @@ attach_expand_args <- function(out, expand_args) {
 #' inherited in the same way, each where the caller does not name it. A
 #' recorded \code{weights} list is used only where it names \code{method}.
 #' A \code{weights} list that names no method is given \code{method}, and the
-#' default where \code{method} is \code{NULL}. \code{leave_out} and
-#' \code{refit} and \code{report_k} are read from model sets only. A set
-#' without \code{leave_out} was scored by observation without refits; an absent
-#' \code{report_k} takes the reporting default.
+#' default where \code{method} is \code{NULL}. \code{leave_out},
+#' \code{refit} and \code{report_k} are read from model sets only. Where a
+#' set's record names no \code{leave_out}, the attribute of its weights is read
+#' instead, and a set whose weights carry none was scored by observation without
+#' refits. An absent \code{report_k} takes the reporting default.
 #'
 #' @return A named \code{\link[base]{list}} of the four, with attribute
 #' \code{"disagree"} naming each argument the objects record differently.
@@ -272,7 +273,9 @@ recorded_expand_args <- function(objects, x_range = NULL, resolution = NULL,
                                  sig_val = NULL, loo_controls = NULL,
                                  method = NULL, fam_tag = NULL) {
   records <- lapply(objects, attr, "bnec_expand_args")
-  set_records <- records[vapply(objects, is_bayesmanecfit, logical(1))]
+  is_set <- vapply(objects, is_bayesmanecfit, logical(1))
+  set_objects <- objects[is_set]
+  set_records <- records[is_set]
   records <- records[!vapply(records, is.null, logical(1))]
   disagree <- character()
   agreed <- function(name, values) {
@@ -318,14 +321,18 @@ recorded_expand_args <- function(objects, x_range = NULL, resolution = NULL,
     loo$weights$method <- method
   }
   if (!"leave_out" %in% named) {
-    loo$leave_out <- agreed("loo_controls$leave_out", lapply(
-      set_records, function(r) {
-        if (is.null(r$loo_controls$leave_out)) {
+    # A set assembled without a record still marks its weights with what was
+    # left out, so read that where the record is silent.
+    loo$leave_out <- agreed("loo_controls$leave_out", Map(
+      function(x, r) {
+        if (!is.null(r$loo_controls$leave_out)) {
+          r$loo_controls$leave_out
+        } else if (identical(weights_leave_out(x), "observation")) {
           "observation"
         } else {
-          r$loo_controls$leave_out
+          "group"
         }
-      }
+      }, set_objects, set_records
     ))
   }
   if (!"refit" %in% named) {

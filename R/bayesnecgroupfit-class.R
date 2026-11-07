@@ -138,8 +138,17 @@ validate_pool <- function(pool, what) {
   pool
 }
 
+#' Pool the draws of several levels into one posterior
+#' @param draws One posterior vector per level.
+#' @param weights Observation counts at each level.
+#' @param pool \code{"mixture"} or \code{"mean_estimate"}.
+#' @param seed Seed for the mixture where \code{assignment} is \code{NULL}.
+#' @param assignment Optional level at each draw, as
+#' \code{observed_assignment()} returns it, for levels of equal length.
+#' @return The pooled draws.
 #' @noRd
-pool_estimate_draws <- function(draws, weights, pool, seed = 216) {
+pool_estimate_draws <- function(draws, weights, pool, seed = 216,
+                                assignment = NULL) {
   if (length(draws) != length(weights) || !length(draws) ||
       any(!is.finite(weights)) || any(weights <= 0)) {
     stop("Each level needs a positive observation count.", call. = FALSE)
@@ -148,21 +157,44 @@ pool_estimate_draws <- function(draws, weights, pool, seed = 216) {
   if (n == 0L) stop("The levels have no posterior draws.", call. = FALSE)
   weights <- weights / sum(weights)
   if (identical(pool, "mixture")) {
-    indices <- mixture_draw_indices(vapply(draws, length, integer(1)),
-                                     weights, n, seed)
-    counts <- lengths(indices)
+    draw_lengths <- vapply(draws, length, integer(1))
+    slots <- if (is.null(assignment)) {
+      mixture_draw_indices(draw_lengths, weights, n, seed)
+    } else {
+      if (any(draw_lengths != length(assignment))) {
+        stop("The assignment does not match the levels' draws.",
+             call. = FALSE)
+      }
+      unname(split(seq_len(n), factor(assignment, levels = seq_along(draws))))
+    }
+    # With unequal lengths, sample each full posterior so longer levels do
+    # not lose valid draws.
+    indices <- if (all(draw_lengths == n)) slots else
+      with_preserved_rng_state({
+        set.seed(as.integer(seed %% .Machine$integer.max),
+                 sample.kind = "Rejection")
+        Map(function(length, count) sample.int(length, count),
+            draw_lengths, lengths(slots))
+      })
+    counts <- lengths(slots)
     parts <- Map(subset_draws, draws, indices)
-    out <- unlist(lapply(parts, as.numeric), use.names = FALSE)
-    attr(out, "censored") <- concat_censoring(
-      lapply(parts, attr, "censored"), vapply(parts, length, integer(1)), out
+    stacked <- unlist(lapply(parts, as.numeric), use.names = FALSE)
+    cens <- concat_censoring(
+      lapply(parts, attr, "censored"), vapply(parts, length, integer(1)),
+      stacked
     )
-    attr(out, "level") <- rep(names(draws), counts)
-    attr(out, "draw_id") <- unlist(indices, use.names = FALSE)
+    # Restore output slots so equal-length levels pair by source draw.
+    by_draw <- order(unlist(slots, use.names = FALSE))
+    out <- stacked[by_draw]
+    attr(out, "censored") <- subset_censoring(cens, by_draw)
+    attr(out, "level") <- rep(names(draws), counts)[by_draw]
+    attr(out, "draw_id") <- if (all(draw_lengths == n)) seq_len(n) else
+      unlist(indices, use.names = FALSE)[by_draw]
     effects <- lapply(draws, attr, "ecnsec_relativeP")
     if (all(!vapply(effects, is.null, logical(1)))) {
       attr(out, "ecnsec_relativeP") <- unlist(Map(function(x, idx) x[idx],
                                                    effects, indices),
-                                             use.names = FALSE)
+                                             use.names = FALSE)[by_draw]
     }
     return(out)
   }

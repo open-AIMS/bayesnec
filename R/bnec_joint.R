@@ -144,9 +144,13 @@ best_crossed <- function(object) {
 #' group-level term such as \code{ogl()} or \code{(nec | site)} pools the
 #' levels towards a common curve. Neither fits one model in which every level
 #' has its own curve parameters estimated together, which is what this route
-#' adds. That posterior supports a contrast between two levels conditional on
-#' everything they share, which differencing the independent posteriors of a
-#' \code{\link{bnec_group}} fit cannot.
+#' adds. Where the levels share a parameter, through a group-level term in
+#' \code{formula} or through \code{disp_by_level = FALSE}, their posteriors are
+#' dependent, and a contrast between two levels is taken between their draws
+#' from the same posterior iteration, as \code{\link{compare_posterior}} takes
+#' it. Under the defaults the levels share no parameter,
+#' so their posteriors are independent, as they are in a
+#' \code{\link{bnec_group}} fit.
 #'
 #' Each level is fitted the equation its own model weights favour, which is the
 #' \code{\link{bayesnecgroupfit}} analogue of what \code{\link{best_crossed}}

@@ -14,19 +14,21 @@ bibliography: bayesnec.bib
 [e1]: https://open-aims.github.io/bayesnec/articles/example1.html
 
 `bayesnec` fits its models with `brms` [@Burkner2017; @Burkner2018], which
-passes them to Stan (<https://mc-stan.org/>). Stan does not interpret a model.
-Each model is translated into C++, compiled into a program, and that program is
-run. A C++ toolchain is therefore required to fit anything at all, and this is
-also why the first fit of a session takes longer than the ones after it.
+passes them to Stan (<https://mc-stan.org/>). Stan does not interpret a model;
+instead, each model is translated into C++ and compiled into a program, and that
+program is run. A C++ toolchain is therefore required to fit any model at all,
+and compilation is also the reason the first fit of a session takes longer than
+the fits after it.
 
-`brms` samples through either of two back ends. `rstan` [@stan2020] is installed
+`brms` samples through either of two back ends (i.e. the R packages through
+which it compiles and runs the Stan program). `rstan` [@stan2020] is installed
 as a dependency of `brms` whether or not it is used as the sampler, so it is
-present on any machine that can load `brms`. `cmdstanr` is on neither CRAN nor
-the dependency list of `bayesnec`, and is what this package's own vignettes are
-built with; `options(brms.backend = "cmdstanr")` is the line that selects it.
-The instructions below install `cmdstanr`. The `rstan` route is documented by
-the Stan project at
-<https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started>.
+present on any machine that can load `brms`. However, this package's own
+vignettes are built with `cmdstanr`, which is not on CRAN and is not in the
+dependency list of `bayesnec`, and which is selected with
+`options(brms.backend = "cmdstanr")`. We describe the installation of
+`cmdstanr` below, and the `rstan` route is documented by the Stan project
+(<https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started>).
 
 # Software requirements
 
@@ -36,57 +38,61 @@ the Stan project at
 | A C++ toolchain | compiles each model before it is fitted |
 | CmdStan | the sampler that runs the compiled model |
 
-The toolchain is the part that differs by operating system, and the part that
-fails most often. On Windows it is Rtools, on macOS the Xcode Command Line
-Tools, and on Linux the standard build tools.
+Of these, the toolchain is the component that differs between operating systems
+(Rtools on Windows, the Xcode Command Line Tools on macOS, and the standard
+build tools on Linux), and it is also the component that most often fails.
 
 # Route by operating system
 
-Windows needs the most care, and has its own section below. The difficulties
-Stan had on Windows historically came from `rstan`, which requires matched
-versions of several compiled packages. `cmdstanr` avoids most of that, and what
-remains is the toolchain and the installation path.
+Windows requires the most care, and is described in its own section below.
+Historically, the difficulties of running Stan on Windows came from `rstan`,
+which requires matched versions of several compiled packages. `cmdstanr` avoids
+most of these, and the difficulties that remain concern the toolchain and the
+installation path.
 
-Linux needs the least. A current distribution's build tools are already what
-Stan requires, and the default installation path raises none of the problems the
-Windows section deals with.
+Linux requires the least care, because the build tools of a current
+distribution are already what Stan requires, and the default installation path
+raises none of the problems described in the Windows section.
 
-macOS has not been verified for these instructions, so its section points at
-the instructions the projects themselves maintain.
+These instructions have not been verified on macOS, so for macOS we point to
+the instructions maintained by the projects themselves.
 
-What determines whether an installation works is the check in the *Verification*
-section, not which of these routes was followed to reach it.
+Whether an installation works is determined by the check in the *Verification*
+section, regardless of which of these routes was followed.
 
 # Windows
 
 ## R and Rtools
 
-Install R first, from <https://cran.r-project.org/bin/windows/base/>, and then
-the Rtools that matches it, from
-<https://cran.r-project.org/bin/windows/Rtools/>. Accept the default
-installation location.
+Install R first (from <https://cran.r-project.org/bin/windows/base/>), and then
+the Rtools that matches it (from
+<https://cran.r-project.org/bin/windows/Rtools/>). Accept the default
+installation location for each.
 
-Rtools is versioned against the minor version of R, and CRAN's Rtools page
-states which Rtools goes with which R. A mismatch is the most common single
-cause of a failed setup, so install R first and read that page rather than
-reusing an Rtools already on the machine.
+Rtools is versioned against the minor version of R, and CRAN's Rtools page lists
+which Rtools goes with which R. A mismatch between them is the most common
+single cause of a failed setup, so install R first and read that page, instead
+of reusing an Rtools already on the machine.
 
-`cmdstanr::check_cmdstan_toolchain()` names the version it is looking for, and
-that is the version to install. It becomes available once the next section has
-installed `cmdstanr`. Under `cmdstanr` 0.9.0 and R 4.6.1 it reports
+`cmdstanr::check_cmdstan_toolchain()` names the Rtools version that `cmdstanr`
+is looking for, and that is the version to install. The function becomes
+available once `cmdstanr` has been installed (see the next section). Under
+`cmdstanr` 0.9.0 and R 4.6.1, for example, the message is
 
 ```
 Rtools45 was not found but is required to run CmdStan with R version 4.6.1.
 Please install Rtools45 and run cmdstanr::check_cmdstan_toolchain().
 ```
 
-Which version `cmdstanr` looks for is fixed in the installed `cmdstanr` rather
-than read from CRAN, so the two can disagree; the *Recurring problems on
-Windows* section covers that case.
+The version `cmdstanr` looks for is fixed in the installed `cmdstanr` and is not
+read from CRAN, so it may differ from the Rtools that CRAN pairs with that
+version of R. That case is described under *Recurring problems on Windows*
+below.
 
 ## R packages
 
-`cmdstanr` is not on CRAN, so it comes from the Stan project's own repository:
+`cmdstanr` is not on CRAN, so it is installed from the Stan project's own
+repository:
 
 
 ``` r
@@ -95,8 +101,8 @@ install.packages("cmdstanr",
                            getOption("repos")))
 ```
 
-`bayesnec` and the rest come from CRAN, and installing `bayesnec` installs
-`brms` with it:
+`bayesnec` and the remaining packages are installed from CRAN, and installing
+`bayesnec` also installs `brms`:
 
 
 ``` r
@@ -105,17 +111,17 @@ install.packages("bayesnec")
 
 ## The CmdStan installation
 
-Confirm the compiler is configured first. On a current Rtools this passes
-without doing anything; `fix = TRUE` repairs the problems it can rather than
-only reporting them.
+Before installing CmdStan, confirm that the compiler is configured. On a current
+Rtools this check passes without making any change, and `fix = TRUE` repairs the
+problems it can, instead of only reporting them.
 
 
 ``` r
 cmdstanr::check_cmdstan_toolchain(fix = TRUE)
 ```
 
-Then install CmdStan. Three things are set here, and each of them has been
-observed to stop a fresh installation on Windows.
+Then install CmdStan with the code below, which sets three things, each of which
+has been observed to stop a fresh installation on Windows.
 
 
 ``` r
@@ -124,59 +130,63 @@ options(timeout = 1800)            # R's default of 60 seconds is too short
 cmdstanr::install_cmdstan(dir = "C:/cmdstan")
 ```
 
-The directory has to exist first. `install_cmdstan()` does not create it and
-stops with `Assertion on 'dir' failed: Directory 'C:/cmdstan' does not exist.`
+The directory has to exist before `install_cmdstan()` is called, because the
+function does not create it and instead stops with
+`Assertion on 'dir' failed: Directory 'C:/cmdstan' does not exist.`
 
 The download needs a longer timeout than R's default. The CmdStan archive is
-about 49 MB, and the `timeout` argument of `install_cmdstan()` does not govern
-the download while `options(timeout)` does. Measured on a connection delivering
-about 500 KB/s, the download failed with `Download of CmdStan failed with error`
-at the default and completed in 4.9 minutes at `timeout = 1800`, with nothing
-else changed. Set it in any case: it has no effect where the download would
-have completed anyway.
+about 49 MB, and its download is governed by `options(timeout)`, not by the
+`timeout` argument of `install_cmdstan()`. When this was measured on a
+connection delivering about 500 KB/s, the download failed with
+`Download of CmdStan failed with error` at the default timeout, and completed in
+4.9 minutes at `timeout = 1800` with nothing else changed. We recommend setting
+the timeout in any case, because it has no effect where the download would have
+completed anyway.
 
 The installation path has to be a plain one. The default location is inside the
-home directory, and on many Windows machines, particularly ones managed by an
-employer, that directory is synchronised by OneDrive, where the CmdStan build
-fails. The same failure occurs where the path contains a space or a character
-outside the standard English alphabet, which happens where a Windows user name
-does. `C:/cmdstan` avoids all three. Installing there rather than in the default
-location asks for two things in return: the `CMDSTAN` variable set out below,
-and `dir = "C:/cmdstan"` on any later `install_cmdstan()` call.
+home directory, and on many Windows machines (particularly those managed by an
+employer) that directory is synchronised by OneDrive, where the CmdStan build
+fails. The build also fails where the path contains a space or a character
+outside the standard English alphabet, as the home directory does when the
+Windows user name contains one. `C:/cmdstan` avoids all three problems, although
+installing there instead of in the default location requires two things in
+return: the `CMDSTAN` variable described below, and `dir = "C:/cmdstan"` in any
+later call to `install_cmdstan()`.
 
 Because `C:/cmdstan` is not the default location, R has to be told where to find
-it in every later session, and the setting it reads is an environment variable
-rather than an option. Run `usethis::edit_r_environ()`, or open `.Renviron` in
-your home directory, add the line below, and restart R. Without it, every new
-session reports CmdStan as not installed and the path has to be set by hand in
-each one.
+it in each later session, and `cmdstanr` reads this setting from an environment
+variable, not from an option. To set it, run `usethis::edit_r_environ()` (or
+open `.Renviron` in your home directory), add the line below, and restart R.
+Without this line, `cmdstanr` shows CmdStan as not installed in each new
+session, and the path has to be set by hand in each one.
 
 ```
 CMDSTAN=C:/cmdstan
 ```
 
-R reads `.Renviron` only when it starts, which is why editing it takes effect on
-the next session rather than this one. The variable is the only thing `cmdstanr`
-reads for this: in `cmdstanr` 0.9.0 `cmdstanr:::cmdstanr_initialize()` takes the
-path from `Sys.getenv("CMDSTAN")` where that is set and from `~/.cmdstan`
-otherwise, and no option sets it.
+R reads `.Renviron` only when it starts, which is why the edit takes effect in
+the next session and not in the current one. The variable is the only setting
+`cmdstanr` reads for this purpose: in `cmdstanr` 0.9.0,
+`cmdstanr:::cmdstanr_initialize()` takes the path from `Sys.getenv("CMDSTAN")`
+where that is set and from `~/.cmdstan` otherwise, and no option sets it.
 
 The version number is not needed in the variable. Where `CMDSTAN` names a
-directory that is not itself an installation, `cmdstanr` takes the newest
-`cmdstan-*` installation inside it, so the line above survives the next CmdStan
-upgrade unedited. The by-hand alternative does need it, and this asymmetry is
-easy to trip over: `cmdstanr::set_cmdstan_path()` takes the path as given, so it
+directory that is not itself an installation (such as `C:/cmdstan`), `cmdstanr`
+takes the newest `cmdstan-*` installation inside it, so the line above continues
+to work after the next CmdStan upgrade without being edited. Setting the path by
+hand, however, does need the version number, and this difference is a likely
+source of error. `cmdstanr::set_cmdstan_path()` takes the path as given, so it
 has to be called as `set_cmdstan_path("C:/cmdstan/cmdstan-2.39.0")`. Given the
-parent directory it sets the path to that directory, leaves `cmdstan_version()`
-at `NULL`, and warns
+parent directory instead, it sets the path to that directory, the version read
+by `cmdstan_version()` is left at `NULL`, and it gives the warning
 
 ```
 Can't find CmdStan makefile to detect version number. Path may not point to valid installation.
 ```
 
-The back end is an option rather than a variable, so it belongs in `.Rprofile`,
-and putting it there means it does not have to be set again in each session.
-This line applies on every platform.
+The back end is set by an option, not by an environment variable, so on all
+platforms it belongs in `.Rprofile`, where it does not have to be set again in
+each session:
 
 
 ``` r
@@ -194,68 +204,70 @@ Where `install_cmdstan()` fails, run it again with these arguments.
 cmdstanr::install_cmdstan(overwrite = TRUE, quiet = FALSE, dir = "C:/cmdstan")
 ```
 
-`overwrite = TRUE` is the part that matters. An attempt that fails partway
-through the build leaves a partly built directory behind, and a second attempt
-without `overwrite` declines to replace it, which produces an error resembling
-the first one. `quiet = FALSE` only prints more of the build output, which is
-worth having because the default output is truncated and does not identify the
-stage that failed.
+Of these arguments, `overwrite = TRUE` is the important one. An attempt that
+fails partway through the build results in a partly built directory, and a
+second attempt without `overwrite` declines to replace it, giving an error that
+resembles the first one. `quiet = FALSE` only prints more of the build output,
+which is useful because the default output is truncated and does not identify
+the stage that failed.
 
 ### Chains that do not start after an Rtools upgrade
 
-A model compiles and `cmdstanr` then reports `No chains finished successfully`,
-which names neither a cause nor a file. The usual reason is that Rtools changed
-after CmdStan was installed. CmdStan builds its own `tbb.dll`, linked against
-the toolchain that built it, so a CmdStan built under Rtools44 requires
-libraries that Rtools45 does not provide: the model still compiles, and every
-chain then exits immediately with `STATUS_DLL_NOT_FOUND`. Rebuilding CmdStan
-resolves it.
+A model compiles, but `cmdstanr` then gives the message
+`No chains finished successfully`, which names no cause and no file. This
+typically follows a change to Rtools after CmdStan was installed. CmdStan builds its
+own `tbb.dll`, linked against the toolchain that built it, so a CmdStan built
+under Rtools44 requires libraries that Rtools45 does not provide; the model
+still compiles, but each chain then exits immediately with
+`STATUS_DLL_NOT_FOUND`. Rebuilding CmdStan resolves the problem.
 
 
 ``` r
 cmdstanr::install_cmdstan(overwrite = TRUE, dir = "C:/cmdstan")
 ```
 
-Anyone who upgrades R and Rtools after installing CmdStan will meet this.
+Anyone who upgrades R and Rtools after installing CmdStan will encounter this.
 
 ### The `cmdstanr` version and the Rtools it expects
 
-Rtools is installed and `cmdstanr` reports it as missing. `cmdstanr` chooses
-which Rtools to look for from the R version, and that choice is fixed in the
-installed `cmdstanr`. In 0.9.0, `cmdstanr:::rtools4x_version()` returns Rtools44
-for R 4.4.x and Rtools45 for every R from 4.5 onward, which is why R 4.6.1 is
-sent to Rtools45. Version 0.8.0 sent every R from 4.4 onward to Rtools44, so an
-older `cmdstanr` beside the Rtools that CRAN pairs with R 4.5.x searches for a
-toolchain that was never installed.
+Rtools is installed, but `cmdstanr` gives a message that it is missing. This is
+because `cmdstanr` chooses which Rtools to look for from the R version, and that
+choice is fixed in the installed `cmdstanr`. In 0.9.0,
+`cmdstanr:::rtools4x_version()` returns Rtools44 for R 4.4.x and Rtools45 for
+all versions of R from 4.5 onward, which is why R 4.6.1 is sent to Rtools45.
+Version 0.8.0 sent all versions from R 4.4 onward to Rtools44, so an older
+`cmdstanr` installed beside the Rtools that CRAN pairs with R 4.5.x searches for
+a toolchain that was never installed.
 
-Install `cmdstanr` 0.9.0 or later, which is what the r-universe repository above
-supplies, and install the Rtools that `check_cmdstan_toolchain()` names rather
-than the one inferred from the R version.
+Install `cmdstanr` 0.9.0 or later (as supplied by the r-universe repository
+above), and install the Rtools named by `check_cmdstan_toolchain()` instead of
+the one inferred from the R version.
 
 ### Slow compilation
 
-Windows Defender inspects each newly compiled program, and a compile that should
-take under a minute can take several. Excluding the CmdStan directory from
-real-time scanning resolves it, where the machine's policy allows.
+Windows Defender inspects each newly compiled program, so a compile that would
+otherwise take under a minute may take several. Where the machine's policy
+allows, excluding the CmdStan directory from real-time scanning resolves this.
 
 ### Compilation blocked by policy
 
-Some managed machines prevent a newly compiled program from running at all.
-This is a policy decision rather than a configuration problem, and it cannot be
-worked around from within R. Resolving it needs whoever administers the machine.
+Some managed machines prevent a newly compiled program from running at all. The
+block results from the machine's policy and not from a problem in the
+configuration. It cannot be worked around from within R, and resolving it
+requires whoever administers the machine.
 
 # macOS
 
-These steps have not been verified on macOS. They point at the upstream
-instructions, which the projects themselves maintain, and the check in the
-*Verification* section is what settles whether the installation works.
+These steps have not been verified on macOS. They point to the upstream
+instructions maintained by the projects themselves, and whether the installation
+works is established by the check in the *Verification* section.
 
 1. Install R from <https://cran.r-project.org/bin/macosx/>, choosing the build
-   for your processor: the Apple Silicon and Intel builds differ.
+   for your processor (the Apple Silicon and Intel builds differ).
 2. Install the Xcode Command Line Tools by running `xcode-select --install` in
-   Terminal. Some packages also require `gfortran`, and CRAN's macOS tools page
-   states the current requirement.
-3. Install the R packages as in the Windows section above.
+   Terminal. Some packages also require `gfortran`, and the current requirement
+   is given on CRAN's macOS tools page.
+3. Install the R packages as described in the Windows section above.
 4. Follow the CmdStanR getting-started vignette
    (<https://mc-stan.org/cmdstanr/articles/cmdstanr.html>) for
    `check_cmdstan_toolchain()` and `install_cmdstan()`. The default installation
@@ -267,17 +279,18 @@ instructions, which the projects themselves maintain, and the check in the
 # Linux
 
 Install R through the distribution's package manager or from CRAN, together with
-the standard build tools: `build-essential` on Debian and Ubuntu, or the
-equivalent development group on other distributions. Install the R packages as
-in the Windows section, then run `cmdstanr::check_cmdstan_toolchain()` followed
-by `cmdstanr::install_cmdstan()`. The default path causes no difficulty here
-either, so no `CMDSTAN` variable is needed. `options(brms.backend = "cmdstanr")`
-belongs in `.Rprofile` as it does on Windows.
+the standard build tools (`build-essential` on Debian and Ubuntu, or the
+equivalent development group on other distributions). After installing the R
+packages as described in the Windows section, run
+`cmdstanr::check_cmdstan_toolchain()` and then `cmdstanr::install_cmdstan()`. As
+on macOS, the default path causes no difficulty, so no `CMDSTAN` variable is
+needed, and `options(brms.backend = "cmdstanr")` belongs in `.Rprofile` as it
+does on Windows.
 
 # Verification
 
-Two checks. The first inspects the toolchain and the second uses it, so run
-them in that order.
+The installation is verified with two checks. Run them in order, because the
+first inspects the toolchain and the second uses it.
 
 
 ``` r
@@ -285,19 +298,19 @@ cmdstanr::check_cmdstan_toolchain()
 cmdstanr::cmdstan_version()
 ```
 
-A configured toolchain reports
+On a configured toolchain, `check_cmdstan_toolchain()` gives the message
 
 ```
 The C++ toolchain required for CmdStan is setup properly!
 ```
 
-and `cmdstan_version()` returns the version string of the installation R is
-using. An error from either is a toolchain or path problem, and nothing below
-will work until it is resolved.
+and `cmdstan_version()` returns the version string of the installation that R is
+using. An error from either function indicates a problem with the toolchain or
+the path, and nothing below will work until it is resolved.
 
-The second check fits a model, and it is the one that matters, because it
-exercises the whole path: `bnec()` calls `brms::brm()`, `brm()` writes a Stan
-program, CmdStan compiles it, and the compiled program samples.
+The second check fits a model. It is the decisive check, because it exercises
+the whole path (`bnec()` calls `brms::brm()`, `brm()` writes a Stan program,
+CmdStan compiles it, and the compiled program samples).
 
 
 ``` r
@@ -312,46 +325,48 @@ summary(fit)
 ```
 
 A successful run compiles one Stan program, prints the sampling progress of two
-chains, and returns an object of class `bayesnecfit`. Its `summary()` reports the
-four parameters of the **nec4param** equation --- **bot**, **top**, **beta** and
-**nec** --- each with an `Rhat` near 1.00, then a *Further Distributional
-Parameters* block holding `phi`, which is the precision of the Beta response,
-then the *NEC* estimate with its credible interval, and a Bayesian R-squared.
-Two chains are enough to show that the toolchain works. The other vignettes take
-the `brms` default of four, which is what an analysis should use.
+chains, and returns an object of class `bayesnecfit`. Its `summary()` shows the
+four parameters of the **nec4param** equation (**bot**, **top**, **beta** and
+**nec**), each with an `Rhat` near 1.00. These are followed by a *Further
+Distributional Parameters* block containing `phi` (the precision of the Beta
+response), then the *NEC* estimate with its credible interval, and then a
+Bayesian R-squared. Two chains are enough to show that the toolchain works. An
+analysis, however, should use the `brms` default of four chains, which the
+other vignettes take.
 
-With that fit returning, the modelling vignettes can be followed;
-[Single model usage][e1] is the place to start.
+Once this fit returns, the modelling vignettes can be followed, beginning with
+[Single model usage][e1].
 
 # Provenance
 
-The Windows failures described above, and the measurements quoted with them ---
-the 49 MB archive, the download that failed at R's default timeout and completed
-in 4.9 minutes at `timeout = 1800`, the OneDrive build failure, and the
-`tbb.dll` linked against a superseded Rtools --- are taken from the software
-setup module of the concentration-response modelling course at
-<https://github.com/open-AIMS/cr_modelling_training>, commit `9d05595`, which
-records what was seen on fresh Windows machines during 2026. They are that
-course's measurements and not this package's.
+The Windows failures described above, and the measurements quoted with them (the
+49 MB archive, the download that failed at R's default timeout and completed in
+4.9 minutes at `timeout = 1800`, the OneDrive build failure, and the `tbb.dll`
+linked against a superseded Rtools), are taken from the software setup module of
+the concentration-response modelling course
+(<https://github.com/open-AIMS/cr_modelling_training>, commit `9d05595`). That
+module records what was observed on fresh Windows machines during 2026, and
+these are the course's measurements, not this package's.
 
-Every statement about `cmdstanr` behaviour here was read from `cmdstanr` 0.9.0
-under R 4.6.1, and none of it is a course measurement: the environment variable
-`cmdstanr:::cmdstanr_initialize()` reads and the `~/.cmdstan` fallback; the
-resolution of a `CMDSTAN` directory that is not itself an installation to the
-newest `cmdstan-*` inside it, and the absence of that resolution from
-`set_cmdstan_path()`; the Rtools version `cmdstanr:::rtools4x_version()`
-returns; the text of the three messages quoted above --- the toolchain success,
-the missing Rtools, and the directory assertion --- together with the fact that
-`install_cmdstan()` asserts a supplied directory rather than creating it, and
-that `check_cmdstan_toolchain()` forwards `fix = TRUE` to the branch that
-repairs rather than only reports; and the `timeout` argument reaching
-`build_cmdstan()` and `build_example()` while the download runs through
-`utils::download.file()` and so honours `options(timeout)`.
+All statements here about `cmdstanr` behaviour were read from `cmdstanr` 0.9.0
+under R 4.6.1, and none of them is a course measurement. They are: the
+environment variable read by `cmdstanr:::cmdstanr_initialize()`, and its
+fallback to `~/.cmdstan`; the resolution of a `CMDSTAN` directory that is not
+itself an installation to the newest `cmdstan-*` inside it, and the absence of
+that resolution from `set_cmdstan_path()`; the Rtools version returned by
+`cmdstanr:::rtools4x_version()`; the text of three of the messages quoted above
+(i.e. the toolchain success, the missing Rtools, and the directory assertion);
+the assertion by `install_cmdstan()` that a supplied directory exists, instead
+of creating it; the forwarding of `fix = TRUE` by `check_cmdstan_toolchain()` to
+the branch that repairs problems instead of only reporting them; and the
+`timeout` argument being passed to `build_cmdstan()` and `build_example()`,
+while the download runs through `utils::download.file()` and so honours
+`options(timeout)`.
 
 The Linux route was checked on 2026-09-11 by running the course's verification
 script end to end, with R 4.6.1, `brms` 2.23.0, `cmdstanr` 0.9.0 and CmdStan
-2.39.0. Two limits on that check: it ran under WSL2 Debian rather than a native
-installation, and the machine was already configured, so it establishes the end
-state and not the instructions that reach it.
+2.39.0. This check has two limitations: it was run under WSL2 Debian and not on
+a native installation, and the machine was already configured, so it confirms
+that the end state works but does not test the instructions for reaching it.
 
 # References
