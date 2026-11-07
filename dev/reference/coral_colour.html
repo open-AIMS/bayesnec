@@ -109,13 +109,15 @@ and 2100.</p>
 
     <div id="format">
     <h2>Format</h2>
-    <p>An object of class <code>data.frame</code> with 180 rows and 8 columns.</p>
+    <p>An object of class <code>data.frame</code> with 171 rows and 8 columns.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
     <p>The design is three climate scenarios by five diuron concentrations by three
 chambers, with four coral fragments in each chamber: 45 chambers and 180
-fragments. <code><a href="coral_pam.html">coral_pam</a></code> has a sixth concentration, 29
+fragments. 171 fragments have a colour score: all 12 at each combination of
+scenario and concentration, except at 9.6 \(\mu\)g/L, where 10 have one
+under 2050 and 5 under 2100. <code><a href="coral_pam.html">coral_pam</a></code> has a sixth concentration, 29
 \(\mu\)g/L, at which the corals died before they could be photographed.
 A chamber sits at one concentration, so it spans no part of the
 concentration-response curve and admits only a displacement — the
@@ -152,7 +154,8 @@ wants it can make it and say so.</p>
 
 <dt>chamber</dt>
 <dd><p>Exposure chamber (fct), 45 levels, each at one climate
-scenario and one concentration.</p></dd>
+scenario and one concentration, numbered as in the experiment. The
+numbers of the nine 29 \(\mu\)g/L chambers are absent.</p></dd>
 
 <dt>fragment</dt>
 <dd><p>Coral fragment within chamber (int), 1 to 4.</p></dd>
@@ -185,19 +188,19 @@ doi: 10.1016/j.marpolbul.2021.112582.</p>
     <div id="ref-examples">
     <h2>Examples</h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">coral_colour</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   climate diuron chamber fragment t0_pixel t14_pixel intensity proportion</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    2018      0     c01        1    75.63     95.61 0.2081114  0.7918886</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2    2018      0     c01        2    94.82    102.03 0.2468549  0.7531451</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3    2018      0     c01        3    81.74    121.59 0.3648959  0.6351041</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4    2018      0     c01        4   105.51    117.34 0.3392479  0.6607521</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5    2018      0     c02        1    69.93    118.29 0.3449810  0.6550190</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6    2018      0     c02        2    77.41    100.55 0.2379233  0.7620767</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   climate diuron chamber fragment  t0_pixel t14_pixel intensity proportion</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1    2018      0     c01        1  75.81906  95.44927 0.2108899  0.7891101</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2    2018      0     c01        2  95.05869 101.85243 0.2504112  0.7495888</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3    2018      0     c01        3  81.94823 121.37804 0.3709260  0.6290740</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4    2018      0     c01        4 105.77677 117.13836 0.3447581  0.6552419</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5    2018      0     c02        1  70.10533 118.08873 0.3506239  0.6493761</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6    2018      0     c02        2  77.61232 100.37342 0.2412825  0.7587175</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span><span class="va">coral_colour</span>, <span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">climate</span>, <span class="va">diuron</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        diuron</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> climate  0 0.29 0.96 2.9 9.6</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    2018 12   12   12  12  12</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    2050 12   12   12  12  12</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    2100 12   12   12  12  12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    2050 12   12   12  12  10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    2100 12   12   12  12   5</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

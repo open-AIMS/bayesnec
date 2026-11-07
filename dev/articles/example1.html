@@ -222,9 +222,10 @@ with a C++ compiler for Windows. On Mac, you should install Xcode. See
 the prerequisites section on this <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started" class="external-link">link</a>
 for further instructions on how to get the compilers running.</p>
 <p>The <a href="https://open-aims.github.io/bayesnec/articles/example5.html">Installation
-and setup</a> vignette works through this in detail: the two
-<code>brms</code> back ends, the <code>cmdstanr</code> installation
-these vignettes are built with, and the failures most often met on
+and setup</a> vignette describes this in detail, including both
+<code>brms</code> back ends (<code>rstan</code> and
+<code>cmdstanr</code>), the <code>cmdstanr</code> installation used to
+build these vignettes, and the failures most often encountered on
 Windows.</p>
 <p>To run this vignette, we will also need some additional packages</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -235,27 +236,29 @@ Windows.</p>
 <div class="section level2">
 <h2 id="the-scale-of-the-predictor">The scale of the predictor<a class="anchor" aria-label="anchor" href="#the-scale-of-the-predictor"></a>
 </h2>
-<p>The scale on which the predictor enters the model is a decision the
-user has to make, and <code>bayesnec</code> does not make it for them.
-<code>bnec</code> takes the concentration exactly as it is given. It is
-worth settling before any model is fitted, because it generally matters
-more than the choice of equation: on one algal dataset, moving a
-<code>nec4param</code> fit from the raw dose axis to
-<code>log(dose)</code> reduced the maximum lack of fit in the mean from
-0.2115 to 0.0676 on a response spanning about 0.7, while five different
-equations fitted on the log axis all landed within 1.2
-<code>elpd_loo</code> of one another.</p>
-<p>Concentration—response experiments are usually laid out as a dilution
+<p>Concentration—response experiments are usually designed as a dilution
 series, in which each concentration is a fixed multiple of the one below
-it. On a linear axis such a design crushes the low concentrations
-together and spreads the high ones out, so the equation spends its
-flexibility at the top of the range, where the response is often already
-flat, and has few distinct points where the response is actually
-changing.</p>
-<p>The way to tell is to look at the spacing of the
-<strong>design</strong>, not at the response. If the concentrations are
-near evenly spaced after a log transformation, the series was laid out
-on a log scale and is usually best modelled there:</p>
+it. On a linear scale this design places the low concentrations close
+together and the high concentrations far apart. The model equation then
+uses its flexibility at the top of the range, where the response has
+often already levelled off, and has few distinct concentrations in the
+region where the response is changing.</p>
+<p>The scale on which the predictor is modelled is therefore an
+important decision, and one that is left to the user: <code>bnec</code>
+uses the concentration as supplied, without transformation. This
+decision is best made before any model is fitted, because it will
+generally have more influence on the results than the choice of model
+equation. For example, for one algal dataset, fitting
+<code>nec4param</code> to <code>log(dose)</code> instead of the raw dose
+reduced the maximum lack of fit in the mean from 0.2115 to 0.0676 (on a
+response spanning about 0.7), whereas five different equations fitted to
+<code>log(dose)</code> were all within 1.2 <code>elpd_loo</code> of one
+another.</p>
+<p>The appropriate scale can be identified from the spacing of the
+concentrations in the design, not from the response. If the
+concentrations are close to evenly spaced after a log transformation,
+the series was designed on a log scale and is usually best modelled on
+that scale:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># the concentrations used in the Beta example below</span></span>
 <span><span class="va">conc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">0.3</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">10</span>, <span class="fl">30</span>, <span class="fl">100</span>, <span class="fl">300</span><span class="op">)</span></span>
@@ -266,54 +269,45 @@ on a log scale and is usually best modelled there:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>linear <span class="op">=</span> <span class="fu">spacing_cv</span><span class="op">(</span><span class="va">conc</span><span class="op">)</span>, log <span class="op">=</span> <span class="fu">spacing_cv</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">conc</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="co">#&gt; linear    log </span></span>
 <span><span class="co">#&gt;   1.72   0.58</span></span></code></pre></div>
-<p>Any simple transformation may be written directly inside
-<code>crf</code>, as <code>crf(log(x), model = "nec4param")</code>. Two
-consequences follow. The transformation is evaluated before
-<code>bayesnec</code> inspects the predictor, so a control concentration
-recorded as <code>0</code> arrives at the data check as
-<code>log(0)</code> and the fit stops, reporting a predictor that is not
-finite. <code>bayesnec</code> does not correct a zero on the predictor
-axis, on either the recorded or the transformed scale: a concentration
-of zero is an ordinary control, and no response distribution constrains
-the values a predictor may take. An offset for a logarithm is therefore
-the user’s to choose and to add to the data first. And the toxicity
-estimates are then returned on the transformed scale, so
-<code>nec</code>, <code>ecx</code> and <code>nsec</code> need
-back-transforming, with <code>xform</code> doing the same job for
-plots:</p>
+<p>For these concentrations, the coefficient of variation of the gaps is
+1.72 on the linear scale and 0.58 on the log scale.</p>
+<p>Any simple transformation can be written directly inside
+<code>crf</code> (e.g. <code>crf(log(x), model = "nec4param")</code>),
+and this has two consequences. First, the transformation is evaluated
+before <code>bayesnec</code> checks the predictor, so a control
+concentration recorded as <code>0</code> is passed to the data check as
+<code>log(0)</code>, and <code>bnec</code> stops with an error that the
+predictor contains values that are not finite. <code>bayesnec</code>
+does not correct a zero on the predictor axis on either the recorded or
+the transformed scale, because a concentration of zero is an ordinary
+control and no response distribution constrains the values a predictor
+can take. Where a logarithm is used, an offset therefore needs to be
+chosen by the user and added to the data before fitting.</p>
+<p>Second, the model is fitted on the transformed scale. However,
+<code>nec</code>, <code>ecx</code>, <code>nsec</code> and the plotting
+methods return the toxicity estimates on the recorded scale. A function
+passed as <code>xform</code> is instead applied to an estimate on the
+transformed scale, so <code>xform = identity</code> returns the
+transformed scale and the inverse of the transformation returns the
+recorded scale, as in the following example:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
-<p>A transformation written inside <code>disp</code> rather than
-<code>crf</code> fails differently, and less clearly. A
-<code>disp</code> formula is evaluated by <code>brms</code> rather than
-by <code>bayesnec</code>, so nothing checks it: with
-<code>disp(~log(x))</code> a zero concentration reaches Stan as
-<code>-Inf</code>, with a warning about infinite values in the data and
-no mention of the term responsible. The remedy is the same — add the
-offset to the data and name that column.</p>
-<p>The inline form and a pre-computed column give the same estimate,
-whether the transformation’s argument is a bare variable such as
-<code>log(x)</code> or contains arithmetic of its own such as
-<code>log(x + 1)</code>. Up to <code>bayesnec</code> 2.1.3 the two
-disagreed: an estimate read off the prediction grid was put back on the
-fitted scale by a substitution that replaced the parsed call’s first
-argument slot rather than the predictor variable inside it, so the
-<code>+ 1</code> was discarded and <code>log(x + 1)</code> was inverted
-as <code>log(x)</code>. Nothing errored and the value returned was
-plausible. That is fixed, and the pre-computed column below is now an
-equivalent way of writing the same model rather than a workaround:</p>
+<p>The inline form and a pre-computed column (as in the code below) are
+equivalent ways of writing the model, and give identical estimates on
+the transformed scale, whether the transformation is of a bare variable
+(e.g. <code>log(x)</code>) or its argument contains arithmetic
+(e.g. <code>log(x + 1)</code>).</p>
+<p>The inline and column forms differ only in the scale on which
+estimates are returned by default. Because <code>bayesnec</code> cannot
+see the transformation used to create a column, estimates from the
+column form are on the scale of <code>log_x</code> and need
+<code>xform = function(x) exp(x) - 1</code> to return them to the
+recorded scale, whereas the inline form applies this inverse
+automatically:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prop_data</span><span class="op">$</span><span class="va">log_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">prop_data</span><span class="op">$</span><span class="va">raw_x</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">resp</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">log_x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">prop_data</span><span class="op">)</span></span></code></pre></div>
-<p>The simulated examples further below stay on the linear scale, and
-deliberately so. They are generated by <code>data-raw/nec_data.R</code>
-as <code>x &lt;- abs(rnorm(100, 1))</code> — 100 random draws rather
-than a designed series — and the true curve is defined as a function of
-linear <code>x</code>, with <code>nec = 1.5</code> in linear units.
-Logging them would distort the generating scale rather than reveal it.
-The difference between those examples and the three real datasets is the
-design, not the package.</p>
 </div>
 <div class="section level2">
 <h2 id="examples">Examples<a class="anchor" aria-label="anchor" href="#examples"></a>
@@ -440,23 +434,28 @@ parameters using:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Regression Coefficients:</span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.05      0.02     0.02     0.08 1.00     2982     3265</span></span>
-<span><span class="co">#&gt; top      0.83      0.01     0.81     0.84 1.00     4702     4222</span></span>
-<span><span class="co">#&gt; beta     0.80      0.14     0.55     1.08 1.00     2551     3607</span></span>
-<span><span class="co">#&gt; nec      4.42      0.03     4.36     4.48 1.00     3040     4437</span></span>
+<span><span class="co">#&gt; bot      0.05      0.02     0.02     0.08 1.00     3037     2949</span></span>
+<span><span class="co">#&gt; top      0.83      0.01     0.81     0.84 1.00     4454     4379</span></span>
+<span><span class="co">#&gt; beta     0.80      0.13     0.56     1.08 1.00     2663     3153</span></span>
+<span><span class="co">#&gt; nec      4.42      0.03     4.36     4.48 1.00     3270     3747</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
 <span><span class="co">#&gt; scale reduction factor on split chains (at convergence, Rhat = 1).</span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Divergent transitions after warmup: 0</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; NEC     4.42 4.36  4.48</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     Estimate  Q2.5 Q97.5</span></span>
+<span><span class="co">#&gt; NEC    83.45 78.29 87.81</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
 <span><span class="co">#&gt;    Estimate Est.Error Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; R2     0.81      0.00 0.80  0.82</span></span></code></pre></div>
+<span><span class="co">#&gt; R2     0.81      0.00 0.80  0.82</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.</span></span></code></pre></div>
 <p>Note the Rhat values in this example are one, indicating
 convergence.</p>
 <p>The functions <code>plot</code> (extending <code>base</code> plot
@@ -467,11 +466,19 @@ plot from the data included in the returned object (class
 <strong>Notice, however, that in this case we log-transformed the
 predictor <code>raw_x</code> in the input formula.</strong> This causes
 <code>brms</code> to pass these transformations onto Stan’s native code,
-and therefore derived toxicity estimates will be on that same scale. So
-we need to transform them back to the data scale using the additional
-argument <code>xform</code>.</p>
+so the parameters of the model (including <code>nec</code>) are
+estimated on the log scale, although the derived toxicity estimates and
+the plots are returned on the data scale. The additional argument
+<code>xform</code> is applied to an estimate on the fitted scale, so
+supplying the inverse of the transformation (<code>exp</code>, as in the
+call below) also returns the data scale. Because the concentrations from
+6.25 to 400 are a two-fold dilution series, we also plot them on a log
+axis (<code>scale_x_continuous(transform = "log10")</code>), on which
+these steps are evenly spaced (the lowest concentration, 0.1, is about
+six steps below the next).</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_1</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_1</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_x_continuous</a></span><span class="op">(</span>transform <span class="op">=</span> <span class="st">"log10"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="vignette-fig-exmp1-binom-1.png" alt="plot of chunk exmp1-binom" width="60%"><p class="caption">
 plot of chunk exmp1-binom
@@ -495,7 +502,7 @@ such as the Beta-Binomial.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5    P(&gt;1) </span></span>
-<span><span class="co">#&gt; 17.59751 11.98486 26.93841  1.00000</span></span></code></pre></div>
+<span><span class="co">#&gt; 17.59272 11.96617 27.20065  1.00000</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="beta-binomial">Beta-Binomial<a class="anchor" aria-label="anchor" href="#beta-binomial"></a>
@@ -512,7 +519,8 @@ more realistic fit in terms of the confidence bounds (check
 Note that a dispersion estimate is not provided here, as overdispersion
 is only relevant for Poisson and Binomial data.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_1b</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_1b</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_x_continuous</a></span><span class="op">(</span>transform <span class="op">=</span> <span class="st">"log10"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="vignette-fig-exmp1-bbinom-1.png" alt="plot of chunk exmp1-bbinom" width="60%"><p class="caption">
 plot of chunk exmp1-bbinom
@@ -524,12 +532,14 @@ plot of chunk exmp1-bbinom
 <span><span class="co">#&gt;       NA       NA       NA       NA</span></span></code></pre></div>
 <p>Now that we have a better fit to these data, we can interpret the
 results. The estimated <em>NEC</em> value can be obtained directly from
-the fitted model object. As explained above, we need to transform
-<em>NEC</em> back to the data scale.</p>
+the fitted model object. The posterior draws stored in the object are on
+the fitted scale, so here they are transformed back to the data scale
+(<code>nec(exp_1b)</code> returns this estimate on the data scale
+directly).</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">$</span><span class="va">ne_posterior</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#&gt;   17.73   65.40   78.74   76.59   88.44  198.23</span></span></code></pre></div>
+<span><span class="co">#&gt;   18.06   65.26   78.59   76.11   87.95  191.89</span></span></code></pre></div>
 <p>EC<em>x</em> estimates can also be obtained from the <em>NEC</em>
 model fit, using the function <code>ecx</code>. Note these may differ
 from a typical 4-parameter non-linear model, as the <em>NEC</em> model
@@ -540,18 +550,19 @@ posterior predictions</a> vignettes for more information.</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_1b</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span>
 <span><span class="co">#&gt;       Q50      Q2.5     Q97.5 </span></span>
-<span><span class="co">#&gt;  83.16503  44.57296 110.90310 </span></span>
+<span><span class="co">#&gt;  82.90958  44.27604 106.79866 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
-<span><span class="co">#&gt; [1] 200</span></span>
+<span><span class="co">#&gt; [1] 500</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
 <span><span class="co">#&gt; [1] 10</span></span>
 <span><span class="co">#&gt; attr(,"toxicity_estimate")</span></span>
 <span><span class="co">#&gt; [1] "ecx"</span></span></code></pre></div>
 <p>A summary method has also been developed for <code>bayesnecfit</code>
-objects that gives an overall summary of the model statistics, which
-also include the estimate for <em>NEC</em>, as the
-<code>nec_intercept</code> population-level effect in the model—again,
-its value will depend on the scale of the predictor variable.</p>
+objects that gives an overall summary of the model statistics. This
+summary includes the estimate of <em>NEC</em> in two places: the
+<code>nec</code> population-level effect, which is on the scale on which
+the predictor was fitted (here <code>log(raw_x)</code>), and the
+<em>NEC</em> row, which is on the data scale.</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Object of class bayesnecfit containing the nec4param model</span></span>
@@ -569,27 +580,32 @@ its value will depend on the scale of the predictor variable.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Regression Coefficients:</span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.13      0.05     0.03     0.23 1.00     1896     2563</span></span>
-<span><span class="co">#&gt; top      0.84      0.03     0.77     0.88 1.00     1498     1166</span></span>
-<span><span class="co">#&gt; beta     0.84      0.71    -0.18     4.37 1.00      518      186</span></span>
-<span><span class="co">#&gt; nec      4.37      0.21     3.67     4.70 1.00      539      180</span></span>
+<span><span class="co">#&gt; bot      0.13      0.05     0.03     0.24 1.00     2134     3083</span></span>
+<span><span class="co">#&gt; top      0.84      0.03     0.77     0.88 1.00     1277     1570</span></span>
+<span><span class="co">#&gt; beta     0.84      0.68    -0.17     3.41 1.01      477      170</span></span>
+<span><span class="co">#&gt; nec      4.36      0.20     3.66     4.66 1.01      486      182</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Further Distributional Parameters:</span></span>
 <span><span class="co">#&gt;     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; phi     5.28      1.24     3.26     8.11 1.00     1859     2777</span></span>
+<span><span class="co">#&gt; phi     5.29      1.21     3.26     8.28 1.00     1832     3452</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
 <span><span class="co">#&gt; scale reduction factor on split chains (at convergence, Rhat = 1).</span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Divergent transitions after warmup: 14</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; NEC     4.37 3.67  4.70</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     Estimate  Q2.5  Q97.5</span></span>
+<span><span class="co">#&gt; NEC    78.59 38.98 106.03</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
 <span><span class="co">#&gt;    Estimate Est.Error Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; R2     0.76      0.04 0.68  0.81</span></span></code></pre></div>
+<span><span class="co">#&gt; R2     0.76      0.04 0.66  0.81</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="beta-data">Beta data<a class="anchor" aria-label="anchor" href="#beta-data"></a>
@@ -603,26 +619,34 @@ photosynthetic efficiency calculated from Pulse-Amplitude-Modulation
 (PAM) data. Here we have a proportion value that is not based on trials
 and successes. In this case there are no theoretical trials, and the
 data must be modelled using a Beta distribution instead.</p>
-<p>These data are a three-fold dilution series, so following the section
-above we model the predictor on a log scale. Here we use
-<code>log(raw_x + 1)</code> rather than <code>log(raw_x)</code>. The
-reason is the lowest concentration: it is 0.01, thirty times below the
-next one, where every other step is a factor of three. On a plain log
-axis that point would sit 3.4 log units from its neighbour against about
-1.1 for every other gap, giving a single concentration a great deal of
-leverage over the fitted curve. The offset draws it in, and leaves the
-series more evenly spaced than <code>log(raw_x)</code> would:</p>
+<p>These data are from a three-fold dilution series, so (as described in
+the section on the scale of the predictor above) we model the predictor
+on a log scale. In this case we use <code>log(raw_x + 1)</code> instead
+of <code>log(raw_x)</code>, because the lowest concentration (0.01) is
+thirty times below the next, whereas each of the other steps is a factor
+of three. On a plain log scale this point would be 3.4 log units from
+its neighbour, compared with about 1.1 for each of the other gaps, which
+would give a single concentration a great deal of leverage over the
+fitted curve. Adding the offset reduces the distance between this point
+and its neighbour, and the series is then more evenly spaced than under
+<code>log(raw_x)</code>:</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>linear <span class="op">=</span> <span class="fu">spacing_cv</span><span class="op">(</span><span class="va">conc</span><span class="op">)</span>,</span>
 <span>        log <span class="op">=</span> <span class="fu">spacing_cv</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">conc</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>        `log(x + 1)` <span class="op">=</span> <span class="fu">spacing_cv</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">conc</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;     linear        log log(x + 1) </span></span>
 <span><span class="co">#&gt;       1.72       0.58       0.44</span></span></code></pre></div>
-<p>An offset of one is convenient rather than principled; it is
-reasonable here because the concentrations span several orders of
-magnitude and one lies within their range. Whatever offset is used has
-to be carried through to anything read off the fitted model, which is
-what the <code>xform</code> argument does below.</p>
+<p>With the offset, the coefficient of variation of the gaps is 0.44,
+against 0.58 for <code>log(raw_x)</code>. An offset of one is chosen for
+convenience and not on any principle, although it is reasonable here
+because the concentrations span several orders of magnitude and the
+value one is within their range. Because the offset is written inside
+<code>crf()</code>, it is part of the transformation that the estimators
+and the plots invert, and these therefore return concentrations. The
+<code>xform</code> passed below is this inverse written out explicitly,
+and gives an identical figure. The concentration axis is drawn with
+<code>scale_x_continuous(transform = "log1p")</code>, which is the scale
+on which the model was fitted.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prop_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/123jq46d"</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -632,7 +656,8 @@ what the <code>xform</code> argument does below.</p>
 <span><span class="va">exp_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">resp</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">raw_x</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>,</span>
 <span>              data <span class="op">=</span> <span class="va">prop_data</span>, seed <span class="op">=</span> <span class="fl">333</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_x_continuous</a></span><span class="op">(</span>transform <span class="op">=</span> <span class="st">"log1p"</span>, breaks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">10</span>, <span class="fl">30</span>, <span class="fl">100</span>, <span class="fl">300</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="vignette-fig-exmp1-beta-1.png" alt="plot of chunk exmp1-beta" width="60%"><p class="caption">
 plot of chunk exmp1-beta
@@ -645,9 +670,9 @@ plot of chunk exmp1-beta
 <p>Where data are a count (of, for example, individuals or cells), the
 response is likely to be Poisson distributed. Such data are distributed
 from <code>0</code> to <code>Inf</code> and are integers. Here we
-simulate counts whose mean follows an <em>NEC</em> curve across the
-concentrations used elsewhere in this vignette, then summarise the
-concentration (i.e. predictor) data.</p>
+simulate counts with a mean that follows a <code>nec4param</code> curve
+across the concentrations used elsewhere in this vignette, and then
+summarise the concentration (i.e. predictor) data.</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span>
@@ -694,31 +719,32 @@ plot of chunk exmp1-poisson
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt;  Estimate      Q2.5     Q97.5     P(&gt;1) </span></span>
-<span><span class="co">#&gt; 0.9635490 0.7336119 1.2851574 0.3975000</span></span></code></pre></div>
-<p>The dispersion estimate, described in the Binomial example above, is
-near one here, as it should be for data simulated from a Poisson, and
-the credible bands are commensurate with the spread of the points. We
-would also plot the model chains (with <code>plot(exp_3$fit)</code>) and
-the parameter estimates to check the fit.</p>
+<span><span class="co">#&gt; 0.9614115 0.7338588 1.2965095 0.3903750</span></span></code></pre></div>
+<p>The dispersion estimate (described in the Binomial example above) is
+close to one (0.96), as it should be for data simulated from a Poisson
+distribution, and the width of the credible bands is consistent with the
+spread of the points. We would also plot the model chains (with
+<code>plot(exp_3$fit)</code>) and the parameter estimates to check the
+fit.</p>
 </div>
 <div class="section level4">
 <h4 id="negative-binomial">Negative binomial<a class="anchor" aria-label="anchor" href="#negative-binomial"></a>
 </h4>
-<p>Count data are often more variable than a Poisson allows, a situation
-known as <em>overdispersion</em>, and the Negative binomial distribution
-is generally used in that case. To show the difference we simulate a
-second set of counts from the same curve, but with extra-Poisson
-variability.</p>
+<p>Count data are often more variable than a Poisson distribution allows
+(a situation known as <em>overdispersion</em>), and in that case the
+Negative binomial distribution is generally used. To illustrate the
+difference, we simulate a second set of counts from the curve used
+above, but with additional (extra-Poisson) variability.</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">count_data_od</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  x <span class="op">=</span> <span class="va">nec_data</span><span class="op">$</span><span class="va">x</span>,</span>
 <span>  y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/NegBinomial.html" class="external-link">rnbinom</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">count_mu</span><span class="op">)</span>, mu <span class="op">=</span> <span class="va">count_mu</span>, size <span class="op">=</span> <span class="fl">20</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Fitting these with a Poisson gives credible bands that are far too
-narrow for the variability among the points, and a dispersion estimate
-well above one. That is the signal to reach for a different
-distribution.</p>
+<p>Fitting these data with a Poisson distribution gives credible bands
+that are far too narrow for the variability among the points and a
+dispersion estimate well above one, which indicates that a different
+distribution should be used.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">count_data_od</span>,</span>
 <span>               seed <span class="op">=</span> <span class="fl">333</span><span class="op">)</span></span></code></pre></div>
@@ -732,15 +758,15 @@ plot of chunk exmp1-poisson-od
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3b</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5    P(&gt;1) </span></span>
-<span><span class="co">#&gt; 4.889823 3.754817 6.578114 1.000000</span></span></code></pre></div>
+<span><span class="co">#&gt; 4.890548 3.733693 6.565285 1.000000</span></span></code></pre></div>
 <p>We can refit these data by deliberately specifying the Negative
 binomial distribution via the <code>family</code> argument.</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3c</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">count_data_od</span>,</span>
 <span>               family <span class="op">=</span> <span class="st">"negbinomial"</span>, seed <span class="op">=</span> <span class="fl">333</span><span class="op">)</span></span></code></pre></div>
-<p>The resultant plot has wider, more realistic credible bands than the
-Poisson fit to the same data. Note that a dispersion estimate is not
-returned here, as <code>bayesnec</code> calculates one only for the
+<p>The resultant plot has wider and more realistic credible bands than
+the Poisson fit to these data. Note that a dispersion estimate is not
+returned here, because <code>bayesnec</code> calculates one only for the
 Poisson and Binomial families. See the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model
 details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example2.html">Multi
 model usage</a> vignettes for options to fit other models to these
@@ -756,13 +782,13 @@ plot of chunk exmp1-negbinbase
 <div class="section level4">
 <h4 id="counts-observed-over-an-exposure">Counts observed over an exposure<a class="anchor" aria-label="anchor" href="#counts-observed-over-an-exposure"></a>
 </h4>
-<p>A count is very often observed over an exposure that is not the same
-in every replicate: offspring counted per replicate where the number of
-fecund adults differs, cells counted over different areas, or events
-counted over different lengths of time. The <code>rate</code> term
-declares that exposure, and is available for the <code>poisson</code>
-and <code>negbinomial</code> families. Here we simulate offspring counts
-where the number of females per replicate varies.</p>
+<p>A count is very often observed over an exposure that differs among
+replicates (e.g. offspring counted in replicates with different numbers
+of fecund adults, cells counted over different areas, or events counted
+over different lengths of time). The <code>rate</code> term is used to
+declare this exposure, and is available for the <code>poisson</code> and
+<code>negbinomial</code> families. Here we simulate counts of offspring
+where the number of females varies among replicates.</p>
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">n_females</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">8</span><span class="op">:</span><span class="fl">24</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -777,22 +803,23 @@ where the number of females per replicate varies.</p>
 <span>                            beta <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">*</span> <span class="va">n_females</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The raw counts are passed to <code>bnec</code> unchanged, so a
-replicate with twenty females contributes more information than one with
-eight — which is exactly what would be lost by fitting
-<code>y / n_females</code> as a continuous response.</p>
+replicate with twenty females contributes more information to the fit
+than one with eight. This difference in information would be lost if
+<code>y / n_females</code> were fitted as a continuous response.</p>
 <div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">rate</span><span class="op">(</span><span class="va">n_females</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>,</span>
 <span>               data <span class="op">=</span> <span class="va">fecundity_data</span>, family <span class="op">=</span> <span class="st">"poisson"</span>,</span>
 <span>               seed <span class="op">=</span> <span class="fl">333</span><span class="op">)</span></span></code></pre></div>
 <p>Because <code>bnec</code> uses an identity link, <code>brms</code>
-applies the denominator multiplicatively on the response scale rather
-than as a log offset on the linear predictor. The fitted mean therefore
-<em>is</em> the rate, and <code>top</code>, <code>bot</code> and
-<code>nec</code> are all directly interpretable as offspring per female.
-The prediction grid holds the denominator at 1, so the fitted curve and
-any <code>ecx</code> or <code>nsec</code> read from it are on that same
-scale, and <code>autoplot</code> divides the observed counts through by
-the denominator to match.</p>
+applies the denominator multiplicatively on the response scale, and not
+as a log offset on the linear predictor. The fitted mean is therefore
+the rate itself, so <code>top</code> and <code>bot</code> can be
+interpreted directly as offspring per female (and <code>nec</code> as a
+concentration, as in the other examples). The denominator is set to 1 on
+the prediction grid, so the fitted curve (and any <code>ecx</code> or
+<code>nsec</code> estimate derived from it) is on this scale, and
+<code>autoplot</code> divides the observed counts by the denominator so
+that they are plotted on this scale as well.</p>
 <div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_3d</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
@@ -803,28 +830,32 @@ plot of chunk exmp1-rate
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3d</span><span class="op">$</span><span class="va">ne</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 1.526470 1.453376 1.607691</span></span>
+<span><span class="co">#&gt; 1.525412 1.451266 1.610143</span></span>
 <span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_3d</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 1.611954 1.552050 1.679677 </span></span>
+<span><span class="co">#&gt; 1.611144 1.549528 1.680938 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
-<span><span class="co">#&gt; [1] 200</span></span>
+<span><span class="co">#&gt; [1] 500</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
 <span><span class="co">#&gt; [1] 10</span></span>
 <span><span class="co">#&gt; attr(,"toxicity_estimate")</span></span>
 <span><span class="co">#&gt; [1] "ecx"</span></span>
 <span><span class="va">exp_3d</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt;  Estimate      Q2.5     Q97.5     P(&gt;1) </span></span>
-<span><span class="co">#&gt; 0.8812035 0.6682100 1.1809228 0.1966250</span></span></code></pre></div>
-<p>One caveat is worth stating explicitly. If the exposure varies for
-reasons unrelated to the treatment — a replicate simply received fewer
-animals — then <code>rate</code> is doing exactly what is wanted. If
-instead the exposure is itself an effect of the treatment, as it would
-be were <code>n_females</code> the number of females <em>surviving</em>
-to the point of counting, then the endpoint has quietly changed from
-reproductive output to fecundity conditional on survival. Both are
-legitimate, but they are different endpoints and will not return the
-same <em>NEC</em>.</p>
+<span><span class="co">#&gt; 0.8804628 0.6716389 1.1833453 0.1998750</span></span></code></pre></div>
+<p>The estimated <em>NEC</em> of 1.53 (95% credible interval 1.45 to
+1.61) includes the value of 1.5 used to simulate these data, and the
+dispersion estimate (0.88) is close to one, as expected for counts
+simulated from a Poisson distribution.</p>
+<p>The interpretation of a <code>rate</code> fit does, however, depend
+on why the exposure varies. Where it varies for reasons unrelated to the
+treatment (e.g. a replicate simply received fewer animals),
+<code>rate</code> gives the intended estimate. Where the exposure is
+itself an effect of the treatment (e.g. if <code>n_females</code> were
+the number of females <em>surviving</em> to the time of counting), the
+endpoint has silently changed from reproductive output to fecundity
+conditional on survival. Both are legitimate, but they are different
+endpoints and will not return the same <em>NEC</em>.</p>
 </div>
 <div class="section level4">
 <h4 id="measure-data">Measure data<a class="anchor" aria-label="anchor" href="#measure-data"></a>
@@ -868,18 +899,20 @@ plot of chunk exmp1-gammabase
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Regression Coefficients:</span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.98      0.05     0.88     1.07 1.00     3564     4249</span></span>
-<span><span class="co">#&gt; top      2.44      0.01     2.41     2.46 1.00     5744     5055</span></span>
-<span><span class="co">#&gt; beta     0.65      0.10     0.46     0.84 1.00     3007     4119</span></span>
-<span><span class="co">#&gt; nec      1.50      0.02     1.46     1.54 1.00     3614     4942</span></span>
+<span><span class="co">#&gt; bot      0.98      0.05     0.88     1.07 1.00     4057     4441</span></span>
+<span><span class="co">#&gt; top      2.44      0.01     2.41     2.46 1.00     6760     5215</span></span>
+<span><span class="co">#&gt; beta     0.65      0.10     0.45     0.84 1.00     3674     4223</span></span>
+<span><span class="co">#&gt; nec      1.50      0.02     1.46     1.54 1.00     4335     4845</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Further Distributional Parameters:</span></span>
 <span><span class="co">#&gt;       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; shape   515.84     73.80   382.69   673.16 1.00     6209     4973</span></span>
+<span><span class="co">#&gt; shape   515.06     74.50   379.72   680.88 1.00     6939     5087</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
 <span><span class="co">#&gt; scale reduction factor on split chains (at convergence, Rhat = 1).</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Divergent transitions after warmup: 0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     Estimate Q2.5 Q97.5</span></span>
@@ -888,7 +921,10 @@ plot of chunk exmp1-gammabase
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
 <span><span class="co">#&gt;    Estimate Est.Error Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; R2     0.95      0.00 0.94  0.95</span></span></code></pre></div>
+<span><span class="co">#&gt; R2     0.95      0.00 0.94  0.95</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.</span></span></code></pre></div>
 <p>In this case our model has converged really well.</p>
 </div>
 </div>
@@ -896,165 +932,178 @@ plot of chunk exmp1-gammabase
 <div class="section level2">
 <h2 id="preparing-the-response">Preparing the response<a class="anchor" aria-label="anchor" href="#preparing-the-response"></a>
 </h2>
-<p>Supply the response as measured. Do not convert it to percent
-inhibition, percent of control, or percent of the observed maximum
-before calling <code>bnec</code>.</p>
-<p>Normalising to the control is conventional in ecotoxicology, usually
-as
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>y</mi><mi>i</mi><mn>0</mn></msubsup><mo>=</mo><mn>1</mn><mo>−</mo><msub><mi>y</mi><mi>i</mi></msub><mi>/</mi><msub><mover><mi>y</mi><mo accent="true">‾</mo></mover><mrow><mi>c</mi><mi>o</mi><mi>n</mi></mrow></msub></mrow><annotation encoding="application/x-tex">y^0_i = 1 - y_i / \bar{y}_{con}</annotation></semantics></math>
+<p>Normalising the response to the control is conventional in
+ecotoxicology, usually as
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>y</mi><mi>i</mi><mn>0</mn></msubsup><mo>=</mo><mn>1</mn><mo>−</mo><msub><mi>y</mi><mi>i</mi></msub><mi>/</mi><msub><mover><mi>y</mi><mo accent="true">‾</mo></mover><mrow><mi>c</mi><mi>o</mi><mi>n</mi></mrow></msub></mrow><annotation encoding="application/x-tex">y^0_i = 1 - y_i / \bar{y}_{con}</annotation></semantics></math>,
 where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>y</mi><mo accent="true">‾</mo></mover><mrow><mi>c</mi><mi>o</mi><mi>n</mi></mrow></msub><annotation encoding="application/x-tex">\bar{y}_{con}</annotation></semantics></math>
-is the mean of three to six control replicates. <span class="citation">Ritz et al. (2026)</span> show what it costs. Every
-observation is divided by the <em>same random quantity</em>, so the
-normalised values are correlated and the sampling variability of the
-divisor is discarded. Applying Jensen’s inequality to
+is the mean of three to six control replicates. <span class="citation">Ritz et al. (2026)</span> quantified the consequences
+of this practice. Because all observations are divided by a single
+<em>random</em> quantity, the normalised values are correlated, and the
+sampling variability of the divisor is discarded. In addition, applying
+Jensen’s inequality to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>y</mi><mo>→</mo><mn>1</mn><mi>/</mi><mi>y</mi></mrow><annotation encoding="application/x-tex">y \rightarrow 1/y</annotation></semantics></math>
 gives
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>y</mi><mi>i</mi></msub><mi>/</mi><msub><mover><mi>y</mi><mo accent="true">‾</mo></mover><mrow><mi>c</mi><mi>o</mi><mi>n</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>≤</mo><mn>1</mn><mo>−</mo><mi>E</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>y</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mi>E</mi><mo stretchy="false" form="prefix">(</mo><msub><mover><mi>y</mi><mo accent="true">‾</mo></mover><mrow><mi>c</mi><mi>o</mi><mi>n</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">E(1 - y_i/\bar{y}_{con}) \leq 1 - E(y_i)/E(\bar{y}_{con})</annotation></semantics></math>,
-so the inhibition trend is biased downwards and the effective doses read
-off it are biased upwards. In their simulation of an ED10 with six
-controls, normalising gave a bias of 6.8% and a coefficient of variation
-of 26.4%, against 2.1% and 12.7% for the same quantity estimated from
-the raw response; nominal 95% intervals covered at 88–91%. Roughly half
-the reported variability was an artefact of the normalisation
-itself.</p>
-<p>Nothing is lost by not normalising. The concentration at which
-inhibition rises by
+so the inhibition trend is biased downwards and the effective doses
+estimated from it are biased upwards. In their simulation of an ED10
+with six controls, normalising gave a bias of 6.8% and a coefficient of
+variation of 26.4%, compared with 2.1% and 12.7% for the ED10 estimated
+from the raw response, and the coverage of nominal 95% intervals was
+88–91%. Roughly half the reported variability was an artefact of the
+normalisation itself.</p>
+<p>For these reasons, supply the response to <code>bnec</code> as
+measured, and do not convert it to percent inhibition, percent of
+control, or percent of the observed maximum beforehand. Nothing is lost
+by not normalising, because the concentration at which inhibition
+increases by
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math>
-percent is the same concentration at which the response falls by
+percent is the concentration at which the response declines by
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math>
-percent, so the two analyses answer the same question. The second is
-what <code>ecx(type = "absolute")</code> — the default — already
+percent, so both analyses answer the same question. This concentration
+is what <code>ecx(type = "absolute")</code> (the default) already
 returns:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>E</mi><msub><mi>C</mi><mi>x</mi></msub><mo>,</mo><mi>β</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>x</mi><mi>/</mi><mn>100</mn><mo stretchy="false" form="postfix">)</mo><mo>⋅</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mi>β</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">f(EC_x, \beta) = (1 - x/100) \cdot f(0, \beta)</annotation></semantics></math></p>
-<p>a decline relative to the <em>fitted</em> control value rather than
-to an observed control mean. Because it is evaluated separately within
-every posterior draw, uncertainty about the control level propagates
-into the credible interval instead of being thrown away. This is exactly
-the estimand <span class="citation">Ritz et al. (2026)</span> recommend,
-and it is why no change to <code>bayesnec</code> is needed to follow
-their advice — only a change to what you feed it.</p>
-<p>Dividing by the maximum observed response instead of the control mean
-is worse, on three counts. An extreme order statistic is more variable
-and more biased than a mean of three to six values. The divisor then
-depends on every treatment rather than on the controls alone, so treated
-groups partly determine their own denominator. And it forces exactly one
-observation to be exactly <code>1</code>, which is outside the open
+<p>where the decline is relative to the <em>fitted</em> control value,
+not to an observed control mean. Because this is evaluated separately
+within each posterior draw, the uncertainty in the control level is
+propagated into the credible interval instead of being discarded. This
+is the estimand <span class="citation">Ritz et al. (2026)</span>
+recommend, and following their advice therefore requires no change to
+<code>bayesnec</code>, only a change to the data supplied to it.</p>
+<p>Dividing by the maximum observed response, instead of the control
+mean, is worse for three reasons. First, an extreme order statistic is
+more variable and more biased than a mean of three to six values.
+Second, the divisor then depends on all treatments and not only on the
+controls, so the treated groups partly determine their own denominator.
+Third, it forces a single observation to equal <code>1</code>, which is
+outside the open
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0, 1)</annotation></semantics></math>
-support of the Beta distribution, so <code>bnec</code> must nudge it off
-the boundary — a third distortion on top of the other two.</p>
-<p><code>bnec</code> looks for both practices and says so. Dividing by
-the observed maximum leaves a maximum of exactly <code>1</code> attained
-by exactly one observation; dividing by the control mean leaves the
-control observations averaging to exactly <code>1</code>. Either
-produces a message pointing back to this section. The first check is
-suppressed when the response lies on a rational grid, because genuine
-count-derived proportions such as 19/20 surviving routinely produce a
-single observation at <code>1</code> and are not evidence of
-anything.</p>
+support of the Beta distribution. <code>bnec</code> must then shift this
+observation off the boundary, which is a further distortion in addition
+to the first two.</p>
+<p><code>bnec</code> checks for both practices and gives a message where
+it detects either. Dividing by the observed maximum gives a maximum of
+exactly <code>1</code> that is attained by only one observation, and
+dividing by the control mean gives control observations with a mean of
+exactly <code>1</code>. Each message cites <span class="citation">Ritz
+et al. (2026)</span> and <code><a href="../reference/ecx.html">?ecx</a></code>. The first check is not
+applied when the response is on a rational grid (i.e. all values are
+multiples of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">1/n</annotation></semantics></math>
+for a single integer
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>
+up to 100), because genuine proportions derived from counts (e.g. 19/20
+surviving) routinely include a single observation at <code>1</code> and
+are not evidence of normalisation.</p>
 <div class="section level3">
-<h3 id="when-a-divisor-is-unavoidable">When a divisor is unavoidable<a class="anchor" aria-label="anchor" href="#when-a-divisor-is-unavoidable"></a>
+<h3 id="unavoidable-divisors">Unavoidable divisors<a class="anchor" aria-label="anchor" href="#unavoidable-divisors"></a>
 </h3>
-<p>The problem is dividing by something <em>random</em>, not dividing as
-such. <span class="citation">Ritz et al. (2026)</span> are explicit on
-this point:</p>
+<p>The problem is division by a <em>random</em> quantity, not division
+as such, and <span class="citation">Ritz et al. (2026)</span> are
+explicit on this point:</p>
 <blockquote>
 <p>If the average growth rate in the control group was known beyond
 uncertainty, perhaps from historical data, there would be no
 problem.</p>
 </blockquote>
-<p>This matters for the <code>Beta</code> and
-<code>zero_inflated_beta</code> families, which need a response on the
-open interval
+<p>This distinction is important for the <code>Beta</code> and
+<code>zero_inflated_beta</code> families, which require a response on
+the open interval
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0, 1)</annotation></semantics></math>
-and therefore sometimes need a divisor. Where one is required it must be
-a constant fixed in advance of the analysis — a physiological or design
-ceiling, or a value from accumulated historical controls — and never a
-quantity computed from the dataset being analysed.</p>
-<p>Note also that ECx is invariant to the choice of constant divisor,
+and therefore sometimes need a divisor. Where a divisor is required, it
+must be a constant fixed before the analysis (a physiological or design
+ceiling, or a value from accumulated historical controls), and never a
+quantity calculated from the dataset being analysed.</p>
+<p>Note also that ECx is invariant to the choice of a constant divisor,
 because it is a relative decline from the fitted <code>top</code>.
-Changing the divisor changes what <code>top</code> means; it does not
-change the toxicity estimate.</p>
-<p>Many proportional responses need no divisor at all. The maximum
-quantum yield used in the Beta example above is a genuine physical
-proportion on
+Changing the divisor changes the meaning of <code>top</code>, but not
+the toxicity estimate.</p>
+<p>Many proportional responses do not need a divisor at all. For
+example, the maximum quantum yield used in the Beta example above is a
+genuine physical proportion on
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(0, 1)</annotation></semantics></math>,
-as is a survival fraction or a bleached-area fraction. These are already
-on the right scale and should be modelled as they stand.</p>
+as are a survival fraction and a bleached-area fraction. These responses
+are already on the appropriate scale, and should be modelled as they
+are.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="censoring">Censoring<a class="anchor" aria-label="anchor" href="#censoring"></a>
 </h2>
-<p>A recorded value is <em>censored</em> when the truth is known to lie
-in an interval rather than at a point: a concentration below a limit of
-detection, a cell count below the resolution of the method, a value
-rounded at the recording precision. The number written down is a
-<strong>bound</strong>, not a measurement.</p>
-<p>Substituting something for it — a zero, half the detection limit, or
-the bound itself treated as though it had been observed — states more
-than is known. <code>bayesnec</code> passes through the
-<code>cens()</code> aterm from <code>brms</code>, so the bound can be
-declared instead:</p>
+<p>A recorded value is <em>censored</em> when the true value is known to
+be within an interval, and not at a point (e.g. a concentration below a
+limit of detection, a cell count below the resolution of the method, or
+a value rounded at the recording precision). The number recorded is
+therefore a <em>bound</em>, not a measurement. Substituting a value for
+it (such as zero, half the detection limit, or the bound itself treated
+as though it had been observed) implies more than is known.
+<code>bayesnec</code> passes through the <code>cens()</code> addition
+term (aterm) from <code>brms</code>, so that the bound can be declared
+instead:</p>
 <div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">|</span> <span class="fu">cens</span><span class="op">(</span><span class="va">censoring</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span></span></code></pre></div>
-<p><code>censoring</code> is a variable in the data rather than a
+<p>The <code>censoring</code> term is a variable in the data and not a
 constant, because in a concentration-response dataset only some rows are
 censored. It takes the values <code>"none"</code>, <code>"left"</code>,
 <code>"right"</code> or <code>"interval"</code> (equivalently
-<code>0</code>, <code>-1</code>, <code>1</code>, <code>2</code>).
-Interval censoring takes a second argument giving the upper bound,
+<code>0</code>, <code>-1</code>, <code>1</code>, <code>2</code>), and
+interval censoring takes a second argument giving the upper bound,
 <code>cens(censoring, upper)</code>.</p>
-<p><strong>The response column carries the bound.</strong> On a
-left-censored row, the number in the response column is the value the
-truth is known to be at or below — not zero, and not a guess at the
-unknown truth. The declaration supplies that upper end of the interval
-and the family’s support supplies the lower one, so a left-censored row
-under a Beta asserts only that the truth lies in
+<p>For a censored row, the value in the response column is the bound. On
+a left-censored row this is the value at or below which the true value
+is known to be, and not zero or a guess at the unknown true value. The
+declaration supplies the upper end of the interval and the support of
+the family supplies the lower end, so a left-censored row under a Beta
+distribution implies only that the true value is in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mtext mathvariant="normal">bound</mtext><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">(0, \text{bound}]</annotation></semantics></math>.</p>
 <p>Because the bound has been declared, a censored row is exempt from
-the boundary shifts <code>bnec</code> otherwise applies to zeros under
-the Gamma and Beta families; moving the bound would restate it.
-Declaring a row censored at a value the family excludes — left-censored
-at <code>0</code> under Gamma or Beta, right-censored at <code>1</code>
-under Beta — is an error rather than a shift, because the censored
-likelihood is degenerate there.</p>
-<p>The mechanism is as follows. A censored row contributes
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mo stretchy="false" form="prefix">(</mo><mtext mathvariant="normal">bound</mtext><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">F(\text{bound})</annotation></semantics></math>,
-the probability of falling at or below the bound, rather than a density
-at a point. As the fitted curve descends past the bound,
+the boundary shifts that <code>bnec</code> otherwise applies to zeros
+under the Gamma and Beta families (and to ones under the Beta family),
+as shifting the bound would change what was declared. However, declaring
+a row censored at a value the family excludes (left-censored at
+<code>0</code> under a Gamma or Beta distribution, or right-censored at
+<code>1</code> under a Beta distribution) gives an error and not a
+shift, because the censored likelihood is degenerate there.</p>
+<p>The reason for declaring the bound is the contribution each row makes
+to the likelihood. A censored row contributes
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mo stretchy="false" form="prefix">(</mo><mtext mathvariant="normal">bound</mtext><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">F(\text{bound})</annotation></semantics></math>
+(the probability of a value at or below the bound), and not a density at
+a point. As the fitted curve descends past the bound,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>F</mi><annotation encoding="application/x-tex">F</annotation></semantics></math>
-rises toward 1 and <em>saturates</em>: the curve is not rewarded for
-passing further below, but neither is it penalised. A substituted value
-instead contributes a density, which falls away as the curve descends,
-so substitution actively pulls the curve back up toward the value that
-was substituted.</p>
+increases towards 1 and then <em>saturates</em>, so the curve is not
+rewarded for passing further below the bound, but it is not penalised
+either. In contrast, a substituted value contributes a density, which
+declines as the curve descends, so substitution actively pulls the curve
+back up towards the substituted value.</p>
 <div class="section level3">
 <h3 id="limits-of-the-censored-likelihood">Limits of the censored likelihood<a class="anchor" aria-label="anchor" href="#limits-of-the-censored-likelihood"></a>
 </h3>
-<p>Saturation is what makes the censored likelihood honest, and it is
-also its limit. Once the fitted curve sits a few residual standard
-deviations below the bound,
+<p>This saturation prevents the censored likelihood from implying more
+than the data show, although it also limits what the data can identify.
+Once the fitted curve is a few residual standard deviations below the
+bound,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mo stretchy="false" form="prefix">(</mo><mtext mathvariant="normal">bound</mtext><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">F(\text{bound})</annotation></semantics></math>
-is indistinguishable from 1 and moving the curve further down changes
-the likelihood by nothing. The likelihood is <em>flat</em> over that
-region, so a parameter whose only expression is there is not identified
-by the data, and what gets reported for it is the prior.</p>
-<p>The lower asymptote is the usual casualty. Where every response near
-the bottom of the curve is censored, <code>bot</code> is told only that
-it lies somewhere below the bound, and nothing in the likelihood
-distinguishes one such value from another.</p>
-<p>An example, from the <code>alga</code> dataset that ships with the
-package — <em>Rhodomonas salina</em> under contaminant A, the cell in
-which the population fell below the counting limit at the highest
-concentrations, so that specific growth rate is undefined there. Those
-16 rows are flagged <code>sgr_source == "substituted"</code>. A counting
-limit of 10 cells mL<sup>-1</sup> against the recorded
-<code>density_initial</code> of 3871 cells mL<sup>-1</sup> over three
-days implies a bound of
+is indistinguishable from 1, and lowering the curve further does not
+change the likelihood at all. The likelihood is <em>flat</em> over that
+region, so a parameter that is expressed only in that region is not
+identified by the data, and its posterior is determined by the
+prior.</p>
+<p>The lower asymptote is the parameter most often affected. Where every
+response near the bottom of the curve is censored, the data indicate
+only that <code>bot</code> is somewhere below the bound, and nothing in
+the likelihood distinguishes one such value from another.</p>
+<p>As an example, we use the <code>alga</code> dataset supplied with the
+package, for <em>Rhodomonas salina</em> under contaminant A (the
+combination in which the population fell below the counting limit at the
+highest concentrations, so that specific growth rate is undefined
+there). These 16 rows are flagged
+<code>sgr_source == "substituted"</code>. A counting limit of 10 cells
+mL<sup>-1</sup>, against the recorded <code>density_initial</code> of
+3871 cells mL<sup>-1</sup> over three days, implies a bound of
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mn>10</mn><mo>−</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mn>3871</mn><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mn>3</mn><mo>=</mo><mi>−</mi><mn>1.99</mn></mrow><annotation encoding="application/x-tex">(\log 10 - \log 3871)/3 = -1.99</annotation></semantics></math>
-d<sup>-1</sup>. Fitting <code>nec4param</code> with a Gaussian family
-and the same prior throughout, and varying only how those rows are
+d<sup>-1</sup>. We fitted <code>nec4param</code> with a Gaussian family
+and the same prior throughout, and varied only how these rows were
 declared:</p>
 <table class="table">
 <colgroup>
@@ -1089,127 +1138,142 @@ extinction to the bound</td>
 </tr>
 </tbody>
 </table>
-<p>Taking the rows in order: substitution is not only wrong about the
-value, it is <em>confident</em>: the posterior SD is 0.014, an interval
-a tenth the width of any other, because those rows have been asserted to
-sit exactly at the bound when all that is known is that they lie below
-it.</p>
-<p>Left-censoring withdraws the false assertion, and what it reveals is
-that the data contain almost nothing about <code>bot</code>. The
-posterior widens by a factor of 160 and runs down to −11 d<sup>-1</sup>,
-a rate at which the population would fall by
+<p>When the rows are substituted (first row of the table), the estimate
+is not only wrong about the value but also overconfident, with a
+posterior SD of 0.014 and an interval a tenth the width of either of the
+others. This is because these rows have been treated as being exactly at
+the bound, when all that is known is that they are below it.</p>
+<p>Declaring the rows left-censored removes this false assumption, and
+shows that the data contain almost no information about
+<code>bot</code>. The posterior SD increases by a factor of 160, and the
+interval extends down to −11 d<sup>-1</sup>, a rate at which the
+population would decline by a factor of
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mn>33</mn></msup><annotation encoding="application/x-tex">e^{33}</annotation></semantics></math>
-over the test. That is the prior’s lower tail rather than an estimate.
-Nothing has gone wrong mechanically: the chains mix,
+over the test. This is the lower tail of the prior, not an estimate.
+There is no mechanical problem with this fit, and nothing that a routine
+check would stop on: the chains mix,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>R</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat{R}</annotation></semantics></math>
-is 1.00, and the sampler reports 5 divergent transitions in 8000 draws —
-nothing a routine check would stop on. The number is simply uninformed,
-and an interval alone will not tell you so.</p>
-<p>The third row is the repair. A population below the counting limit is
-not below extinction, so the truth lies in an interval and
-<code>cens(censoring, upper)</code> can say exactly that. Bounding the
-flat region from below restores a usable posterior. It is worth being
-clear about what that estimate then rests on: the lower end is the
-declared extinction floor, here 1 cell mL<sup>-1</sup> and so −2.75
-d<sup>-1</sup>, and the posterior presses against it. The asymptote is
-constrained by that assumption rather than measured, and should be
-reported that way. This fit also needed a longer warmup and a smaller
-step size to converge (the default settings left one chain of four
-stranded on a ridge in <code>beta</code>,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>R</mi><mo accent="true">̂</mo></mover><mo>=</mo><mn>1.47</mn></mrow><annotation encoding="application/x-tex">\widehat{R} = 1.47</annotation></semantics></math>);
-the interval declaration gives the curve slack in the region the other
-two preparations pin down, and that slack has to be sampled.</p>
-<p>Two points follow for practice. First, read identification from the
-prior-to-posterior contraction rather than from the interval: across
-these three fits it is 0.996, 0.379 and 0.953 respectively, and the
-middle value is the diagnostic that the interval hides.
-<code><a href="../reference/pull_prior.html">pull_prior()</a></code> and the posterior draws are enough to compute
-it. Second, the problem propagates — any quantity read off the deep part
-of the fitted curve inherits the prior dependence, so an
-<code><a href="../reference/ecx.html">ecx()</a></code> value whose target falls near the asymptote deserves
-the same scepticism as <code>bot</code> itself.</p>
+is 1.00, and the sampler gave 5 divergent transitions in 8000 draws. The
+estimate is simply uninformed by the data, and an interval alone does
+not show this.</p>
+<p>Interval censoring (third row of the table) resolves this problem. A
+population below the counting limit is not below extinction, so the true
+value is within an interval, and <code>cens(censoring, upper)</code>
+declares this interval. Bounding the flat region from below restores a
+usable posterior. However, the lower end of the interval is then the
+declared extinction floor (here 1 cell mL<sup>-1</sup>, and therefore
+−2.75 d<sup>-1</sup>), and the lower end of the posterior interval is
+close to it (−2.68, against −2.75). The asymptote is constrained by this
+assumption and not measured, and should be reported as such. This fit
+also needed a longer warmup and a smaller step size to converge (with
+the default settings, one chain of four became stranded on a ridge in
+<code>beta</code>, with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>R</mi><mo accent="true">̂</mo></mover><mo>=</mo><mn>1.47</mn></mrow><annotation encoding="application/x-tex">\widehat{R} = 1.47</annotation></semantics></math>),
+because the interval declaration gives the curve freedom in the region
+that the other two treatments fix, and this freedom has to be
+sampled.</p>
+<p>There are two implications for practice. First, identification should
+be judged from the contraction from prior to posterior, and not from the
+interval. Across these three fits the contraction was 0.996, 0.379 and
+0.953 respectively, and the middle value identifies the problem that the
+interval does not show. This can be computed from
+<code><a href="../reference/pull_prior.html">pull_prior()</a></code> and the posterior draws. Second, the problem
+propagates, because any quantity derived from the deep part of the
+fitted curve (well below the bound) also depends on the prior, so an
+<code><a href="../reference/ecx.html">ecx()</a></code> value whose target is near the asymptote should be
+treated with as much caution as <code>bot</code> itself.</p>
 <p>Whether a value is censored at all is a separate question from how to
-handle it once it is. A zero that marks a distinct event — an organism
-that died, rather than a measurement that fell below a limit — is
-structural, and belongs in a hurdle model rather than a censoring
-declaration; see <code><a href="../articles/example6.html">vignette("example6")</a></code>.</p>
+handle it once it is. A zero that marks a distinct event (e.g. an
+organism that died, and not a measurement that fell below a limit) is
+structural, and should be modelled with a hurdle model and not with a
+censoring declaration (see <code><a href="../articles/example6.html">vignette("example6")</a></code>).</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="non-constant-dispersion">Non-constant dispersion<a class="anchor" aria-label="anchor" href="#non-constant-dispersion"></a>
 </h2>
-<p>By default a fit holds the dispersion parameter of the chosen family
+<p>By default, the dispersion parameter of the chosen family is held
 constant across the whole concentration—response curve. For a
-<code>gaussian</code> response that amounts to assuming replicate
-variability is the same at every concentration; for the other families
-it means the dispersion parameter, and hence the coefficient of
-variation or precision, does not change with the mean. Where that
-assumption is wrong the consequences fall on the credible intervals of
-the toxicity estimates, and they fall unevenly, because the assumed
-variability is too large at one end of the series and too small at the
-other.</p>
-<p>The special term <code>disp</code> relaxes the assumption, in one of
-two ways.</p>
+<code>gaussian</code> response this assumes that replicate variability
+is constant across concentrations, and for the other families it means
+that the dispersion parameter (and hence the coefficient of variation or
+precision) does not change with the mean. Where this assumption is
+wrong, the credible intervals of the toxicity estimates are affected
+unevenly, because the assumed variability is too large at one end of the
+concentration series and too small at the other.</p>
+<p>The special term <code>disp</code> relaxes this assumption, in one of
+two ways:</p>
 <div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="op">~</span><span class="va">x</span><span class="op">)</span>         <span class="co"># on the predictor</span></span>
 <span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="st">"power"</span><span class="op">)</span>    <span class="co"># on the fitted mean</span></span></code></pre></div>
-<p><code>disp(~x)</code> is an ordinary <code>brms</code> distributional
-formula, so anything <code>brms</code> understands is allowed, including
-<code>disp(~log(x))</code> and <code>disp(~s(x))</code>. It states only
-that variability differs along the concentration axis.
-<code>disp("power")</code> instead models the dispersion parameter as a
-function of the <strong>fitted mean</strong>, which is a statement about
-the measurement process rather than about the concentration axis. The
-two coincide for a monotone curve, where the fitted mean is itself a
-monotone function of the predictor, and separate under hormesis or where
-a design revisits the same fitted mean. The available variance
+<p>The first form, <code>disp(~x)</code>, is an ordinary
+<code>brms</code> distributional formula, so any formula that
+<code>brms</code> accepts can be used (including
+<code>disp(~log(x))</code> and <code>disp(~s(x))</code>). This form
+specifies only that variability differs along the concentration axis.
+The second form, <code>disp("power")</code>, instead models the
+dispersion parameter as a function of the <em>fitted mean</em>, which is
+a statement about the measurement process and not about the
+concentration axis. These forms coincide for a monotone curve, where the
+fitted mean is itself a monotone function of the predictor, but differ
+under hormesis or where a design revisits a fitted mean (i.e. one fitted
+mean occurs at more than one concentration). The available variance
 functions, the families each applies to, and what the estimated exponent
 implies for a given family are described in
 <code><a href="../reference/bayesnecformula.html">?bayesnecformula</a></code>.</p>
+<p>A zero concentration restricts what can be written inside
+<code>disp(~x)</code>. The formula is passed to <code>brms</code>
+unchanged, although <code>bnec</code> first evaluates each of its terms
+on the data supplied, so <code>disp(~log(x))</code> with a zero
+concentration stops with an error naming the term <code>log(x)</code>.
+As for a transformation inside <code>crf</code> (see the section on the
+scale of the predictor), the remedy is to add an offset to the data and
+use that column in the formula.</p>
 <p>A variance function of the fitted mean requires the mean to be
-modelled on its natural scale, because the sub-model is built by
+modelled on its natural scale. This is because the sub-model is built by
 substituting the model’s own curve expression into the variance
 function, and that expression is the linear predictor on the
-<em>link</em> scale. <code>bnec</code> fits on the identity link and
-assigns it itself unless you write a link argument, so no action is
-needed in the usual case; naming the family, as in
-<code>family = "Gamma"</code> or <code>family = Gamma()</code>, is
-enough. Other links are refused rather than fitted, because under an
-inverse link the sub-model would estimate the slope with the opposite
-sign while converging perfectly well.</p>
+<em>link</em> scale. <code>bnec</code> fits on the identity link, and
+assigns it unless a link argument is written, so no action is needed in
+the usual case (naming the family, as in <code>family = "Gamma"</code>
+or <code>family = Gamma()</code>, is enough). Other links are refused
+instead of fitted, because under an inverse link the sub-model would
+estimate the slope with the opposite sign, while still converging
+without difficulty.</p>
 <div class="section level3">
 <h3 id="choosing-a-variance-function">Choosing a variance function<a class="anchor" aria-label="anchor" href="#choosing-a-variance-function"></a>
 </h3>
-<p><code>"power"</code> and <code>"twosided"</code> are written in terms
-of
+<p>The <code>"power"</code> and <code>"twosided"</code> variance
+functions are written in terms of
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>μ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\log(\mu)</annotation></semantics></math>,
-and are therefore undefined wherever the fitted mean reaches zero. That
-rules them out for a response on the real line — a specific growth rate,
-a yield or an increment can all be negative — and <code>bnec</code>
-refuses the combination rather than letting it fail at initialisation,
-pointing instead at <code>"loglinear"</code> or
-<code>disp(~x)</code>.</p>
-<p><code>"loglinear"</code> is linear in
+and are therefore undefined wherever the fitted mean is zero or
+negative. This rules them out for a response on the real line (e.g. a
+specific growth rate, a yield or an increment, all of which can be
+negative). Where such a response is fitted with a <code>gaussian</code>
+family and includes values at or below zero, <code>bnec</code> refuses
+either function before fitting, so that the fit does not fail at
+initialisation. The error message suggests <code>"loglinear"</code> or
+<code>disp(~x)</code> instead.</p>
+<p>The <code>"loglinear"</code> function is linear in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>μ</mi><annotation encoding="application/x-tex">\mu</annotation></semantics></math>
-rather than in
+and not in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>μ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\log(\mu)</annotation></semantics></math>,
-so it remains defined across zero. It is also the form a log-transformed
-endpoint inherits from a power law on its original scale. If a density
-has
+so it remains defined across zero. It is also the form that a
+log-transformed endpoint inherits from a power law on its original
+scale. If a density has
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">sd</mtext><mo>∝</mo><msup><mi>μ</mi><mi>p</mi></msup></mrow><annotation encoding="application/x-tex">\text{sd} \propto \mu^p</annotation></semantics></math>,
 the delta method gives
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">sd</mtext><mo stretchy="false" form="prefix">(</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>∝</mo><msup><mi>μ</mi><mrow><mi>p</mi><mo>−</mo><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">\text{sd}(\log N) \propto \mu^{p - 1}</annotation></semantics></math>;
-substituting
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">sd</mtext><mo stretchy="false" form="prefix">(</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mi>N</mi><mo stretchy="false" form="postfix">)</mo><mo>∝</mo><msup><mi>μ</mi><mrow><mi>p</mi><mo>−</mo><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">\text{sd}(\log N) \propto \mu^{p - 1}</annotation></semantics></math>,
+and substituting
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>μ</mi><mi>N</mi></msub><mo>=</mo><msub><mi>N</mi><mn>0</mn></msub><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>d</mi><msub><mi>μ</mi><mi>r</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mu_N = N_0 \exp(d \mu_r)</annotation></semantics></math>
 for an average specific growth rate
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mi>r</mi></msub><annotation encoding="application/x-tex">\mu_r</annotation></semantics></math>
 over
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math>
-days leaves
+days gives
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mtext mathvariant="normal">sd</mtext><mo stretchy="false" form="prefix">(</mo><msub><mi>μ</mi><mi>r</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mtext mathvariant="normal">const</mtext><mo>+</mo><mi>d</mi><mo stretchy="false" form="prefix">(</mo><mi>p</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><msub><mi>μ</mi><mi>r</mi></msub></mrow><annotation encoding="application/x-tex">\log \text{sd}(\mu_r) = \text{const} + d (p - 1) \mu_r</annotation></semantics></math>,
-which is <code>"loglinear"</code>. A growth rate is therefore not a
-response a variance function cannot describe, only one the power law
-cannot, and
+which is the <code>"loglinear"</code> form. A growth rate can therefore
+be described by a variance function (although not by the power law), and
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>&lt;</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">p &lt; 1</annotation></semantics></math>
 implies
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mn>1</mn></msub><mo>&lt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">c_1 &lt; 0</annotation></semantics></math>.</p>
@@ -1218,93 +1282,103 @@ implies
 is dimensionless for <code>"power"</code> and <code>"twosided"</code>,
 which multiply
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>μ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\log(\mu)</annotation></semantics></math>,
-but carries units of 1/response for <code>"loglinear"</code>. Its
-default prior is scaled to the observed spread of the response
-accordingly, so that it means the same thing whatever the response is
-measured in.</p>
-<p>The covariate in every variance function is centred on a fixed
-reference
+but has units of 1/response for <code>"loglinear"</code>. Its default
+prior is therefore scaled to the observed spread of the response, so
+that its interpretation does not depend on the units in which the
+response is measured.</p>
+<p>The covariate in each variance function is centred on a fixed
+reference value
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math>,
-computed from the response before fitting — its median, or its geometric
-median for the forms that take
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>μ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\log(\mu)</annotation></semantics></math>.
-It is a constant rather than an estimated quantity, so it changes the
-coordinates the sub-model is written in and not the likelihood. Without
-it,
+which is computed from the response before fitting (its median, or its
+geometric median for the forms that take
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>μ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\log(\mu)</annotation></semantics></math>).
+Because
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math>
+is a constant and not an estimated quantity, it changes the coordinates
+in which the sub-model is written, but not the likelihood. Without
+centring,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mn>0</mn></msub><annotation encoding="application/x-tex">c_0</annotation></semantics></math>
 would be the dispersion parameter at
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\mu = 1</annotation></semantics></math>,
-or at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\mu = 1</annotation></semantics></math>
+(or at
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>μ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mu = 0</annotation></semantics></math>
-for <code>"loglinear"</code> — points nowhere near the data unless the
-response happens to be of order one. Fitting a response of order
+for <code>"loglinear"</code>), which is far from the data unless the
+response happens to be of order one. For example, fitting a response of
+order
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mn>4</mn></msup><annotation encoding="application/x-tex">10^4</annotation></semantics></math>
-uncentred gives a posterior correlation between
+without centring gives a posterior correlation between
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mn>0</mn></msub><annotation encoding="application/x-tex">c_0</annotation></semantics></math>
 and
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mn>1</mn></msub><annotation encoding="application/x-tex">c_1</annotation></semantics></math>
 above 0.99. With centring,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mn>0</mn></msub><annotation encoding="application/x-tex">c_0</annotation></semantics></math>
-is the dispersion parameter at a typical response and
+is the dispersion parameter at a typical response, and
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mn>1</mn></msub><annotation encoding="application/x-tex">c_1</annotation></semantics></math>
-its rate of change from there.</p>
+is its rate of change from there.</p>
 </div>
 <div class="section level3">
-<h3 id="diagnose-before-modelling">Diagnose before modelling<a class="anchor" aria-label="anchor" href="#diagnose-before-modelling"></a>
+<h3 id="diagnosis-before-modelling">Diagnosis before modelling<a class="anchor" aria-label="anchor" href="#diagnosis-before-modelling"></a>
 </h3>
-<p>We would encourage treating <code>disp</code> as a diagnostic rather
-than as a routine addition to a model. Replicate variability that
-appears to change across a concentration series usually has some other
-cause, and a variance function will absorb any of them and report a
-confident slope regardless. Three explanations are worth excluding
-before concluding that dispersion is genuinely non-constant.</p>
-<p>The first is <strong>substituted or censored values</strong>, the
-subject of the section above. Values floored at a boundary, or
-substituted for a detection limit, cluster at one end of the series, and
-their spread is easily mistaken for heteroscedasticity. Refitting with
-those rows declared censored is the test.</p>
-<p>The second is a <strong>misspecified family</strong>. A variance
-function fitted under one family may recover only what a different
-family assumes for free — a constant coefficient of variation is what a
-<code>Gamma</code> already implies, so fitting
+<p>Replicate variability that appears to change across a concentration
+series usually has some other cause, and a variance function will absorb
+any of these causes and still give a confident estimate of the slope. We
+would therefore encourage treating <code>disp</code> as a diagnostic,
+and not as a routine addition to a model, and suggest excluding three
+explanations before concluding that dispersion is genuinely
+non-constant.</p>
+<p>The first is substituted or censored values (the subject of the
+Censoring section above). Values floored at a boundary, or substituted
+for a detection limit, cluster at one end of the series, and their
+spread is easily mistaken for heteroscedasticity. Refitting the model
+with those rows declared censored is the test for this.</p>
+<p>The second is a misspecified family. A variance function fitted under
+one family may recover only what a different family assumes without any
+additional parameters. For example, a constant coefficient of variation
+is what a <code>Gamma</code> already implies, so fitting
 <code>disp("power")</code> to a constant-CV response under a
-<code>gaussian</code> will appear to be a large improvement while
-changing nothing that a <code>Gamma</code> would not have handled.
+<code>gaussian</code> family will appear to be a large improvement,
+while changing nothing that a <code>Gamma</code> would not have handled.
 Comparing the baseline fits across candidate families, before adding any
-dispersion term, separates the two.</p>
-<p>The third is <strong>lack of fit in the mean</strong>. Residuals from
-a curve that is systematically wrong somewhere are large in that region,
-and a variance function is free to describe the region as noisy rather
-than the curve as wrong. The check is to express the departure of the
-fitted curve from the observed mean at each concentration in units of
-the <em>within-concentration replicate standard deviation</em>, rather
-than in units of the response.</p>
+dispersion term, distinguishes between these explanations.</p>
+<p>The third is lack of fit in the mean. Residuals from a curve that is
+systematically wrong in some region are large in that region, and a
+variance function can describe the region as noisy instead of the curve
+as wrong. The check for this is to express the departure of the fitted
+curve from the observed mean at each concentration in units of the
+<em>within-concentration replicate standard deviation</em>, and not in
+units of the response.</p>
 </div>
 <div class="section level3">
 <h3 id="a-worked-example">A worked example<a class="anchor" aria-label="anchor" href="#a-worked-example"></a>
 </h3>
-<p>We simulate a response whose standard deviation rises with the mean,
-so that the relationship is known rather than assumed, and confirm that
-it is recovered. The response here is strictly positive, so
+<p>We simulate a response with a standard deviation that increases with
+the mean, so that the relationship is known and not assumed, and confirm
+that it is recovered. The response here is strictly positive, so
 <code>bnec</code> will select a <code>Gamma</code> family, which already
 implies a standard deviation proportional to the mean. We therefore
 simulate a standard deviation proportional to
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>μ</mi><mn>1.6</mn></msup><annotation encoding="application/x-tex">\mu^{1.6}</annotation></semantics></math>
-— steeper than the family alone provides, so that there is something for
-a variance function to do. This is the second of the three checks above,
-applied when designing the example rather than after the fact.</p>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>μ</mi><mn>0.4</mn></msup><annotation encoding="application/x-tex">\mu^{0.4}</annotation></semantics></math>,
+which is shallower than the family itself provides, so that the
+coefficient of variation increases as the response declines and there is
+a relationship for a variance function to estimate. A relationship
+steeper than that of the family would be outside the range admitted by
+the default prior on the exponent (see <code><a href="../reference/bayesnecformula.html">?bayesnecformula</a></code>).
+Choosing the simulated relationship with the family in mind applies the
+second check above (a misspecified family) when designing the example,
+instead of after fitting.</p>
 <div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">disp_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.3</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">10</span>, <span class="fl">30</span>, <span class="fl">100</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></span>
 <span><span class="va">disp_mu</span> <span class="op">&lt;-</span> <span class="fl">2</span> <span class="op">+</span> <span class="op">(</span><span class="fl">18</span> <span class="op">-</span> <span class="fl">2</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">disp_x</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">6</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fl">0.5</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">disp_dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  x <span class="op">=</span> <span class="va">disp_x</span>,</span>
-<span>  y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">disp_mu</span><span class="op">)</span>, <span class="va">disp_mu</span>, <span class="fl">0.02</span> <span class="op">*</span> <span class="va">disp_mu</span> <span class="op">^</span> <span class="fl">1.6</span><span class="op">)</span></span>
+<span>  y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">disp_mu</span><span class="op">)</span>, <span class="va">disp_mu</span>, <span class="fl">0.2</span> <span class="op">*</span> <span class="va">disp_mu</span> <span class="op">^</span> <span class="fl">0.4</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>The relationship is visible without fitting anything, by summarising
-replicate variability within each concentration. Because these summaries
-are computed inside each concentration, no curve enters the calculation
-and no lack of fit in the mean can inflate them.</p>
+<p>The relationship can be seen without fitting any model, by
+summarising the replicate variability within each concentration. Because
+these summaries are calculated within concentrations, no curve is
+involved in the calculation, and lack of fit in the mean cannot inflate
+them.</p>
 <div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">within_conc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span>, <span class="va">disp_dat</span>, <span class="kw">function</span><span class="op">(</span><span class="va">z</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>mean <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">z</span><span class="op">)</span>, sd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">z</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
@@ -1314,16 +1388,17 @@ and no lack of fit in the mean can inflate them.</p>
 <span>  cv <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">within_conc</span><span class="op">$</span><span class="va">y</span><span class="op">[</span>, <span class="st">"sd"</span><span class="op">]</span> <span class="op">/</span> <span class="va">within_conc</span><span class="op">$</span><span class="va">y</span><span class="op">[</span>, <span class="st">"mean"</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt;       x  mean    sd    cv</span></span>
-<span><span class="co">#&gt; 1   0.1 17.63 2.335 0.132</span></span>
-<span><span class="co">#&gt; 2   0.3 17.83 1.377 0.077</span></span>
-<span><span class="co">#&gt; 3   1.0 17.42 2.049 0.118</span></span>
-<span><span class="co">#&gt; 4   3.0 13.91 1.279 0.092</span></span>
+<span><span class="co">#&gt; 1   0.1 17.87 0.729 0.041</span></span>
+<span><span class="co">#&gt; 2   0.3 17.87 0.432 0.024</span></span>
+<span><span class="co">#&gt; 3   1.0 17.28 0.674 0.039</span></span>
+<span><span class="co">#&gt; 4   3.0 14.04 0.533 0.038</span></span>
 <span><span class="co">#&gt; 5  10.0  6.95 0.396 0.057</span></span>
-<span><span class="co">#&gt; 6  30.0  3.02 0.147 0.049</span></span>
-<span><span class="co">#&gt; 7 100.0  2.15 0.065 0.030</span></span></code></pre></div>
-<p>The coefficient of variation is not constant, which is what tells us
-a <code>Gamma</code> on its own will not describe these data. We fit
-with and without a variance function and compare.</p>
+<span><span class="co">#&gt; 6  30.0  2.96 0.385 0.130</span></span>
+<span><span class="co">#&gt; 7 100.0  2.14 0.258 0.121</span></span></code></pre></div>
+<p>The coefficient of variation is not constant (it is 0.02 to 0.04 at
+concentrations of 0.1 to 3, and 0.12 to 0.13 at 30 and 100), which shows
+that a <code>Gamma</code> on its own will not describe these data. We
+fit the model with and without a variance function and compare them.</p>
 <div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># seed is passed through to brm() so that both fits are exactly reproducible.</span></span>
 <span><span class="co"># set.seed() alone is not sufficient: it governs the initial values bayesnec</span></span>
@@ -1337,30 +1412,39 @@ with and without a variance function and compare.</p>
 <span>                  <span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">disp_power</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                     model elpd_diff se_diff p_worse diag_diff diag_elpd</span></span>
 <span><span class="co">#&gt;  pull_brmsfit(disp_power)       0.0     0.0      NA                    </span></span>
-<span><span class="co">#&gt;  pull_brmsfit(disp_const)     -13.1     3.6    1.00   N &lt; 100</span></span></code></pre></div>
-<p>The estimated exponent should be read through the family.
+<span><span class="co">#&gt;  pull_brmsfit(disp_const)     -25.7     5.4    1.00   N &lt; 100</span></span></code></pre></div>
+<p>The model with the variance function has the higher expected log
+predictive density (the constant-dispersion model has an
+<code>elpd_diff</code> of −25.7, with a standard error of 5.4).</p>
+<p>The estimated exponent should be interpreted through the family.
 <code>disp("power")</code> models the dispersion parameter, which for a
 <code>Gamma</code> is <code>shape</code>, and the implied standard
 deviation is proportional to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>μ</mi><mrow><mn>1</mn><mo>−</mo><msub><mi>c</mi><mn>1</mn></msub><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">\mu^{1 - c_1/2}</annotation></semantics></math>
 (see the table in <code><a href="../reference/bayesnecformula.html">?bayesnecformula</a></code>). The value used to
 simulate the data,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>μ</mi><mn>1.6</mn></msup><annotation encoding="application/x-tex">\mu^{1.6}</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>μ</mi><mn>0.4</mn></msup><annotation encoding="application/x-tex">\mu^{0.4}</annotation></semantics></math>,
 therefore corresponds to
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mn>1</mn></msub><mo>=</mo><mi>−</mi><mn>1.2</mn></mrow><annotation encoding="application/x-tex">c_1 = -1.2</annotation></semantics></math>:</p>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mn>1</mn></msub><mo>=</mo><mn>1.2</mn></mrow><annotation encoding="application/x-tex">c_1 = 1.2</annotation></semantics></math>:</p>
 <div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/fixed.effects.html" class="external-link">fixef</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">disp_power</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"c0_Intercept"</span>, <span class="st">"c1_Intercept"</span><span class="op">)</span>, <span class="op">]</span></span>
-<span><span class="co">#&gt;               Estimate Est.Error      Q2.5      Q97.5</span></span>
-<span><span class="co">#&gt; c0_Intercept  4.677736 0.1813607  4.303550  5.0193925</span></span>
-<span><span class="co">#&gt; c1_Intercept -1.085440 0.1930693 -1.452408 -0.7029879</span></span></code></pre></div>
-<p>A value of zero would correspond to the constant-dispersion model,
-and is where the prior on this parameter is centred, so an interval
-excluding zero reflects the data rather than the prior.</p>
-<p>Finally, the third check: the departure of the fitted curve from the
-observed mean at each concentration, in units of the
-within-concentration replicate standard deviation. Values of a few
-standard deviations or more would indicate a problem with the mean model
-that a variance function would conceal rather than resolve.</p>
+<span><span class="co">#&gt;              Estimate Est.Error      Q2.5    Q97.5</span></span>
+<span><span class="co">#&gt; c0_Intercept 6.388394 0.1880252 6.0057172 6.748074</span></span>
+<span><span class="co">#&gt; c1_Intercept 1.297472 0.1896581 0.9396347 1.681931</span></span></code></pre></div>
+<p>The estimate of 1.30 (95% interval 0.94 to 1.68) includes this value.
+A value of zero would correspond to the constant-dispersion model
+(i.e. the constant coefficient of variation a <code>Gamma</code> already
+implies). The default prior bounds <code>c1</code> to the range 0 to 2
+for a <code>Gamma</code> response, from a constant coefficient of
+variation to a constant variance, so a posterior concentrated at 0 would
+show that the data do not support the variance function, whereas one
+well inside the range reflects the data and not the bound.</p>
+<p>Finally, for the third check (lack of fit in the mean), we calculate
+the departure of the fitted curve from the observed mean at each
+concentration, in units of the within-concentration replicate standard
+deviation. Values of a few standard deviations or more would indicate a
+problem with the mean model that a variance function would conceal and
+not resolve.</p>
 <div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">disp_fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="fu"><a href="../reference/posterior_epred.html">posterior_epred</a></span><span class="op">(</span><span class="va">disp_power</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">lof</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>obs <span class="op">=</span> <span class="va">disp_dat</span><span class="op">$</span><span class="va">y</span>, fit <span class="op">=</span> <span class="va">disp_fitted</span><span class="op">)</span> <span class="op">~</span> <span class="va">disp_dat</span><span class="op">$</span><span class="va">x</span>, FUN <span class="op">=</span> <span class="va">mean</span><span class="op">)</span></span>
@@ -1369,23 +1453,27 @@ that a variance function would conceal rather than resolve.</p>
 <span><span class="va">lof</span><span class="op">$</span><span class="va">misfit_in_sds</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">lof</span><span class="op">$</span><span class="va">obs</span> <span class="op">-</span> <span class="va">lof</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span> <span class="op">/</span> <span class="va">lof</span><span class="op">$</span><span class="va">replicate_sd</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="va">lof</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"replicate_sd"</span>, <span class="st">"misfit_in_sds"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;       x replicate_sd misfit_in_sds</span></span>
-<span><span class="co">#&gt; 1   0.1   2.33524353          0.06</span></span>
-<span><span class="co">#&gt; 2   0.3   1.37693794          0.10</span></span>
-<span><span class="co">#&gt; 3   1.0   2.04860393          0.15</span></span>
-<span><span class="co">#&gt; 4   3.0   1.27943964          0.27</span></span>
-<span><span class="co">#&gt; 5  10.0   0.39614047          0.15</span></span>
-<span><span class="co">#&gt; 6  30.0   0.14681633          0.08</span></span>
-<span><span class="co">#&gt; 7 100.0   0.06481783          0.03</span></span></code></pre></div>
+<span><span class="co">#&gt; 1   0.1    0.7286970          0.09</span></span>
+<span><span class="co">#&gt; 2   0.3    0.4324058          0.06</span></span>
+<span><span class="co">#&gt; 3   1.0    0.6739104          0.16</span></span>
+<span><span class="co">#&gt; 4   3.0    0.5330994          0.21</span></span>
+<span><span class="co">#&gt; 5  10.0    0.3958480          0.20</span></span>
+<span><span class="co">#&gt; 6  30.0    0.3847785          0.21</span></span>
+<span><span class="co">#&gt; 7 100.0    0.2582122          0.12</span></span></code></pre></div>
+<p>The departures are at most 0.21 replicate standard deviations at each
+concentration, so there is no evidence of lack of fit in the mean.</p>
 </div>
 <div class="section level3">
-<h3 id="what-it-changes">What it changes<a class="anchor" aria-label="anchor" href="#what-it-changes"></a>
+<h3 id="consequences-for-the-intervals-and-estimates">Consequences for the intervals and estimates<a class="anchor" aria-label="anchor" href="#consequences-for-the-intervals-and-estimates"></a>
 </h3>
-<p>Both models describe the same mean curve, so the effect of the
-variance function is on the intervals rather than on the fitted
-response. We take the two intervals from the same draws: the
+<p>The constant-dispersion and <code>disp("power")</code> models
+describe the same mean curve, so the effect of the variance function is
+on the intervals and not on the fitted response. We calculate two
+intervals from one set of posterior draws for each model: the
 <em>credible</em> interval on the fitted mean, and the
-<em>prediction</em> interval a new observation would be expected to fall
-in. Only the second carries the fitted dispersion directly.</p>
+<em>prediction</em> interval within which a new observation would be
+expected to fall. Only the prediction interval includes the fitted
+dispersion directly.</p>
 <div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">disp_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">disp_dat</span><span class="op">$</span><span class="va">x</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">disp_dat</span><span class="op">$</span><span class="va">x</span><span class="op">)</span><span class="op">)</span>, length.out <span class="op">=</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
@@ -1426,36 +1514,18 @@ in. Only the second carries the fitted dispersion directly.</p>
 plot of chunk exmp1-disp-bands
 </p>
 </div>
-<p>The median curves are indistinguishable. At the low concentrations,
-where replicate variability is largest, the two prediction intervals are
-similar. At the high concentrations, where the replicate standard
-deviation has fallen to 0.065, the constant-dispersion interval remains
-far wider than the data warrant. Plotting the width of each interval
-directly makes the pattern easier to read than the bands do.</p>
+<p>In the figure above, the median curves of the constant-dispersion and
+<code>disp("power")</code> fits are indistinguishable. At the low
+concentrations, where the replicates agree to within about 4 per cent of
+their mean, the constant-dispersion prediction interval is about twice
+as wide as the interval from the variance function. At the high
+concentrations, where the coefficient of variation has increased to
+about 0.12, it is narrower than the data warrant. This is the uneven
+error described at the start of this section, and it is the reason that
+the consequences of the variance function are for the toxicity estimates
+and not for the fitted curve. These consequences are also uneven across
+the toxicity estimates.</p>
 <div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bands</span><span class="op">$</span><span class="va">width</span> <span class="op">&lt;-</span> <span class="va">bands</span><span class="op">$</span><span class="va">hi</span> <span class="op">-</span> <span class="va">bands</span><span class="op">$</span><span class="va">lo</span></span>
-<span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">bands</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">width</span>, colour <span class="op">=</span> <span class="va">model</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">interval</span>, scales <span class="op">=</span> <span class="st">"free_y"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_x_log10</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_y_log10</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Concentration"</span>, y <span class="op">=</span> <span class="st">"Width of 95% interval"</span>, colour <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span></span></code></pre></div>
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-disp-width-1.png" alt="plot of chunk exmp1-disp-width" width="100%"><p class="caption">
-plot of chunk exmp1-disp-width
-</p>
-</div>
-<p>The two lines cross. Relative to the variance function, the
-constant-dispersion model is too narrow at low concentrations and too
-wide at high ones — the uneven error described at the start of this
-section, and the reason the consequences fall on the toxicity estimates
-rather than on the fitted curve.</p>
-<p>Those consequences are not in a single direction, and it is worth
-seeing why.</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tox</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">fit</span>, <span class="va">label</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">vals</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>ec10 <span class="op">=</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">fit</span>, ecx_val <span class="op">=</span> <span class="fl">10</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span>,</span>
 <span>                ec50 <span class="op">=</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">fit</span>, ecx_val <span class="op">=</span> <span class="fl">50</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span>,</span>
@@ -1467,21 +1537,23 @@ seeing why.</p>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="fu">tox</span><span class="op">(</span><span class="va">disp_const</span>, <span class="st">"constant dispersion"</span><span class="op">)</span>, <span class="fu">tox</span><span class="op">(</span><span class="va">disp_power</span>, <span class="st">"disp(\"power\")"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                 model estimate median lower upper width</span></span>
-<span><span class="co">#&gt; 1 constant dispersion     ec10   1.78  1.45  2.15  0.70</span></span>
-<span><span class="co">#&gt; 2 constant dispersion     ec50   7.17  6.56  7.77  1.21</span></span>
-<span><span class="co">#&gt; 3 constant dispersion     nsec   0.90  0.29  1.27  0.98</span></span>
-<span><span class="co">#&gt; 4       disp("power")     ec10   1.86  1.59  2.17  0.58</span></span>
-<span><span class="co">#&gt; 5       disp("power")     ec50   7.27  6.71  7.85  1.14</span></span>
-<span><span class="co">#&gt; 6       disp("power")     nsec   1.09  0.36  1.49  1.13</span></span></code></pre></div>
-<p>The <code>ecx</code> intervals narrow, while the <code>nsec</code>
-interval widens. The explanation is what each estimate is referenced
-against, and it follows from the reweighting the variance function
-performs. Under constant dispersion every observation carries equal
-weight. Under <code>disp("power")</code> the tightly grouped
-high-concentration replicates carry more and the variable control
-replicates carry less, which is visible in the parameters
-themselves.</p>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<span><span class="co">#&gt; 1 constant dispersion     ec10   1.85  1.55  2.19  0.64</span></span>
+<span><span class="co">#&gt; 2 constant dispersion     ec50   7.18  6.66  7.71  1.05</span></span>
+<span><span class="co">#&gt; 3 constant dispersion     nsec   0.91  0.39  1.25  0.86</span></span>
+<span><span class="co">#&gt; 4       disp("power")     ec10   1.74  1.55  1.94  0.39</span></span>
+<span><span class="co">#&gt; 5       disp("power")     ec50   7.10  6.77  7.44  0.67</span></span>
+<span><span class="co">#&gt; 6       disp("power")     nsec   0.55  0.21  0.75  0.54</span></span></code></pre></div>
+<p>The intervals of all three estimates are narrower under the variance
+function, but only the <code>nsec</code> median changes appreciably,
+declining by about two fifths, whereas the <code>ecx</code> medians
+change by a few per cent. The explanation is what each estimate is
+referenced against, which follows from the reweighting performed by the
+variance function. Under constant dispersion, all observations are given
+one coefficient of variation. Under <code>disp("power")</code>, the
+tightly grouped control replicates are given more weight and the
+variable high-concentration replicates less, and this is visible in the
+precision of the curve parameters themselves:</p>
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Only the curve parameters are shared: the disp fit carries c0 and c1 as well.</span></span>
 <span><span class="va">curve_pars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"top_Intercept"</span>, <span class="st">"bot_Intercept"</span>, <span class="st">"beta_Intercept"</span>, <span class="st">"ec50_Intercept"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span></span>
@@ -1489,24 +1561,28 @@ themselves.</p>
 <span>  power <span class="op">=</span> <span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/fixed.effects.html" class="external-link">fixef</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">disp_power</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="va">curve_pars</span>, <span class="st">"Est.Error"</span><span class="op">]</span></span>
 <span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                constant  power</span></span>
-<span><span class="co">#&gt; top_Intercept    0.2903 0.3438</span></span>
-<span><span class="co">#&gt; bot_Intercept    0.0739 0.0334</span></span>
-<span><span class="co">#&gt; beta_Intercept   0.0523 0.0356</span></span>
-<span><span class="co">#&gt; ec50_Intercept   0.0453 0.0417</span></span></code></pre></div>
-<p>The parameters set by the high-concentration end, <code>bot</code>
-and <code>beta</code>, are estimated more precisely, and
-<code>top</code>, which is set by the control end, less so.
-<code>ecx</code> depends on the curve as a whole — with
-<code>type = "absolute"</code>, the default, on where the curve falls to
-a given percentage of its own fitted maximum — so it inherits the
-better-determined shape. <code>nsec</code> is referenced against the
-control instead: it is the concentration at which the curve drops below
-a lower quantile of the <em>control</em> posterior, so it inherits the
-one thing the variance function made less certain, and widens.</p>
-<p>This matters when choosing an endpoint. An <code>nsec</code> reported
-from a constant-dispersion fit rests on an assumption about control
-variability that the fit has not checked, and it is the estimate most
-exposed if that assumption is wrong.</p>
+<span><span class="co">#&gt; top_Intercept    0.2540 0.1265</span></span>
+<span><span class="co">#&gt; bot_Intercept    0.0618 0.0964</span></span>
+<span><span class="co">#&gt; beta_Intercept   0.0455 0.0349</span></span>
+<span><span class="co">#&gt; ec50_Intercept   0.0396 0.0262</span></span></code></pre></div>
+<p>Under <code>disp("power")</code>, <code>top</code> (which is
+determined by the control end of the curve) is estimated about twice as
+precisely, <code>beta</code> and <code>ec50</code> somewhat more
+precisely, and <code>bot</code> (which is determined by the
+high-concentration end) less precisely. <code>ecx</code> depends on the
+curve as a whole (with <code>type = "absolute"</code>, the default, on
+where the curve declines to a given percentage of its own fitted
+maximum), so its estimate reflects the better-determined shape. In
+contrast, <code>nsec</code> is referenced against the control, as the
+concentration at which the curve drops below a lower quantile of the
+<em>control</em> posterior. The constant-dispersion fit overstates the
+spread of the control replicates, which places that quantile lower and
+the <code>nsec</code> at a higher concentration.</p>
+<p>When choosing an endpoint, note that an <code>nsec</code> reported
+from a constant-dispersion fit depends on an assumption about control
+variability that the fit has not checked. In this example, that
+assumption gave the higher <code>nsec</code>, which is the less
+protective direction.</p>
 </div>
 </div>
 <div class="section level2">

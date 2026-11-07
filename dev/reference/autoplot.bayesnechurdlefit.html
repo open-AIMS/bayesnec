@@ -110,7 +110,11 @@
 <span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  xlab <span class="op">=</span> <span class="st">"Predictor"</span>,</span>
 <span>  ylab <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  point_alpha <span class="op">=</span> <span class="fl">0.25</span></span>
+<span>  point_alpha <span class="op">=</span> <span class="fl">0.25</span>,</span>
+<span>  x_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"recorded"</span>, <span class="st">"fitted"</span><span class="op">)</span>,</span>
+<span>  nec <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  ecx <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  ecx_val <span class="op">=</span> <span class="fl">10</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -123,7 +127,7 @@
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Unused.</p></dd>
+<dd><p>Unused. <code>dpar</code> is refused: select a curve with <code>which</code>.</p></dd>
 
 
 <dt id="arg-which">which<a class="anchor" aria-label="anchor" href="#arg-which"></a></dt>
@@ -162,6 +166,28 @@ by what it shows.</p></dd>
 <dd><p>The opacity factor for the observation points, a single
 number from 0 to 1. It multiplies the existing opacity of the first colour of
 the current R palette. Defaults to 0.25.</p></dd>
+
+
+<dt id="arg-x-scale">x_scale<a class="anchor" aria-label="anchor" href="#arg-x-scale"></a></dt>
+<dd><p><code>"recorded"</code> (the default) or <code>"fitted"</code>.
+The fitted option returns the predictor on the scale transformed inside
+<code>crf()</code>, with breaks in attribute <code>"x_axis"</code> labelled in
+recorded units.</p></dd>
+
+
+<dt id="arg-nec">nec<a class="anchor" aria-label="anchor" href="#arg-nec"></a></dt>
+<dd><p>Should the no-effect estimate and its credible limits be drawn
+on each panel? A bound is marked at the plotted range. Defaults to
+<code>TRUE</code>.</p></dd>
+
+
+<dt id="arg-ecx">ecx<a class="anchor" aria-label="anchor" href="#arg-ecx"></a></dt>
+<dd><p>Should an ECx estimate and its credible limits be drawn on each
+panel? A bound is marked at the plotted range. Defaults to <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-ecx-val">ecx_val<a class="anchor" aria-label="anchor" href="#arg-ecx-val"></a></dt>
+<dd><p>The percentage effect for <code>ecx</code>; defaults to 10.</p></dd>
 
 </dl></div>
     <div id="value">

@@ -219,11 +219,11 @@ package:</p>
 <span><span class="va">exp_5</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">df_</span>, iter <span class="op">=</span> <span class="fl">2e3</span>,</span>
 <span>              cores <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"mc.cores"</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Here we run <code>bnec</code> using <code>model =  "decline"</code>
-using a simulated data example for a Beta-distributed response variable.
-We are using the <code>"decline"</code> set here because we are not
-going to consider hormesis (these allow an initial increase in the
-response), largely to save time in fitting this example. Moreover, you
-might want to consider saving the output as an <code>.RData</code>
+using a simulated data example for a Gaussian-distributed response
+variable. We are using the <code>"decline"</code> set here because we
+are not going to consider hormesis (these allow an initial increase in
+the response), largely to save time in fitting this example. Moreover,
+you might want to consider saving the output as an <code>.RData</code>
 file—doing so can be a useful way of fitting large model sets (ie
 <code>model = "all"</code>, or <code>model = "decline"</code>) at a
 convenient time (this can be very slow, and may be run overnight for
@@ -267,19 +267,21 @@ response is modelled with a Poisson or Binomial distribution, otherwise
 NA).</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_stats</span></span>
-<span><span class="co">#&gt;               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span></span>
-<span><span class="co">#&gt; nec3param nec3param -71.76806 2.073396e-02                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; nec4param nec4param -83.95316 3.248930e-01                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; neclin       neclin -52.76156 1.088830e-03                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxlin       ecxlin -26.16132 1.626269e-06                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxexp       ecxexp  65.83363 2.305765e-24                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxsigm     ecxsigm -78.03461 4.760362e-02                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecx4param ecx4param -81.66479 9.432600e-02                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxwb1       ecxwb1 -75.24824 1.262473e-02                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxwb2       ecxwb2 -85.13580 3.529190e-01                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxwb1p3   ecxwb1p3 -74.79770 1.820788e-02                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxwb2p3   ecxwb2p3 -77.07837 5.315629e-02                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxll4       ecxll4 -81.18123 7.444504e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt;               model      waic       elpd           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span></span>
+<span><span class="co">#&gt; nec3param nec3param -72.14396   36.05841 2.056834e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; nec4param nec4param -84.95172   42.45160 3.798331e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; neclin       neclin -52.29203   26.13489 1.870590e-04                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxlin       ecxlin -26.28965   13.13538 1.403286e-07                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxexp       ecxexp  65.94475  -32.97761 5.931159e-24                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxsigm     ecxsigm -77.63117   38.80472 3.581168e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecx4param ecx4param -81.86810   40.91369 9.517308e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb1       ecxwb1 -75.21155   37.58990 1.149892e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb2       ecxwb2 -85.06792   42.51409 2.900955e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb1p3   ecxwb1p3 -74.45185   37.20817 1.247815e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb2p3   ecxwb2p3 -77.25285   38.61320 5.177007e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxll4       ecxll4 -81.18987   40.57428 6.842721e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxll3       ecxll3 -77.20556   38.58596 3.415673e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxflat     ecxflat 260.66017 -130.33435 1.370639e-65                  NA              NA               NA</span></span>
 <span><span class="co">#&gt;           dispersion_P_over_1</span></span>
 <span><span class="co">#&gt; nec3param                  NA</span></span>
 <span><span class="co">#&gt; nec4param                  NA</span></span>
@@ -292,7 +294,9 @@ NA).</p>
 <span><span class="co">#&gt; ecxwb2                     NA</span></span>
 <span><span class="co">#&gt; ecxwb1p3                   NA</span></span>
 <span><span class="co">#&gt; ecxwb2p3                   NA</span></span>
-<span><span class="co">#&gt; ecxll4                     NA</span></span></code></pre></div>
+<span><span class="co">#&gt; ecxll4                     NA</span></span>
+<span><span class="co">#&gt; ecxll3                     NA</span></span>
+<span><span class="co">#&gt; ecxflat                    NA</span></span></code></pre></div>
 <p>We can obtain a neater summary of the model fit by using the
 <code>summary</code> method for a <code>bayesmanecfit</code> object. A
 list of fitted models, and model weights are provided. In addition, the
@@ -300,8 +304,10 @@ model averaged no-effect estimate is reported, in this case as an
 N(S)EC. For this example the <strong>nec4param</strong> and
 <strong>ecxwb2</strong> models have the highest weights.</p>
 <p>All these model fits are satisfactory despite the relatively low
-number of iterations set in our example, but the summary would also
-include a warning if there were fits with divergent transitions.</p>
+number of iterations set in our example. The summary also gives the
+number of divergent transitions after warmup for each model, and would
+include a warning for any model with more than 10 (the cutoff used by
+<code><a href="../reference/check_sampling.html">check_sampling()</a></code>).</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Object of class bayesmanecfit</span></span>
@@ -311,28 +317,29 @@ include a warning if there were fits with divergent transitions.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Number of posterior draws per model:  1600</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Model weights (Method: pseudobma_bb_weights):</span></span>
-<span><span class="co">#&gt;             waic   wi</span></span>
-<span><span class="co">#&gt; nec3param -71.77 0.02</span></span>
-<span><span class="co">#&gt; nec4param -83.95 0.32</span></span>
-<span><span class="co">#&gt; neclin    -52.76 0.00</span></span>
-<span><span class="co">#&gt; ecxlin    -26.16 0.00</span></span>
-<span><span class="co">#&gt; ecxexp     65.83 0.00</span></span>
-<span><span class="co">#&gt; ecxsigm   -78.03 0.05</span></span>
-<span><span class="co">#&gt; ecx4param -81.66 0.09</span></span>
-<span><span class="co">#&gt; ecxwb1    -75.25 0.01</span></span>
-<span><span class="co">#&gt; ecxwb2    -85.14 0.35</span></span>
-<span><span class="co">#&gt; ecxwb1p3  -74.80 0.02</span></span>
-<span><span class="co">#&gt; ecxwb2p3  -77.08 0.05</span></span>
-<span><span class="co">#&gt; ecxll4    -81.18 0.07</span></span>
+<span><span class="co">#&gt; Model weights (Method: pseudobma_bb_weights; each observation left out):</span></span>
+<span><span class="co">#&gt;             waic    elpd   wi</span></span>
+<span><span class="co">#&gt; nec3param -72.14   36.06 0.02</span></span>
+<span><span class="co">#&gt; nec4param -84.95   42.45 0.38</span></span>
+<span><span class="co">#&gt; neclin    -52.29   26.13 0.00</span></span>
+<span><span class="co">#&gt; ecxlin    -26.29   13.14 0.00</span></span>
+<span><span class="co">#&gt; ecxexp     65.94  -32.98 0.00</span></span>
+<span><span class="co">#&gt; ecxsigm   -77.63   38.80 0.04</span></span>
+<span><span class="co">#&gt; ecx4param -81.87   40.91 0.10</span></span>
+<span><span class="co">#&gt; ecxwb1    -75.21   37.59 0.01</span></span>
+<span><span class="co">#&gt; ecxwb2    -85.07   42.51 0.29</span></span>
+<span><span class="co">#&gt; ecxwb1p3  -74.45   37.21 0.01</span></span>
+<span><span class="co">#&gt; ecxwb2p3  -77.25   38.61 0.05</span></span>
+<span><span class="co">#&gt; ecxll4    -81.19   40.57 0.07</span></span>
+<span><span class="co">#&gt; ecxll3    -77.21   38.59 0.03</span></span>
+<span><span class="co">#&gt; ecxflat   260.66 -130.33 0.00</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Summary of weighted N(S)EC posterior estimates:</span></span>
-<span><span class="co">#&gt; NB: Model set contains a combination of ECx and NEC</span></span>
-<span><span class="co">#&gt;     models, and is therefore a model averaged</span></span>
-<span><span class="co">#&gt;     combination of NEC and NSEC estimates.</span></span>
+<span><span class="co">#&gt; NB: Model set combines sampled NEC and curve-read NSEC</span></span>
+<span><span class="co">#&gt;     estimates in proportion to model weight.</span></span>
 <span><span class="co">#&gt;        Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; N(S)EC     3.30 1.92  3.99</span></span>
+<span><span class="co">#&gt; N(S)EC     3.31 1.98  3.99</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
@@ -343,16 +350,38 @@ include a warning if there were fits with divergent transitions.</p>
 <span><span class="co">#&gt; ecxlin        0.80      0.01 0.77  0.82</span></span>
 <span><span class="co">#&gt; ecxexp        0.61      0.03 0.55  0.65</span></span>
 <span><span class="co">#&gt; ecxsigm       0.84      0.01 0.82  0.85</span></span>
-<span><span class="co">#&gt; ecx4param     0.85      0.01 0.83  0.87</span></span>
+<span><span class="co">#&gt; ecx4param     0.85      0.01 0.84  0.87</span></span>
 <span><span class="co">#&gt; ecxwb1        0.85      0.01 0.83  0.86</span></span>
 <span><span class="co">#&gt; ecxwb2        0.86      0.01 0.84  0.87</span></span>
 <span><span class="co">#&gt; ecxwb1p3      0.84      0.01 0.82  0.85</span></span>
 <span><span class="co">#&gt; ecxwb2p3      0.84      0.01 0.82  0.85</span></span>
-<span><span class="co">#&gt; ecxll4        0.85      0.01 0.83  0.87</span></span>
+<span><span class="co">#&gt; ecxll4        0.85      0.01 0.84  0.87</span></span>
+<span><span class="co">#&gt; ecxll3        0.84      0.01 0.82  0.85</span></span>
+<span><span class="co">#&gt; ecxflat       0.00      0.00 0.00  0.00</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; 2 model(s) failed to fit: ecxll5, ecxll3</span></span>
-<span><span class="co">#&gt; See ?failed_models for the priors and initial values used.</span></span></code></pre></div>
+<span><span class="co">#&gt; Divergent transitions after warmup:</span></span>
+<span><span class="co">#&gt;           n_divergent</span></span>
+<span><span class="co">#&gt; nec3param           0</span></span>
+<span><span class="co">#&gt; nec4param           0</span></span>
+<span><span class="co">#&gt; neclin              0</span></span>
+<span><span class="co">#&gt; ecxlin              0</span></span>
+<span><span class="co">#&gt; ecxexp              0</span></span>
+<span><span class="co">#&gt; ecxsigm             0</span></span>
+<span><span class="co">#&gt; ecx4param           0</span></span>
+<span><span class="co">#&gt; ecxwb1              0</span></span>
+<span><span class="co">#&gt; ecxwb2              0</span></span>
+<span><span class="co">#&gt; ecxwb1p3            0</span></span>
+<span><span class="co">#&gt; ecxwb2p3            0</span></span>
+<span><span class="co">#&gt; ecxll4              0</span></span>
+<span><span class="co">#&gt; ecxll3              0</span></span>
+<span><span class="co">#&gt; ecxflat             0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; 1 model(s) failed to fit: ecxll5</span></span>
+<span><span class="co">#&gt; See ?failed_models for the priors and initial values used.</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.</span></span></code></pre></div>
 <p>The <code>bayesmanecfit</code> object also contains all of the
 individual <code>brms</code> model fits, which can be extracted using
 the <code>pull_out</code> function. For example, we can pull out and
@@ -369,10 +398,11 @@ plot of chunk exmp2-ecx4param
 <code>bayesmanecfit</code> and create a new object of class
 <code>bayesnecfit</code> which contains just a single fit. This would be
 identical to fitting the <strong>ecx4param</strong> as a single model
-using <code>bnec</code>. Models in the <code>bayesmanecfit</code> can be
-plotted together by naming them in the argument <code>model</code>, and
-<code>average = FALSE</code> leaves out the panel of model averaged
-predictions. Here every model in the set is plotted.</p>
+using <code>bnec</code>. Several models in the
+<code>bayesmanecfit</code> can be plotted together by naming them in the
+argument <code>model</code> (here we plot all of the models that fitted
+successfully), and setting <code>average = FALSE</code> omits the panel
+of model averaged predictions.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="va">exp_5</span><span class="op">$</span><span class="va">success_models</span>, average <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
@@ -430,58 +460,63 @@ convergence according to Rhat:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rhat.html">rhat</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="st">"[["</span>, <span class="st">"failed"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; nec3param nec4param    neclin    ecxlin    ecxexp   ecxsigm ecx4param    ecxwb1    ecxwb2  ecxwb1p3  ecxwb2p3 </span></span>
-<span><span class="co">#&gt;      TRUE     FALSE      TRUE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE </span></span>
-<span><span class="co">#&gt;    ecxll4 </span></span>
-<span><span class="co">#&gt;     FALSE</span></span></code></pre></div>
-<p>The default cut off is 1.01, following <span class="citation">Vehtari
-et al. (2021)</span>, whose recommendation is that Rhat should not
+<span><span class="co">#&gt;     FALSE      TRUE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE </span></span>
+<span><span class="co">#&gt;    ecxll4    ecxll3   ecxflat </span></span>
+<span><span class="co">#&gt;      TRUE     FALSE     FALSE</span></span></code></pre></div>
+<p>The default cut off is 1.01, following the recommendation of <span class="citation">Vehtari et al. (2021)</span> that Rhat should not
 exceed 1.01 at convergence. Any model returning <code>TRUE</code> here
-did not converge, and should be dropped before the set is averaged —
-note that we have also used far fewer than the default
-<code>bayesnec</code> <code>iter</code> (10,000) here, which makes
-convergence harder than it would usually be.</p>
-<p>The older and more permissive 1.05 is still available by changing the
-argument, which is useful mainly for comparison against analyses that
-predate the current recommendation:</p>
+did not converge, and should be dropped before the set is averaged. Note
+that we have also used far fewer than the default <code>bayesnec</code>
+<code>iter</code> (10,000) here, which makes convergence harder than it
+would usually be.</p>
+<p>The older and more permissive cut off of 1.05 can also be used by
+changing the argument, although this is mainly useful for comparison
+with analyses that predate the current recommendation:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rhat.html">rhat</a></span><span class="op">(</span><span class="va">exp_5</span>, rhat_cutoff <span class="op">=</span> <span class="fl">1.05</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="st">"[["</span>, <span class="st">"failed"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; nec3param nec4param    neclin    ecxlin    ecxexp   ecxsigm ecx4param    ecxwb1    ecxwb2  ecxwb1p3  ecxwb2p3 </span></span>
 <span><span class="co">#&gt;     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE </span></span>
-<span><span class="co">#&gt;    ecxll4 </span></span>
-<span><span class="co">#&gt;     FALSE</span></span></code></pre></div>
-<p><code><a href="../reference/rhat.html">rhat()</a></code> reports Rhat alone. <code><a href="../reference/check_sampling.html">check_sampling()</a></code>
-reports all three sampler diagnostics for each candidate model — Rhat,
-effective sample size and divergent transitions:</p>
+<span><span class="co">#&gt;    ecxll4    ecxll3   ecxflat </span></span>
+<span><span class="co">#&gt;     FALSE     FALSE     FALSE</span></span></code></pre></div>
+<p>The <code><a href="../reference/rhat.html">rhat()</a></code> function returns only Rhat, whereas
+<code><a href="../reference/check_sampling.html">check_sampling()</a></code> returns all three sampler diagnostics
+(Rhat, effective sample size and the number of divergent transitions)
+for each candidate model:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/check_sampling.html">check_sampling</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span></span>
 <span><span class="co">#&gt;        model max_rhat  min_ess min_ess_ratio n_divergent failed</span></span>
-<span><span class="co">#&gt; 1  nec3param 1.010708 399.0785     0.2494240           0   TRUE</span></span>
-<span><span class="co">#&gt; 2  nec4param 1.005172 401.2819     0.2508012           0  FALSE</span></span>
-<span><span class="co">#&gt; 3     neclin 1.016389 548.2886     0.3426804           0   TRUE</span></span>
-<span><span class="co">#&gt; 4     ecxlin 1.007485 663.1816     0.4144885           0  FALSE</span></span>
-<span><span class="co">#&gt; 5     ecxexp 1.009911 795.2739     0.4970462           0  FALSE</span></span>
-<span><span class="co">#&gt; 6    ecxsigm 1.008363 566.1037     0.3538148           0  FALSE</span></span>
-<span><span class="co">#&gt; 7  ecx4param 1.005429 518.3097     0.3239436           0  FALSE</span></span>
-<span><span class="co">#&gt; 8     ecxwb1 1.005447 732.5172     0.4578232           0  FALSE</span></span>
-<span><span class="co">#&gt; 9     ecxwb2 1.006158 597.6551     0.3735344           0  FALSE</span></span>
-<span><span class="co">#&gt; 10  ecxwb1p3 1.003042 715.7980     0.4473738           0  FALSE</span></span>
-<span><span class="co">#&gt; 11  ecxwb2p3 1.005991 853.1119     0.5331949           0  FALSE</span></span>
-<span><span class="co">#&gt; 12    ecxll4 1.006715 354.8392     0.2217745           0   TRUE</span></span></code></pre></div>
-<p><code><a href="../reference/screen_models.html">screen_models()</a></code> screens on those three together and
-drops every candidate that failed. It reports what went and why, and
-that message is the record of the exclusion: a step that removes models
-without naming them cannot be written up.</p>
+<span><span class="co">#&gt; 1  nec3param 1.009273 332.1574     0.2075984           0   TRUE</span></span>
+<span><span class="co">#&gt; 2  nec4param 1.010144 480.7366     0.3004604           0   TRUE</span></span>
+<span><span class="co">#&gt; 3     neclin 1.005700 624.0328     0.3900205           0  FALSE</span></span>
+<span><span class="co">#&gt; 4     ecxlin 1.007916 626.0950     0.3913094           0  FALSE</span></span>
+<span><span class="co">#&gt; 5     ecxexp 1.008185 697.0696     0.4356685           0  FALSE</span></span>
+<span><span class="co">#&gt; 6    ecxsigm 1.004028 556.1325     0.3475828           0  FALSE</span></span>
+<span><span class="co">#&gt; 7  ecx4param 1.004052 754.9726     0.4718579           0  FALSE</span></span>
+<span><span class="co">#&gt; 8     ecxwb1 1.006168 681.2412     0.4257757           0  FALSE</span></span>
+<span><span class="co">#&gt; 9     ecxwb2 1.009685 598.0465     0.3737791           0  FALSE</span></span>
+<span><span class="co">#&gt; 10  ecxwb1p3 1.006678 705.5896     0.4409935           0  FALSE</span></span>
+<span><span class="co">#&gt; 11  ecxwb2p3 1.009592 842.8158     0.5267599           0  FALSE</span></span>
+<span><span class="co">#&gt; 12    ecxll4 1.010013 517.1654     0.3232284           0   TRUE</span></span>
+<span><span class="co">#&gt; 13    ecxll3 1.002405 758.4739     0.4740462           0  FALSE</span></span>
+<span><span class="co">#&gt; 14   ecxflat 1.002579 857.3529     0.5358456           0  FALSE</span></span></code></pre></div>
+<p>The <code><a href="../reference/screen_models.html">screen_models()</a></code> function screens the candidate
+models on these three diagnostics together, and drops any candidate that
+failed. It also prints a message naming each model dropped and the
+reason, and this message is the record of the exclusion (an exclusion
+step that does not name the models it drops cannot be written up).</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_5_screened</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/screen_models.html">screen_models</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Dropping 3 of 12 candidate models that failed the sampler screen:</span></span>
-<span><span class="co">#&gt;   -  nec3param: Rhat 1.011, ESS 399.1</span></span>
-<span><span class="co">#&gt;   -  neclin: Rhat 1.016</span></span>
-<span><span class="co">#&gt;   -  ecxll4: ESS 354.8</span></span>
-<span><span class="co">#&gt; Fitted models are: nec4param ecxlin ecxexp ecxsigm ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3</span></span></code></pre></div>
-<p>Here it removed 3 of the 12 candidates, naming each one and the
-diagnostic it failed. <code>exp_5_screened</code> holds the candidates
-that passed; <code>exp_5</code> still holds all of them.</p>
+<span><span class="co">#&gt; Dropping 3 of 14 candidate models that failed the sampler screen:</span></span>
+<span><span class="co">#&gt;   -  nec3param: ESS 332.2</span></span>
+<span><span class="co">#&gt;   -  nec4param: Rhat 1.01</span></span>
+<span><span class="co">#&gt;   -  ecxll4: Rhat 1.01</span></span>
+<span><span class="co">#&gt; Fitted models are: neclin ecxlin ecxexp ecxsigm ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll3 ecxflat</span></span>
+<span><span class="co">#&gt; The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 1584 of 1600 draws. The NSEC summary is censored at 10: those draws keep their rank in it and are given no value.</span></span></code></pre></div>
+<p>Here <code><a href="../reference/screen_models.html">screen_models()</a></code> dropped 3 of the 14 candidates, and
+its message names each of them and the diagnostic it failed. The
+screened object <code>exp_5_screened</code> contains only the candidates
+that passed, while <code>exp_5</code> still contains all of them.</p>
 </div>
 <div class="section level4">
 <h4 id="extracting-toxicity-values">Extracting toxicity values<a class="anchor" aria-label="anchor" href="#extracting-toxicity-values"></a>
@@ -492,9 +527,21 @@ smooth curves as a function of concentration and have no breakpoint (no
 true No-Effect-Concentration, NEC). Thus the reported no-effect toxicity
 estimate is the NSEC <span class="citation">(Fisher and Fox 2023)</span>
 (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model
-details</a> vignette for more details). If a true model averaged
-estimate of <em>NEC</em> based only on threshold models is desired, this
-can be obtained with <code>model = "nec"</code>. We can use the helper
+details</a> vignette for more details). The no-effect estimate of the
+hormesis threshold equations, <strong>nechorme</strong>,
+<strong>nechorme4</strong>, <strong>neclinhorme</strong>,
+<strong>nechormepwr</strong>, <strong>nechorme4pwr</strong> and
+<strong>nechormepwr01</strong>, is also an NSEC, because the fitted
+response at their
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>
+parameter can be above the control. A model averaged <em>NEC</em> based
+only on threshold models therefore comes from the four monotone
+threshold equations, <strong>nec3param</strong>,
+<strong>nec4param</strong>, <strong>neclin</strong> and
+<strong>necsigm</strong>. The <code>"nec"</code> model group also
+includes the hormesis threshold equations, so <code>model = "nec"</code>
+gives a pure <em>NEC</em> only for a set fitted without them, such as
+the <code>"decline"</code> set used here. We can use the helper
 functions <code>pull_out</code> and <code>amend</code> to alter the
 model set as required. <code>pull_out</code> has a <code>model</code>
 argument and can be used to pull a single model out (as above) or to
@@ -523,18 +570,18 @@ details</a> vignette).</p>
 <span><span class="va">ECx50</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
 <span><span class="va">ECx10</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 3.614370 2.687910 4.162698 </span></span>
+<span><span class="co">#&gt; 3.624993 2.760964 4.167579 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
-<span><span class="co">#&gt; [1] 200</span></span>
+<span><span class="co">#&gt; [1] 500</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
 <span><span class="co">#&gt; [1] 10</span></span>
 <span><span class="co">#&gt; attr(,"toxicity_estimate")</span></span>
 <span><span class="co">#&gt; [1] "ecx"</span></span>
 <span><span class="va">ECx50</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 5.094764 4.831337 5.370868 </span></span>
+<span><span class="co">#&gt; 5.082466 4.816782 5.348731 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
-<span><span class="co">#&gt; [1] 200</span></span>
+<span><span class="co">#&gt; [1] 500</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
 <span><span class="co">#&gt; [1] 50</span></span>
 <span><span class="co">#&gt; attr(,"toxicity_estimate")</span></span>
@@ -546,7 +593,7 @@ these models.</p>
 <code class="sourceCode R"><span><span class="va">NECvals</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_ne</span></span>
 <span><span class="va">NECvals</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 3.547172 3.094213 4.100937</span></span></code></pre></div>
+<span><span class="co">#&gt; 3.527155 3.130124 4.108291</span></span></code></pre></div>
 <p>Note that the new <em>NEC</em> estimates from the
 <strong>nec</strong>-containing model fits are slightly higher than
 those reported in the summary output of all the fitted models. This can
@@ -593,19 +640,22 @@ plot of chunk exmp2-pretty
 <div class="section level3">
 <h3 id="fitting-the-model-set-in-parallel">Fitting the model set in parallel<a class="anchor" aria-label="anchor" href="#fitting-the-model-set-in-parallel"></a>
 </h3>
-<p>The fit above passed <code>cores = getOption("mc.cores", 1)</code>,
-which takes the number of chains sampled at once from the
-<code>mc.cores</code> option. <code>chains</code> defaults to four and
-<code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code> samples at most <code>chains</code> at a time, so on
-the machine this vignette was built on that is four chains together; in
-a session where <code>mc.cores</code> is unset it is one after another.
-Set <code>mc.cores</code>, or pass <code>cores</code> directly, to
-choose. That is one of two things in a model set that can be done at
-once, and it is the narrower one: the chains of a single model. A model
-set is a second opportunity, because the models do not depend on one
-another and there are usually more of them than there are chains.</p>
-<p><code><a href="../reference/bnec.html">bnec()</a></code> fits the models one at a time unless a <a href="https://cran.r-project.org/package=future" class="external-link"><code>future</code></a>
-plan says otherwise. Setting one before the call is all that is
+<p>The model set above was fitted with
+<code>cores = getOption("mc.cores", 1)</code>, which takes the number of
+chains sampled at once from the <code>mc.cores</code> option. Because
+<code>chains</code> defaults to four and <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code> samples at
+most <code>chains</code> at a time, the chains were sampled four at a
+time on the machine used to build this vignette, whereas in a session
+where <code>mc.cores</code> is unset they are sampled one after another.
+You can choose by setting <code>mc.cores</code>, or by passing
+<code>cores</code> directly. Sampling the chains of a single model at
+once is the narrower of two kinds of parallel computation available for
+a model set. The models themselves can also be fitted at once, because
+they do not depend on one another, and because there are typically more
+models in a set than there are chains.</p>
+<p><code><a href="../reference/bnec.html">bnec()</a></code> fits the models one at a time unless a parallel
+<a href="https://cran.r-project.org/package=future" class="external-link"><code>future</code></a>
+plan has been set, and setting one before the call is all that is
 required:</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
@@ -614,89 +664,101 @@ required:</p>
 <span>                  iter <span class="op">=</span> <span class="fl">2e3</span>, seed <span class="op">=</span> <span class="fl">322</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">sequential</span><span class="op">)</span></span></code></pre></div>
 <p>There is no argument to <code><a href="../reference/bnec.html">bnec()</a></code> that turns this on or
-off: the plan already records how much of the machine you are willing to
-use, and a second way of saying it would only disagree with the first. A
-<code>cores</code> is different, and is passed through to
-<code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code> as any other of its arguments is; what it does under
-a plan is the subject of <em>Chains within models</em> below.
-<code>future</code> and <code>future.apply</code> are suggested rather
-than required packages: without them, or without a plan, the models are
-fitted in sequence exactly as they were before this feature existed.
-<code><a href="../reference/amend.html">amend()</a></code> uses the plan in the same way, over whichever
-models it has to fit. <code><a href="../reference/bnec_group.html">bnec_group()</a></code> has a second loop that
-could use the same workers, its levels, and it chooses between the two
-by counting the rounds each arrangement takes; a nested plan drives
-both. That is the subject of <em>The levels of a grouped call</em> at
-the end of this section.</p>
+off, because the plan already records how much of the machine you are
+willing to use, and a second way of setting it would only disagree with
+the first. The <code>cores</code> argument is different, and is passed
+through to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code> like any of its other arguments (its
+effect under a plan is described under <em>Chains within models</em>
+below). The <code>future</code> and <code>future.apply</code> packages
+are suggested, not required, and without them (or without a plan) the
+models are fitted in sequence. <code><a href="../reference/amend.html">amend()</a></code> uses a plan
+likewise, for whichever models it has to fit.</p>
 <div class="section level4">
 <h4 id="choosing-a-plan">Choosing a plan<a class="anchor" aria-label="anchor" href="#choosing-a-plan"></a>
 </h4>
-<p><code>plan(multisession)</code> is the portable choice: it starts
-fresh R processes that talk to the parent over local sockets, and it is
-available on every platform. <code>plan(multicore)</code> forks the
-current process instead, which starts faster and shares memory rather
-than copying it, but forking is unavailable on Windows and inside
-RStudio and Positron, where the plan silently resolves to a single
-worker. <code><a href="../reference/bnec.html">bnec()</a></code> reports the number of workers it was given,
-so a plan that has collapsed to one is visible rather than merely
-slow.</p>
-<p>Check that a plan works before committing a long run to it. Fit two
-models with a small <code>iter</code> under the plan you intend to use,
-and confirm it returns. The socket layer <code>multisession</code>
-depends on is outside R’s control, and where it misbehaves the symptom
-is a run that neither finishes nor errors. The lesson is the check
-rather than a particular backend: if <code>multisession</code> stalls
-and you are on Linux or macOS, <code>multicore</code> uses no sockets
-and is the thing to try.</p>
-<p>On the WSL2 machine these notes were written on, a two-model fit
-completed under <code>multicore</code> in five runs out of five, taking
-84 to 90 seconds, and completed under <code>multisession</code> in none
-of four, each attempt producing no output at all before being killed. A
-separate thirteen-model run under <code>multisession</code> failed
-differently again: both workers stopped with
-<code>error writing to connection</code> and the parent then waited
-indefinitely.</p>
-<p>The cause is not established here and is very likely below R. The
-Windows subsystem logged name-resolution failures during these runs,
-which fits a problem in the socket layer that <code>multisession</code>
-relies on and <code>multicore</code> does not use; and the same code
-passes under <code>multisession</code> on Linux, macOS and Windows in
-this package’s continuous integration, so whatever it is, it is not
-general.</p>
+<p><code>plan(multisession)</code> is the portable choice (it is
+available on all platforms), and it starts new R processes that
+communicate with the parent session over local sockets. In contrast,
+<code>plan(multicore)</code> forks the current process, which starts
+faster and shares memory with the parent instead of copying it. However,
+forking is unavailable on Windows and inside RStudio and Positron, and
+there the plan silently resolves to a single worker. Because
+<code><a href="../reference/bnec.html">bnec()</a></code> prints the number of workers it was given, a plan
+that has collapsed to one worker can be identified from that message,
+and not only from a slow fit.</p>
+<p>On the WSL2 machine on which this section was written, a two-model
+fit completed under <code>multicore</code> in five of five runs (taking
+84 to 90 seconds), but under <code>multisession</code> in none of four
+runs, each of which produced no output at all before it was killed. A
+separate thirteen-model run under <code>multisession</code> failed in a
+different way, with both workers stopping with
+<code>error writing to connection</code> and the parent session then
+waiting indefinitely.</p>
+<p>The cause was not established, although it is very likely to be in a
+layer below R. The Windows subsystem logged name-resolution failures
+during these runs, which is consistent with a problem in the socket
+layer that <code>multisession</code> relies on and
+<code>multicore</code> does not use. In addition, this code runs
+successfully under <code>multisession</code> on Linux, macOS and Windows
+in the continuous integration checks of this package, so the problem,
+whatever its cause, is not general.</p>
+<p>The socket layer that <code>multisession</code> depends on is outside
+the control of R, and where it fails the symptom is a run that neither
+finishes nor returns an error. We therefore recommend checking that a
+plan works before committing a long run to it, by fitting two models
+with a small <code>iter</code> under the intended plan and confirming
+that the call returns. The recommendation here is to make this check,
+not to use a particular backend, although if <code>multisession</code>
+stalls on Linux or macOS, <code>multicore</code> (which uses no sockets)
+is the plan to try.</p>
 </div>
 <div class="section level4">
 <h4 id="the-stan-backend">The Stan backend<a class="anchor" aria-label="anchor" href="#the-stan-backend"></a>
 </h4>
-<p>Under a forked plan, use the <code>cmdstanr</code> backend. The
-default, <code>rstan</code>, compiles each model into the session’s
-temporary directory, which a forked worker shares with the process it
-was forked from; thirteen models compiling at once in eight forked
-workers failed, every one of them, with
-<code>cannot open the connection</code> from <code>stanc</code>. A
-<code>multisession</code> worker is a separate R session with a
-temporary directory of its own, so compilation under <code>rstan</code>
-does not collide there. <code>cmdstanr</code> names a compiled program
-after a hash of its Stan code and keeps it in a cache directory, so
-concurrent compiles of different models do not collide and a repeated
-run reuses what is already built. Set it with
-<code>options(brms.backend = "cmdstanr")</code>, which is what this
-package’s vignettes are built with. <code>cmdstanr</code> is not on CRAN
-and is not a dependency of <code>bayesnec</code>; see the <a href="https://open-aims.github.io/bayesnec/articles/example5.html">Installation
+<p>Under a forked plan, we recommend the <code>cmdstanr</code> backend.
+The default backend, <code>rstan</code>, compiles each model in the
+temporary directory of the session, which a forked worker shares with
+the process it was forked from. When thirteen models were compiled at
+once in eight forked workers, all thirteen failed with
+<code>cannot open the connection</code> from <code>stanc</code>. In
+contrast, a <code>multisession</code> worker is a separate R session
+with its own temporary directory, so compilation under
+<code>rstan</code> does not collide there. <code>cmdstanr</code> names
+each compiled program after a hash of its Stan code and keeps it in a
+cache directory, so that concurrent compiles of different models do not
+collide, and a repeated run reuses the programs already built. To select
+it, set <code>options(brms.backend = "cmdstanr")</code>, which is the
+setting used to build the vignettes of this package. Note that
+<code>cmdstanr</code> is not on CRAN and is not a dependency of
+<code>bayesnec</code> (see the <a href="https://open-aims.github.io/bayesnec/articles/example5.html">Installation
 and setup</a> vignette, or <a href="https://mc-stan.org/cmdstanr/" class="external-link">its
-own installation instructions</a>, if you do not already have it.</p>
-<p>Two models in two forked workers did not collide and thirteen in
-eight did, so a small trial does not reveal this, and the two-model
-check in <em>Choosing a plan</em> does not cover it. The explanation
-offered here is consistent with the shared temporary directory but was
-not isolated — eight compilers running at once is also eight times the
-memory — and it was seen on one machine.</p>
+own installation instructions</a>, if you do not already have it
+installed).</p>
+<p>Two models in two forked workers did not collide, whereas thirteen
+models in eight forked workers did, so a small trial does not reveal
+this problem, and the two-model check described under <em>Choosing a
+plan</em> does not test for it. The shared temporary directory is
+consistent with this failure but was not isolated as its cause (eight
+compilers running at once also use eight times the memory), and the
+failure was seen on only one machine.</p>
 </div>
 <div class="section level4">
 <h4 id="run-times">Run times<a class="anchor" aria-label="anchor" href="#run-times"></a>
 </h4>
-<p>The whole <code>"decline"</code> set was fitted five ways, from a
-fresh session each time with nothing compiled in advance, to see what a
-plan changes.</p>
+<p>To measure what a plan changes, we fitted the <code>"decline"</code>
+set without <code>ecxflat</code> (fourteen equations, of which 13 fit
+these data and <code>ecxll5</code> does not initialise) in five ways.
+The runs were made on 2026-09-12 on an otherwise idle 22-core
+workstation under WSL2 (R 4.6.1, <code>cmdstanr</code>,
+<code>plan(multicore)</code>, <code>iter = 2e3</code>,
+<code>chains = 4</code>). Each run started from a fresh R session with
+the compiled-program cache emptied first, so that nothing was compiled
+in advance and each run built all 13 programs. Runs during which any
+other R process appeared were discarded and repeated (three were), and
+where a configuration has two runs the time shown is their midpoint.
+Because the fit shown earlier in this vignette also includes
+<code>ecxflat</code>, these timings are a separate measurement, not a
+description of that fit.</p>
 <table style="width:100%;" class="table">
 <colgroup>
 <col width="16%">
@@ -759,222 +821,129 @@ plan changes.</p>
 </tr>
 </tbody>
 </table>
-<p>Measured 2026-09-12 on an otherwise idle 22-core workstation under
-WSL2, R 4.6.1, <code>cmdstanr</code>, <code>plan(multicore)</code>: the
-<code>"decline"</code> models that fit this data,
-<code>iter = 2e3</code>, <code>chains = 4</code>, each run in a fresh R
-session with the compiled-program cache emptied first, so every run
-builds all 13 programs. The cores named are those sampling: compilation
-is single-threaded per program, so a run with no plan compiles the
-thirteen one after another on one core while a plan of <em>n</em>
-workers compiles <em>n</em> at a time, which is why two workers complete
-in 24 per cent less time than a nominally four-core baseline here. Where
-a row has two runs the figure is their midpoint. Runs during which any
-other R process appeared were discarded and repeated; three were. These
-runs used the development version of the package, in which 13 of the 14
-<code>"decline"</code> models fit this data and <code>ecxll5</code> does
-not initialise; the output shown earlier in this vignette was rendered
-from an older version, has eight models, and gives <code>ecxll5</code>
-the second-largest weight. The two do not correspond, and the timings
-are a separate measurement rather than a description of the fit
-above.</p>
-<p>Against that, the same five configurations run again with the
-programs already built take 99, 114, 108, 101 and 94 seconds in the same
-order, one run each. Two workers then take 15 per cent longer than no
-plan, which is outside the spread these configurations show; the other
-three land within a few per cent of the sequential fit, which one run
-each cannot separate from it. Compilation is what the plan was
-overlapping, and the core arithmetic shows through once it is gone: the
-sequential fit samples four chains on four cores, so two workers of one
-chain each is less of the machine than it replaces and four workers is
-the same amount rearranged. Only above four does a plan ask for more
-than the fit was already using. Once it is done, what remains is
-sampling that takes seconds per model, and the work the calling process
-does whatever plan is set: the model weights, the leave-one-out
-comparisons and the prediction grid are all computed there, after the
-fits come back. How the remainder divides between those was not measured
-and is not claimed here.</p>
-<p>So the advice is about which run you are timing. A first fit of a
-model set, on a machine where the programs are not already built, is
-compilation-bound and parallelises well: halving the elapsed time at
-eight workers, on the measurement above. A repeat of the same set
-against a warm cache is sampling-bound, so for models as small as these
-nothing is gained and a plan with too few workers adds time. Where a
-single model takes minutes rather than seconds the sampling dominates in
-both cases and the first table’s shape applies to the repeat run
-too.</p>
+<p>The cores listed in the table are those used for sampling. The
+elapsed time decreased as the number of workers increased, and was
+halved with eight workers, while five workers sampling four chains each
+(20 cores in total) took about as long as eight workers (153.5 against
+149.9 seconds). Compilation is single-threaded for each program, so a
+run with no plan compiles the thirteen programs one after another on one
+core, whereas a plan of <em>n</em> workers compiles <em>n</em> at a
+time. This is why two workers completed the fit in 24 per cent less time
+than the nominally four-core baseline.</p>
+<p>We then ran the five configurations again (one run each) with the
+programs already built, and they took 99, 114, 108, 101 and 94 seconds,
+respectively, in the order of the table. Two workers then took 15 per
+cent longer than no plan, which is outside the spread these
+configurations show. The other three were within a few per cent of the
+sequential fit, a difference that one run each cannot resolve.
+Compilation is what the plan was overlapping. Once compilation is
+removed, the effect of the number of cores in use becomes visible: the
+sequential fit samples four chains on four cores, so two workers
+sampling one chain each use fewer cores than the fit they replace, and
+four workers use four cores arranged differently. Only with more than
+four workers does a plan use more cores than the sequential fit was
+already using. With the programs built, the remaining time is spent on
+sampling (which takes seconds per model) and on the work done in the
+calling process whatever plan is set (the model weights, the
+leave-one-out comparisons and the prediction grid are all computed
+there, after the fits are returned). How the remaining time divides
+between these was not measured, and no claim is made about it here.</p>
+<p>The advice therefore depends on which run is being timed. A first fit
+of a model set, on a machine where the programs are not already built,
+is limited by compilation and parallelises well (see the table above). A
+repeat fit of that set against a warm cache (i.e. with the programs
+already built) is limited by sampling, so for models as small as these
+nothing is gained, and a plan with too few workers adds time. Where a
+single model takes minutes, not seconds, sampling dominates in both
+cases, and the pattern in the table above applies to the repeat run as
+well.</p>
 </div>
 <div class="section level4">
 <h4 id="chains-within-models">Chains within models<a class="anchor" aria-label="anchor" href="#chains-within-models"></a>
 </h4>
-<p>The two levels are not exclusive. Passing <code>cores</code> yourself
-is left alone by <code><a href="../reference/bnec.html">bnec()</a></code>, and nests deliberately:</p>
+<p>Parallel chains within a model and parallel models within a set can
+be used together. Under a parallel plan of more than one worker,
+<code><a href="../reference/bnec.html">bnec()</a></code> passes <code>cores = 1</code> to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code>
+(each model then samples its chains in sequence), but a
+<code>cores</code> value that you supply yourself is deliberately left
+unchanged, so that parallel chains nest within parallel models:</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">exp_5_nested</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">df_</span>,</span>
 <span>                     iter <span class="op">=</span> <span class="fl">2e3</span>, cores <span class="op">=</span> <span class="fl">4</span>, seed <span class="op">=</span> <span class="fl">322</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">sequential</span><span class="op">)</span></span></code></pre></div>
-<p>That runs five models at a time with four chains each, so twenty
-chains are sampling at once. It is the shape that suits a cluster
-allocation, where the number of cores is known in advance and is larger
-than any one model can use. Divide the allocation between the two levels
-rather than giving it all to either.</p>
+<p>This fits five models at a time with four chains each, so that twenty
+chains are sampled at once. This arrangement suits a cluster allocation,
+where the number of cores is known in advance and is larger than any one
+model can use. We recommend dividing such an allocation between models
+and chains, instead of giving all of it to either.</p>
 </div>
 <div class="section level4">
 <h4 id="reproducibility">Reproducibility<a class="anchor" aria-label="anchor" href="#reproducibility"></a>
 </h4>
-<p>Each fitted model reproduces exactly under a parallel plan, given the
-same <code>seed</code>. That equality is not automatic.
-<code>future</code> gives each worker its own random number generator,
-the initial-value search in <code><a href="../reference/bnec.html">bnec()</a></code> seeds itself with
-<code>set.seed</code>, and <code>set.seed</code> does not restore the
-generator <em>kind</em>, so the same seed would otherwise have produced
-different starting values in a worker than in the parent. The worker
-restores the parent’s generator kind before fitting, and the equality is
-tested.</p>
-<p>The model-averaged quantities are the exception, and the reason is
-mechanical. Once the models are fitted, <code><a href="../reference/bnec.html">bnec()</a></code> draws a seed
-from the session’s random number stream and uses it to decide which
-posterior draws each model contributes to the averaged estimate. A
-sequential run has advanced that stream, by way of the
-<code>set.seed</code> each initial-value search performs; a parallel run
-leaves it untouched, so that models fitted in workers cannot disturb
-whatever the session was doing. The averaged <code>nec</code>, its
-credible interval and the stored prediction grid therefore differ
-between the two plans. Neither is wrong: they are two draws from the
-same weighting. Calling <code>set.seed</code> in your own session before
-<code><a href="../reference/bnec.html">bnec()</a></code> fixes that draw under a plan, and two parallel runs
-then agree.</p>
+<p>Given a <code>seed</code>, each model fitted under a parallel plan is
+identical to that model fitted in sequence, although this does not
+happen automatically. <code>future</code> gives each worker its own
+random number generator, and the initial-value search in
+<code><a href="../reference/bnec.html">bnec()</a></code> seeds itself with <code>set.seed</code>, which does
+not restore the generator <em>kind</em> (the algorithm used to generate
+the random numbers). Without a correction, one seed would therefore
+produce different starting values in a worker than in the parent
+session. To prevent this, the generator kind of the parent session is
+restored in each worker before fitting, and a test in the package checks
+this equality.</p>
+<p>The model weights and the model-averaged quantities are the
+exception, because both are computed from the random number stream of
+the session once the models are fitted. The pseudo-BMA weights are
+calculated by a Bayesian bootstrap, which draws from that stream, and
+<code><a href="../reference/bnec.html">bnec()</a></code> then draws a seed from the same stream to decide
+which posterior draws each model contributes to the averaged estimate. A
+sequential run has advanced that stream through the
+<code>set.seed</code> call in each initial-value search, whereas a
+parallel run leaves the stream unchanged, so that models fitted in
+workers cannot disturb whatever the session was doing. The model
+weights, the averaged <code>nec</code>, its credible interval and the
+stored prediction grid therefore differ between sequential and parallel
+runs. Both results are valid, as the two runs apply the same weighting
+procedure to identical fitted models and differ only in the random
+numbers that procedure uses. Calling <code>set.seed</code> in your own
+session before <code><a href="../reference/bnec.html">bnec()</a></code> fixes the weights and the averaging
+draw under a plan, and two parallel runs then agree.</p>
 </div>
 <div class="section level4">
 <h4 id="memory">Memory<a class="anchor" aria-label="anchor" href="#memory"></a>
 </h4>
-<p>Each worker holds a complete fit while it is working, and fits are
-large. Eight workers on a large data set can exhaust memory where eight
-cores would have been fine, and a worker killed by the operating system
-ends the whole call rather than the one model it was fitting. If a run
-dies without an R error, reduce the worker count before looking anywhere
-else.</p>
-<p>Two smaller effects go with it. A <code>multisession</code> or
-<code>cluster</code> worker is a fresh R process that loads
-<code>bayesnec</code>, and with it <code>brms</code> and the Stan
-backend, before it can fit anything: about three seconds each, paid once
-per worker, which matters for a set of three models and not for a set of
-twenty-three. A forked <code>multicore</code> worker inherits what the
-parent has already loaded and does not pay this. And everything the fit
-needs – the data, the formula, the priors – is sent to each worker, so a
-very large data set may reach <code>future</code>’s export limit. Raise
-it with <code>options(future.globals.maxSize = )</code>. If that limit
-is reached and the data are not large, look at where the formula was
-written: a formula keeps the environment it was created in, so one built
-inside a function sends that function’s variables to every worker
-too.</p>
-<p>Progress reporting changes too. The per-model messages
-<code><a href="../reference/bnec.html">bnec()</a></code> prints come from worker processes, and arrive out of
-order or not at all depending on the platform. Nothing is lost: a model
-that fails is still recorded, the remaining models still fit, and
-<code><a href="../reference/failed_models.html">failed_models()</a></code> reports what happened.</p>
-</div>
-<div class="section level4">
-<h4 id="the-levels-of-a-grouped-call">The levels of a grouped call<a class="anchor" aria-label="anchor" href="#the-levels-of-a-grouped-call"></a>
-</h4>
-<p><code><a href="../reference/bnec_group.html">bnec_group()</a></code> fits the model set separately within each
-level of a factor, so it has two loops a plan could drive: the levels,
-and the models within a level. Everything above applies within a level.
-What follows is the part that is specific to having two.</p>
-<p>One plan drives one of them. <code>future</code> evaluates a nested
-future sequentially unless the plan is itself a list, so dispatching the
-levels takes the workers away from the model loop rather than adding to
-them: measured on R 4.6.1 with <code>future</code> 1.70.0, inside a
-worker of <code>plan(multisession, workers = 2)</code> the strategy
-reported is <code>sequential</code> and <code><a href="https://future.futureverse.org/reference/nbrOfWorkers.html" class="external-link">nbrOfWorkers()</a></code> is
-1. <code><a href="../reference/bnec_group.html">bnec_group()</a></code> therefore counts the two arrangements in
-rounds of one fit and takes the smaller, and reports which it took.
-Writing <em>L</em> for the levels, <em>M</em> for the equations and
-<em>W</em> for the workers, the levels take
-<code>ceiling(L / W) * M</code> rounds and the models
-<code>L * ceiling(M / W)</code>; a tie goes to the models, which is what
-earlier versions did.</p>
-<p>A level arrangement cannot go below <em>M</em> rounds however many
-workers there are, and a model arrangement reaches <em>L</em>, so with
-fewer levels than equations the levels are the smaller count only in a
-band. Seven levels of eleven equations is 22 rounds against 21 at four
-workers, and 11 against 14 at eight.</p>
-<p>To drive both loops, nest the plan, which is how <code>future</code>
-asks for it:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">tweak</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>,</span>
-<span>          <span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">tweak</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec_group.html">bnec_group</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">my_data</span>,</span>
-<span>                  group_var <span class="op">=</span> <span class="st">"site"</span>, seed <span class="op">=</span> <span class="fl">17</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">sequential</span><span class="op">)</span></span></code></pre></div>
-<p>The outer element is the level loop and the inner one the model loop,
-and a nested plan is honoured without being counted: the division is
-yours. Eight workers are in use here, two levels at a time with four
-models inside each.</p>
-<p>The <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code> around the inner count is needed rather than
-decorative. <code>future</code> sets <code>mc.cores</code> to 1 inside a
-worker and <code>parallelly</code> reads that as the core budget, so a
-bare <code>workers = 4</code> inner count is refused: measured on the
-same versions, that plan returned <em>Attempting to set up 4 localhost
-parallel workers with only 1 CPU cores available … The hard limit is set
-to 300%</em>, where <code>workers = I(4)</code> returned 4.
-<code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code> is how <code>parallelly</code> is told the number is
-meant.</p>
-<p><code>plan(list(sequential, tweak(multisession, workers = I(8))))</code>
-asks for the other arrangement explicitly: the levels one at a time,
-each level’s model set over eight workers. Use it where the count picks
-the levels and you want what earlier versions did.</p>
-<p>A nested plan of <code>multisession</code> strategies emits a warning
-from <code>future</code> once per level, beginning <em>added, removed,
-or modified connections</em>. Starting the inner cluster opens
-connections inside a future and leaves them open, which is what makes
-that cluster reusable, and <code>future</code> reports any such change.
-Nothing is wrong and no fit is affected. It is not suppressed, because
-the same check would catch a connection genuinely leaked by something a
-fit called; <code>options(future.connections.onMisuse = "ignore")</code>
-turns it off for a session, and an inner <code>multicore</code> strategy
-opens no connections and so reports none.</p>
-<p>Memory is the reason the arrangement is counted rather than the
-levels simply taking the plan. A worker fitting a level holds that
-level’s whole model-averaged set, where a worker fitting one model holds
-one fit, and a core given to the chains of a fit holds nothing extra. A
-plan of <em>W</em> level workers therefore uses up to <em>W</em> times
-the memory of the same call with the levels in sequence, and the count
-already declines to dispatch the levels at the small worker counts where
-memory is tightest.</p>
-<p>Compilation is the other thing the arrangement adds. Every level fits
-the same equations, so parallel levels build the same Stan programs at
-the same time, and <code>cmdstanr</code> does not lock its compile
-cache. Each active host-process pair is given a directory of its own to
-keep concurrent compiles apart. A persistent <code>multisession</code>
-or <code>cluster</code> worker can reuse its directory across levels. A
-<code>multicore</code> plan starts a new process for each one-element
-future, so it can compile each equation once per level. The count above
-measures sampling only, so on short fits the arrangement it prefers can
-be slower in elapsed time. Where
-<code>cmdstanr_write_stan_file_dir</code> has been set, those
-directories are written under it as
-<code>bayesnec-stan-&lt;host&gt;-&lt;pid&gt;</code>. They are safe to
-delete after the workers finish. Fitting the levels in sequence uses the
-cache as it always did.</p>
-<p>The caveat in <em>The Stan backend</em> above applies here with more
-force, because every level compiles the same programs: under
-<code>rstan</code> with <code>rstan_options(auto_write = TRUE)</code>
-the cache is one location that a forked worker shares with its parent,
-and no argument changes that location, so prefer
-<code>multisession</code> for a parallel grouped call with that option
-set.</p>
-<p>Each level is given its own seed, realised in the calling session
-before the levels are dispatched and derived from <code>seed</code>
-where one was passed. That seed is passed to every equation fitted for
-the level and is reapplied when the model-averaging draw is realised.
-Both uses are needed because sequential and parallel equation loops
-advance different RNG streams. A grouped call therefore gives the same
-estimates whichever arrangement it took, so the number of workers on the
-machine does not change an answer, and the realised seeds are kept on
-the returned object as <code>level_seeds</code>.</p>
+<p>Each worker keeps a complete fit in memory while it is working, and
+fits are large. Eight workers on a large data set can therefore exhaust
+memory where eight cores would have been sufficient. In addition, a
+worker killed by the operating system ends the whole call, not only the
+model it was fitting. If a run fails without an R error, we recommend
+reducing the number of workers before looking for any other cause.</p>
+<p>There are also two smaller effects. First, a
+<code>multisession</code> or <code>cluster</code> worker is a new R
+process that has to load <code>bayesnec</code> (and with it
+<code>brms</code> and the Stan backend) before it can fit anything. This
+takes about three seconds, incurred once for each worker, which is
+important for a set of three models but not for a set of twenty-four. A
+forked <code>multicore</code> worker inherits what the parent has
+already loaded, and does not incur this delay. Second, everything the
+fit needs (i.e. the data, the formula and the priors) is sent to each
+worker, so a very large data set may reach the export limit of
+<code>future</code>. Raise the limit with
+<code>options(future.globals.maxSize = )</code>. If the limit is reached
+although the data are not large, check whether the formula names a
+function you have defined (e.g. a transformation written inside
+<code>crf()</code>). <code><a href="../reference/bnec.html">bnec()</a></code> keeps only the objects named in
+the formula (and not supplied in the data) from the environment in which
+the formula was created, but such a function is sent together with the
+environment in which it was defined, which may contain large
+objects.</p>
+<p>Progress reporting also changes under a plan. The per-model messages
+printed by <code><a href="../reference/bnec.html">bnec()</a></code> come from worker processes, and arrive
+out of order or not at all, depending on the platform. However, nothing
+is lost, as a model that fails is still recorded, the remaining models
+are still fitted, and the failures can be examined with
+<code><a href="../reference/failed_models.html">failed_models()</a></code>.</p>
 </div>
 </div>
 </div>

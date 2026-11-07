@@ -146,7 +146,7 @@ object of class <code>bayesmanecfit</code> containing Bayesian model
 averaged predictions for the supplied models, providing they were
 successfully fitted.</p>
 <p>Model averaging is achieved through a weighted sample of each fitted
-models’ posterior predictions, with weights derived using the
+model’s posterior predictions, with weights derived using the
 <code>loo_model_weights</code> function from <code>loo</code> <span class="citation">(Vehtari et al. 2026, 2017)</span>. Individual
 <code>brms</code> model fits can be extracted from the
 <code>mod_fits</code> element and can be examined individually.</p>
@@ -161,9 +161,10 @@ step parameter will be fit; <code>"bot_free"</code> meaning only models
 without a <code>"bot"</code> parameter (without a bottom plateau) will
 be fit; <code>"zero_bounded"</code> are models that are bounded to be
 zero; or <code>"decline"</code> excludes all hormesis models, i.e., only
-allows a strict decline in response across the whole predictor range
-(see below <strong>Parameter definitions</strong>). There are a range of
-other pre-defined model groups available. The full list of currently
+allows a strict decline in response across the whole predictor range, or
+no change, for the constant equation <strong>ecxflat</strong> (see below
+<strong>Parameter definitions</strong>). There are a range of other
+pre-defined model groups available. The full list of currently
 implemented model groups can be seen using:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/">bayesnec</a></span><span class="op">)</span></span>
@@ -174,13 +175,13 @@ implemented model groups can be seen using:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $ecx</span></span>
 <span><span class="co">#&gt;  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"   </span></span>
-<span><span class="co">#&gt;  [8] "ecxwb2p3"    "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"</span></span>
+<span><span class="co">#&gt;  [8] "ecxwb2p3"    "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5" "ecxflat"    </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $all</span></span>
 <span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"       </span></span>
 <span><span class="co">#&gt;  [7] "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"       </span></span>
 <span><span class="co">#&gt; [13] "ecxsigm"       "ecx4param"     "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"     </span></span>
-<span><span class="co">#&gt; [19] "ecxll5"        "ecxll4"        "ecxll3"        "ecxhormebc4"   "ecxhormebc5"  </span></span>
+<span><span class="co">#&gt; [19] "ecxll5"        "ecxll4"        "ecxll3"        "ecxhormebc4"   "ecxhormebc5"   "ecxflat"      </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $bot_free</span></span>
 <span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"  </span></span>
@@ -193,7 +194,7 @@ implemented model groups can be seen using:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $decline</span></span>
 <span><span class="co">#&gt;  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"    "ecxwb2"   </span></span>
-<span><span class="co">#&gt; [10] "ecxwb1p3"  "ecxwb2p3"  "ecxll5"    "ecxll4"    "ecxll3"   </span></span>
+<span><span class="co">#&gt; [10] "ecxwb1p3"  "ecxwb2p3"  "ecxll5"    "ecxll4"    "ecxll3"    "ecxflat"  </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $hormesis</span></span>
 <span><span class="co">#&gt; [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxhormebc4"  </span></span>
@@ -212,10 +213,10 @@ list can be passed directly to the <code>model</code> argument of
 </h2>
 <p>Where possible we have aimed for consistency in the interpretable
 meaning of the individual parameters across models. Across the currently
-implemented model set, models contain from two (basic linear or
-exponential decay, see <strong>ecxlin</strong> or
-<strong>ecxexp</strong>) to five possible parameters
-(<strong>nechorme4</strong>), including:</p>
+implemented model set, models contain from one (the constant equation
+<strong>ecxflat</strong>) or two (basic linear or exponential decay, see
+<strong>ecxlin</strong> or <strong>ecxexp</strong>) to five possible
+parameters (<strong>nechorme4</strong>), including:</p>
 <p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>=</mo><mtext mathvariant="normal">top</mtext></mrow><annotation encoding="application/x-tex">\tau = \text{top}</annotation></semantics></math>,
 usually interpretable as either the y-intercept or the upper plateau
 representing the mean concentration of the response at zero
@@ -236,21 +237,25 @@ where it represents a linear decay from
 because slope
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math>)
 is required for the linear increase;</p>
-<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mtext mathvariant="normal">bottom</mtext></mrow><annotation encoding="application/x-tex">\delta = \text{bottom}</annotation></semantics></math>,
+<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mtext mathvariant="normal">bot</mtext></mrow><annotation encoding="application/x-tex">\delta = \text{bot}</annotation></semantics></math>,
 representing the lower plateau for the response at infinite
 concentration;</p>
 <p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mo>=</mo><mtext mathvariant="normal">slope</mtext></mrow><annotation encoding="application/x-tex">\alpha = \text{slope}</annotation></semantics></math>,
 the linear decay rate in the models <strong>neclin</strong> and
-<strong>ecxlin</strong>, or the linear increase rate prior to
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>
-for all hormesis models;</p>
-<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ω</mi><annotation encoding="application/x-tex">\omega</annotation></semantics></math>
-= <span class="math inline">$\text{EC\textsubscript{50}}$</span>
+<strong>ecxlin</strong>, or the rate of the initial increase in the
+hormesis models (linear in <strong>nechorme</strong>,
+<strong>nechorme4</strong>, <strong>neclinhorme</strong>,
+<strong>ecxhormebc4</strong> and <strong>ecxhormebc5</strong>, a power
+of concentration in <strong>nechormepwr</strong> and
+<strong>nechorme4pwr</strong>, where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math>
+sets the exponent, and logistic in <strong>nechormepwr01</strong>);</p>
+<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ω</mi><mo>=</mo><msub><mtext mathvariant="normal">EC</mtext><mn>50</mn></msub></mrow><annotation encoding="application/x-tex">\omega = \text{EC}_{50}</annotation></semantics></math>,
 notionally the 50% effect concentration but may be influenced by scaling
 and should therefore not be strictly interpreted, and</p>
 <p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ϵ</mi><mo>=</mo><mtext mathvariant="normal">d</mtext></mrow><annotation encoding="application/x-tex">\epsilon = \text{d}</annotation></semantics></math>,
 the exponent in the <strong>ecxsigm</strong> and
-<strong>necisgm</strong> models.</p>
+<strong>necsigm</strong> models.</p>
 <p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ϕ</mi><mo>=</mo><mtext mathvariant="normal">f</mtext></mrow><annotation encoding="application/x-tex">\phi = \text{f}</annotation></semantics></math>
 A scaling exponent exclusive to model <strong>ecxll5</strong>.</p>
 <p>In addition to the model parameters, all
@@ -268,37 +273,60 @@ f(x_i, \eta) = \begin{cases}
 estimation<a class="anchor" aria-label="anchor" href="#model-types-for-nec-and-ecx-estimation"></a>
 </h2>
 <p>In principle all models provide an estimate for “no-effect” toxicity
-concentration. As seen above, for model strings with
-<strong>nec</strong> as a prefix, the NEC is directly estimated as
-parameter
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mtext mathvariant="normal">NEC</mtext></mrow><annotation encoding="application/x-tex">\eta = \text{NEC}</annotation></semantics></math>
-in the model, as per <span class="citation">Fox (2010)</span>. On the
-other hand, model strings with <strong>ecx</strong> as a prefix are
-continuous curve models with no threshold, typically used for extracting
-ECx values from concentration-response data. In this instance, the NEC
-reported is actually the No-Significant-Effect-Concentration <span class="citation">(NSEC, see details in Fisher and Fox 2023)</span>,
-defined as the concentration at which there is a user supplied certainty
-(based on the Bayesian posterior estimate) that the response falls below
-the estimated value of the upper asymptote
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>=</mo><mtext mathvariant="normal">top</mtext></mrow><annotation encoding="application/x-tex">\tau = \text{top}</annotation></semantics></math>)
-of the response (i.e., the response value is significantly lower than
-that expected in the case of no exposure). The default value for this
-NSEC proportion is 0.01, which corresponds to an alpha value (Type-I
-error rate) of 0.01 for a one-sided test of significance. The NSEC
-concept has been recently explored using simulation studies and case
-study examples, and when combined with the NEC estimates of threshold
-models within a model‐ averaging approach, can yield robust estimates of
-N(S)EC and of their uncertainty within a single analysis framework <span class="citation">(Fisher et al. 2024)</span>. Both NEC and NSEC can be
-calculated from fitted models using the functions and . The model
-averaged N(S)EC is automatically returned as part of the fitted model
-for any that contains a combination of both and models. The significance
-level used can be adjusted from the default value using .</p>
+concentration. For the monotone threshold equations,
+<strong>nec3param</strong>, <strong>nec4param</strong>,
+<strong>neclin</strong> and <strong>necsigm</strong>, the NEC is
+estimated directly as the parameter
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mtext mathvariant="normal">NEC</mtext></mrow><annotation encoding="application/x-tex">\eta = \text{NEC}</annotation></semantics></math>,
+the concentration up to which the response stays at its control level,
+as per <span class="citation">Fox (2010)</span>. Model strings with
+<strong>ecx</strong> as a prefix are continuous curve models with no
+threshold, typically used for extracting ECx values from
+concentration-response data. In this instance, the NEC reported is the
+No-Significant-Effect-Concentration <span class="citation">(NSEC, see
+details in Fisher and Fox 2023)</span>, defined as the concentration at
+which the predicted response falls below a lower quantile of the
+posterior distribution of the control response, which is the predicted
+mean at the lowest concentration in the supplied predictor (i.e., the
+response value is significantly lower than that expected in the case of
+no exposure). The quantile is set by the <code>sig_val</code> argument.
+Its default value of 0.01 corresponds to an alpha value (Type-I error
+rate) of 0.01 for a one-sided test of significance. The NSEC concept has
+been recently explored using simulation studies and case study examples,
+and when combined with the NEC estimates of threshold models within a
+model‐ averaging approach, can yield robust estimates of N(S)EC and of
+their uncertainty within a single analysis framework <span class="citation">(Fisher, Fox, et al. 2024)</span>. Both NEC and NSEC
+can be calculated from fitted models using the functions
+<code><a href="../reference/nec.html">nec()</a></code> and <code><a href="../reference/nsec.html">nsec()</a></code>. The significance level used
+can be adjusted from the default value using <code><a href="../reference/amend.html">amend()</a></code>.</p>
+<p>The six hormesis threshold equations, <strong>nechorme</strong>,
+<strong>nechorme4</strong>, <strong>neclinhorme</strong>,
+<strong>nechormepwr</strong>, <strong>nechorme4pwr</strong> and
+<strong>nechormepwr01</strong>, also estimate
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>,
+but in these equations it is the concentration at which the decline term
+starts. Where stimulation is fitted, the response at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>
+is above the control, and where the slope of the stimulation term
+exceeds the initial rate of decline the curve continues to rise beyond
+it. For these equations <code><a href="../reference/nec.html">nec()</a></code> returns the NSEC instead: the
+concentration at which the fitted curve, after any rise, falls below the
+lower <code>sig_val</code> quantile of the fitted control. The
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>
+parameter remains available through <code><a href="../reference/curve_params.html">curve_params()</a></code>, where
+it describes the shape of the response. This use of the NSEC extends the
+method of <span class="citation">Fisher and Fox (2023)</span> from
+monotone to hormetic curves. When a model set combines sampled NEC
+estimates from monotone threshold equations with NSEC estimates from
+smooth or hormesis threshold equations, its model-averaged estimate is
+labelled N(S)EC <span class="citation">(Fisher, Fox, et al.
+2024)</span>.</p>
 <p><em>EC<sub>x</sub></em> estimates can be equally obtained from both
 <code>"nec"</code> and <code>"ecx"</code> models.
 <em>EC<sub>x</sub></em> estimates will usually be lower (more
 conservative) for <code>"ecx"</code> models fitted to the same data as
 <code>"nec"</code> models (see the <a href="https://open-aims.github.io/bayesnec/articles/example4.html">Comparing
-posterior predictions</a>) vignette for an example. However, we
+posterior predictions</a> vignette for an example). However, we
 recommend using <code>"all"</code> models where <em>EC<sub>x</sub></em>
 estimation is required because <code>"nec"</code> models can fit some
 datasets better than <code>"ecx"</code> models and the model averaging
@@ -325,16 +353,8 @@ well defined for a hormesis model—these allow an initial increase in the
 response <span class="citation">(see Mattson 2008)</span> and include
 models with the character string <code>horme</code> in their name. The
 target lies below the control and the rising limb lies above it, so the
-curve crosses the target exactly once. Up to <code>bayesnec</code> 2.1.3
-the reference was the maximum of the predicted curve, which for a
-hormesis model is the peak at
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mtext mathvariant="normal">NEC</mtext></mrow><annotation encoding="application/x-tex">\eta = \text{NEC}</annotation></semantics></math>,
-and a <code>hormesis_def</code> argument was documented as selecting
-between the two. That argument has been removed and the control is now
-always the reference. <code>type = "range"</code> is what
-<code>type = "relative"</code> computed up to 2.1.3, except that the
-span was taken from the maximum of the predicted curve rather than from
-the control.</p>
+curve crosses the target exactly once. The same control reference
+defines the NSEC of a hormesis equation.</p>
 </div>
 <div class="section level2">
 <h2 id="model-suitability-for-response-types">Model suitability for response types<a class="anchor" aria-label="anchor" href="#model-suitability-for-response-types"></a>
@@ -342,21 +362,35 @@ the control.</p>
 <p>Models that have an exponential decay (most models with parameter
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>=</mo><mtext mathvariant="normal">beta</mtext></mrow><annotation encoding="application/x-tex">\beta = \text{beta}</annotation></semantics></math>)
 with no
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mtext mathvariant="normal">bottom</mtext></mrow><annotation encoding="application/x-tex">\delta = \text{bottom}</annotation></semantics></math>
-parameter are 0-bounded and are not suitable for the Gaussian family, or
-any family modelled using a <code>"logit"</code> or <code>"log"</code>
-link because they cannot generate predictions of negative response
-values. Conversely, models with a linear decay (containing the string
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mtext mathvariant="normal">bot</mtext></mrow><annotation encoding="application/x-tex">\delta = \text{bot}</annotation></semantics></math>
+parameter are 0-bounded, because they cannot generate predictions of
+negative response values, and are therefore not suitable for any family
+modelled using a <code>"logit"</code> or <code>"log"</code> link.
+Conversely, models with a linear decay (containing the string
 <strong>lin</strong> in their name) are not suitable for modelling
 families that are 0-bounded (Gamma, Poisson, Negative Binomial, Beta,
 Binomial, Beta-Binomial) using an <code>"identity"</code> link. These
 restrictions do not need to be controlled by the user, as a call to
-<code>bnec</code> with <code>models = "all"</code> in the formula will
+<code>bnec</code> with <code>model = "all"</code> in the formula will
 simply exclude inappropriate models, albeit with a message.</p>
+<p><span class="citation">Fisher, Barneche, et al. (2024)</span> also
+describe the 0-bounded models as not suitable for the Gaussian family.
+That restriction has been relaxed since publication, and
+<code>bnec</code> fits these models to a Gaussian response. A Gaussian
+mean is unconstrained, because the data enter the likelihood only
+through the residual, so a curve that cannot fall below zero is still a
+valid description of a response that can. This allows a lower asymptote
+fixed at zero (representing, for example, complete inhibition of algal
+growth rate) to be fitted to measurements that include negative values
+without first replacing them. The <a href="https://open-aims.github.io/bayesnec/articles/example7.html">Modelling
+growth data and other potentially negative response values</a> vignette
+sets out the reasoning, and compares fitting the measurements as
+recorded with altering them first, for example by replacing negative
+values with zero.</p>
 <p>An exclusion also applies to the 0, 1-bounded families (Binomial,
-Beta and Beta-Binomial) on an <code>"identity"</code> link, and it
-reaches two of the hormesis equations. <strong>nechormepwr</strong> and
-<strong>nechorme4pwr</strong> include the hormesis term
+Beta and Beta-Binomial) on an <code>"identity"</code> link, and two of
+the hormesis equations are excluded by it. <strong>nechormepwr</strong>
+and <strong>nechorme4pwr</strong> include the hormesis term
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>x</mi><mi>i</mi><mrow><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mo stretchy="false" form="postfix">)</mo></mrow></msubsup><annotation encoding="application/x-tex">x_i^{1/(1+e^{\alpha})}</annotation></semantics></math>,
 which has no coefficient to shrink it. The term approaches 1 as
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math>
@@ -375,6 +409,13 @@ is scaled by a parameter. The initial-value search starts them inside
 the support: it draws from the priors, and accepts a draw only where the
 whole initial curve falls within a band built from the replicated level
 means and their spread, intersected with the support of the mean.</p>
+<p>Where the predictor includes negative values,
+<strong>ecxsigm</strong>, <strong>necsigm</strong>,
+<strong>nechormepwr</strong> and <strong>nechorme4pwr</strong>, each of
+which includes a fractional power, are also dropped. The predictor is
+checked on the scale the model is fitted on, so they are dropped from a
+fit using <code>crf(log(x), ...)</code> whenever a concentration is
+below 1.</p>
 </div>
 <div class="section level2">
 <h2 id="model-definitions">Model definitions<a class="anchor" aria-label="anchor" href="#model-definitions"></a>
@@ -411,9 +452,8 @@ with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ top * exp(-exp(beta) * x) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data
-or the use of a <code>"logit"</code> or <code>"log"</code> link
-function.</p>
+<p>The model is 0-bounded, thus not suitable for the use of a
+<code>"logit"</code> or <code>"log"</code> link function.</p>
 </div>
 <div class="section level5">
 <h5 id="ecxsigm">ecxsigm<a class="anchor" aria-label="anchor" href="#ecxsigm"></a>
@@ -426,9 +466,8 @@ with the respective <code>brmsformula</code> being</p>
 <span><span class="co">#&gt; d ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data
-or the use of a <code>"logit"</code> or <code>"log"</code> link
-function.</p>
+<p>The model is 0-bounded, thus not suitable for the use of a
+<code>"logit"</code> or <code>"log"</code> link function.</p>
 </div>
 <div class="section level5">
 <h5 id="ecx4param">ecx4param<a class="anchor" aria-label="anchor" href="#ecx4param"></a>
@@ -467,16 +506,15 @@ with the respective <code>brmsformula</code> being</p>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data
-or the use of a <code>"logit"</code> or <code>"log"</code> link
-function.</p>
+<p>The model is 0-bounded, thus not suitable for the use of a
+<code>"logit"</code> or <code>"log"</code> link function.</p>
 </div>
 <div class="section level5">
 <h5 id="ecxwb2">ecxwb2<a class="anchor" aria-label="anchor" href="#ecxwb2"></a>
 </h5>
 <p>The <strong>ecxwb2</strong> model is a 4-parameter sigmoidal decay
 model which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2015)</span>, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) (1 - e^{-e^{-e^{\beta} (x_i - \omega)}})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -492,7 +530,7 @@ slightly.</p>
 </h5>
 <p>The <strong>ecxwb2p3</strong> model is a 3-parameter sigmoidal decay
 model, which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2015)</span>, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = {0} + (\tau -{0}) (1 - e^{-e^{-e^{\beta} (x_i - \omega)}})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) </span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
@@ -500,8 +538,8 @@ with the respective <code>brmsformula</code> being</p>
 <span><span class="co">#&gt; beta ~ 1</span></span></code></pre>
 <p>While very similar to the <strong>ecxwb1p3</strong> <span class="citation">(according to Ritz et al. 2015)</span>, fitted
 <strong>ecxwb1p3</strong> and <strong>ecxwb2p3</strong> models can
-differ slightly. The model is 0-bounded, thus not suitable for Gaussian
-response data or the use of a logit or log link function.</p>
+differ slightly. The model is 0-bounded, thus not suitable for the use
+of a <code>"logit"</code> or <code>"log"</code> link function.</p>
 </div>
 <div class="section level5">
 <h5 id="ecxll5">ecxll5<a class="anchor" aria-label="anchor" href="#ecxll5"></a>
@@ -510,7 +548,7 @@ response data or the use of a logit or log link function.</p>
 log-logistic decay model, which is a slight reformulation of the LL.5
 model of <span class="citation">Ritz et al. (2015)</span>, given by the
 equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><msup><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mi>ϕ</mi></msup></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) / (1 + e^{-e^{\beta} (x_i - \omega)})^{e^\phi}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><msup><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mi>ϕ</mi></msup></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) / (1 + e^{e^{\beta} (x_i - \omega)})^{e^\phi}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^exp(f) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -547,19 +585,37 @@ with the respective <code>brmsformula</code> being</p>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data
-or the use of a <code>"logit"</code> or <code>"log"</code> link
-function.</p>
+<p>The model is 0-bounded, thus not suitable for the use of a
+<code>"logit"</code> or <code>"log"</code> link function.</p>
+</div>
+<div class="section level5">
+<h5 id="ecxflat">ecxflat<a class="anchor" aria-label="anchor" href="#ecxflat"></a>
+</h5>
+<p>The <strong>ecxflat</strong> model is the constant equation, given by
+the equation:
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi></mrow><annotation encoding="application/x-tex">y_i = \tau</annotation></semantics></math>
+with the respective <code>brmsformula</code> being</p>
+<pre><code><span><span class="co">#&gt; y ~ top + 0 * atan(x) </span></span>
+<span><span class="co">#&gt; top ~ 1</span></span></code></pre>
+<p>The term <code>0 * atan(x)</code> is zero at every concentration and
+keeps the predictor in the fitted object. A fit of
+<strong>ecxflat</strong> states that the response did not change over
+the range tested. It has no step and no
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mtext mathvariant="normal">NEC</mtext></mrow><annotation encoding="application/x-tex">\eta = \text{NEC}</annotation></semantics></math>
+parameter, so its no-effect estimate is an NSEC, and its curve reaches
+no <em>EC<sub>x</sub></em> target, so every <em>EC<sub>x</sub></em> it
+gives is reported as censored above the upper end of the prediction
+range. It is suitable for every family.</p>
 </div>
 <div class="section level5">
 <h5 id="ecxhormebc5">ecxhormebc5<a class="anchor" aria-label="anchor" href="#ecxhormebc5"></a>
 </h5>
 <p>The <strong>ecxhormebc5</strong> model is a 5 parameter log-logistic
 model modified to accommodate a non-linear hormesis at low
-concentrations. It has been modified from to the “Brain-Cousens” (BC.5)
+concentrations. It has been modified from the “Brain-Cousens” (BC.5)
 model of <span class="citation">Ritz et al. (2015)</span>, given by the
 equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta + e^{\alpha} x_i)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -574,16 +630,15 @@ with the respective <code>brmsformula</code> being</p>
 <p>The <strong>ecxhormebc4</strong> model is a 4 parameter log-logistic
 model similar to the <strong>ecxhormebc5</strong> model but with a lower
 bound of 0, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = 0 + (\tau - 0 + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = 0 + (\tau - 0 + e^{\alpha} x_i)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
 <span><span class="co">#&gt; slope ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data
-or the use of a <code>"logit"</code> or <code>"log"</code> link
-function.</p>
+<p>The model is 0-bounded, thus not suitable for the use of a
+<code>"logit"</code> or <code>"log"</code> link function.</p>
 </div>
 </div>
 <div class="section level3">
@@ -624,8 +679,8 @@ with the respective <code>brmsformula</code> being</p>
 <span><span class="co">#&gt; nec ~ 1</span></span></code></pre>
 <p>For Binomial-distributed response data in the case of
 <code>"identity"</code> link this model is equivalent to that in <span class="citation">Fox (2010)</span>. The model is 0-bounded, thus not
-suitable for Gaussian response data or the use of a <code>"logit"</code>
-or <code>"log"</code> link function.</p>
+suitable for the use of a <code>"logit"</code> or <code>"log"</code>
+link function.</p>
 </div>
 <div class="section level5">
 <h5 id="nec4param">nec4param<a class="anchor" aria-label="anchor" href="#nec4param"></a>
@@ -661,10 +716,9 @@ with the respective <code>brmsformula</code> being</p>
 <span class="citation">(Mattson 2008)</span>, allowing an initial
 increase in the response variable at concentrations below
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>.
-The model is 0-bounded, thus not suitable for Gaussian response data or
-the use of a <code>"logit"</code> or <code>"log"</code> link function.
-In this case the linear version (<strong>neclinhorme</strong>) should be
-used.</p>
+The model is 0-bounded, thus not suitable for the use of a
+<code>"logit"</code> or <code>"log"</code> link function. In this case
+the linear version (<strong>neclinhorme</strong>) should be used.</p>
 </div>
 <div class="section level5">
 <h5 id="nechormepwr">nechormepwr<a class="anchor" aria-label="anchor" href="#nechormepwr"></a>
@@ -686,12 +740,12 @@ with the respective <code>brmsformula</code> being</p>
 <span class="citation">(Mattson 2008)</span>, allowing an initial
 increase in the response variable at concentrations below
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>.
-The model is 0-bounded, thus not suitable for Gaussian response data or
-the use of a <code>"logit"</code> or <code>"log"</code> link function.
-Because the model can generate predictions above 1 it is excluded from
-the Binomial, Beta and Beta-Binomial distributions with an
-<code>"identity"</code> link. <strong>nechormepwr01</strong> is the
-power-increase hormesis equation that is bounded on those families.</p>
+The model is 0-bounded, thus not suitable for the use of a
+<code>"logit"</code> or <code>"log"</code> link function. Because the
+model can generate predictions above 1 it is excluded from the Binomial,
+Beta and Beta-Binomial distributions with an <code>"identity"</code>
+link. <strong>nechormepwr01</strong> has a non-linear increase bounded
+at 1, and is available on those families.</p>
 </div>
 <div class="section level5">
 <h5 id="neclinhorme">neclinhorme<a class="anchor" aria-label="anchor" href="#neclinhorme"></a>
@@ -702,7 +756,7 @@ with an <em>NEC</em> step function equivalent to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>,
 given by the equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = (\tau + e^{\alpha} x_i) - e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)</annotation></semantics></math>
-with the respective <code>brmsformula</code> being.</p>
+with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ (top + exp(slope) * x) - exp(beta) * (x - nec) * step(x - nec) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
@@ -722,9 +776,10 @@ bounded data (Gamma, Poisson, Negative Binomial with
 <div class="section level5">
 <h5 id="nechorme4">nechorme4<a class="anchor" aria-label="anchor" href="#nechorme4"></a>
 </h5>
-<p>The <strong>nechorme4</strong> model is 4 parameter decay model with
-an <em>NEC</em> step function equivalent to <strong>nec4param</strong>
-with the addition of a linear increase prior to
+<p>The <strong>nechorme4</strong> model is a 4-parameter decay model
+with an <em>NEC</em> step function equivalent to
+<strong>nec4param</strong> with the addition of a linear increase prior
+to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>,
 given by the equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + ((\tau + e^{\alpha} x_i) - \delta ) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
@@ -743,7 +798,7 @@ increase in the response variable at concentrations below
 <div class="section level5">
 <h5 id="nechorme4pwr">nechorme4pwr<a class="anchor" aria-label="anchor" href="#nechorme4pwr"></a>
 </h5>
-<p>The <strong>nechorme4pwr</strong> model is 4 parameter decay model
+<p>The <strong>nechorme4pwr</strong> model is a 4-parameter decay model
 with an <em>NEC</em> step function equivalent to
 <strong>nec4param</strong> with the addition of a power increase prior
 to
@@ -763,19 +818,22 @@ increase in the response variable at concentrations below
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>.
 Because the model can generate predictions above 1 it is excluded from
 the Binomial, Beta and Beta-Binomial distributions with an
-<code>"identity"</code> link. <strong>nechormepwr01</strong> is the
-power-increase hormesis equation that is bounded on those families.</p>
+<code>"identity"</code> link. <strong>nechormepwr01</strong> has a
+non-linear increase bounded at 1, and is available on those
+families.</p>
 </div>
 <div class="section level5">
 <h5 id="nechormepwr01">nechormepwr01<a class="anchor" aria-label="anchor" href="#nechormepwr01"></a>
 </h5>
 <p>The <strong>nechormepwr01</strong> model is a basic exponential decay
 model with an <em>NEC</em> step function equivalent to
-<strong>nec3param</strong>, with the addition of a power increase prior
-to
+<strong>nec3param</strong>, with the addition of a logistic increase
+from
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math>
+towards 1 prior to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>,
 given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mn>1</mn><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mi>/</mi><mi>τ</mi><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub></mrow></msup></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \left(\frac{1}{(1 + ((1/\tau)-1)  e^{-e^{\alpha}x_i}}\right) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mn>1</mn><mrow><mn>1</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mi>/</mi><mi>τ</mi><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub></mrow></msup></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \left(\frac{1}{1 + ((1/\tau)-1)  e^{-e^{\alpha}x_i}}\right) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ (1/(1 + ((1/top) - 1) * exp(-exp(slope) * x))) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -786,11 +844,11 @@ with the respective <code>brmsformula</code> being</p>
 <span class="citation">(Mattson 2008)</span>, allowing an initial
 increase in the response variable at concentrations below
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>.
-The model is 0-bounded, thus not suitable for Gaussian response data or
-the use of a <code>"logit"</code> or <code>"log"</code> link function.
-In this case the linear version (<strong>neclinhorme</strong>) should be
-used. The increase of <strong>nechormepwr01</strong> is bounded above at
-1 by construction, which is what keeps it available on the 0, 1-bounded
+The model is 0-bounded, thus not suitable for the use of a
+<code>"logit"</code> or <code>"log"</code> link function. In this case
+the linear version (<strong>neclinhorme</strong>) should be used. The
+increase of <strong>nechormepwr01</strong> is bounded above at 1 by
+construction, which is what keeps it available on the 0, 1-bounded
 families. The same bound excludes it from the 0, <code>Inf</code>
 bounded families (Gamma, Poisson, Negative Binomial with an
 <code>"identity"</code> link), whose response may exceed 1.</p>
@@ -798,8 +856,8 @@ bounded families (Gamma, Poisson, Negative Binomial with an
 <div class="section level5">
 <h5 id="necsigm">necsigm<a class="anchor" aria-label="anchor" href="#necsigm"></a>
 </h5>
-<p>The <strong>necsigm</strong> model is a basic exponential decay model
-equivalent to <strong>ecxlin</strong> with the addition of the
+<p>The <strong>necsigm</strong> model is a simple sigmoidal decay model
+equivalent to <strong>ecxsigm</strong> with the addition of the
 <em>NEC</em> step function, given by the equation:
 <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo><msup><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mi>ϵ</mi></msup></msup><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \tau e^{-e^{\beta} ((x_i - \eta) f(x_i, \eta))^{e^\epsilon}f(x_i, \eta)}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
@@ -808,11 +866,11 @@ with the respective <code>brmsformula</code> being</p>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; nec ~ 1</span></span>
 <span><span class="co">#&gt; d ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data
-or the use of a <code>"logit"</code> or <code>"log"</code> link
-function. In addition, there may be theoretical issues with combining a
-sigmoidal decay model with an <em>NEC</em> step function because where
-there is an upper plateau in the data the location of
+<p>The model is 0-bounded, thus not suitable for the use of a
+<code>"logit"</code> or <code>"log"</code> link function. In addition,
+there may be theoretical issues with combining a sigmoidal decay model
+with an <em>NEC</em> step function because where there is an upper
+plateau in the data the location of
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>
 may become ambiguous. Estimation of No-Effect-Concentrations using this
 model are not currently recommended without further testing.</p>
@@ -822,14 +880,17 @@ model are not currently recommended without further testing.</p>
 <div class="section level2">
 <h2 id="relationship-to-the-drc-nec-models">Relationship to the <code>drc</code> NEC models<a class="anchor" aria-label="anchor" href="#relationship-to-the-drc-nec-models"></a>
 </h2>
-<p>Users arriving from the <code>drc</code> package <span class="citation">(Ritz et al. 2015)</span> often ask which
-<code>bayesnec</code> model corresponds to <code>drc</code>’s
-<code>NEC.2()</code>, <code>NEC.3()</code> and <code>NEC.4()</code>. Two
-of the three are already here, and they are not approximations of one
-another: given
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><msup><mi>e</mi><mi>β</mi></msup></mrow><annotation encoding="application/x-tex">b = e^{\beta}</annotation></semantics></math>
-the two implementations agree to the last bit, over a grid spanning
-every parameter including thresholds outside the predictor range.</p>
+<p>The <code>drc</code> package <span class="citation">(Ritz et al.
+2015)</span> fits NEC models with the functions <code>NEC.2()</code>,
+<code>NEC.3()</code> and <code>NEC.4()</code>, and two of the three have
+an exact equivalent in <code>bayesnec</code>. Given
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><msup><mi>e</mi><mi>β</mi></msup></mrow><annotation encoding="application/x-tex">b = e^{\beta}</annotation></semantics></math>,
+the two packages evaluate the same expression. The
+<strong>nec4param</strong> curve and the <code>NEC.4()</code> curve of
+<code>drc</code> 3.0.1 were computed at 201 concentrations between 0 and
+10, for 135 combinations of parameter values that included thresholds
+below and above that range, and the two were identical in every
+case.</p>
 <p><code>drc</code>’s three functions are wrappers around a single
 generator that differ only in which parameters they hold fixed:</p>
 <table class="table">
@@ -873,71 +934,82 @@ generator that differ only in which parameters they hold fixed:</p>
 (<code>"nec"</code>) and
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>=</mo><msup><mi>e</mi><mi>β</mi></msup></mrow><annotation encoding="application/x-tex">b = e^{\beta}</annotation></semantics></math>
 (<code>exp("beta")</code>).</p>
-<p>That last one is the only substantive difference between the two
-model families. <code>drc</code> estimates the decay rate
+<p>The decay rate is the only substantive difference between the two
+implementations. <code>drc</code> estimates the decay rate
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
-directly; <code>bayesnec</code> estimates
+directly, whereas <code>bayesnec</code> estimates
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>β</mi><annotation encoding="application/x-tex">\beta</annotation></semantics></math>
 and uses
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mi>β</mi></msup><annotation encoding="application/x-tex">e^{\beta}</annotation></semantics></math>,
 so the decay rate is positive by construction. This is a
 reparameterisation of the same model over
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b &gt; 0</annotation></semantics></math>,
-which is the whole of the sensible parameter space for a decline. It
-does mean <code>drc</code> can return
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>&lt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b &lt; 0</annotation></semantics></math>
-— a threshold followed by unbounded exponential growth — which
-<code>bayesnec</code> cannot represent and deliberately does not. A
-threshold followed by an <em>increase</em> is available here as
-<strong>nec4param</strong> with
+which includes every decline. <code>drc</code> can therefore return
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo>&lt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">b &lt; 0</annotation></semantics></math>,
+a threshold followed by unbounded exponential growth, which
+<code>bayesnec</code> cannot represent. A threshold followed by an
+<em>increase</em> is available here as <strong>nec4param</strong> with
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>&gt;</mo><mi>τ</mi></mrow><annotation encoding="application/x-tex">\delta &gt; \tau</annotation></semantics></math>,
 which stays bounded.</p>
-<p>Note that the reparameterisation runs in that direction and not the
-other. Converting a <code>drc</code> estimate by setting
+<p>The equivalence is exact in one direction only. Converting a
+<code>drc</code> estimate by setting
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>=</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>b</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\beta = \log(b)</annotation></semantics></math>
-does not recover
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
-exactly, because
+does not always recover
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>,
+because
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>b</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><annotation encoding="application/x-tex">e^{\log(b)}</annotation></semantics></math>
-is not the identity in floating point; the resulting curves differ by
-round-off, on the order of
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>15</mn></mrow></msup><annotation encoding="application/x-tex">10^{-15}</annotation></semantics></math>.
-That is a property of the round trip rather than of either model, but it
-is worth knowing before concluding that two fits disagree.</p>
-<p>One point of possible confusion in the <code>drc</code> documentation
-is worth flagging. The model given in <code>?drc::NEC</code> carries an
-additional log-logistic term,
+is not the identity in floating point. For 200 decay rates between 0.01
+and 20,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>b</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><annotation encoding="application/x-tex">e^{\log(b)}</annotation></semantics></math>
+differed from
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
+for 89, and the largest relative difference between the resulting curves
+was
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><mo>×</mo><msup><mn>10</mn><mrow><mi>−</mi><mn>14</mn></mrow></msup></mrow><annotation encoding="application/x-tex">3 \times 10^{-14}</annotation></semantics></math>.
+A difference of that size between two curves computed from one set of
+estimates therefore arises from the round trip, not from either
+model.</p>
+<p>The model given in <code>?drc::NEC</code> differs from the model
+<code>drc</code> fits. The help page includes an additional log-logistic
+term,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mn>2</mn></msub><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msub><mi>b</mi><mn>2</mn></msub><mo stretchy="false" form="prefix">(</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>e</mi><mn>2</mn></msub><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">d_2 / (1 + e^{b_2(\log(x) - \log(e_2))})</annotation></semantics></math>,
 reproducing the general model of <span class="citation">Pires et al.
-(2002)</span>. The function <code>drc</code> actually fits does not
-include that term, so the equivalences in the table above are with the
-<em>fitted</em> model rather than with the documented one.</p>
+(2002)</span>, but the function <code>drc</code> fits does not include
+that term. The equivalences in the table above are therefore with the
+<em>fitted</em> model, not the documented one.</p>
 <div class="section level3">
-<h3 id="why-there-is-no-equivalent-of-nec-2">Why there is no equivalent of <code>NEC.2()</code><a class="anchor" aria-label="anchor" href="#why-there-is-no-equivalent-of-nec-2"></a>
+<h3 id="the-absence-of-an-equivalent-of-nec-2">The absence of an equivalent of <code>NEC.2()</code><a class="anchor" aria-label="anchor" href="#the-absence-of-an-equivalent-of-nec-2"></a>
 </h3>
-<p><code>NEC.2()</code> holds the upper asymptote at a constant, by
+<p><code>NEC.2()</code> fixes the upper asymptote at a constant, by
 default 1. Fixing
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math>
 in this way asserts that the control response is exactly that constant
 with no error, which is only defensible for data normalised to a
 control.</p>
-<p>Normalising to an <em>estimated</em> control is a practice
-<code>bayesnec</code> warns about: it discards the control’s uncertainty
-and propagates none of it into the <em>NEC</em>, so the resulting
-interval is narrower than the data support. Where the upper bound is
-genuinely structural rather than estimated — a proportion that cannot
-exceed one for reasons of construction rather than of measurement — the
-same constraint is available without a new model, either as a
-<code>brms</code> <code><a href="https://paulbuerkner.com/brms/reference/constant.html" class="external-link">constant()</a></code> prior on <code>"top"</code> or
-as a tight informative prior. Both keep the assumption explicit in the
-prior, where it can be inspected, rather than burying it in the choice
-of equation.</p>
+<p>Normalising to an <em>estimated</em> control discards the control’s
+uncertainty and propagates none of it into the <em>NEC</em>, so the
+resulting interval is narrower than the data support, and
+<code><a href="../reference/bnec.html">bnec()</a></code> gives a message where the response appears to have
+been normalised in this way. Where the upper bound is structural, not
+estimated (for example, a proportion that cannot exceed one by
+construction), the same constraint is available without a new model,
+either as a <code>brms</code> <code><a href="https://paulbuerkner.com/brms/reference/constant.html" class="external-link">constant()</a></code> prior on
+<code>"top"</code> or as a tight informative prior (see <em>Fixing a
+parameter</em> in the <a href="https://open-aims.github.io/bayesnec/articles/example3.html">Priors</a>
+vignette). Either way the assumption is written in the prior, where it
+can be inspected, instead of being fixed within the equation.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 class="unnumbered" id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-fisher2024" class="csl-entry">
+Fisher, Rebecca, Diego R. Barneche, Gerard F. Ricardo, and David R. Fox.
+2024. <span>“<span class="nocase">bayesnec</span>: An <span>R</span>
+Package for Concentration-Response Modeling and Estimation of Toxicity
+Metrics.”</span> <em>Journal of Statistical Software</em> 110 (5). <a href="https://doi.org/10.18637/jss.v110.i05" class="external-link">https://doi.org/10.18637/jss.v110.i05</a>.
+</div>
 <div id="ref-fisherfox2023" class="csl-entry">
 Fisher, Rebecca, and David R Fox. 2023. <span>“Introducing the No
 Significant Effect Concentration <span>(NSEC)</span>.”</span> Journal

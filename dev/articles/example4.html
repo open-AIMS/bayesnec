@@ -132,19 +132,19 @@
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p>With <code>bayesnec</code> we have included a function that allows
-bootstrapped comparisons of posterior predictions. The main focus here
-is to showcase how the user can fit several different <code>bnec</code>
-model fits and can compare differences in the posterior predictions
-across these fits for individual toxicity estimates (e.g. <em>NEC</em>,
-<em>N(S)EC</em>, <em>NSEC</em> or <em>ECx</em>) or across a range of
-predictor values. The <code>compare_posterior</code> function was
-developed with the intention of comparing model sets based on different
-data to assess statistically the difference in either the toxicity
-estimates, or across the entire fitted curve, amongst factors of
-interest. Examples would include assessing for changes in toxicity
-across different WET tests through time, or comparing different levels
-of a factor treatment variable (such as climate change scenarios), to
-look at how these interact with concentration to impact toxicity.</p>
+comparisons of posterior predictions. The main focus here is to showcase
+how the user can fit several different <code>bnec</code> model fits and
+can compare differences in the posterior predictions across these fits
+for individual toxicity estimates (e.g. <em>NEC</em>, <em>N(S)EC</em>,
+<em>NSEC</em> or <em>ECx</em>) or across a range of predictor values.
+The <code>compare_posterior</code> function was developed with the
+intention of comparing model sets based on different data to assess
+statistically the difference in either the toxicity estimates, or across
+the entire fitted curve, amongst factors of interest. Examples would
+include assessing for changes in toxicity across different WET tests
+through time, or comparing different levels of a factor treatment
+variable (such as climate change scenarios), to look at how these
+interact with concentration to impact toxicity.</p>
 <p>A factor covariate can be fitted in <code>bayesnec</code> in three
 ways, and these answer different questions. A group-level term written
 into the formula (<code>ogl()</code>, <code>(par | group)</code> or
@@ -161,16 +161,27 @@ favour (by default) and has its own parameter values, but all levels are
 estimated in one posterior. Which designs admit which of these
 approaches is set out in the <a href="https://open-aims.github.io/bayesnec/articles/example8.html">Grouping
 and factor covariates</a> vignette.</p>
-<p><code>compare_posterior</code> is the function used to compare
-separate fits, whether these come from <code><a href="../reference/bnec_group.html">bnec_group()</a></code> or from
-calls made independently for each level. It pairs the draws of two
-posteriors using a random permutation, which approximates their
-difference when the posteriors are independent. Separate fits of the
-levels by <code><a href="../reference/bnec_group.html">bnec_group()</a></code> meet that condition. Levels of a fit
-with a shared term may be dependent, and permuting their draws would
-discard that dependence. For a joint fit, we therefore take a contrast
-by differencing its aligned draws. This also applies to the herbicide
-refit below, in which the levels have no shared parameters.</p>
+<p>For each pair of fits, <code>compare_posterior</code> pairs the
+posterior draws of an estimate from one fit with those from the other at
+random, and subtracts one from the other within each pair. It returns
+these differences, and in <code>prob_diff</code> the proportion of them
+above zero, i.e. the probability that the first fit has the higher
+estimate. This proportion estimates a posterior probability where the
+two posteriors are independent, which is the case for fits to separate
+data that share no parameter, such as the levels of a
+<code><a href="../reference/bnec_group.html">bnec_group()</a></code> fit and every comparison in this vignette.</p>
+<p>Where two estimates come from one posterior and share a parameter,
+for example two levels of a <code><a href="../reference/bnec_joint.html">bnec_joint()</a></code> refit with a
+common group-level term, they can be correlated, and pairing their draws
+at random discards that correlation. The contrast is then taken draw by
+draw, from the draws that <code><a href="../reference/ecx.html">ecx()</a></code> returns for each level of
+the refit under <code>posterior = TRUE</code>, as shown for copper and
+zinc in the <a href="https://open-aims.github.io/bayesnec/articles/example8.html">Grouping
+and factor covariates</a> vignette. Where two fits share data, such as
+two equations of one model set, <code>prob_diff</code> describes how far
+their posteriors overlap and cannot be read directly as a posterior
+probability (see the section <em>What the comparison estimates</em> in
+<code><a href="../reference/compare_posterior.html">?compare_posterior</a></code>).</p>
 <p>Below we demonstrate <code>compare_posterior</code> on two published
 datasets that are included in <code>bayesnec</code>, each fitted
 separately by level using <code><a href="../reference/bnec_group.html">bnec_group()</a></code>. In the first, the
@@ -180,8 +191,7 @@ levels are seven photosystem II herbicides tested on the coral
 under which the coral <em>Acropora millepora</em> was exposed to one of
 those herbicides, diuron <span class="citation">(Flores et al.
 2021)</span>, and the comparison is the one that study was designed to
-make. A final section uses the herbicide fits to show how two levels are
-compared within a single joint refit.</p>
+make.</p>
 <p>To run this vignette, we will also need some additional packages</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/">bayesnec</a></span><span class="op">)</span></span>
@@ -236,6 +246,21 @@ about two orders of magnitude among them. For example, yield is at half
 its lowest-dose mean by 1 µg/L of irgarol and 3 µg/L of diuron or
 ametryn, against 100 µg/L of tebuthiuron and 300 µg/L of simazine (the
 highest concentration simazine was tested at).</p>
+<p><code>fvfm</code> is recorded in steps of 0.01, the smallest positive
+reading is 0.01, and 23 of the 580 readings are 0, all of them for
+ametryn, hexazinone and irgarol at 10 µg/L or more, where their curves
+fall lowest. A 0 is therefore a yield below 0.005 that was rounded down,
+and not a separate outcome (see <em>Zeros from rounding</em> in <a href="https://open-aims.github.io/bayesnec/articles/example6.html">Hurdle
+and zero-inflated models</a>). We treat these readings as left-censored
+at 0.005, which states only that the true value is at or below that
+bound (see <em>Censoring</em> in <a href="https://open-aims.github.io/bayesnec/articles/example1.html">Single
+model usage</a>). Shifting each 0 to a fixed small value instead, as
+<code><a href="../reference/bnec.html">bnec()</a></code> does for an uncensored Beta response, would treat
+that value as a measurement.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">herbicide</span><span class="op">$</span><span class="va">censoring</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">herbicide</span><span class="op">$</span><span class="va">fvfm</span> <span class="op">==</span> <span class="fl">0</span>, <span class="st">"left"</span>, <span class="st">"none"</span><span class="op">)</span></span>
+<span><span class="co"># A censored row carries its bound: half the recording step of 0.01.</span></span>
+<span><span class="va">herbicide</span><span class="op">$</span><span class="va">fvfm_cens</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">herbicide</span><span class="op">$</span><span class="va">fvfm</span> <span class="op">==</span> <span class="fl">0</span>, <span class="fl">0.005</span>, <span class="va">herbicide</span><span class="op">$</span><span class="va">fvfm</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="separate-fits-for-each-herbicide">Separate fits for each herbicide<a class="anchor" aria-label="anchor" href="#separate-fits-for-each-herbicide"></a>
 </h3>
@@ -246,15 +271,16 @@ be shrunk, so we fit each herbicide separately using
 <code><a href="../reference/bnec_group.html">bnec_group()</a></code>. We use the <code>"decline"</code> model set,
 which is the set used for Figure 11 of <span class="citation">Fisher et
 al. (2024)</span>.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fits_herb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec_group.html">bnec_group</a></span><span class="op">(</span><span class="va">fvfm</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">concentration</span><span class="op">)</span>, <span class="st">"decline"</span><span class="op">)</span>,</span>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fits_herb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec_group.html">bnec_group</a></span><span class="op">(</span><span class="va">fvfm_cens</span> <span class="op">|</span> <span class="fu">cens</span><span class="op">(</span><span class="va">censoring</span><span class="op">)</span> <span class="op">~</span></span>
+<span>                          <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">concentration</span><span class="op">)</span>, <span class="st">"decline"</span><span class="op">)</span>,</span>
 <span>                        data <span class="op">=</span> <span class="va">herbicide</span>, group_var <span class="op">=</span> <span class="st">"herbicide"</span>,</span>
 <span>                        family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>,</span>
 <span>                        seed <span class="op">=</span> <span class="fl">228</span>, refresh <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
 <p>Each herbicide is screened separately because each was fitted
 separately, so an equation that fails for one herbicide is removed from
 that herbicide without discarding its fits for the other six.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fits_herb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/screen_models.html">screen_models</a></span><span class="op">(</span><span class="va">fits_herb</span>, group_action <span class="op">=</span> <span class="st">"per_level"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Screening level "ametryn".</span></span>
 <span><span class="co">#&gt; All 12 candidate models passed the sampler screen (Rhat &lt;= 1.01, ESS &gt;= 400, divergences &lt;= 10).</span></span>
@@ -276,15 +302,14 @@ that herbicide without discarding its fits for the other six.</p>
 <span><span class="co">#&gt; The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 5.7: those draws keep their rank in it and are given no value.</span></span>
 <span><span class="co">#&gt; Screening level "tebuthiuron".</span></span>
 <span><span class="co">#&gt; All 12 candidate models passed the sampler screen (Rhat &lt;= 1.01, ESS &gt;= 400, divergences &lt;= 10).</span></span></code></pre></div>
-<p>The screen removes <code>ecxll5</code> for atrazine (30 divergent
-transitions) and for simazine (113 divergent transitions and an
-effective sample size, or ESS, of 163), so each herbicide keeps eleven
-or twelve equations of <code>"decline"</code>.</p>
+<p>The screen removes <code>ecxll5</code> for atrazine and simazine (the
+messages above give the criterion each failed), so each herbicide keeps
+11 or 12 equations of <code>"decline"</code>.</p>
 <p><code><a href="../reference/summary.html">summary()</a></code> on a <code>bayesnecgroupfit</code> prints a
 full summary for each level, which for seven herbicides is several
 hundred lines. Here we collate only the model weights, to show which
 equations each herbicide supports.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">herb_wi</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/funprog.html" class="external-link">Map</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">f</span>, <span class="va">lev</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">w</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">$</span><span class="va">mod_weights</span><span class="op">[</span>, <span class="st">"wi"</span><span class="op">]</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>herbicide <span class="op">=</span> <span class="va">lev</span>, equation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">w</span><span class="op">)</span>, wi <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">w</span><span class="op">)</span><span class="op">)</span></span>
@@ -309,15 +334,16 @@ plot of chunk exmp4-herb-weights
 </div>
 <p>The herbicides differ in which equations describe them. For example,
 tebuthiuron puts 0.52 of its weight on <code>ecxwb2p3</code>, which
-receives no more than 0.08 for any other herbicide, and hexazinone puts
-0.65 on <code>ecxll3</code>, which four of the others weight below 0.05.
-Ametryn, hexazinone and irgarol spread their weight over four equations,
-and diuron and simazine over five (counting the labelled cells, those of
-0.05 or more). No herbicide gives <code>nec3param</code> or
+receives no more than 0.11 for any other herbicide, and atrazine puts
+0.65 of its weight on <code>ecxwb1</code>, which receives no more than
+0.27 for any other herbicide. The number of equations given a weight of
+0.05 or more (the labelled cells) is 3 for ametryn, atrazine and
+tebuthiuron, 4 for hexazinone and irgarol, and 5 for diuron and
+simazine. No herbicide gives <code>nec3param</code> or
 <code>nec4param</code> a weight of 0.05 or more. This suggests that
 fitting the levels separately is appropriate here, because the curve
 they would be shrunk towards is not one the data agree on.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu">group_curves</span><span class="op">(</span><span class="va">fits_herb</span><span class="op">)</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x_e</span>, colour <span class="op">=</span> <span class="va">level</span>, fill <span class="op">=</span> <span class="va">level</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_polygon.html" class="external-link">geom_polygon</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">y_ci</span><span class="op">)</span>, colour <span class="op">=</span> <span class="cn">NA</span>, alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="co"># Give the line only the rows of the curve; the band's return half has no y_e.</span></span>
@@ -341,13 +367,13 @@ with the N(S)EC (grey lines, the median and 95% credible interval) at or
 a little before the concentration where the points leave the control
 level. The N(S)EC is the model-averaged no-effect estimate, based mainly
 on the NEC where threshold equations receive most of the weight and on
-the NSEC where smooth equations do. The threshold equations receive
-almost no weight for any herbicide here, so the N(S)EC of each is in
-effect an NSEC. The response axis is shared and the concentration axis
-is not, so the panels are comparable in level but not in position. The
-seven curves have a similar shape and are located at different
-concentrations, which suggests that what separates the herbicides is
-where the curve falls, more than how it falls.</p>
+the NSEC where smooth equations do. The threshold equations receive a
+total weight of at most 0.06 for any herbicide here, so the N(S)EC of
+each is in effect an NSEC. The response axis is shared and the
+concentration axis is not, so the panels are comparable in level but not
+in position. The seven curves have a similar shape and are located at
+different concentrations, which suggests that what separates the
+herbicides is where the curve falls, more than how it falls.</p>
 </div>
 <div class="section level3">
 <h3 id="comparing-toxicity-estimates-across-herbicides">Comparing toxicity estimates across herbicides<a class="anchor" aria-label="anchor" href="#comparing-toxicity-estimates-across-herbicides"></a>
@@ -356,30 +382,31 @@ where the curve falls, more than how it falls.</p>
 directly and compares its levels. Here we compare the N(S)EC across the
 herbicides. The posterior draws for each herbicide are returned in
 <code>posterior_data</code>, which we summarise first.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cmp_herb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="va">fits_herb</span>, comparison <span class="op">=</span> <span class="st">"n(s)ec"</span><span class="op">)</span></span>
 <span><span class="va">herb_post</span> <span class="op">&lt;-</span> <span class="va">cmp_herb</span><span class="op">$</span><span class="va">posterior_data</span></span>
-<span><span class="va">herb_post</span> <span class="op">|&gt;</span></span>
+<span><span class="va">herb_sum</span> <span class="op">&lt;-</span> <span class="va">herb_post</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>median <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">value</span><span class="op">)</span>, lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">value</span>, <span class="fl">0.025</span><span class="op">)</span>,</span>
 <span>            upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">value</span>, <span class="fl">0.975</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">median</span><span class="op">)</span></span>
+<span><span class="va">herb_sum</span></span>
 <span><span class="co">#&gt; # A tibble: 7 × 4</span></span>
 <span><span class="co">#&gt;   model       median lower  upper</span></span>
 <span><span class="co">#&gt;   &lt;chr&gt;        &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;</span></span>
-<span><span class="co">#&gt; 1 irgarol      0.134 0.106  0.170</span></span>
+<span><span class="co">#&gt; 1 irgarol      0.133 0.107  0.175</span></span>
 <span><span class="co">#&gt; 2 diuron       0.151 0.109  0.194</span></span>
-<span><span class="co">#&gt; 3 ametryn      0.194 0.118  0.634</span></span>
-<span><span class="co">#&gt; 4 hexazinone   0.624 0.235  1.66 </span></span>
-<span><span class="co">#&gt; 5 atrazine     1.13  0.333  2.49 </span></span>
-<span><span class="co">#&gt; 6 simazine     4.24  0.983 11.4  </span></span>
+<span><span class="co">#&gt; 3 ametryn      0.192 0.119  0.625</span></span>
+<span><span class="co">#&gt; 4 hexazinone   0.622 0.235  1.63 </span></span>
+<span><span class="co">#&gt; 5 atrazine     1.12  0.328  2.51 </span></span>
+<span><span class="co">#&gt; 6 simazine     4.23  0.931 11.3  </span></span>
 <span><span class="co">#&gt; 7 tebuthiuron 10.6   4.42  13.6</span></span></code></pre></div>
-<p>The N(S)EC estimates span about two orders of magnitude, from irgarol
-at 0.134 µg/L (0.106–0.170) and diuron at 0.151 (0.109–0.194), through
-ametryn at 0.194, hexazinone at 0.624 and atrazine at 1.13, to simazine
-at 4.24 and tebuthiuron at 10.6 (4.42–13.6). These draws can also be
-plotted as densities.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<p>The N(S)EC estimates span a factor of about 79, from irgarol at 0.133
+µg/L (0.107–0.175) and diuron at 0.151 (0.109–0.194), through ametryn at
+0.192, hexazinone at 0.622 and atrazine at 1.12, to simazine at 4.23 and
+tebuthiuron at 10.6 (4.42–13.6). These draws can also be plotted as
+densities.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">herb_post</span>, mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">value</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_density.html" class="external-link">geom_density</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>group <span class="op">=</span> <span class="va">model</span>, colour <span class="op">=</span> <span class="va">model</span>, fill <span class="op">=</span> <span class="va">model</span><span class="op">)</span>,</span>
 <span>               alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
@@ -394,81 +421,79 @@ plot of chunk exmp4-cmp-herbicides
 </div>
 <p>This is the display shown in Figure 11 of <span class="citation">Fisher et al. (2024)</span>. Irgarol and diuron, the
 most potent of the herbicides, overlap substantially: their intervals
-run from 0.106 to 0.170 and from 0.109 to 0.194 µg/L, so that one is
-almost inside the other. The posteriors also differ in width as much as
-in position. For example, the interval for irgarol spans a factor of 1.6
-from end to end and that for diuron a factor of 1.8, against 11.6 for
-simazine and 7.5 for atrazine. Several of the posteriors are bimodal,
-such as hexazinone, with a second mode near 1.6 µg/L, and simazine, with
-one near 11. A model-averaged posterior is a mixture, and an equation
-with little weight that places its threshold elsewhere can appear as a
-second mode or a long tail, without changing the median.</p>
+run from 0.107 to 0.175 and from 0.109 to 0.194 µg/L. The posteriors
+also differ in width as much as in position. For example, the interval
+for irgarol spans a factor of 1.6 from end to end and that for diuron a
+factor of 1.8, against 12.1 for simazine and 7.6 for atrazine. The
+posteriors of ametryn, atrazine, hexazinone, simazine and tebuthiuron
+have a second mode, near 0.62, 1.8, 1.5, 11 and 7.4 µg/L respectively. A
+model-averaged posterior is a mixture, and an equation with little
+weight that places its threshold elsewhere can appear as a second mode
+or a long tail, without changing the median.</p>
 <p>The probability that the first herbicide of each pair has the higher
 N(S)EC is returned in <code>prob_diff</code>, so a value near 0 or 1
 separates two herbicides and one near 0.5 does not.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cmp_herb</span><span class="op">$</span><span class="va">prob_diff</span></span>
 <span><span class="co">#&gt;                comparison        prob  prob_lower  prob_upper censored_first censored_second</span></span>
-<span><span class="co">#&gt; 1        ametryn-atrazine 0.019252407 0.019252407 0.019252407              0               0</span></span>
-<span><span class="co">#&gt; 2          ametryn-diuron 0.837354669 0.837354669 0.837354669              0               0</span></span>
-<span><span class="co">#&gt; 3      ametryn-hexazinone 0.045380673 0.045380673 0.045380673              0               0</span></span>
-<span><span class="co">#&gt; 4         ametryn-irgarol 0.922740343 0.922740343 0.922740343              0               0</span></span>
-<span><span class="co">#&gt; 5        ametryn-simazine 0.010126266 0.010126266 0.010126266              0               0</span></span>
-<span><span class="co">#&gt; 6     ametryn-tebuthiuron 0.011126391 0.011126391 0.011126391              0               0</span></span>
-<span><span class="co">#&gt; 7         atrazine-diuron 0.987373422 0.987373422 0.987373422              0               0</span></span>
-<span><span class="co">#&gt; 8     atrazine-hexazinone 0.838979872 0.838979872 0.838979872              0               0</span></span>
-<span><span class="co">#&gt; 9        atrazine-irgarol 0.987998500 0.987998500 0.987998500              0               0</span></span>
-<span><span class="co">#&gt; 10      atrazine-simazine 0.044880610 0.044880610 0.044880610              0               0</span></span>
-<span><span class="co">#&gt; 11   atrazine-tebuthiuron 0.011751469 0.011751469 0.011751469              0               0</span></span>
-<span><span class="co">#&gt; 12      diuron-hexazinone 0.014751844 0.014751844 0.014751844              0               0</span></span>
-<span><span class="co">#&gt; 13         diuron-irgarol 0.731966496 0.731966496 0.731966496              0               0</span></span>
-<span><span class="co">#&gt; 14        diuron-simazine 0.009501188 0.009501188 0.009501188              0               0</span></span>
+<span><span class="co">#&gt; 1        ametryn-atrazine 0.018627328 0.018627328 0.018627328              0               0</span></span>
+<span><span class="co">#&gt; 2          ametryn-diuron 0.841730216 0.841730216 0.841730216              0               0</span></span>
+<span><span class="co">#&gt; 3      ametryn-hexazinone 0.046380798 0.046380798 0.046380798              0               0</span></span>
+<span><span class="co">#&gt; 4         ametryn-irgarol 0.922615327 0.922615327 0.922615327              0               0</span></span>
+<span><span class="co">#&gt; 5        ametryn-simazine 0.010251281 0.010251281 0.010251281              0               0</span></span>
+<span><span class="co">#&gt; 6     ametryn-tebuthiuron 0.011251406 0.011251406 0.011251406              0               0</span></span>
+<span><span class="co">#&gt; 7         atrazine-diuron 0.986748344 0.986748344 0.986748344              0               0</span></span>
+<span><span class="co">#&gt; 8     atrazine-hexazinone 0.816227028 0.816227028 0.816227028              0               0</span></span>
+<span><span class="co">#&gt; 9        atrazine-irgarol 0.987498437 0.987498437 0.987498437              0               0</span></span>
+<span><span class="co">#&gt; 10      atrazine-simazine 0.045130641 0.045130641 0.045130641              0               0</span></span>
+<span><span class="co">#&gt; 11   atrazine-tebuthiuron 0.011626453 0.011626453 0.011626453              0               0</span></span>
+<span><span class="co">#&gt; 12      diuron-hexazinone 0.013876735 0.013876735 0.013876735              0               0</span></span>
+<span><span class="co">#&gt; 13         diuron-irgarol 0.729591199 0.729591199 0.729591199              0               0</span></span>
+<span><span class="co">#&gt; 14        diuron-simazine 0.009626203 0.009626203 0.009626203              0               0</span></span>
 <span><span class="co">#&gt; 15     diuron-tebuthiuron 0.011251406 0.011251406 0.011251406              0               0</span></span>
-<span><span class="co">#&gt; 16     hexazinone-irgarol 0.986248281 0.986248281 0.986248281              0               0</span></span>
-<span><span class="co">#&gt; 17    hexazinone-simazine 0.018127266 0.018127266 0.018127266              0               0</span></span>
-<span><span class="co">#&gt; 18 hexazinone-tebuthiuron 0.011251406 0.011251406 0.011251406              0               0</span></span>
-<span><span class="co">#&gt; 19       irgarol-simazine 0.009251156 0.009251156 0.009251156              0               0</span></span>
+<span><span class="co">#&gt; 16     hexazinone-irgarol 0.987123390 0.987123390 0.987123390              0               0</span></span>
+<span><span class="co">#&gt; 17    hexazinone-simazine 0.021877735 0.021877735 0.021877735              0               0</span></span>
+<span><span class="co">#&gt; 18 hexazinone-tebuthiuron 0.011001375 0.011001375 0.011001375              0               0</span></span>
+<span><span class="co">#&gt; 19       irgarol-simazine 0.009876235 0.009876235 0.009876235              0               0</span></span>
 <span><span class="co">#&gt; 20    irgarol-tebuthiuron 0.011251406 0.011251406 0.011251406              0               0</span></span>
-<span><span class="co">#&gt; 21   simazine-tebuthiuron 0.076509564 0.076509564 0.076509564              0               0</span></span></code></pre></div>
+<span><span class="co">#&gt; 21   simazine-tebuthiuron 0.076384548 0.076384548 0.076384548              0               0</span></span></code></pre></div>
 <p>Of the 21 pairs, 16 have a probability below 0.05 or above 0.95. For
-example, the probability that irgarol has the higher N(S)EC is 0.009
+example, the probability that irgarol has the higher N(S)EC is 0.010
 against simazine and 0.011 against tebuthiuron. The least separated pair
-is diuron and irgarol at 0.732, the most potent of the set, followed by
-ametryn and diuron at 0.837, atrazine and hexazinone at 0.839, ametryn
-and irgarol at 0.923, and simazine and tebuthiuron at 0.077.
-<code><a href="../reference/bnec_group.html">bnec_group()</a></code> fits each herbicide separately, so the
-independence that the random pairing of <code>compare_posterior</code>
-assumes is satisfied here.</p>
+is diuron and irgarol at 0.730, the most potent of the set, followed by
+atrazine and hexazinone at 0.816, ametryn and diuron at 0.842, ametryn
+and irgarol at 0.923, and simazine and tebuthiuron at 0.076.</p>
 <p>The N(S)EC is a no-effect estimate, and it is not what <span class="citation">Jones and Kerswell (2003)</span> report. They report
 EC50 values (the concentration at which yield is halved), so the
 comparison with the source study uses <code><a href="../reference/ecx.html">ecx()</a></code>.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">fits_herb</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
-<span><span class="co">#&gt;         level         Q50        Q2.5       Q97.5 bound_Q50 bound_Q2.5 bound_Q97.5</span></span>
-<span><span class="co">#&gt; 1     ametryn   1.4591758   1.2863149   1.6324673                                 </span></span>
-<span><span class="co">#&gt; 2    atrazine  39.3445996  34.7377094  44.3024469                                 </span></span>
-<span><span class="co">#&gt; 3      diuron   2.0418154   1.8998202   2.1894078                                 </span></span>
-<span><span class="co">#&gt; 4  hexazinone   7.4208606   6.7161146   8.0947159                                 </span></span>
-<span><span class="co">#&gt; 5     irgarol   0.5399852   0.4873592   0.5958367                                 </span></span>
-<span><span class="co">#&gt; 6    simazine 124.1203960 112.8038986 136.3685623                                 </span></span>
-<span><span class="co">#&gt; 7 tebuthiuron  90.3584313  84.5195241  95.2532588</span></span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">herb_ec50</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">fits_herb</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
+<span><span class="va">herb_ec50</span></span>
+<span><span class="co">#&gt;         level         Q50       Q2.5       Q97.5 bound_Q50 bound_Q2.5 bound_Q97.5</span></span>
+<span><span class="co">#&gt; 1     ametryn   1.4525671   1.290950   1.6028760                                 </span></span>
+<span><span class="co">#&gt; 2    atrazine  39.4168890  34.928425  44.1435047                                 </span></span>
+<span><span class="co">#&gt; 3      diuron   2.0418154   1.899820   2.1894078                                 </span></span>
+<span><span class="co">#&gt; 4  hexazinone   7.3754008   6.731899   8.0245874                                 </span></span>
+<span><span class="co">#&gt; 5     irgarol   0.5387713   0.479069   0.5954517                                 </span></span>
+<span><span class="co">#&gt; 6    simazine 124.2181364 112.629884 136.2658496                                 </span></span>
+<span><span class="co">#&gt; 7 tebuthiuron  90.3584313  84.519524  95.2532588</span></span></code></pre></div>
 <p><span class="citation">Jones and Kerswell (2003)</span> give EC50
 values of 0.7 µg/L for irgarol, 1.7 for ametryn, 2.3 for diuron, 8.8 for
 hexazinone, 45 for atrazine, 150 for simazine and 175 for tebuthiuron.
-Six of the seven agree closely, with the published value between 13 and
-30 per cent above the one here, and both studies rank those six in one
-order. Tebuthiuron is the exception at roughly half the published value,
-and it is also the herbicide whose order differs: here it is more toxic
-than simazine, whereas in the source study it is less so. The published
-and fitted estimates were derived differently. <span class="citation">Jones and Kerswell (2003)</span> interpolated linearly
-between the tested concentrations (in ToxCalc 5.0), while the values
-above are a model average over eleven or twelve fitted curves. Linear
-interpolation across a log-spaced series follows the chord of a curve
-that is concave over that interval, which places the half-effect
-concentration higher than a fitted curve would, and this may explain why
-the published value is higher for all seven herbicides. Nothing in these
-data indicates which estimate is closer to the truth for
-tebuthiuron.</p>
+For six of the seven, the published value is between 13 and 30 per cent
+above the one here, and both studies rank them in one order. Tebuthiuron
+is the exception, at 52 per cent of the published value, and it is also
+the herbicide whose order differs: here it is more toxic than simazine,
+whereas in the source study it is less so. The published and fitted
+estimates were derived differently. <span class="citation">Jones and
+Kerswell (2003)</span> interpolated linearly between the tested
+concentrations (in ToxCalc 5.0), while the values above are a model
+average over 11 or 12 fitted curves. Linear interpolation across a
+log-spaced series follows the chord of a curve that is concave over that
+interval, which places the half-effect concentration higher than a
+fitted curve would, and this may explain why the published value is
+higher for all seven herbicides. Nothing in these data indicates which
+estimate is closer to the truth for tebuthiuron.</p>
 </div>
 </div>
 <div class="section level2">
@@ -497,8 +522,13 @@ bleaching, derived from photographs of the fragments and rescaled
 between the smallest and largest values observed (see
 <code><a href="../reference/coral_colour.html">?coral_colour</a></code>). <span class="citation">Flores et al.
 (2021)</span> report that all corals at 9.6 and 29 µg/L had died after
-10 to 11 days of exposure, so the colour readings at 29 µg/L are of
-fragments that had bleached completely.</p>
+10 to 11 days of exposure. The corals at 9.6 µg/L had bleached by 10
+days and were photographed then, whereas those at 29 µg/L died before
+they could be photographed. <code>coral_colour</code> therefore has five
+concentrations (0, 0.29, 0.96, 2.9 and 9.6 µg/L), and
+<code>coral_pam</code> has a sixth, 29 µg/L. At 9.6 µg/L,
+<code>coral_colour</code> has a colour score for 10 of the 12 fragments
+under 2050 and 5 of the 12 under 2100.</p>
 <p><span class="citation">Flores et al. (2021)</span> compared EC50
 values between the scenarios using <code>bayesnec</code>, and found that
 the colour index EC50 was lower under both future scenarios than under
@@ -512,17 +542,40 @@ so the scenarios were not separated.</p>
 concentration of 0, which has no position on a log axis, and
 <code><a href="../reference/bnec.html">bnec()</a></code> refuses <code>crf(log(diuron))</code> because the
 logarithm of 0 is not finite. We therefore substitute 0.1 µg/L for the
-control. The treatments form a half-log dilution series (0.29, 0.96,
-2.9, 9.6 and 29 µg/L, each step about 3.16 times the last), and 0.1 is
-one further step below the lowest treatment, rounded. The substitution
-is made here and not in the shipped data, and an estimate returned near
-0.1 µg/L would describe the substitution and not diuron.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+control. The non-zero treatments (0.29, 0.96, 2.9, 9.6 and, for yield
+only, 29 µg/L) are separated by steps of approximately half a log unit
+(a factor of about three), and the value 0.1 is one further half-log
+step below the lowest treatment, rounded. The substitution is made here
+and not in the shipped data, and an estimate returned near 0.1 µg/L
+would describe the substitution and not diuron.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">coral_colour</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">coral_pam</span><span class="op">)</span></span>
 <span><span class="va">nudge</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">x</span> <span class="op">==</span> <span class="fl">0</span>, <span class="fl">0.1</span>, <span class="va">x</span><span class="op">)</span></span>
 <span><span class="va">coral_colour</span><span class="op">$</span><span class="va">diuron_adj</span> <span class="op">&lt;-</span> <span class="fu">nudge</span><span class="op">(</span><span class="va">coral_colour</span><span class="op">$</span><span class="va">diuron</span><span class="op">)</span></span>
 <span><span class="va">coral_pam</span><span class="op">$</span><span class="va">diuron_adj</span> <span class="op">&lt;-</span> <span class="fu">nudge</span><span class="op">(</span><span class="va">coral_pam</span><span class="op">$</span><span class="va">diuron</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="yield-readings-of-zero">Yield readings of zero<a class="anchor" aria-label="anchor" href="#yield-readings-of-zero"></a>
+</h3>
+<p>63 of the 414 yield readings are 0, all of them at 9.6 and 29 µg/L.
+<span class="citation">Flores et al. (2021)</span> repeated the yield
+measurement at 14 days only up to 2.9 µg/L, so the readings at the two
+highest concentrations were taken at 7 days, before those corals died.
+Yield is recorded to three decimal places, but no reading is between 0
+and 0.007, the smallest positive value. Of the 61 fragments read twice
+at 9.6 and 29 µg/L, 21 gave one reading of 0 and one of up to 0.143. A 0
+is therefore a reading at the floor of the fluorometer, with a true
+value at or below the smallest positive reading, and not a separate
+outcome such as a dead fragment, which a hurdle model would describe. As
+for the zeros in <code>herbicide</code>, we treat these readings as
+left-censored, here at the smallest positive reading.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">yield_floor</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">coral_pam</span><span class="op">$</span><span class="va">yield</span><span class="op">[</span><span class="va">coral_pam</span><span class="op">$</span><span class="va">yield</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">coral_pam</span><span class="op">$</span><span class="va">censoring</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">coral_pam</span><span class="op">$</span><span class="va">yield</span> <span class="op">==</span> <span class="fl">0</span>, <span class="st">"left"</span>, <span class="st">"none"</span><span class="op">)</span></span>
+<span><span class="co"># A censored row carries its bound: a Beta fit refuses one censored at 0.</span></span>
+<span><span class="va">coral_pam</span><span class="op">$</span><span class="va">yield_cens</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">coral_pam</span><span class="op">$</span><span class="va">yield</span> <span class="op">==</span> <span class="fl">0</span>, <span class="va">yield_floor</span>,</span>
+<span>                               <span class="va">coral_pam</span><span class="op">$</span><span class="va">yield</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="separate-fits-for-each-scenario">Separate fits for each scenario<a class="anchor" aria-label="anchor" href="#separate-fits-for-each-scenario"></a>
@@ -537,14 +590,14 @@ estimates where each of its levels is observed at a single
 concentration, and the model weights of a set fitted with it leave out
 each chamber whole (see the <code>loo_controls</code> argument of
 <code><a href="../reference/bnec.html">bnec()</a></code>).</p>
-<p>The colour design has five concentrations and none between 2.9 and 29
-µg/L, which appears to be too few to estimate both asymptotes of an
-equation with four curve parameters reliably. We therefore restrict the
-model set to four equations with three curve parameters
-(<code>nec3param</code>, <code>ecxll3</code>, <code>ecxwb1p3</code> and
-<code>ecxwb2p3</code>), and use this set for yield as well, so that the
-endpoints are compared on one set of equations.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<p>The colour design has five concentrations, which appears to be too
+few to estimate both asymptotes of an equation with four curve
+parameters reliably. We therefore restrict the model set to four
+equations with three curve parameters (<code>nec3param</code>,
+<code>ecxll3</code>, <code>ecxwb1p3</code> and <code>ecxwb2p3</code>),
+and use this set for yield as well, so that the endpoints are compared
+on one set of equations.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fits_colour</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec_group.html">bnec_group</a></span><span class="op">(</span></span>
 <span>  <span class="va">proportion</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">diuron_adj</span><span class="op">)</span>,</span>
 <span>                   <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"ecxll3"</span>, <span class="st">"ecxwb1p3"</span>, <span class="st">"ecxwb2p3"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -553,47 +606,46 @@ endpoints are compared on one set of equations.</p>
 <span>  family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, seed <span class="op">=</span> <span class="fl">228</span>, refresh <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fits_yield</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec_group.html">bnec_group</a></span><span class="op">(</span></span>
-<span>  <span class="va">yield</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">diuron_adj</span><span class="op">)</span>,</span>
-<span>              <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"ecxll3"</span>, <span class="st">"ecxwb1p3"</span>, <span class="st">"ecxwb2p3"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="va">yield_cens</span> <span class="op">|</span> <span class="fu">cens</span><span class="op">(</span><span class="va">censoring</span><span class="op">)</span> <span class="op">~</span></span>
+<span>    <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">diuron_adj</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"ecxll3"</span>, <span class="st">"ecxwb1p3"</span>, <span class="st">"ecxwb2p3"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">ogl</span><span class="op">(</span><span class="va">chamber</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">coral_pam</span>, group_var <span class="op">=</span> <span class="st">"climate"</span>,</span>
 <span>  family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, seed <span class="op">=</span> <span class="fl">228</span>, refresh <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fits_colour</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/screen_models.html">screen_models</a></span><span class="op">(</span><span class="va">fits_colour</span>, group_action <span class="op">=</span> <span class="st">"per_level"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Screening level "2018".</span></span>
 <span><span class="co">#&gt; Dropping 1 of 4 candidate models that failed the sampler screen:</span></span>
-<span><span class="co">#&gt;   -  ecxwb2p3: 52 divergent transitions</span></span>
+<span><span class="co">#&gt;   -  ecxwb2p3: 70 divergent transitions</span></span>
 <span><span class="co">#&gt; Fitted models are: nec3param ecxll3 ecxwb1p3</span></span>
 <span><span class="co">#&gt; Screening level "2050".</span></span>
-<span><span class="co">#&gt; Dropping 1 of 4 candidate models that failed the sampler screen:</span></span>
-<span><span class="co">#&gt;   -  ecxll3: ESS 387.5</span></span>
-<span><span class="co">#&gt; Fitted models are: nec3param ecxwb1p3 ecxwb2p3</span></span>
-<span><span class="co">#&gt; The leave-one-group-out score has Pareto k above 0.7 for 1 of 15 levels of chamber in ecxwb2p3 (weight 0.51). The scores of those levels are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.</span></span>
-<span><span class="co">#&gt; Screening level "2100".</span></span>
 <span><span class="co">#&gt; All 4 candidate models passed the sampler screen (Rhat &lt;= 1.01, ESS &gt;= 400, divergences &lt;= 10).</span></span>
+<span><span class="co">#&gt; Screening level "2100".</span></span>
+<span><span class="co">#&gt; Dropping 1 of 4 candidate models that failed the sampler screen:</span></span>
+<span><span class="co">#&gt;   -  nec3param: ESS 393.3</span></span>
+<span><span class="co">#&gt; Fitted models are: ecxll3 ecxwb1p3 ecxwb2p3</span></span>
+<span><span class="co">#&gt; The leave-one-group-out score has Pareto k at or above 0.7 for 1 of 15 levels of chamber in ecxwb1p3 (weight</span></span>
+<span><span class="co">#&gt; 0.39); 1 of 15 levels of chamber in ecxll3 (weight 0.33); 1 of 15 levels of chamber in ecxwb2p3 (weight 0.28). The</span></span>
+<span><span class="co">#&gt; affected scores are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without</span></span>
+<span><span class="co">#&gt; each level.</span></span>
 <span><span class="va">fits_yield</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/screen_models.html">screen_models</a></span><span class="op">(</span><span class="va">fits_yield</span>, group_action <span class="op">=</span> <span class="st">"per_level"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Screening level "2018".</span></span>
-<span><span class="co">#&gt; All 4 candidate models passed the sampler screen (Rhat &lt;= 1.01, ESS &gt;= 400, divergences &lt;= 10).</span></span>
-<span><span class="co">#&gt; Screening level "2050".</span></span>
 <span><span class="co">#&gt; Dropping 1 of 4 candidate models that failed the sampler screen:</span></span>
-<span><span class="co">#&gt;   -  nec3param: ESS 185.1</span></span>
+<span><span class="co">#&gt;   -  nec3param: Rhat 1.014</span></span>
 <span><span class="co">#&gt; Fitted models are: ecxll3 ecxwb1p3 ecxwb2p3</span></span>
-<span><span class="co">#&gt; The leave-one-group-out score has Pareto k above 0.7 for 1 of 18 levels of chamber in ecxll3 (weight 0.97); 1 of 18 levels of chamber in ecxwb2p3 (weight 0.03). The scores of those levels are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.</span></span>
+<span><span class="co">#&gt; The leave-one-group-out score has Pareto k at or above 0.7 for 2 of 18 levels of chamber in ecxll3 (weight 0.74); 1 of 18 levels of chamber in ecxwb2p3 (weight 0.26). The affected scores are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.Screening level "2050".</span></span>
+<span><span class="co">#&gt; All 4 candidate models passed the sampler screen (Rhat &lt;= 1.01, ESS &gt;= 400, divergences &lt;= 10).</span></span>
 <span><span class="co">#&gt; Screening level "2100".</span></span>
 <span><span class="co">#&gt; All 4 candidate models passed the sampler screen (Rhat &lt;= 1.01, ESS &gt;= 400, divergences &lt;= 10).</span></span></code></pre></div>
-<p>The screen removes one equation from three of the six level fits:
-<code>ecxwb2p3</code> from the 2018 colour fit (52 divergent
-transitions), <code>ecxll3</code> from the 2050 colour fit (an ESS of
-388) and <code>nec3param</code> from the 2050 yield fit (an ESS of 185).
-For the 2050 fits of both endpoints, the leave-one-group-out score also
-has a Pareto <em>k</em> above 0.7 for one chamber in some equations
-(<code>ecxwb2p3</code> for colour, and <code>ecxll3</code> and
-<code>ecxwb2p3</code> for yield), so the contribution of that chamber to
-the model weights is approximate.
-<code>loo_controls = list(refit = TRUE)</code> would replace it by
-refitting each equation without the chamber, which we have not done
-here.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<p>The screen removes <code>ecxwb2p3</code> from the 2018 colour fit,
+<code>nec3param</code> from the 2100 colour fit and
+<code>nec3param</code> from the 2018 yield fit, and the messages above
+give the criterion that each failed. Where the leave-one-group-out score
+has a Pareto <em>k</em> at or above 0.7 for a chamber, the messages also
+name the equation, and the contribution of that chamber to the model
+weights is approximate. <code>loo_controls = list(refit = TRUE)</code>
+would replace it by refitting each equation without the chamber, which
+we have not done here.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>endpoint <span class="op">=</span> <span class="st">"colour (proportion)"</span>, <span class="fu">group_curves</span><span class="op">(</span><span class="va">fits_colour</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>endpoint <span class="op">=</span> <span class="st">"yield"</span>, <span class="fu">group_curves</span><span class="op">(</span><span class="va">fits_yield</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x_e</span>, colour <span class="op">=</span> <span class="va">level</span>, fill <span class="op">=</span> <span class="va">level</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -613,90 +665,110 @@ plot of chunk exmp4-coral-fits
 </p>
 </div>
 <p>The scenarios appear to separate in colour and barely at all in
-yield. For example, mean colour at 2.9 µg/L is 0.728, 0.611 and 0.456
-from 2018 to 2100, whereas mean yield differs by less than 0.015 between
-scenarios at each concentration below 9.6 µg/L. The fitted band for
-yield under the 2100 scenario is also wider than the others, from the
-control to about 2 µg/L.</p>
+yield. For example, mean colour at 2.9 µg/L is 0.724, 0.604 and 0.446
+from 2018 to 2100, whereas mean yield differs between scenarios by at
+most 0.014 at each concentration below 9.6 µg/L.</p>
 </div>
 <div class="section level3">
 <h3 id="comparing-toxicity-estimates-across-scenarios">Comparing toxicity estimates across scenarios<a class="anchor" aria-label="anchor" href="#comparing-toxicity-estimates-across-scenarios"></a>
 </h3>
-<p>We first compare the colour EC50 across the scenarios, because this
-is the estimate <span class="citation">Flores et al. (2021)</span>
-compared.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cmp_colour</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="va">fits_colour</span>, comparison <span class="op">=</span> <span class="st">"ecx"</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
-<span><span class="va">cmp_colour</span><span class="op">$</span><span class="va">prob_diff</span></span>
-<span><span class="co">#&gt;   comparison     prob prob_lower prob_upper censored_first censored_second</span></span>
-<span><span class="co">#&gt; 1  2018-2050 0.961875   0.961875   0.961875              0        0.000000</span></span>
-<span><span class="co">#&gt; 2  2018-2100 0.997250   0.997250   0.997250              0        0.000125</span></span>
-<span><span class="co">#&gt; 3  2050-2100 0.922000   0.922000   0.922000              0        0.000125</span></span></code></pre></div>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">cmp_colour</span><span class="op">$</span><span class="va">posterior_data</span>, mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">value</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<p>We compare three estimates across the scenarios, for both endpoints:
+the EC50, which is the estimate <span class="citation">Flores et al.
+(2021)</span> compared, and the EC10 and the N(S)EC, which describe
+smaller effects or none. <code>compare_posterior</code> is called once
+for each estimate and endpoint, and the table collates
+<code>prob_diff</code> from each call, i.e. the probability that the
+first scenario of each pair has the higher estimate.</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">compare_scenarios</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>EC50 <span class="op">=</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="va">fit</span>, comparison <span class="op">=</span> <span class="st">"ecx"</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span>,</span>
+<span>       EC10 <span class="op">=</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="va">fit</span>, comparison <span class="op">=</span> <span class="st">"ecx"</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
+<span>       <span class="st">"N(S)EC"</span> <span class="op">=</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="va">fit</span>, comparison <span class="op">=</span> <span class="st">"n(s)ec"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">cmp_coral</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>colour <span class="op">=</span> <span class="fu">compare_scenarios</span><span class="op">(</span><span class="va">fits_colour</span><span class="op">)</span>,</span>
+<span>                  yield <span class="op">=</span> <span class="fu">compare_scenarios</span><span class="op">(</span><span class="va">fits_yield</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">coral_probs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">cmp_coral</span>, <span class="kw">function</span><span class="op">(</span><span class="va">cmps</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>comparison <span class="op">=</span> <span class="va">cmps</span><span class="op">$</span><span class="va">EC50</span><span class="op">$</span><span class="va">prob_diff</span><span class="op">$</span><span class="va">comparison</span>,</span>
+<span>             <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">cmps</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span><span class="op">$</span><span class="va">prob_diff</span><span class="op">$</span><span class="va">prob</span><span class="op">)</span>, check.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span>, .id <span class="op">=</span> <span class="st">"endpoint"</span><span class="op">)</span></span>
+<span><span class="va">coral_probs</span></span>
+<span><span class="co">#&gt;   endpoint comparison     EC50     EC10   N(S)EC</span></span>
+<span><span class="co">#&gt; 1   colour  2018-2050 0.934375 0.980500 0.968125</span></span>
+<span><span class="co">#&gt; 2   colour  2018-2100 0.998625 0.998250 0.988500</span></span>
+<span><span class="co">#&gt; 3   colour  2050-2100 0.980375 0.958500 0.849000</span></span>
+<span><span class="co">#&gt; 4    yield  2018-2050 0.428625 0.838375 0.838625</span></span>
+<span><span class="co">#&gt; 5    yield  2018-2100 0.352750 0.782250 0.913250</span></span>
+<span><span class="co">#&gt; 6    yield  2050-2100 0.420875 0.191875 0.296250</span></span></code></pre></div>
+<p>The posterior draws behind each probability are returned in
+<code>posterior_data</code>, and we plot them as densities, with one
+panel for each endpoint and estimate.</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">coral_post</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">cmp_coral</span>, <span class="kw">function</span><span class="op">(</span><span class="va">cmps</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">cmps</span>, <span class="va">`[[`</span>, <span class="st">"posterior_data"</span><span class="op">)</span>, .id <span class="op">=</span> <span class="st">"estimate"</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span>, .id <span class="op">=</span> <span class="st">"endpoint"</span><span class="op">)</span></span>
+<span><span class="va">coral_post</span><span class="op">$</span><span class="va">estimate</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">coral_post</span><span class="op">$</span><span class="va">estimate</span>,</span>
+<span>                              levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"EC50"</span>, <span class="st">"EC10"</span>, <span class="st">"N(S)EC"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">coral_post</span>, mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">value</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_density.html" class="external-link">geom_density</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>group <span class="op">=</span> <span class="va">model</span>, colour <span class="op">=</span> <span class="va">model</span>, fill <span class="op">=</span> <span class="va">model</span><span class="op">)</span>,</span>
 <span>               alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_grid.html" class="external-link">facet_grid</a></span><span class="op">(</span><span class="va">endpoint</span> <span class="op">~</span> <span class="va">estimate</span>, scales <span class="op">=</span> <span class="st">"free_y"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="va">log_x</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Colour EC50 (ug/L)"</span>, y <span class="op">=</span> <span class="st">"Density"</span>, fill <span class="op">=</span> <span class="st">"Scenario"</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Diuron (ug/L), control at 0.1"</span>, y <span class="op">=</span> <span class="st">"Density"</span>, fill <span class="op">=</span> <span class="st">"Scenario"</span>,</span>
 <span>       colour <span class="op">=</span> <span class="st">"Scenario"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp4-cmp-colour-1.png" alt="plot of chunk exmp4-cmp-colour" width="85%"><p class="caption">
-plot of chunk exmp4-cmp-colour
+<img src="vignette-fig-exmp4-cmp-scenarios-1.png" alt="plot of chunk exmp4-cmp-scenarios" width="95%"><p class="caption">
+plot of chunk exmp4-cmp-scenarios
 </p>
 </div>
-<p>The probability that the 2018 EC50 is the higher is 0.962 against the
-2050 scenario and 0.997 against the 2100 scenario, which is similar to
-the probabilities of 0.956 and 0.970 that <span class="citation">Flores
-et al. (2021)</span> report. However, the EC50 values themselves differ
-from theirs. The posterior for 2100 is centred near 4 µg/L and that for
-2050 near 6 µg/L (with a second mode near 10), whereas the posterior for
-2018 is spread from about 8 µg/L to 29 µg/L, the highest concentration
-tested. <span class="citation">Flores et al. (2021)</span> report EC50
-values of 6.05, 4.99 and 4.86 µg/L, measured for each scenario against
-one reference response (halfway between the mean 2018 control and the
-mean 2100 response at 29 µg/L), whereas <code><a href="../reference/ecx.html">ecx()</a></code> measures each
-scenario against its own control. The width of the 2018 posterior
-probably reflects the colour design, which has no concentration between
-2.9 and 29 µg/L at which to locate the 2018 decline.</p>
-<p>This comparison can be made for any estimate that
-<code>compare_posterior</code> accepts. Here we tabulate the
-probabilities for the EC50, the EC10 and the N(S)EC, for both
-endpoints.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">scenario_probs</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">prob</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">...</span><span class="op">)</span><span class="op">$</span><span class="va">prob_diff</span></span>
-<span>  <span class="va">ec50</span> <span class="op">&lt;-</span> <span class="fu">prob</span><span class="op">(</span>comparison <span class="op">=</span> <span class="st">"ecx"</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>comparison <span class="op">=</span> <span class="va">ec50</span><span class="op">$</span><span class="va">comparison</span>,</span>
-<span>             EC50 <span class="op">=</span> <span class="va">ec50</span><span class="op">$</span><span class="va">prob</span>,</span>
-<span>             EC10 <span class="op">=</span> <span class="fu">prob</span><span class="op">(</span>comparison <span class="op">=</span> <span class="st">"ecx"</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span><span class="op">$</span><span class="va">prob</span>,</span>
-<span>             <span class="st">"N(S)EC"</span> <span class="op">=</span> <span class="fu">prob</span><span class="op">(</span>comparison <span class="op">=</span> <span class="st">"n(s)ec"</span><span class="op">)</span><span class="op">$</span><span class="va">prob</span>,</span>
-<span>             check.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>endpoint <span class="op">=</span> <span class="st">"colour"</span>, <span class="fu">scenario_probs</span><span class="op">(</span><span class="va">fits_colour</span><span class="op">)</span>,</span>
-<span>                 check.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>endpoint <span class="op">=</span> <span class="st">"yield"</span>, <span class="fu">scenario_probs</span><span class="op">(</span><span class="va">fits_yield</span><span class="op">)</span>,</span>
-<span>                 check.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   endpoint comparison     EC50     EC10   N(S)EC</span></span>
-<span><span class="co">#&gt; 1   colour  2018-2050 0.961875 0.963875 0.953750</span></span>
-<span><span class="co">#&gt; 2   colour  2018-2100 0.997250 0.994875 0.985875</span></span>
-<span><span class="co">#&gt; 3   colour  2050-2100 0.922000 0.945500 0.890500</span></span>
-<span><span class="co">#&gt; 4    yield  2018-2050 0.402125 0.272125 0.271625</span></span>
-<span><span class="co">#&gt; 5    yield  2018-2100 0.631125 0.223625 0.082375</span></span>
-<span><span class="co">#&gt; 6    yield  2050-2100 0.689875 0.305875 0.084250</span></span></code></pre></div>
-<p>For colour, the 2018 scenario has the higher estimate against both
-future scenarios with a probability above 0.95, whichever of the three
-estimates is used. For yield, no estimate gives a probability below 0.05
-or above 0.95, and the probabilities for the EC50 and the EC10 range
-from 0.22 to 0.69, which is consistent with the probabilities of 0.615
-and 0.539 that <span class="citation">Flores et al. (2021)</span> report
-for the yield EC50. The yield N(S)EC under the 2100 scenario is higher
-than under the other two scenarios, with a probability of 0.92 against
-each, which is in the opposite direction to an effect of warming. This
-may reflect the less precisely estimated control under the 2100 scenario
-(the wider band in the figure above), because the NSEC is measured from
-a lower quantile of the control response, and should not be read as an
-effect of climate from these data.</p>
+<p>For the colour EC50 (top left panel), the probability that the 2018
+estimate is the higher is 0.934 against the 2050 scenario and 0.999
+against the 2100 scenario, where <span class="citation">Flores et al.
+(2021)</span> report 0.956 and 0.970. These could not be expected to
+match exactly, because our model differs from theirs in two respects.
+The fits here use four equations with three curve parameters, because
+the five colour concentrations are too few to estimate both asymptotes
+of the equations with four, whereas <span class="citation">Flores et al.
+(2021)</span> averaged over a larger set (their Table S2). The fits here
+also include a group-level term for chamber (<code>ogl(chamber)</code>),
+which <span class="citation">Flores et al. (2021)</span> did not fit.
+The EC50 values are also defined differently. The posterior medians are
+7.9, 5.4 and 3.5 µg/L for 2018, 2050 and 2100, against the values of
+6.05, 4.99 and 4.86 µg/L that <span class="citation">Flores et al.
+(2021)</span> report. They measured each scenario against one reference
+response (halfway between the mean 2018 control and the mean 2100
+response at the highest concentration), whereas <code><a href="../reference/ecx.html">ecx()</a></code>
+measures each scenario against its own control. The 95% credible
+interval of the 2018 EC50 is 5.3 to 9.5 µg/L, which probably reflects
+the colour design: under 2018 the mean colour at 2.9 µg/L is still at
+the control level, and the only higher concentration is 9.6 µg/L, so
+there are no observations within the range of concentrations where the
+2018 response declines.</p>
+<p>For colour, the order of the scenarios by increasing posterior median
+is 2100, 2050 and 2018 for all three estimates. Across the three
+estimates, the probability that the 2018 estimate is the higher ranges
+from 0.934 to 0.999 against the 2050 and 2100 scenarios. The 2018
+posteriors are also wide for the EC10 and the N(S)EC (e.g. a 95%
+credible interval for the EC10 of 3.1 to 9.3 µg/L, against 1.8 to 3.9
+µg/L for 2050), which is again likely to reflect the absence of
+observations between 2.9 and 9.6 µg/L.</p>
+<p>For yield, the EC50 posteriors of the three scenarios overlap almost
+completely (bottom left panel), with probabilities from 0.35 to 0.43,
+which is consistent with the probabilities of 0.615 and 0.539 that <span class="citation">Flores et al. (2021)</span> report for the yield EC50.
+None of the yield probabilities, for any of the three estimates, is
+below 0.05 or above 0.95. The model weights favour <code>ecxll3</code>
+under 2018 (0.74), and <code>ecxwb1p3</code> under 2050 and 2100 (0.81
+and 1.00). The EC10 and the N(S)EC differ more between the scenarios
+than the EC50 does (e.g. a 95% credible interval for the N(S)EC of 0.18
+to 0.75 µg/L under 2018, against 0.13 to 0.29 µg/L under 2100), although
+mean yield differs between scenarios by at most 0.014 at each
+concentration below 9.6 µg/L. The medians of both estimates are below
+0.96 µg/L, where the only observations are at the control and 0.29 µg/L,
+and there the fitted curve follows the shape of the equation the weights
+favour. The difference is therefore likely to reflect that choice of
+equation, and it should not be read as an effect of climate from these
+data.</p>
 </div>
 <div class="section level3">
 <h3 id="comparing-the-fitted-curves">Comparing the fitted curves<a class="anchor" aria-label="anchor" href="#comparing-the-fitted-curves"></a>
@@ -707,22 +779,22 @@ increase <code>resolution</code> from its default of 50, because the
 concentrations at which predictions are made are evenly spaced on the
 recorded scale, and the lower half of a log axis would otherwise contain
 only a few of them.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cmp_colour_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="va">fits_colour</span>, comparison <span class="op">=</span> <span class="st">"fitted"</span>,</span>
 <span>                                    resolution <span class="op">=</span> <span class="fl">200</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">cmp_colour_fit</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   model         x  Estimate      Q2.5     Q97.5</span></span>
-<span><span class="co">#&gt; 1  2018 0.1000000 0.7285043 0.6922875 0.7664554</span></span>
-<span><span class="co">#&gt; 2  2018 0.2452261 0.7283892 0.6922071 0.7657922</span></span>
-<span><span class="co">#&gt; 3  2018 0.3904523 0.7282519 0.6922044 0.7653569</span></span>
-<span><span class="co">#&gt; 4  2018 0.5356784 0.7280907 0.6921380 0.7643305</span></span>
-<span><span class="co">#&gt; 5  2018 0.6809045 0.7278394 0.6919410 0.7640378</span></span>
-<span><span class="co">#&gt; 6  2018 0.8261307 0.7275729 0.6917574 0.7635209</span></span></code></pre></div>
+<span><span class="co">#&gt; 1  2018 0.1000000 0.7254966 0.6937514 0.7568346</span></span>
+<span><span class="co">#&gt; 2  2018 0.1477387 0.7254966 0.6937514 0.7568346</span></span>
+<span><span class="co">#&gt; 3  2018 0.1954774 0.7254966 0.6937514 0.7568328</span></span>
+<span><span class="co">#&gt; 4  2018 0.2432161 0.7254956 0.6937514 0.7567826</span></span>
+<span><span class="co">#&gt; 5  2018 0.2909548 0.7254916 0.6937514 0.7567707</span></span>
+<span><span class="co">#&gt; 6  2018 0.3386935 0.7254796 0.6937514 0.7567652</span></span></code></pre></div>
 <p>In the case of <code>comparison = "fitted"</code> the elements
 returned by <code>compare_posterior</code> are data frames, with summary
 values of the posterior, of the differences and of the probabilities for
 each value of the predictor, for each scenario or pair of scenarios.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">cmp_colour_fit</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_ribbon.html" class="external-link">geom_ribbon</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, ymin <span class="op">=</span> <span class="va">Q2.5</span>, ymax <span class="op">=</span> <span class="va">Q97.5</span>, fill <span class="op">=</span> <span class="va">model</span><span class="op">)</span>,</span>
 <span>              alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
@@ -737,7 +809,7 @@ each value of the predictor, for each scenario or pair of scenarios.</p>
 plot of chunk exmp4-colour-fitted
 </p>
 </div>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">cmp_colour_fit</span><span class="op">$</span><span class="va">prob_diff</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_hline</a></span><span class="op">(</span>yintercept <span class="op">=</span> <span class="fl">0.5</span>, colour <span class="op">=</span> <span class="st">"grey70"</span>, linetype <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">prob</span>, colour <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>,</span>
@@ -752,142 +824,19 @@ plot of chunk exmp4-colour-prob
 </p>
 </div>
 <p>The fitted curves for the three scenarios start at a similar colour
-(about 0.72 to 0.73 at the control), and the 2100 curve declines first,
-below 1 µg/L, followed by the 2050 curve near 2 µg/L and the 2018 curve
-near 10 µg/L. The band for 2018 is wide above 3 µg/L, again reflecting
-the absence of observations between 2.9 and 29 µg/L. The probability
-that the 2018 curve is the higher exceeds 0.9 against the 2100 curve
-from about 0.7 µg/L and against the 2050 curve from about 2 µg/L. Above
-about 1.5 µg/L, the comparison with 2100 remains above 0.95, while the
-comparison with 2050 dips to about 0.94 near 10 µg/L. The 2050 and 2100
-curves are most clearly separated near 3 µg/L (a probability of about
-0.99), and less so near 10 µg/L (about 0.86). This suggests that the
-scenarios differ over most of the range above about 1 µg/L, which is
-where the colour response declines under at least one scenario.</p>
+(0.71 to 0.73 at the control), and their medians fall 10 per cent below
+the control value in the order 2100 (1.3 µg/L), 2050 (2.6 µg/L) and 2018
+(5.5 µg/L). The band for 2018 is widest at 8.9 µg/L, which is again
+likely to reflect the absence of observations between 2.9 and 9.6 µg/L.
+The probability that the 2018 curve is the higher first exceeds 0.9 at
+0.77 µg/L against the 2100 curve and at 1.7 µg/L against the 2050 curve,
+and at the highest concentration it is 0.996 and 0.884, respectively.
+The 2050 and 2100 curves are most clearly separated at 2.9 µg/L (a
+probability of 0.992), and the probability is 0.982 at the highest
+concentration. This suggests that the scenarios differ over the range of
+concentrations in which the colour response declines under at least one
+scenario.</p>
 </div>
-</div>
-<div class="section level2">
-<h2 id="contrasts-from-a-joint-refit">Contrasts from a joint refit<a class="anchor" aria-label="anchor" href="#contrasts-from-a-joint-refit"></a>
-</h2>
-<p>The comparisons above treat the levels as separate fits.
-<code><a href="../reference/bnec_joint.html">bnec_joint()</a></code> instead takes the per-level fits of a
-<code><a href="../reference/bnec_group.html">bnec_group()</a></code> call and builds one model that includes all
-levels, each level keeping the equation its own weights favour and its
-own copy of that equation’s parameters. A difference between two levels
-is then a difference between coefficients of one fit, taken draw by
-draw, and it needs no permutation.</p>
-<p>No equation is named in the call. The equation for each level is read
-from the weights the <code><a href="../reference/bnec_group.html">bnec_group()</a></code> fit already computed, so
-the refit is of what each herbicide separately favoured, and not of one
-form imposed on all seven. The call comes after
-<code><a href="../reference/screen_models.html">screen_models()</a></code>, so it refits the equations each herbicide
-retained after screening.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">herb_joint</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec_joint.html">bnec_joint</a></span><span class="op">(</span><span class="va">fits_herb</span>, seed <span class="op">=</span> <span class="fl">228</span>, refresh <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">herb_joint</span></span>
-<span><span class="co">#&gt; Object of class bayesnecjointfit</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   equations         : ametryn = ecx4param, atrazine = ecxwb1, diuron = ecxll5, hexazinone = ecxll3, irgarol = ecx4param, simazine = ecxll3, tebuthiuron = ecxwb2p3 </span></span>
-<span><span class="co">#&gt;   grouping variable : herbicide </span></span>
-<span><span class="co">#&gt;   levels            : ametryn, atrazine, diuron, hexazinone, irgarol, simazine, tebuthiuron </span></span>
-<span><span class="co">#&gt;   family            : beta (link = identity) </span></span>
-<span><span class="co">#&gt;   dispersion        : per level </span></span>
-<span><span class="co">#&gt;   weight at level   : ametryn 0.31, atrazine 0.628, diuron 0.331, hexazinone 0.653, irgarol 0.266, simazine 0.369, tebuthiuron 0.524 </span></span>
-<span><span class="co">#&gt;   fitted by         : bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1 </span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Each level has its own equation and its own curve parameters in</span></span>
-<span><span class="co">#&gt; one posterior; read them from the draws as</span></span>
-<span><span class="co">#&gt; b_&lt;parameter&gt;&lt;level tag&gt;_Intercept, the tags being ametryn = ametrynLv1, atrazine = atrazineLv2, diuron = diuronLv3, hexazinone = hexazinoneLv4, irgarol = irgarolLv5, simazine = simazineLv6, tebuthiuron = tebuthiuronLv7.</span></span>
-<span><span class="co">#&gt; ecx(), nsec() and nec() return one row per level, and autoplot()</span></span>
-<span><span class="co">#&gt; draws one panel per level.</span></span></code></pre></div>
-<p>Five different equations are used across the seven herbicides:
-<code>ecx4param</code> for ametryn and irgarol, <code>ecxwb1</code> for
-atrazine, <code>ecxll5</code> for diuron, <code>ecxll3</code> for
-hexazinone and simazine, and <code>ecxwb2p3</code> for tebuthiuron. The
-weight each chosen equation received for its own herbicide ranges from
-0.266 for irgarol to 0.653 for hexazinone, and is below 0.4 for four of
-the seven, which suggests that most of the herbicides are not well
-described by a single form.</p>
-<p>Each estimate from a joint refit is returned per level, one row each,
-as for a <code><a href="../reference/bnec_group.html">bnec_group()</a></code> fit.</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">herb_joint</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
-<span><span class="co">#&gt;         level         Q50        Q2.5      Q97.5 bound_Q50 bound_Q2.5 bound_Q97.5</span></span>
-<span><span class="co">#&gt; 1     ametryn   1.4605707   1.2899305   1.629602                                 </span></span>
-<span><span class="co">#&gt; 2    atrazine  40.0797815  35.9054921  44.793770                                 </span></span>
-<span><span class="co">#&gt; 3      diuron   2.0623333   1.9374383   2.199501                                 </span></span>
-<span><span class="co">#&gt; 4  hexazinone   7.4538850   6.8542001   8.096523                                 </span></span>
-<span><span class="co">#&gt; 5     irgarol   0.5366745   0.4890598   0.591555                                 </span></span>
-<span><span class="co">#&gt; 6    simazine 126.5668348 117.2100626 136.350713                                 </span></span>
-<span><span class="co">#&gt; 7 tebuthiuron  90.8803725  86.7826173  95.188208</span></span></code></pre></div>
-<p>The contrast is then taken on the draws.
-<code>posterior = TRUE</code> returns the per-level draws as a named
-list, and because they come from one fit they are already aligned: draw
-<em>i</em> of one level and draw <em>i</em> of another were taken
-together, at one step of one chain.</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">herb_draws</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">herb_joint</span>, ecx_val <span class="op">=</span> <span class="fl">50</span>, posterior <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">diuron_irgarol</span> <span class="op">&lt;-</span> <span class="va">herb_draws</span><span class="op">[[</span><span class="st">"diuron"</span><span class="op">]</span><span class="op">]</span> <span class="op">-</span> <span class="va">herb_draws</span><span class="op">[[</span><span class="st">"irgarol"</span><span class="op">]</span><span class="op">]</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>prob_diuron_higher <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">diuron_irgarol</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span>,</span>
-<span>  median_difference <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">diuron_irgarol</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">diuron_irgarol</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; prob_diuron_higher  median_difference               2.5%              97.5% </span></span>
-<span><span class="co">#&gt;           1.000000           1.525176           1.389121           1.672942</span></span></code></pre></div>
-<p>The diuron EC50 exceeds that of irgarol in every draw, by 1.53 µg/L
-(1.39 to 1.67). A contrast can also be made on the N(S)EC, the estimate
-compared with <code>compare_posterior</code> above.</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">herb_ne_draws</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nsec.html">nsec</a></span><span class="op">(</span><span class="va">herb_joint</span>, posterior <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">diuron_irgarol_ne</span> <span class="op">&lt;-</span> <span class="va">herb_ne_draws</span><span class="op">[[</span><span class="st">"diuron"</span><span class="op">]</span><span class="op">]</span> <span class="op">-</span> <span class="va">herb_ne_draws</span><span class="op">[[</span><span class="st">"irgarol"</span><span class="op">]</span><span class="op">]</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>prob_diuron_higher <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">diuron_irgarol_ne</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span>,</span>
-<span>  median_difference <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">diuron_irgarol_ne</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">diuron_irgarol_ne</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; prob_diuron_higher  median_difference               2.5%              97.5% </span></span>
-<span><span class="co">#&gt;        0.617000000        0.006362871       -0.038150811        0.049047814</span></span></code></pre></div>
-<p>On the N(S)EC the probability that diuron has the higher estimate is
-0.617, with a median difference of 0.006 µg/L (-0.038 to 0.049), against
-0.732 from <code>compare_posterior</code>. The joint refit and
-<code>compare_posterior</code> agree in direction, and do not separate
-this pair on the N(S)EC. An ECx is a fixed decline from the control of
-each level and is located where the curve is steep, whereas the N(S)EC
-is a departure from a band around the control, and where the curve is
-nearly flat, a small change in where that band ends produces a large
-change in the concentration at which the curve crosses it.</p>
-<p>The joint refit estimates five functional forms and a separate
-dispersion for each of seven herbicides, so we check its sampling.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">np</span> <span class="op">&lt;-</span> <span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/bayesplot/reference/bayesplot-extractors.html" class="external-link">nuts_params</a></span><span class="op">(</span><span class="va">herb_joint</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></span>
-<span><span class="va">s_joint</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">herb_joint</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></span>
-<span><span class="va">pars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">s_joint</span><span class="op">$</span><span class="va">fixed</span>, <span class="va">s_joint</span><span class="op">$</span><span class="va">spec_pars</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>divergent <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">np</span><span class="op">$</span><span class="va">Value</span><span class="op">[</span><span class="va">np</span><span class="op">$</span><span class="va">Parameter</span> <span class="op">==</span> <span class="st">"divergent__"</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>  post_warmup_draws <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">np</span><span class="op">$</span><span class="va">Parameter</span> <span class="op">==</span> <span class="st">"divergent__"</span><span class="op">)</span>,</span>
-<span>  max_rhat <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">pars</span><span class="op">$</span><span class="va">Rhat</span><span class="op">)</span>, min_bulk_ess <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">pars</span><span class="op">$</span><span class="va">Bulk_ESS</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;         divergent post_warmup_draws          max_rhat      min_bulk_ess </span></span>
-<span><span class="co">#&gt;          0.000000       8000.000000          1.001749       2148.367079</span></span></code></pre></div>
-<p>There were no divergent transitions in 8000 post-warmup draws, with a
-maximum R-hat of 1.002 and a minimum bulk effective sample size of
-2148.</p>
-<p>A joint refit conditions on one equation per level, so the model
-uncertainty that the per-level averages represent is absent from it. A
-narrower interval after selecting one equation does not by itself show a
-gain in precision: it omits uncertainty over the other equations. The
-chosen equation receives less than 0.4 of the weight for four of the
-seven herbicides. For irgarol, whose equation received 0.266 of the
-weight, the EC50 interval is 0.489 to 0.592 µg/L in the joint refit,
-against 0.487 to 0.596 from the per-level model average. The narrowing
-is small on these data.</p>
-<p><code>compare_posterior</code> and a joint refit therefore answer
-different questions. <code>compare_posterior</code> asks how two
-independently estimated levels compare, each with its own model
-uncertainty, which is appropriate where the levels were tested
-separately and are being ranked. The joint refit asks how two levels
-compare conditional on the selected equation for each. In this example
-each herbicide has its own curve and dispersion parameters; the fitted
-model shares no parameter between them. The aligned draws give a
-contrast under that model. A joint refit can also include a shared term
-where the levels use one equation, for example in a controlled
-comparison of treatments or sites.</p>
 </div>
 <div class="section level2">
 <h2 id="provenance">Provenance<a class="anchor" aria-label="anchor" href="#provenance"></a>
@@ -900,7 +849,7 @@ defaults of <code><a href="../reference/bnec.html">bnec()</a></code> apply (4 ch
 <code>compare_posterior</code> pairs the draws under its own
 <code>seed</code> argument, so its results do not depend on the
 session’s random number stream.</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"bayesnec"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] '2.1.3.44'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"brms"</span><span class="op">)</span></span>

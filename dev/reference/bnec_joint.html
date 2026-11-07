@@ -252,9 +252,13 @@ sub-model.</p>
 group-level term such as <code>ogl()</code> or <code>(nec | site)</code> pools the
 levels towards a common curve. Neither fits one model in which every level
 has its own curve parameters estimated together, which is what this route
-adds. That posterior supports a contrast between two levels conditional on
-everything they share, which differencing the independent posteriors of a
-<code><a href="bnec_group.html">bnec_group</a></code> fit cannot.</p>
+adds. Where the levels share a parameter, through a group-level term in
+<code>formula</code> or through <code>disp_by_level = FALSE</code>, their posteriors are
+dependent, and a contrast between two levels is taken between their draws
+from the same posterior iteration, as <code><a href="compare_posterior.html">compare_posterior</a></code> takes
+it. Under the defaults the levels share no parameter,
+so their posteriors are independent, as they are in a
+<code><a href="bnec_group.html">bnec_group</a></code> fit.</p>
 <p>Each level is fitted the equation its own model weights favour, which is the
 <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> analogue of what <code><a href="best_crossed.html">best_crossed</a></code>
 does for a hurdle fit: that function returns the best growth equation and

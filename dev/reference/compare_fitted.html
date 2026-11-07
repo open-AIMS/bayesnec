@@ -118,9 +118,8 @@ compares these across a vector of fitted values.</p>
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of objects of class
-<code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> returned by
-<code><a href="bnec.html">bnec</a></code>.</p></dd>
+<dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of
+<code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> objects.</p></dd>
 
 
 <dt id="arg-resolution">resolution<a class="anchor" aria-label="anchor" href="#arg-resolution"></a></dt>
@@ -166,7 +165,7 @@ after an odd number of preceding normal draws. Use R's default
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing bootstrapped differences
+    <p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing paired differences
 in posterior predictions of the <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> model fits contained in <code>x</code>. See Details.</p>
     </div>
@@ -187,28 +186,48 @@ on how to structure <code>newdata</code>, see for example
     <h2>Reproducibility</h2>
 
 
-<p>The draws of each posterior are paired by a random permutation, so
-<code>prob_diff</code> and the difference intervals are a Monte Carlo
-approximation to the difference of two <b>independent</b> posteriors, using
-<em>n</em> of the <em>n</em>^2 available pairs. The permutation is drawn under
+<p>The draws of each posterior are put in a random order, a longer posterior
+being randomly subsampled to the length of the shortest, and are then paired
+by position. <code>prob_diff</code> and the difference intervals are therefore a
+Monte Carlo approximation that uses <em>n</em> of the <em>n</em>^2 available
+pairs. The permutation is drawn under
 <code>seed</code>, so two calls on the same fits return the same comparison and a
 <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> in the session has no effect on it. A different
 <code>seed</code> gives another realisation of the same approximation;
 where the approximation matters, compare a few and report the spread. The
 caller's random number state is restored afterwards.</p>
     </div>
-    <div id="the-independence-assumption">
-    <h2>The independence assumption</h2>
+    <div id="what-the-comparison-estimates">
+    <h2>What the comparison estimates</h2>
 
 
-<p>The pairing is valid only where the posteriors being compared come from
-<b>separate fits</b>. Two levels of one fit share draws — draw <em>i</em>
-of each comes from the same sweep of the sampler — and permuting them
-destroys that pairing, which discards the correlation between the levels and
-widens the difference posterior. <code>prob_diff</code> is then pulled toward 0.5
-and a real difference is under-detected, which is the wrong direction to err
-in. A within-fit contrast needs draw-wise differencing and must not be routed
-through this function. See #218 and #33.</p>
+<p>Where the posteriors being compared are independent, the paired differences
+approximate the posterior of the difference between the estimates. Fits to
+separate data that share no parameter, such as the levels of a
+<code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code>, have independent posteriors. For such
+posteriors, pairing the draws by their index would approximate the same
+distribution, so the random permutation is one Monte Carlo pairing and is
+not required.</p>
+<p>Whether two estimates are independent depends on their joint posterior, not
+on the number of calls that fitted them. Two quantities that are dependent in
+one posterior, for example two levels of one fit that share a group-level
+term or a dispersion parameter, are contrasted by subtracting aligned draws
+(draw <em>i</em> of each), which keeps their covariance. Pairing their draws
+at random removes that covariance. Depending on its sign, the difference
+posterior can then be wider or narrower, and <code>prob_diff</code> can move
+towards or away from 0.5. Conversely, the levels of a
+<code><a href="bnec_joint.html">bnec_joint</a></code> refit that share no parameter, as under its
+defaults, have independent posteriors although they are estimated in one fit.</p>
+<p>Where the fits share data or fitted components, the comparison is of a
+different kind. Two equations pulled from one <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>
+with <code><a href="pull_out.html">pull_out</a></code>, as in the examples, are fitted to the same
+observations, and a model-averaged fit includes the draws of its own
+equations. The comparison then contrasts two estimates of one quantity from
+one dataset, pairing their draws as if they were independent, and
+<code>prob_diff</code> describes how far the two posteriors overlap, i.e. how much
+the estimate depends on the equation fitted. How far it can be read as a
+posterior probability is uncertain, because no joint posterior of the two
+estimates is defined.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
@@ -222,7 +241,7 @@ through this function. See #218 and #33.</p>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">nec4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">manec_example</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">ecx4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">manec_example</span>, model <span class="op">=</span> <span class="st">"ecx4param"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">compare_fitted</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"nec"</span> <span class="op">=</span> <span class="va">ecx4param</span>, <span class="st">"ecx"</span> <span class="op">=</span> <span class="va">nec4param</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">compare_fitted</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"nec4param"</span> <span class="op">=</span> <span class="va">nec4param</span>, <span class="st">"ecx4param"</span> <span class="op">=</span> <span class="va">ecx4param</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

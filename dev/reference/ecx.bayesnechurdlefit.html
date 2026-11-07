@@ -179,12 +179,15 @@ return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 
 
 <dt id="arg-pool">pool<a class="anchor" aria-label="anchor" href="#arg-pool"></a></dt>
-<dd><p>How observed group levels are combined: <code>"none"</code> returns
-per-level estimates, <code>"mixture"</code> samples levels in proportion to their
-observation counts, <code>"mean_estimate"</code> averages aligned estimates, and
-<code>"mean_curve"</code> estimates from their weighted mean curve. A joint fit
-defaults to <code>"none"</code>; other fits with spanning group terms default to
-<code>"mixture"</code>.</p></dd>
+<dd><p>How observed group levels are combined. <code>"none"</code> returns
+per-level estimates. <code>"mixture"</code> gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw <em>i</em> of the mixture comes from posterior iteration
+<em>i</em>. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. <code>"mean_estimate"</code> averages the levels'
+estimates at each draw, and <code>"mean_curve"</code> estimates from their weighted
+mean curve. A joint fit defaults to <code>"none"</code>; other fits with spanning group
+terms default to <code>"mixture"</code>.</p></dd>
 
 
 <dt id="arg-x-control">x_control<a class="anchor" aria-label="anchor" href="#arg-x-control"></a></dt>

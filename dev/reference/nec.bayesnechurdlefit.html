@@ -161,12 +161,15 @@ otherwise unused.</p></dd>
 
 
 <dt id="arg-pool">pool<a class="anchor" aria-label="anchor" href="#arg-pool"></a></dt>
-<dd><p>How observed group levels are combined: <code>"none"</code> returns
-per-level estimates, <code>"mixture"</code> samples levels in proportion to their
-observation counts, and <code>"mean_estimate"</code> averages aligned estimates.
-<code>"mean_curve"</code> is unavailable for a sampled NEC parameter. A joint fit
-defaults to <code>"none"</code>; other fits with spanning group terms default to
-<code>"mixture"</code>.</p></dd>
+<dd><p>How observed group levels are combined. <code>"none"</code> returns
+per-level estimates. <code>"mixture"</code> gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw <em>i</em> of the mixture comes from posterior iteration
+<em>i</em>. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. <code>"mean_estimate"</code> averages the levels'
+estimates at each draw. <code>"mean_curve"</code> is unavailable for a sampled NEC
+parameter. A joint fit defaults to <code>"none"</code>; other fits with spanning group
+terms default to <code>"mixture"</code>.</p></dd>
 
 </dl></div>
     <div id="value">

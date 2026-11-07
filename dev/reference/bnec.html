@@ -272,9 +272,11 @@ two rules differ. The curve-shape parameters <code>d</code> and <code>f</code> u
 <code>normal(0, 1)</code> under <code>"regularizing"</code> and <code>normal(0, 5)</code> under
 <code>"uninformative"</code>. The <code>beta</code> and <code>slope</code> parameters keep
 <code>normal(0, 5)</code> in both sets. Each named parameter receives the same
-entry across equations. The choice is ignored when priors are supplied
-directly via the <code>prior</code> argument. Both default sets assume that the
-tested concentrations reach the lower asymptote of the curve. Where the mean
+entry across equations. Applies only to the entries <code>bnec</code> builds: a
+prior supplied through <code>prior</code> is used as written, and any parameter
+or equation it omits takes its default from the selected set. Both default
+sets assume that the tested concentrations reach the lower asymptote of
+the curve. Where the mean
 response at the highest concentration is below the mean at the second
 highest by more than the contrast's standard error admits, tested one-sided
 at the 5% level under the mean-variance relationship of the fitted family,
@@ -880,10 +882,11 @@ predictor includes an exact zero gives different estimates than it did under
 earlier versions.</p>
 <p>A zero concentration does still restrict what may be written inside
 <code>crf()</code> and <code>disp()</code>, because both are evaluated from the recorded
-column. <code>crf(log(x))</code> reaches <span class="pkg">bayesnec</span>'s own data check as
-<code>-Inf</code> and stops there, naming the predictor. <code>disp(~log(x))</code> is
-evaluated by <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code> instead, which <span class="pkg">bayesnec</span> does not check, so
-the <code>-Inf</code> reaches Stan. Add the offset of your choice to the data and
+column. With <code>crf(log(x))</code>, the data check is given <code>-Inf</code> and
+stops with an error naming the predictor. A <code>disp(~log(x))</code> formula is
+passed to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code> unchanged, although <code>bnec()</code> first evaluates each
+of its terms on the data and stops with an error naming the term
+<code>log(x)</code>. In both cases, add the offset of your choice to the data and
 name that column in the formula.</p>
 <p><b>Missing values</b></p>
 <p>A row with an <code>NA</code> or <code>NaN</code> in any variable the <code>formula</code>

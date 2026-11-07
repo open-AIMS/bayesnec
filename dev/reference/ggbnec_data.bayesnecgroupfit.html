@@ -106,7 +106,9 @@
 <span>  add_ecx <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  group <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  group <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  x_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"recorded"</span>, <span class="st">"fitted"</span><span class="op">)</span>,</span>
+<span>  which <span class="op">=</span> <span class="st">"combined"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -139,7 +141,8 @@ transformed scale instead, as the estimators apply it.</p></dd>
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Additional arguments to be passed to <code><a href="ecx.html">ecx</a></code>. By
-default, function <code><a href="ecx.html">ecx</a></code> returns EC10.</p></dd>
+default, function <code><a href="ecx.html">ecx</a></code> returns EC10. <code>dpar</code> is refused:
+select a block with <code>which</code>.</p></dd>
 
 
 <dt id="arg-group">group<a class="anchor" aria-label="anchor" href="#arg-group"></a></dt>
@@ -152,6 +155,22 @@ group-level variable, or independently fitted <code>bayesnecgroupfit</code>
 panels use it. A
 <code>bayesnecgroupfit</code> returns its fitted grouping variable automatically.</p></dd>
 
+
+<dt id="arg-x-scale">x_scale<a class="anchor" aria-label="anchor" href="#arg-x-scale"></a></dt>
+<dd><p><code>"recorded"</code> (the default) returns the predictor in
+supplied units. <code>"fitted"</code> returns the scale transformed inside
+<code>crf()</code> and attaches <code>"x_axis"</code>, a list of fitted-scale breaks
+and labels in supplied units. A fitted axis cannot be combined with a
+non-identity <code>xform</code>.</p></dd>
+
+
+<dt id="arg-which">which<a class="anchor" aria-label="anchor" href="#arg-which"></a></dt>
+<dd><p>For a <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> with a two-block family, the
+curve or curves to return: <code>"combined"</code> (the default),
+<code>"growth"</code>, <code>"survival"</code> or <code>"all"</code>, as described for
+<code><a href="autoplot.html">autoplot</a></code>. Every other class and family has one curve, and
+refuses any value but <code>"combined"</code>.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
@@ -159,7 +178,9 @@ panels use it. A
 <code>x</code> is a <code>bayesnecgroupfit</code> or a <code>bayesnecjointfit</code>, the
 frame includes a <code>group</code> column and a <code>"group_var"</code> attribute.
 Those two classes also include a <code>panel</code> column containing the level
-drawn in each panel.</p>
+drawn in each panel. For a <code>bayesnecfit</code> with a two-block family, the
+<code>panel</code> column holds the title of the curve each row belongs to, a
+factor whose levels follow <code>which</code>.</p>
     </div>
 
     <div id="ref-examples">

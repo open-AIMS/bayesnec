@@ -164,12 +164,15 @@ return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 
 
 <dt id="arg-pool">pool<a class="anchor" aria-label="anchor" href="#arg-pool"></a></dt>
-<dd><p>How observed group levels are combined: <code>"none"</code> returns
-per-level estimates, <code>"mixture"</code> samples levels in proportion to their
-observation counts, <code>"mean_estimate"</code> averages aligned estimates, and
-<code>"mean_curve"</code> estimates from their weighted mean curve. A joint fit
-defaults to <code>"none"</code>; other fits with spanning group terms default to
-<code>"mixture"</code>.</p></dd>
+<dd><p>How observed group levels are combined. <code>"none"</code> returns
+per-level estimates. <code>"mixture"</code> gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw <em>i</em> of the mixture comes from posterior iteration
+<em>i</em>. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. <code>"mean_estimate"</code> averages the levels'
+estimates at each draw, and <code>"mean_curve"</code> estimates from their weighted
+mean curve. A joint fit defaults to <code>"none"</code>; other fits with spanning group
+terms default to <code>"mixture"</code>.</p></dd>
 
 
 <dt id="arg-x-control">x_control<a class="anchor" aria-label="anchor" href="#arg-x-control"></a></dt>
@@ -199,6 +202,13 @@ level of a spanning term observed at only one concentration is excluded from
 the estimate, with a message naming it. The default mixes the remaining
 observed levels by their observation counts;
 <code>pool = "none"</code> returns them separately.</p>
+<p>On a <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code>, each level of the refit is mixed over
+its own observed group levels. A group term whose values occur in the data
+of more than one level, such as a batch in which two levels were both
+tested, is read at the same value for every level at each posterior draw,
+as often as their observation counts on that term allow. Terms they do not
+share are chosen for each level independently. The levels can therefore be
+contrasted draw by draw, as <code><a href="compare_posterior.html">compare_posterior</a></code> does.</p>
 <p>The effect is measured from the control — the predicted mean at the
 lowest concentration in the supplied predictor, per posterior draw — and
 <code>type</code> names what it is measured towards, exactly as in

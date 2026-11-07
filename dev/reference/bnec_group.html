@@ -209,10 +209,8 @@ counted, and <code>plan(list(sequential, ...))</code> asks for the levels in
 sequence explicitly.</p>
 <p>No argument turns this on or off: the plan already holds that state, as it
 does for <code><a href="bnec.html">bnec</a></code>.</p>
-<p>The worked treatment — why the inner worker count needs <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code>, what a
-parallel grouped call does to compilation and to memory, and the warning a
-nested plan emits — is in <code><a href="../articles/example2.html">vignette("example2")</a></code> under <em>The
-levels of a grouped call</em>.</p>
+<p>A worked example, including the nested plan that drives both loops, is in
+<code><a href="../articles/example8.html">vignette("example8")</a></code> under <em>Fitting the levels in parallel</em>.</p>
 <p><b>What a plan does and does not reproduce</b></p>
 <p>Each level is given its own seed, realised in the calling session before the
 levels are dispatched and derived from <code>seed</code> where you passed one. The
