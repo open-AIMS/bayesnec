@@ -36,6 +36,10 @@ is_bayesnechurdlefit <- function(x) {
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param resolution The number of unique predictor values to predict over.
 #' @param x_range A range of predictor values to predict over.
+#' @param x_control The control reading, as \code{ecx()} takes it.
+#' @param levels \code{TRUE} to mix the observed levels of a group term that
+#' spans the series, or \code{FALSE} for the population curve, with group
+#' deviations at zero, as the plotted band uses.
 #' @details Draws are paired by row, which is valid because the two posteriors
 #' are independent. Where the fits hold different numbers of draws, both are
 #' truncated to the smaller.
@@ -53,8 +57,10 @@ is_bayesnechurdlefit <- function(x) {
 #'
 #' @noRd
 hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
-                                   x_control = "own") {
-  spec <- if (is.null(object$observed_group)) observed_level_spec(object)
+                                   x_control = "own", levels = TRUE) {
+  spec <- if (levels && is.null(object$observed_group)) {
+    observed_level_spec(object)
+  }
   if (!is.null(spec)) {
     if (is.na(x_range[1])) x_range <- range(unlist(spec$x))
     levels <- lapply(seq_len(nrow(spec$combinations)), function(i) {

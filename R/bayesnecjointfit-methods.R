@@ -491,15 +491,8 @@ joint_level_curve <- function(object, level, resolution = 1000,
     grid$newdata[[grid$x_var]] <- as.numeric(inverse(x_seq))
     grid$x_seq <- x_seq
   }
-  spec <- observed_level_spec(lvl_fit)
-  y <- if (is.null(spec)) {
-    fitted(lvl_fit, newdata = grid$newdata, robust = TRUE,
-           re_formula = NA, scale = "response")
-  } else {
-    summarise_epred(observed_grid_posterior(object$fit,
-                                           object$bayesnecformula,
-                                           grid$newdata, spec), robust = TRUE)
-  }
+  y <- fitted(lvl_fit, newdata = grid$newdata, robust = TRUE,
+              re_formula = NA, scale = "response")
   data.frame(x = grid$x_seq, Estimate = y[, "Estimate"],
              Q2.5 = y[, "Q2.5"], Q97.5 = y[, "Q97.5"])
 }
