@@ -14,12 +14,14 @@ marine_fits <- list(
   ecxhormebc5 = readRDS(file.path(fit_dir, "fit_marine_bc5.rds"))
 )
 lettuce_fits <- list(
-  "neclinhorme (linear dose)" = readRDS(file.path(fit_dir, "fit_lettuce.rds")),
-  nechorme = readRDS(file.path(fit_dir, "fit_lettuce_nechorme.rds")),
-  nechorme4 = readRDS(file.path(fit_dir, "fit_lettuce_nechorme4.rds")),
-  ecxhormebc4 = readRDS(file.path(fit_dir, "fit_lettuce_ecxhormebc4.rds")),
-  "neclinhorme (log dose)" =
-    readRDS(file.path(fit_dir, "fit_lettuce_log_neclinhorme.rds"))
+  neclinhorme = readRDS(file.path(fit_dir,
+                                   "fit_lettuce_log_neclinhorme.rds")),
+  nechorme = readRDS(file.path(fit_dir, "fit_lettuce_log_nechorme.rds")),
+  nechorme4 = readRDS(file.path(fit_dir, "fit_lettuce_log_nechorme4.rds")),
+  ecxhormebc4 = readRDS(file.path(fit_dir,
+                                   "fit_lettuce_log_ecxhormebc4.rds")),
+  ecxhormebc5 = readRDS(file.path(fit_dir,
+                                   "fit_lettuce_log_ecxhormebc5.rds"))
 )
 
 predict_curve <- function(fit, concentrations) {
@@ -88,9 +90,7 @@ ggplot2::ggsave("vignettes/vignette-fig-example10-lettuce-fit.png",
 
 fits_to_check <- c(
   stats::setNames(marine_fits, paste0("marine_", names(marine_fits))),
-  stats::setNames(lettuce_fits, paste0("lettuce_", names(lettuce_fits))),
-                   list("ecxhormebc5 (lettuce)" =
-                          readRDS(file.path(fit_dir, "fit_lettuce_bc5.rds"))))
+  stats::setNames(lettuce_fits, paste0("lettuce_", names(lettuce_fits))))
 for (model in names(fits_to_check)) {
   check <- bayesnec::check_fit(fits_to_check[[model]], ndraws = 1000,
                                seed = 570)
