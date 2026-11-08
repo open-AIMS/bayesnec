@@ -250,9 +250,8 @@ summary_f
 #> growth (NSEC)      0.03  0.01  0.09
 #> survival (NEC)    14.23 10.65 14.94
 #> 
-#> NSEC values appear where a model set contains smooth (ECx) models, which
-#> carry no threshold parameter; N(S)EC is a model-averaged combination
-#> of the two (Fisher et al. 2023).
+#> NSEC values come from smooth or hormesis threshold equations; N(S)EC
+#> combines sampled NEC and curve-read NSEC estimates (Fisher et al. 2023).
 #> 
 #> ECx estimates
 #>                 Q50  Q2.5 Q97.5

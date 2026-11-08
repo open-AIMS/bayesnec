@@ -59,13 +59,17 @@ fits to separate data that share no parameter, such as the levels of a
 
 Where two estimates come from one posterior and share a parameter, for example
 two levels of a `bnec_joint()` refit with a common group-level term, they can
-be correlated, and pairing their draws at random discards that correlation. The
-contrast is then taken draw by draw, from the draws that `ecx()` returns for
-each level of the refit under `posterior = TRUE`, as shown for copper and zinc
-in the [Grouping and factor covariates][e8] vignette. Where two fits share
-data, such as two equations of one model set, `prob_diff` describes how far
-their posteriors overlap and cannot be read directly as a posterior probability
-(see the section *What the comparison estimates* in `?compare_posterior`).
+be correlated. `compare_posterior()` takes such a refit directly and subtracts
+the levels' estimates at the same posterior draw, so that the differences
+reflect any correlation between them. Where the levels are read at their
+observed group levels and were tested in shared batches, both are read in the
+same batch at each draw, as far as their numbers of observations per batch
+allow, so that the comparison is made within a batch. The
+[Grouping and factor covariates][e8] vignette compares copper and zinc in this
+way. Where two fits share data, such as two equations of one model set,
+`prob_diff` describes how far their posteriors overlap and cannot be read
+directly as a posterior probability (see the section *What the comparison
+estimates* in `?compare_posterior`).
 
 Below we demonstrate `compare_posterior` on two published datasets that are
 included in `bayesnec`, each fitted separately by level using `bnec_group()`. In
@@ -244,7 +248,7 @@ ggplot(herb_wi, aes(x = herbicide, y = equation, fill = wi)) +
 
 
 
-The herbicides differ in which equations describe them. For example, tebuthiuron puts 0.52 of its weight on `ecxwb2p3`, which receives no more than 0.11 for any other herbicide, and atrazine puts 0.65 of its weight on `ecxwb1`, which receives no more than 0.27 for any other herbicide.
+The herbicides differ in which equations describe them. For example, tebuthiuron puts 0.52 of its weight on `ecxwb2p3`, which receives no more than 0.11 for any other herbicide, and atrazine puts 0.63 of its weight on `ecxwb1`, which receives no more than 0.27 for any other herbicide.
 The number of equations given a weight of 0.05 or more (the labelled cells) is
 3 for ametryn, atrazine and tebuthiuron, 4 for hexazinone and irgarol, and 5 for diuron and simazine. No herbicide gives `nec3param` or `nec4param` a weight of 0.05 or more. This suggests that fitting the levels
 separately is appropriate here, because the curve they would be shrunk towards
@@ -306,14 +310,14 @@ herb_sum
 #> 2 diuron       0.151 0.109  0.194
 #> 3 ametryn      0.192 0.119  0.625
 #> 4 hexazinone   0.622 0.235  1.63 
-#> 5 atrazine     1.12  0.328  2.51 
-#> 6 simazine     4.23  0.931 11.3  
+#> 5 atrazine     1.14  0.343  2.51 
+#> 6 simazine     4.23  1.04  11.3  
 #> 7 tebuthiuron 10.6   4.42  13.6
 ```
 
 
 
-The N(S)EC estimates span a factor of about 79, from irgarol at 0.133 µg/L (0.107–0.175) and diuron at 0.151 (0.109–0.194), through ametryn at 0.192, hexazinone at 0.622 and atrazine at 1.12, to simazine at 4.23 and tebuthiuron at 10.6 (4.42–13.6). These draws can also be plotted as densities.
+The N(S)EC estimates span a factor of about 79, from irgarol at 0.133 µg/L (0.107–0.175) and diuron at 0.151 (0.109–0.194), through ametryn at 0.192, hexazinone at 0.622 and atrazine at 1.14, to simazine at 4.23 and tebuthiuron at 10.6 (4.42–13.6). These draws can also be plotted as densities.
 
 
 ``` r
@@ -334,8 +338,8 @@ ggplot(data = herb_post, mapping = aes(x = value)) +
 
 
 This is the display shown in Figure 11 of @fisher2024. Irgarol and diuron, the most potent of the herbicides, overlap substantially: their intervals run from 0.107 to 0.175 and from 0.109 to 0.194 µg/L. The
-posteriors also differ in width as much as in position. For example, the interval for irgarol spans a factor of 1.6 from end to end and that for diuron a factor of 1.8, against 12.1 for simazine and 7.6 for atrazine.
- The posteriors of ametryn, atrazine, hexazinone, simazine and tebuthiuron have a second mode, near 0.62, 1.8, 1.5, 11 and 7.4 µg/L respectively. A model-averaged posterior is a mixture, and an equation with
+posteriors also differ in width as much as in position. For example, the interval for irgarol spans a factor of 1.6 from end to end and that for diuron a factor of 1.8, against 10.8 for simazine and 7.3 for atrazine.
+ The posteriors of ametryn, hexazinone, simazine and tebuthiuron have a second mode, near 0.62, 1.5, 11 and 7.4 µg/L respectively. A model-averaged posterior is a mixture, and an equation with
 little weight that places its threshold elsewhere can appear as a second mode
 or a long tail, without changing the median.
 
@@ -347,27 +351,27 @@ near 0.5 does not.
 ``` r
 cmp_herb$prob_diff
 #>                comparison        prob  prob_lower  prob_upper censored_first censored_second
-#> 1        ametryn-atrazine 0.018627328 0.018627328 0.018627328              0               0
+#> 1        ametryn-atrazine 0.017377172 0.017377172 0.017377172              0               0
 #> 2          ametryn-diuron 0.841730216 0.841730216 0.841730216              0               0
 #> 3      ametryn-hexazinone 0.046380798 0.046380798 0.046380798              0               0
 #> 4         ametryn-irgarol 0.922615327 0.922615327 0.922615327              0               0
-#> 5        ametryn-simazine 0.010251281 0.010251281 0.010251281              0               0
+#> 5        ametryn-simazine 0.009626203 0.009626203 0.009626203              0               0
 #> 6     ametryn-tebuthiuron 0.011251406 0.011251406 0.011251406              0               0
-#> 7         atrazine-diuron 0.986748344 0.986748344 0.986748344              0               0
-#> 8     atrazine-hexazinone 0.816227028 0.816227028 0.816227028              0               0
-#> 9        atrazine-irgarol 0.987498437 0.987498437 0.987498437              0               0
-#> 10      atrazine-simazine 0.045130641 0.045130641 0.045130641              0               0
-#> 11   atrazine-tebuthiuron 0.011626453 0.011626453 0.011626453              0               0
+#> 7         atrazine-diuron 0.988998625 0.988998625 0.988998625              0               0
+#> 8     atrazine-hexazinone 0.822852857 0.822852857 0.822852857              0               0
+#> 9        atrazine-irgarol 0.988998625 0.988998625 0.988998625              0               0
+#> 10      atrazine-simazine 0.044380548 0.044380548 0.044380548              0               0
+#> 11   atrazine-tebuthiuron 0.011751469 0.011751469 0.011751469              0               0
 #> 12      diuron-hexazinone 0.013876735 0.013876735 0.013876735              0               0
 #> 13         diuron-irgarol 0.729591199 0.729591199 0.729591199              0               0
-#> 14        diuron-simazine 0.009626203 0.009626203 0.009626203              0               0
-#> 15     diuron-tebuthiuron 0.011251406 0.011251406 0.011251406              0               0
+#> 14        diuron-simazine 0.008876110 0.008876110 0.008876110              0               0
+#> 15     diuron-tebuthiuron 0.011126391 0.011126391 0.011126391              0               0
 #> 16     hexazinone-irgarol 0.987123390 0.987123390 0.987123390              0               0
-#> 17    hexazinone-simazine 0.021877735 0.021877735 0.021877735              0               0
-#> 18 hexazinone-tebuthiuron 0.011001375 0.011001375 0.011001375              0               0
-#> 19       irgarol-simazine 0.009876235 0.009876235 0.009876235              0               0
+#> 17    hexazinone-simazine 0.017752219 0.017752219 0.017752219              0               0
+#> 18 hexazinone-tebuthiuron 0.011126391 0.011126391 0.011126391              0               0
+#> 19       irgarol-simazine 0.009001125 0.009001125 0.009001125              0               0
 #> 20    irgarol-tebuthiuron 0.011251406 0.011251406 0.011251406              0               0
-#> 21   simazine-tebuthiuron 0.076384548 0.076384548 0.076384548              0               0
+#> 21   simazine-tebuthiuron 0.073134142 0.073134142 0.073134142              0               0
 ```
 
 
@@ -375,9 +379,9 @@ cmp_herb$prob_diff
 Of the 21 pairs,
 16 have a probability below
 0.05 or above 0.95. For example, the probability that irgarol has the higher
-N(S)EC is 0.010 against simazine
+N(S)EC is 0.009 against simazine
 and 0.011 against tebuthiuron.
-The least separated pair is diuron and irgarol at 0.730, the most potent of the set, followed by atrazine and hexazinone at 0.816, ametryn and diuron at 0.842, ametryn and irgarol at 0.923, and simazine and tebuthiuron at 0.076.
+The least separated pair is diuron and irgarol at 0.730, the most potent of the set, followed by atrazine and hexazinone at 0.823, ametryn and diuron at 0.842, ametryn and irgarol at 0.923, and simazine and tebuthiuron at 0.073.
 
 The N(S)EC is a no-effect estimate, and it is not what @jones2003 report. They
 report EC50 values (the concentration at which yield is halved), so the
@@ -389,11 +393,11 @@ herb_ec50 <- ecx(fits_herb, ecx_val = 50)
 herb_ec50
 #>         level         Q50       Q2.5       Q97.5 bound_Q50 bound_Q2.5 bound_Q97.5
 #> 1     ametryn   1.4525671   1.290950   1.6028760                                 
-#> 2    atrazine  39.4168890  34.928425  44.1435047                                 
+#> 2    atrazine  39.3683776  34.960950  44.2231100                                 
 #> 3      diuron   2.0418154   1.899820   2.1894078                                 
 #> 4  hexazinone   7.3754008   6.731899   8.0245874                                 
 #> 5     irgarol   0.5387713   0.479069   0.5954517                                 
-#> 6    simazine 124.2181364 112.629884 136.2658496                                 
+#> 6    simazine 124.1753433 112.627324 136.6225166                                 
 #> 7 tebuthiuron  90.3584313  84.519524  95.2532588
 ```
 
@@ -545,7 +549,7 @@ fits_yield <- screen_models(fits_yield, group_action = "per_level")
 #> Dropping 1 of 4 candidate models that failed the sampler screen:
 #>   -  nec3param: Rhat 1.014
 #> Fitted models are: ecxll3 ecxwb1p3 ecxwb2p3
-#> The leave-one-group-out score has Pareto k at or above 0.7 for 2 of 18 levels of chamber in ecxll3 (weight 0.74); 1 of 18 levels of chamber in ecxwb2p3 (weight 0.26). The affected scores are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.Screening level "2050".
+#> The leave-one-group-out score has Pareto k at or above 0.7 for 2 of 18 levels of chamber in ecxll3 (weight 0.76); 1 of 18 levels of chamber in ecxwb2p3 (weight 0.24). The affected scores are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.Screening level "2050".
 #> All 4 candidate models passed the sampler screen (Rhat <= 1.01, ESS >= 400, divergences <= 10).
 #> Screening level "2100".
 #> All 4 candidate models passed the sampler screen (Rhat <= 1.01, ESS >= 400, divergences <= 10).
@@ -609,13 +613,13 @@ coral_probs <- bind_rows(lapply(cmp_coral, function(cmps) {
              sapply(cmps, function(x) x$prob_diff$prob), check.names = FALSE)
 }), .id = "endpoint")
 coral_probs
-#>   endpoint comparison     EC50     EC10   N(S)EC
-#> 1   colour  2018-2050 0.934375 0.980500 0.968125
-#> 2   colour  2018-2100 0.998625 0.998250 0.988500
-#> 3   colour  2050-2100 0.980375 0.958500 0.849000
-#> 4    yield  2018-2050 0.428625 0.838375 0.838625
-#> 5    yield  2018-2100 0.352750 0.782250 0.913250
-#> 6    yield  2050-2100 0.420875 0.191875 0.296250
+#>   endpoint comparison      EC50      EC10    N(S)EC
+#> 1   colour  2018-2050 0.9303663 0.9739967 0.9677460
+#> 2   colour  2018-2100 0.9987498 0.9984998 0.9879985
+#> 3   colour  2050-2100 0.9793724 0.9596200 0.8538567
+#> 4    yield  2018-2050 0.4228750 0.8330000 0.8371250
+#> 5    yield  2018-2100 0.3552500 0.7805000 0.9157500
+#> 6    yield  2050-2100 0.4208750 0.1918750 0.2962500
 ```
 
 The posterior draws behind each probability are returned in `posterior_data`,
@@ -647,7 +651,7 @@ ggplot(data = coral_post, mapping = aes(x = value)) +
 
 
 For the colour EC50 (top left panel), the probability that the 2018 estimate is
-the higher is 0.934 against the 2050
+the higher is 0.930 against the 2050
 scenario and 0.999 against the 2100
 scenario, where @flores2021 report 0.956 and 0.970. These could not be expected
 to match exactly, because our model differs from theirs in two respects. The
@@ -671,19 +675,19 @@ response declines.
 
 For colour, the order of the scenarios by increasing posterior median is
 2100, 2050 and 2018 for all three estimates. Across the three estimates, the probability that the
-2018 estimate is the higher ranges from 0.934
+2018 estimate is the higher ranges from 0.930
 to 0.999 against the 2050 and 2100 scenarios.
 The 2018 posteriors are also wide for the EC10 and the N(S)EC (e.g. a 95%
-credible interval for the EC10 of 3.1 to 9.3 µg/L,
-against 1.8 to 3.9 µg/L for 2050), which is again
+credible interval for the EC10 of 3 to 9.2 µg/L,
+against 1.8 to 4 µg/L for 2050), which is again
 likely to reflect the absence of observations between 2.9 and 9.6 µg/L.
 
 For yield, the EC50 posteriors of the three scenarios overlap almost completely
 (bottom left panel), with probabilities from
-0.35 to 0.43,
+0.36 to 0.42,
 which is consistent with the probabilities of 0.615 and 0.539 that @flores2021
 report for the yield EC50. None of the yield probabilities, for any of the three estimates, is below 0.05 or above 0.95. The model weights favour
-`ecxll3` under 2018 (0.74), and `ecxwb1p3` under 2050 and 2100 (0.81 and 1.00). The EC10 and the N(S)EC differ more between the scenarios than the EC50 does (e.g. a 95% credible interval for the N(S)EC of 0.18 to 0.75 µg/L under 2018, against 0.13 to 0.29 µg/L under 2100), although mean yield differs between scenarios by at most 0.014 at each concentration below 9.6 µg/L. The medians of both estimates are below 0.96 µg/L, where the only observations are at the control and 0.29 µg/L, and there the fitted curve follows the shape of the equation the weights favour. The difference is therefore likely to reflect that choice of equation, and it should not be read as an effect of climate from these data.
+`ecxll3` under 2018 (0.76), and `ecxwb1p3` under 2050 and 2100 (0.81 and 1.00). The EC10 and the N(S)EC differ more between the scenarios than the EC50 does (e.g. a 95% credible interval for the N(S)EC of 0.18 to 0.75 µg/L under 2018, against 0.13 to 0.29 µg/L under 2100), although mean yield differs between scenarios by at most 0.014 at each concentration below 9.6 µg/L. The medians of both estimates are below 0.96 µg/L, where the only observations are at the control and 0.29 µg/L, and there the fitted curve follows the shape of the equation the weights favour. The difference is therefore likely to reflect that choice of equation, and it should not be read as an effect of climate from these data.
 
 ## Comparing the fitted curves
 
@@ -699,12 +703,12 @@ cmp_colour_fit <- compare_posterior(fits_colour, comparison = "fitted",
                                     resolution = 200)
 head(cmp_colour_fit$posterior_data)
 #>   model         x  Estimate      Q2.5     Q97.5
-#> 1  2018 0.1000000 0.7254966 0.6937514 0.7568346
-#> 2  2018 0.1477387 0.7254966 0.6937514 0.7568346
-#> 3  2018 0.1954774 0.7254966 0.6937514 0.7568328
-#> 4  2018 0.2432161 0.7254956 0.6937514 0.7567826
-#> 5  2018 0.2909548 0.7254916 0.6937514 0.7567707
-#> 6  2018 0.3386935 0.7254796 0.6937514 0.7567652
+#> 1  2018 0.1000000 0.7251965 0.6934986 0.7574330
+#> 2  2018 0.1477387 0.7251965 0.6934931 0.7574302
+#> 3  2018 0.1954774 0.7251965 0.6934827 0.7573972
+#> 4  2018 0.2432161 0.7251965 0.6934661 0.7573970
+#> 5  2018 0.2909548 0.7251965 0.6934420 0.7573715
+#> 6  2018 0.3386935 0.7251965 0.6934047 0.7573715
 ```
 
 In the case of `comparison = "fitted"` the elements returned by
@@ -756,15 +760,15 @@ fall 10 per cent below the control value in the order 2100 (1.3 µg/L), 2050 (2.
 band for 2018 is widest at 8.9 µg/L, which is again likely
 to reflect the absence of observations between 2.9 and 9.6 µg/L. The probability
 that the 2018 curve is the higher first exceeds 0.9 at
-0.77 µg/L against the 2100 curve and at
+0.72 µg/L against the 2100 curve and at
 1.7 µg/L against the 2050 curve, and
 at the highest concentration it is
-0.996 and
-0.884, respectively. The
+0.997 and
+0.883, respectively. The
 2050 and 2100 curves are most clearly separated at
-2.9 µg/L (a probability of
-0.992), and the probability is
-0.982 at the highest concentration. This
+2.8 µg/L (a probability of
+0.993), and the probability is
+0.984 at the highest concentration. This
 suggests that the scenarios differ over the range of concentrations in which the
 colour response declines under at least one scenario.
 
