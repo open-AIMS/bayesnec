@@ -1,5 +1,12 @@
 # bayesnec 2.2.0
 
+- A significant decline between the two highest concentrations now includes
+  the highest mean as a percentage of the control mean. When the absolute
+  ratio to a finite, positive control mean is at most 5%, the message omits
+  advice to declare the lower asymptote unobserved. The contrast is still
+  reported; grouped levels and hurdle response blocks are assessed separately
+  (#585).
+
 - `nec()` and printed `summary()` now identify sampled NEC posteriors with
   substantial mass near a finite prior bound. The `prior_bound_summary`
   attribute gives the bound and the number and share of draws in the outer 5%
