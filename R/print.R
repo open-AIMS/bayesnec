@@ -124,7 +124,7 @@ print.manecsummary <- function(x, ...) {
   cat(x$family$family, "\n")
   cat(x$family$links, "\n")
   cat("\n")
-  cat("Number of posterior draws per model: ", x$sample_size)
+  cat("Number of draws in model average: ", x$sample_size)
   cat("\n\n")
   cat("Model weights (Method: ", x$mod_weights_method,
       leave_out_label(x$mod_weights_leave_out), "):\n", sep = "")

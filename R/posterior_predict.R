@@ -95,7 +95,8 @@ posterior_predict.bayesmanecfit <- function(object, newdata = NULL, ...) {
   # Use the index stored when the object was built, so that the weighting is
   # the same on every call. The simulated readings still vary, as they do for
   # a single brmsfit.
-  draw_index <- pull_draw_index(object, model_set, sample_size)
+  draw_index <- pull_draw_index(object, model_set, sample_size,
+                                draw_counts = vapply(pred_list, nrow, integer(1)))
   do_wrapper(model_set, w_pred_list_calc, pred_list, draw_index, fct = "rbind")
 }
 

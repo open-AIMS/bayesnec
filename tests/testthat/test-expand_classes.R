@@ -220,13 +220,12 @@ test_that("new loo_controls are incorporated", {
     suppressWarnings()
 })
 
-test_that("each model is thinned to exactly its share of the weighted draws", {
+test_that("weighted draws respect model shares and the total count", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # Check each model's contribution count against round(sample_size * wi)
-  # and check membership in its posterior. Derive counts from the fixture
-  # weights so regenerated example objects remain testable.
+  # Check each model's contribution against its weighted share and check
+  # membership in its posterior.
   set.seed(180)
   tt5 <- expand_manec(tt1, formulas) |>
     suppressMessages() |>
@@ -235,25 +234,22 @@ test_that("each model is thinned to exactly its share of the weighted draws", {
   expect_null(tt5$w_pred_vals$posterior)
   n <- tt5$sample_size
   formulas_by_model <- lapply(tt5$mod_fits, `[[`, "bayesnecformula")
+  idx <- tt5$w_draw_index
   for (mod in tt5$success_models) {
     full <- bayesnec:::posterior_on_grid(tt5$mod_fits[[mod]]$fit,
                                          formulas_by_model[[mod]],
                                          resolution = 1000)
-    idx <- bayesnec:::weighted_draw_index(tt5$success_models, n,
-                                          tt5$mod_stats, tt5$w_draw_seed)
     drawn <- bayesnec:::w_grid_pred_calc(mod, tt5$mod_fits, formulas_by_model,
                                          NA, 1000, idx)
-    expect_equal(nrow(drawn), round(n * tt5$mod_stats[mod, "wi"]))
+    expect_equal(nrow(drawn), length(idx[[mod]]))
+    expect_lte(abs(nrow(drawn) - n * tt5$mod_stats[mod, "wi"]), 1)
     expect_equal(ncol(drawn), 1000)
     # Copied values permit exact row-sum comparison on this fixture. Equal
     # row sums alone do not establish row identity for arbitrary matrices.
     expect_true(all(rowSums(drawn) %in% rowSums(full)))
   }
   # The rows contributed across all models account for the whole weighted set.
-  expect_equal(sum(round(n * tt5$mod_stats$wi)),
-               sum(vapply(tt5$success_models, function(mod) {
-                 as.integer(round(n * tt5$mod_stats[mod, "wi"]))
-               }, integer(1))))
+  expect_equal(sum(lengths(idx)), n)
   # The summary the plot methods use spans the grid it is supposed to.
   expect_equal(nrow(tt5$w_pred_vals$data), 1000)
   expect_named(tt5$w_pred_vals$data, c("x", "Estimate", "Q2.5", "Q97.5"))
@@ -400,29 +396,92 @@ thin_prebayesnecfit <- function(x, by) {
   x
 }
 
-test_that("unequal draw counts are refused before model weighting", {
+test_that("model sets use every available draw when counts differ", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  set.seed(548)
-  short <- thin_prebayesnecfit(manec_example$mod_fits$nec4param, by = 4)
-  long <- manec_example$mod_fits$ecx4param
+  set.seed(583)
+  short <- thin_prebayesnecfit(manec_example$mod_fits$ecx4param, by = 4)
+  long <- manec_example$mod_fits$nec4param
   expect_equal(brms::ndraws(short$fit), 26)
   expect_equal(brms::ndraws(long$fit), 100)
-  fits <- list(nec4param = short, ecx4param = long)
+  fits <- list(nec4param = long, ecx4param = short)
   formulas <- lapply(fits, `[[`, "bayesnecformula")
-  expected <- paste0(
-    "Cannot combine models with different numbers of posterior draws: ",
-    "nec4param = 26, ecx4param = 100. Refit with matching retained draw ",
-    "counts; set thin during fitting if the iteration counts differ."
-  )
-  expect_error(expand_manec(fits, formulas), expected, fixed = TRUE)
+  controls <- list(weights = list(method = "pseudobma", BB = FALSE))
+  set <- suppressMessages(suppressWarnings(
+    expand_manec(fits, formulas, loo_controls = controls)))
+  expect_equal(set$sample_size, 26)
+  pointwise <- lapply(set$mod_fits, function(x) {
+    x$fit$criteria$loo$pointwise[, "elpd_loo"]
+  })
+  expected <- loo::pseudobma_weights(do.call(cbind, pointwise), BB = FALSE)
+  expect_equal(as.numeric(set$mod_stats$wi), as.numeric(expected))
+  expect_true(any(set$w_draw_index$nec4param > 26))
+  expect_true(all(set$w_draw_index$ecx4param <= 26))
 
+  long_single <- pull_out(manec_example, "nec4param")
   short_single <- thin_prebayesnecfit(
-    pull_out(manec_example, "nec4param"), by = 4
+    pull_out(manec_example, "ecx4param"), by = 4
   )
-  long_single <- pull_out(manec_example, "ecx4param")
-  expect_error(c(short_single, long_single), expected, fixed = TRUE)
+  combined <- suppressMessages(suppressWarnings(c(long_single, short_single)))
+  expect_s3_class(combined, "bayesmanecfit")
+  expect_equal(combined$sample_size, 26)
+  expect_true(any(combined$w_draw_index$nec4param > 26))
+  predictions <- brms::posterior_epred(combined)
+  expect_equal(nrow(predictions), combined$sample_size)
+  expect_equal(predictions, do.call(rbind, lapply(names(combined$mod_fits),
+    function(m) {
+      brms::posterior_epred(combined$mod_fits[[m]]$fit)[
+        combined$w_draw_index[[m]], , drop = FALSE]
+    })))
+})
+
+test_that("equal-draw sets retain loo weights and draw indices", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  set.seed(583)
+  fits <- manec_example$mod_fits
+  controls <- list(weights = list(method = "pseudobma", BB = FALSE))
+  out <- suppressMessages(suppressWarnings(expand_manec(
+    fits, lapply(fits, `[[`, "bayesnecformula"), loo_controls = controls)))
+  criteria <- lapply(out$mod_fits, function(x) x$fit$criteria$loo)
+  expected <- loo::loo_model_weights(criteria, method = "pseudobma", BB = FALSE)
+  expect_equal(as.numeric(out$mod_stats$wi), as.numeric(expected))
+  expect_identical(out$w_draw_index,
+                   weighted_draw_index(out$success_models, out$sample_size,
+                                       out$mod_stats, out$w_draw_seed))
+})
+
+test_that("model weights require the same scored observations", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  criterion <- weight_criteria
+  with_mocked_bindings(
+    expect_error(suppressMessages(suppressWarnings(expand_manec(
+      manec_example$mod_fits,
+      lapply(manec_example$mod_fits, `[[`, "bayesnecformula")))),
+      "different numbers of observations"),
+    weight_criteria = function(...) {
+      out <- criterion(...)
+      out$criteria[[2]]$pointwise <- out$criteria[[2]]$pointwise[-1, ,
+                                                                drop = FALSE]
+      out
+    },
+    .package = "bayesnec"
+  )
+})
+
+test_that("model weighting rejects misspelled controls", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fits <- manec_example$mod_fits
+  expect_error(suppressMessages(suppressWarnings(expand_manec(
+    fits, lapply(fits, `[[`, "bayesnecformula"),
+    loo_controls = list(weights = list(BB_n_typo = 5))))),
+    "Unknown loo_controls\\$weights argument: BB_n_typo", fixed = FALSE)
 })
 
 # manec_example holds 50 post-warmup draws in each of 2 chains. `by = 4` keeps
@@ -449,8 +508,9 @@ indices_used <- function(expr) {
   seen <- list()
   with_mocked_bindings(
     expr,
-    pull_draw_index = function(object, model_set, sample_size) {
-      out <- pull(object, model_set, sample_size)
+    pull_draw_index = function(object, model_set, sample_size,
+                               draw_counts = NULL) {
+      out <- pull(object, model_set, sample_size, draw_counts)
       seen[[length(seen) + 1]] <<- out
       out
     },
