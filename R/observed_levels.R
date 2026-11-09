@@ -906,9 +906,11 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
                              toupper(what))
   if (!is.null(lims)) {
     for (fit in fits) {
-      fitted_extrapolate_limits(lims,
-                                list(lower = low, upper = high),
-                                ne_grid_formula(fit))
+      formula <- ne_grid_formula(fit)
+      if (!is.null(formula)) {
+        fitted_extrapolate_limits(lims,
+                                  list(lower = low, upper = high), formula)
+      }
     }
     x_vec <- extend_grid_values(x_vec, lims)
     low <- min(x_vec)

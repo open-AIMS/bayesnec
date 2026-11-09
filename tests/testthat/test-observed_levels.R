@@ -406,9 +406,11 @@ test_that("mean_curve NSEC censors crossings before the common range", {
 
 test_that("mean_curve NSEC reads a finite extrapolation limit", {
   fits <- list(a = list(), b = list())
+  grids <- list()
   local_mocked_bindings(
     level_x_bounds = function(object) c(0, 3),
     level_curve_draws = function(object, x_vec, ...) {
+      grids[[length(grids) + 1L]] <<- x_vec
       list(curve = rbind(10 - 0.5 * x_vec, 12 - 0.5 * x_vec),
            control = c(10, 12), asymptote = 0)
     },
@@ -421,6 +423,7 @@ test_that("mean_curve NSEC reads a finite extrapolation limit", {
   )
   tested <- estimate(FALSE)
   extended <- estimate(5)
+  expect_identical(grids[[3]][match(grids[[1]], grids[[3]])], grids[[1]])
   expect_true(is.na(tested[2]))
   expect_true(is.finite(extended[2]))
   expect_gt(extended[2], 3)
