@@ -430,6 +430,20 @@ test_that("mean_curve NSEC reads a finite extrapolation limit", {
   expect_equal(attr(extended, "censored")$upper, 5)
 })
 
+test_that("mean_curve validates transformed limits for fitted objects", {
+  fit <- suppressMessages(suppressWarnings(
+    pull_out(manec_example, model = "nec4param")
+  ))
+  fit$bayesnecformula <- bnf(y ~ crf(log(x), model = "nec4param"))
+  expect_error(
+    bayesnec:::mean_curve_estimate(
+      list(a = fit, b = fit), c(1, 1), "nsec",
+      list(x_range = c(1, 3), extrapolate = c(0, 4), resolution = 10)
+    ),
+    "domain of the crf"
+  )
+})
+
 test_that("mean_curve refuses relative effects on a combined hurdle", {
   fits <- list(a = list(fit = list(family = brms::hurdle_poisson())))
   local_mocked_bindings(
