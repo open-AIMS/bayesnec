@@ -480,12 +480,12 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
                       retrieve_var(bdat, "x_var", error = TRUE),
                       predictor_scale = prior_args$predictor_scale)
   if (!is.null(x_control) &&
-      identical(prior_args$prior_type, "regularizing") &&
-      is.null(brm_args$prior)) {
+      identical(prior_args$prior_type, "regularizing")) {
     for (level in object$levels) {
       level_frame <- bdat[data[[group_var]] == level, , drop = FALSE]
       attr(level_frame, "bnec_pop") <- attr(bdat, "bnec_pop")
-      check_control_top_prior(level_frame, family, models[[level]], NULL,
+      check_control_top_prior(level_frame, family, models[[level]],
+                              brm_args$prior,
                               prior_args$prior_type, x_control)
     }
   }
