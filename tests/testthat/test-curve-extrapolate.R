@@ -38,6 +38,43 @@ test_that("ECx, NSEC and ECNSEC share a finite extended range", {
   )), "narrow it with x_range")
 })
 
+test_that("ECx preserves interior values and identifies or censors beyond the data", {
+  fit <- suppressMessages(suppressWarnings(
+    pull_out(manec_example, model = "ecx4param")
+  ))
+  args <- list(object = fit, resolution = 30, x_range = c(0.5, 0.9))
+  estimate <- function(effect, limit = FALSE, posterior = TRUE) {
+    suppressWarnings(do.call(ecx, c(args, list(
+      ecx_val = effect, extrapolate = limit, posterior = posterior
+    ))))
+  }
+
+  interior <- estimate(2)
+  extended <- estimate(2, 2)
+  identified <- is.finite(interior)
+  expect_true(any(identified))
+  expect_equal(interior[identified], extended[identified], tolerance = 1e-6)
+
+  expect_true(all(is.na(estimate(20))))
+  beyond_data <- estimate(20, 2)
+  expect_true(all(is.finite(beyond_data)))
+  expect_true(all(beyond_data > 0.9 & beyond_data < 2))
+
+  beyond_limit <- estimate(120, 2, posterior = FALSE)
+  expect_equal(as.numeric(beyond_limit), rep(2, 3))
+  record <- attr(beyond_limit, "censored_summary")
+  expect_identical(record$bound, rep(">=", 3))
+  expect_equal(record$upper, 2)
+  expect_equal(record$n_above, record$n_draws)
+})
+
+test_that("an extension exceeding the grid point guard is refused", {
+  x <- seq(0, 1, length.out = 500)
+  expect_error(bayesnec:::extend_grid_values(
+    x, list(lower = 0, upper = 50)
+  ), "20,000 grid points")
+})
+
 test_that("model sets forward finite extension to their component curves", {
   args <- list(resolution = 30, x_range = c(0.5, 0.9), extrapolate = 2)
   expect_length(suppressMessages(suppressWarnings(do.call(ecx, c(
