@@ -84,6 +84,8 @@ best_crossed <- function(object) {
 #' \code{object} was fitted with, and to the \code{\link{bnec}} default where
 #' \code{object} does not record it, as a fit made by an earlier version of
 #' \pkg{bayesnec} does not. Each must be named in full.
+#' @param x_control The control concentration on the recorded predictor scale.
+#' Defaults to the value recorded by the factorised fit.
 #' @param ... Further arguments passed to \code{\link[brms]{brm}}.
 #'
 #' @details
@@ -124,8 +126,8 @@ best_crossed <- function(object) {
 #' \code{prior_type}, \code{asymptote_observed} and \code{predictor_scale}
 #' \code{object} was fitted with, unless those arguments are supplied. A grouped
 #' fit made with \code{asymptote_observed = FALSE} is therefore refitted under
-#' the same declaration. Nothing else transfers: priors, control arguments and
-#' the like are defaults again unless passed through \code{...}.
+#' the same declaration. The recorded control concentration is carried over;
+#' priors and brms control arguments are defaults again unless supplied.
 #'
 #' A \code{disp()} term in the formula held in \code{object} is kept, and in
 #' the joint model it applies to the dispersion parameter of the positive
@@ -238,11 +240,23 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
                                          formula = NULL, ...,
                                          prior_type = NULL,
                                          asymptote_observed = NULL,
-                                         predictor_scale = NULL) {
-  # The three follow `...` so that `prior` passed for brm() is not matched to
+                                         predictor_scale = NULL,
+                                         x_control = NULL) {
+  # These follow `...` so that `prior` passed for brm() is not matched to
   # `prior_type` by partial matching.
   prior_args <- recorded_prior_args(object$growth, prior_type,
                                     asymptote_observed, predictor_scale)
+  if (is.null(x_control)) {
+    controls <- lapply(list(object$growth, object$survival),
+                       recorded_x_control)
+    stated <- Filter(Negate(is.null), controls)
+    if (length(stated) > 1L &&
+        !all(vapply(stated, identical, logical(1), stated[[1]]))) {
+      stop("The hurdle components record different controls; supply",
+           " `x_control` to choose one for the joint refit.", call. = FALSE)
+    }
+    x_control <- if (length(stated)) stated[[1]] else NULL
+  }
   # Check the formula's names before swap_crf_model() below, which rebuilds
   # the crf() term from deparsed text and fails on a non-syntactic predictor
   # with a parse error naming neither the column nor the term. A supplied
@@ -303,7 +317,8 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
   bnec(formula, data = object$data, family = joint_fam,
        model_survival = model_survival, prior_type = prior_args$prior_type,
        asymptote_observed = prior_args$asymptote_observed,
-       predictor_scale = prior_args$predictor_scale, ...)
+       predictor_scale = prior_args$predictor_scale,
+       x_control = x_control, ...)
 }
 
 #' @rdname bnec_joint
@@ -315,11 +330,22 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
                                         disp_by_level = TRUE, ...,
                                         prior_type = NULL,
                                         asymptote_observed = NULL,
-                                        predictor_scale = NULL) {
+                                        predictor_scale = NULL,
+                                        x_control = NULL) {
   chk_logical(disp_by_level)
   # Every level is fitted by the same call, so the first records them all.
   prior_args <- recorded_prior_args(object$fits[[1]], prior_type,
                                     asymptote_observed, predictor_scale)
+  if (is.null(x_control)) {
+    controls <- lapply(object$fits, recorded_x_control)
+    stated <- Filter(Negate(is.null), controls)
+    if (length(stated) > 1L &&
+        !all(vapply(stated, identical, logical(1), stated[[1]]))) {
+      stop("The grouped fits record different controls; supply `x_control`",
+           " to choose one for the joint refit.", call. = FALSE)
+    }
+    x_control <- if (length(stated)) stated[[1]] else NULL
+  }
   eq_weights <- joint_equation_weights(object)
   n_lev <- length(object$levels)
   favoured <- joint_level_equations(object)
@@ -449,11 +475,26 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
   }
   brm_args <- list(...)
   brm_args$family <- family
+  bdat <- model.frame(formula, data = data)
+  check_fit_x_control(x_control, formula,
+                      retrieve_var(bdat, "x_var", error = TRUE),
+                      predictor_scale = prior_args$predictor_scale)
+  if (!is.null(x_control) &&
+      identical(prior_args$prior_type, "regularizing") &&
+      is.null(brm_args$prior)) {
+    for (level in object$levels) {
+      level_frame <- bdat[data[[group_var]] == level, , drop = FALSE]
+      attr(level_frame, "bnec_pop") <- attr(bdat, "bnec_pop")
+      check_control_top_prior(level_frame, family, models[[level]], NULL,
+                              prior_args$prior_type, x_control)
+    }
+  }
   refit <- fit_bayesnec(formula = formula, data = data, model = rep_model,
                          brm_args = brm_args, level_spec = level_spec,
                          prior_type = prior_args$prior_type,
                          asymptote_observed = prior_args$asymptote_observed,
-                         predictor_scale = prior_args$predictor_scale)
+                         predictor_scale = prior_args$predictor_scale,
+                         x_control = x_control)
   out <- list(fit = refit$fit,
               model = if (composed) NA_character_ else rep_model,
               models = models, level_spec = level_spec,
@@ -461,6 +502,7 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
               group_var = group_var, levels = object$levels,
               disp_by_level = isTRUE(disp_by_level), data = data,
               family = family, model_weights = eq_weights,
+              x_control = x_control,
               level_weights = joint_level_weights(object, models),
               model_weight_share = share)
   attr(out, "bnec_version") <- joint_version_table(out, version_record())

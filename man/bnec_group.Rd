@@ -51,8 +51,9 @@ of per-level draws. \code{pool = "mixture"} combines levels in proportion
 to their observation counts; \code{"mean_estimate"} averages their
 estimates and \code{"mean_curve"} reads the estimate from their weighted
 mean curves. A NEC parameter has no curve to average, so \code{nec()} does
-not accept \code{"mean_curve"}. Each level uses its own lowest observed
-concentration as the control by default. \code{x_control = "shared"} or a
+not accept \code{"mean_curve"}. Each level uses the control recorded at
+fitting, or its own lowest observed concentration if none was stated.
+\code{x_control = "shared"} or a
 number reads all levels at one concentration and warns where this lies
 below a level's observations.
 

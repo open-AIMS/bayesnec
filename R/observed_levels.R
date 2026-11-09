@@ -381,7 +381,9 @@ model_set_control_recorder <- function(first, choice) {
   spec <- observed_level_spec(first)
   if (is.null(spec)) return(identity)
   labels <- level_labels(spec$combinations)
-  values <- setNames(vapply(spec$x, min, numeric(1)), labels)
+  stated <- recorded_x_control(first)
+  values <- setNames(if (is.null(stated)) vapply(spec$x, min, numeric(1))
+                     else rep(stated, length(spec$x)), labels)
   if (!identical(choice, "own")) values[] <- as.numeric(choice)
   function(x) record_level_controls(x, values)
 }
@@ -501,7 +503,8 @@ shared_level_control <- function(fits, dots) {
   lows <- unlist(lapply(fits, function(fit) {
     spec <- observed_level_spec(fit)
     if (is.null(spec)) control_x(fit) else
-      vapply(spec$x, min, numeric(1))
+      if (is.null(recorded_x_control(fit))) vapply(spec$x, min, numeric(1))
+      else rep(control_x(fit), length(spec$x))
   }), use.names = FALSE)
   value <- checked_shared_control(fits[[1]], choice, lows)
   dots$x_control <- value
@@ -521,8 +524,9 @@ model_set_control <- function(object, choice) {
   if (identical(choice, "own")) return(choice)
   if (!identical(choice, "shared") && !is.numeric(choice)) return(choice)
   spec <- observed_level_spec(object)
-  lows <- if (is.null(spec)) control_x(object) else
-    vapply(spec$x, min, numeric(1))
+  lows <- if (is.null(spec)) control_x(object) else if (
+    is.null(recorded_x_control(object))) vapply(spec$x, min, numeric(1))
+  else rep(control_x(object), length(spec$x))
   checked_shared_control(object, choice, lows)
 }
 
@@ -872,18 +876,22 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   }
   bounds <- t(vapply(fits, level_x_bounds, numeric(2)))
   x_control <- if (is.null(dots$x_control)) "own" else dots$x_control
-  if (identical(x_control, "shared")) x_control <- min(bounds[, 1])
+  controls <- vapply(seq_along(fits), function(i) {
+    stated <- recorded_x_control(fits[[i]])
+    if (is.null(stated)) bounds[i, 1] else stated
+  }, numeric(1))
+  if (identical(x_control, "shared")) x_control <- min(controls)
   own <- identical(x_control, "own")
   requested <- dots$x_range
   if (is.null(requested) || is.na(requested[1])) {
-    low <- if (own) max(bounds[, 1]) else as.numeric(x_control)
+    low <- if (own) max(controls) else as.numeric(x_control)
     high <- if (own) min(bounds[, 2]) else max(bounds[, 2])
   } else {
     low <- min(requested)
     high <- max(requested)
   }
   if (own) {
-    low <- max(low, max(bounds[, 1]))
+    low <- max(low, max(controls))
     high <- min(high, min(bounds[, 2]))
   }
   if (identical(what, "nsec")) {
@@ -891,7 +899,7 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     lims <- extrapolate_limits(extrapolate,
                                list(lower = low, upper = high), "NSEC")
     if (!is.null(lims)) {
-      control_start <- if (own) max(bounds[, 1]) else as.numeric(x_control)
+      control_start <- if (own) max(controls) else as.numeric(x_control)
       low <- max(lims$lower, control_start)
       high <- lims$upper
     }
@@ -994,7 +1002,7 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   } else {
     sig <- if (is.null(dots$sig_val)) 0.01 else dots$sig_val
     reference <- stats::quantile(control, sig)
-    start <- if (own) min(bounds[, 1]) else as.numeric(x_control)
+    start <- if (own) min(controls) else as.numeric(x_control)
     out <- nsec_from_posterior(curve, reference, x_vec, start, control)
     if (own && low > start) {
       # Averaged own controls have no single concentration. Put a draw already

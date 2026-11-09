@@ -745,9 +745,13 @@ define_prior <- function(model, family, predictor, response,
                          group_spec = NULL, prior_predictor = NULL,
                          predictor_scale = "auto", rate_response = FALSE,
                          truncated_response = FALSE, tested_range = NULL,
-                         supplied_pars = character(0)) {
+                         supplied_pars = character(0), x_control = NULL,
+                         x_control_fitted = NULL) {
   if (is.null(prior_predictor)) {
     prior_predictor <- predictor
+  }
+  if (is.null(x_control_fitted)) {
+    x_control_fitted <- x_control
   }
   # The scale an ogl deviation is applied on sets the width of its prior. It
   # depends on the model and the family, which define_group_prior() lacks.
@@ -768,7 +772,9 @@ define_prior <- function(model, family, predictor, response,
                                          prior_predictor = prior_predictor,
                                          predictor_scale = predictor_scale,
                                          tested_range = tested_range,
-                                         supplied_pars = supplied_pars)
+                                         supplied_pars = supplied_pars,
+                                         x_control = x_control,
+                                         x_control_fitted = x_control_fitted)
     # A group-level term reaches the mu block only, because add_formula_glef()
     # runs before the hu sub-formulas are attached. Build its priors from the
     # survivors, on the link scale of the mu family, which is the quantity the
@@ -827,6 +833,19 @@ define_prior <- function(model, family, predictor, response,
     }
   }
   response <- response_link_scale(response, family)
+  if (prior_type == "regularizing" && !is.null(x_control) &&
+      !any(predictor == x_control) && !"top" %in% supplied_pars) {
+    stop("The regularizing prior for `top` needs an observed response at",
+         " `x_control = ", x_control, "`. Supply a `top` prior or include a",
+         " control observation.", call. = FALSE)
+  }
+  top_rows <- if (!is.null(x_control) && any(predictor == x_control)) {
+    predictor >= x_control
+  } else {
+    rep(TRUE, length(predictor))
+  }
+  top_predictor <- predictor[top_rows]
+  top_response <- response[top_rows]
   # Called for its error alone: it refuses an integer predictor on the routes
   # that do not pass through check_data(). Its value is not used.
   set_distribution(predictor, silence_y_msgs = TRUE, silence_x_msgs = FALSE)
@@ -876,7 +895,7 @@ define_prior <- function(model, family, predictor, response,
     #   beta(5, 2)            sd is beta_sd(5, 2), and beta(2, 5) is the same
     u_t_g <- u_b_g <- NA_character_
     if (gamma_scaled) {
-      loc_t <- regularizing_location(predictor, response, "top",
+      loc_t <- regularizing_location(top_predictor, top_response, "top",
                                      zero_bounded = TRUE)
       u_t_g <- regularizing_entry(
         "gamma",
@@ -899,7 +918,7 @@ define_prior <- function(model, family, predictor, response,
     # outside the unit interval.
     u_t_b <- u_b_b <- NA_character_
     if (fam_tag %in% c("bernoulli", "binomial", "beta_binomial", "beta")) {
-      loc_t <- regularizing_location(predictor, response, "top")
+      loc_t <- regularizing_location(top_predictor, top_response, "top")
       loc_b <- regularizing_location(predictor, response, "bot")
       u_t_b <- regularizing_entry(
         "beta",
@@ -916,7 +935,8 @@ define_prior <- function(model, family, predictor, response,
                  poisson = u_t_g,
                  negbinomial = u_t_g,
                  gaussian = local({
-                   l <- regularizing_location(predictor, response, "top")
+                   l <- regularizing_location(top_predictor, top_response,
+                                              "top")
                    regularizing_entry("normal", location = l[["location"]],
                                       location_se = l[["se"]],
                                       uninformative_sd = sd(response) * 2.5)
@@ -983,7 +1003,8 @@ define_prior <- function(model, family, predictor, response,
     tested_range <- range(prior_predictor)
   }
   # A lognormal has no support below zero.
-  x_lb <- tested_range[1]
+  x_lb <- if (is.null(x_control_fitted)) tested_range[1] else
+    as.numeric(x_control_fitted)
   if (grepl("^lognormal", x_pr)) {
     x_lb <- max(x_lb, 0)
   }
@@ -1315,7 +1336,9 @@ define_hurdle_prior <- function(model, family, predictor, response,
                                 prior_predictor = NULL,
                                 predictor_scale = "auto",
                                 tested_range = NULL,
-                                supplied_pars = character(0)) {
+                                supplied_pars = character(0),
+                                x_control = NULL,
+                                x_control_fitted = NULL) {
   if (is.null(prior_predictor)) {
     prior_predictor <- predictor
   }
@@ -1337,7 +1360,9 @@ define_hurdle_prior <- function(model, family, predictor, response,
                             prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale,
                             tested_range = tested_range,
-                            supplied_pars = supplied_pars)
+                            supplied_pars = supplied_pars,
+                            x_control = x_control,
+                            x_control_fitted = x_control_fitted)
   # second block: reuse the bernoulli/identity defaults on the proportion
   # non-zero, then rename every non-linear parameter into its namespace.
   hu_priors <- define_prior(model_survival, bernoulli(link = "identity"),
@@ -1346,7 +1371,9 @@ define_hurdle_prior <- function(model, family, predictor, response,
                             prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale,
                             tested_range = tested_range,
-                            supplied_pars = hu_supplied)
+                            supplied_pars = hu_supplied,
+                            x_control = x_control,
+                            x_control_fitted = x_control_fitted)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
                             paste0(dpar, hu_priors$nlpar), hu_priors$nlpar)
   # Both blocks predict across the full design. Use its predictor for nec and

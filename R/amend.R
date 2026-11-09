@@ -365,6 +365,10 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
   )
   call_args <- amend_call_args(mod_fits, bdat)
+  x_control <- call_args$x_control
+  check_fit_x_control(x_control, formula,
+                      retrieve_var(bdat, "x_var", error = TRUE),
+                      expand_args$x_range, predictor_scale, report = FALSE)
   model_set <- check_models(model_set, family, bdat, record = TRUE)
   # Strip the attribute once read: `model_set` is passed on, and the attribute
   # makes it compare unequal to a plain character vector.
@@ -416,6 +420,11 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
               paste0(model_set[needs_fit], collapse = ", "), ". The default",
               " priors are built instead; pass `priors` to set them.")
     }
+  }
+  if (any(needs_fit)) {
+    check_control_top_prior(bdat, family, model_set[needs_fit], fit_prior,
+                            prior_type, x_control,
+                            model_survival = call_args$model_survival)
   }
   # Carry existing fits over here, in the parent. Returned from a worker, each
   # would be sent out and back under a parallel plan.
@@ -478,7 +487,10 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
           rate_response = !is.null(denom),
           truncated_response = isTRUE(attr(
             single_form, "bayesnec_internal_truncation")),
-          tested_range = attr(single_form, "bayesnec_tested_range")
+          tested_range = attr(single_form, "bayesnec_tested_range"),
+          x_control = x_control,
+          x_control_fitted = if (is.null(x_control)) NULL else
+            sub_x_transformation(x_control, formula)
         )
       } else {
         brm_args$prior <- model_priors
@@ -489,7 +501,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
           brm_args = brm_args, skip_check = TRUE, prior_type = prior_type,
           asymptote_observed = asymptote_observed,
           predictor_scale = predictor_scale,
-          timeout = timeout, model_survival = call_args$model_survival
+          timeout = timeout, model_survival = call_args$model_survival,
+          x_control = x_control
         ),
         silent = FALSE
       )
@@ -502,6 +515,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     },
     list(model_set = model_set, family = family, simdat = simdat,
          call_args = call_args, set_plan = set_plan, fit_prior = fit_prior,
+         x_control = x_control,
          bdat = bdat,
          formula = formula, data = data, prior_type = prior_type,
          asymptote_observed = asymptote_observed,
@@ -606,6 +620,7 @@ amend_call_args <- function(mod_fits, bdat) {
     model_survival <- NULL
   }
   list(model_survival = model_survival, prior = rec$prior,
+       x_control = recorded_x_control(first),
        brm_args = brm_args)
 }
 

@@ -289,7 +289,9 @@ w_grid_pred_calc <- function(index, mod_fits, formulas, x_range, resolution,
                              draw_index) {
   pred_list <- list(posterior_on_grid(mod_fits[[index]]$fit, formulas[[index]],
                                       x_range = x_range,
-                                      resolution = resolution))
+                                      resolution = resolution,
+                                      x_control = recorded_x_control(
+                                        mod_fits[[index]])))
   names(pred_list) <- index
   w_pred_list_calc(index, pred_list, draw_index)
 }
@@ -1392,6 +1394,8 @@ add_brm_defaults <- function(
   prior_type = "uninformative",
   asymptote_observed = TRUE,
   predictor_scale = "auto",
+  x_control = NULL,
+  x_control_fitted = NULL,
   model_survival = NULL,
   disp_spec = NULL,
   group_spec = NULL,
@@ -1446,6 +1450,8 @@ add_brm_defaults <- function(
       prior_type = prior_type,
       asymptote_observed = asymptote_observed,
       predictor_scale = predictor_scale,
+      x_control = x_control,
+      x_control_fitted = x_control_fitted,
       model_survival = model_survival,
       disp_spec = disp_spec,
       group_spec = group_spec,
@@ -1578,7 +1584,9 @@ add_brm_defaults <- function(
                                    predictor_scale = predictor_scale,
                                    init_supplied = init_supplied,
                                    prior_supplied = prior_supplied,
-                                   asymptote_observed = asymptote_observed)
+                                   asymptote_observed = asymptote_observed,
+                                   x_control = x_control,
+                                   x_control_fitted = x_control_fitted)
   }
   brm_args
 }
@@ -2014,7 +2022,7 @@ newdata_eval <- function(object, resolution, x_range) {
   data <- model.frame(object$bayesnecformula, object$fit$data)
   bnec_pop_vars <- attr(data, "bnec_pop")
   if (!is.null(object$observed_group) && is.na(x_range[1])) {
-    x_range <- range(object$level_x, na.rm = TRUE)
+    x_range <- c(control_x(object), max(object$level_x, na.rm = TRUE))
   }
   newdata <- bnec_newdata(object, resolution = resolution, x_range = x_range)
   if (!is.null(object$observed_group)) {
@@ -2395,6 +2403,10 @@ check_resolution <- function(resolution) {
 #'
 #' @noRd
 control_x <- function(object) {
+  recorded <- recorded_x_control(object)
+  if (!is.null(recorded)) {
+    return(recorded)
+  }
   if (!is.null(object$observed_group) && length(object$level_x)) {
     return(min(object$level_x))
   }
@@ -2406,6 +2418,75 @@ control_x <- function(object) {
     grid_obj <- grid_equation(grid_obj)
   }
   lowest_observed_x(grid_obj)
+}
+
+#' The control concentration explicitly recorded at fitting
+#'
+#' An older fit has no such record and continues to use its lowest observed
+#' concentration. A model set reads its first equation after the controls of
+#' its equations have been checked for agreement.
+#'
+#' @param object A fitted bayesnec object.
+#' @return A number, or \code{NULL} for the observed-data default.
+#' @noRd
+recorded_x_control <- function(object) {
+  if (!is.list(object)) return(NULL)
+  if (is_bayesnechurdlefit(object)) {
+    object <- object$survival
+  }
+  if (inherits(object, "bayesmanecfit")) {
+    if (is.null(object$mod_fits[[1]])) return(NULL)
+    object <- grid_equation(object)
+  }
+  if (!is.null(object$x_control)) {
+    return(object$x_control)
+  }
+  object$call_args$x_control
+}
+
+#' Validate a control concentration before fitting
+#'
+#' @param x_control The requested control, or \code{NULL}.
+#' @param formula The formula whose predictor transformation is fitted.
+#' @param predictor The observed predictor on its recorded scale.
+#' @param x_range The requested prediction range.
+#' @param predictor_scale The predictor-scale declaration.
+#' @param report Whether to report extrapolation below the data.
+#' @return The control, invisibly, or \code{NULL}.
+#' @noRd
+check_fit_x_control <- function(x_control, formula, predictor, x_range = NA,
+                                predictor_scale = "auto", report = TRUE) {
+  if (is.null(x_control)) {
+    return(invisible(NULL))
+  }
+  if (!is.numeric(x_control) || length(x_control) != 1L ||
+      !is.finite(x_control)) {
+    stop("`x_control` must be NULL or one finite number.", call. = FALSE)
+  }
+  validate_predictor_scale(predictor_scale, c(x_control, predictor))
+  transformed <- tryCatch(
+    suppressWarnings(sub_x_transformation(x_control, formula)),
+    error = function(e) NA_real_
+  )
+  if (length(transformed) != 1L || !is.finite(transformed)) {
+    stop("`x_control = ", x_control, "` is not finite under the crf()",
+         " predictor transformation.", call. = FALSE)
+  }
+  if (x_control >= max(predictor)) {
+    stop("`x_control` must be below the highest observed concentration.",
+         call. = FALSE)
+  }
+  if (!all(is.na(x_range)) &&
+      !isTRUE(all.equal(min(x_range), as.numeric(x_control)))) {
+    stop("The lower end of `x_range` must equal `x_control` when both are",
+         " supplied.", call. = FALSE)
+  }
+  if (report && x_control < min(predictor)) {
+    message("The control at ", signif(x_control, 3), " is below the lowest",
+            " observed concentration, ", signif(min(predictor), 3),
+            "; the curve from control to the data is extrapolated.")
+  }
+  invisible(as.numeric(x_control))
 }
 
 #' The first equation of a model set, for reading its data and grid
@@ -2530,10 +2611,10 @@ nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
   }
   keep <- x_vec > x_control
   if (!any(keep)) {
-    # Reached by an x_range at or below the lowest observed value, or by a
+    # Reached by an x_range at or below the control value, or by a
     # resolution of 1. Refuse rather than return a vector of NA.
     stop("The prediction grid holds no concentration above ",
-         signif(x_control, 3), ", the lowest observed value of the predictor, ",
+         signif(x_control, 3), ", the control value of the predictor, ",
          "so there is nothing above the control to read the NSEC from. Check ",
          "x_range, and that resolution is at least 2.", call. = FALSE)
   }

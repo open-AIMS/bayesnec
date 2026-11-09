@@ -246,6 +246,20 @@ check_fit_groups <- function(predictor, group = NULL) {
   factor(cut(predictor, breaks = breaks, include.lowest = TRUE))
 }
 
+#' Groups containing the stated control concentration
+#'
+#' @param predictor The observed predictor values.
+#' @param grp Their diagnostic groups.
+#' @param x_control A recorded explicit control, or \code{NULL}.
+#' @return Character group labels. Empty when an explicit control was absent.
+#' @noRd
+check_fit_control_groups <- function(predictor, grp, x_control = NULL) {
+  if (is.null(x_control)) {
+    return(levels(grp)[which.min(tapply(predictor, grp, min))])
+  }
+  unique(as.character(grp[predictor == x_control]))
+}
+
 #' Posterior predictive p-value
 #'
 #' The proportion above the observed statistic plus half the proportion tied
@@ -494,11 +508,8 @@ check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
   grp <- check_fit_groups(predictor, group)
   out <- check_fit_table(x$fit, x$bayesnecformula, y, grp, ndraws, seed,
                          is_hurdle_family(x$fit$family))
-  # The control is the lowest predictor value, which is the package's own
-  # convention: nsec() takes its reference as quantile(p_samples[, 1], sig_val),
-  # the first column of a grid running from min(x) upwards.
-  ctrl <- levels(grp)[which.min(tapply(predictor, grp, min))]
-  out$control <- out$group == ctrl
+  ctrl <- check_fit_control_groups(predictor, grp, recorded_x_control(x))
+  out$control <- out$group %in% ctrl
   attr(out, "model") <- x$model
   attr(out, "pareto") <- check_fit_pareto_row(
     x, if (!is.null(x$fit$criteria$logo)) "logo" else "loo"
@@ -627,6 +638,10 @@ print.checkfit <- function(x, ...) {
   num <- vapply(y, is.numeric, logical(1))
   y[num] <- lapply(y[num], function(z) round(z, 3))
   print(y)
+  if (!any(y$control)) {
+    cat("\nNo observed row is at the stated control concentration, so",
+        " no group is labelled as the control.\n")
+  }
   flagged <- y$ppp_mean < 0.05 | y$ppp_mean > 0.95 |
     y$ppp_sd < 0.05 | y$ppp_sd > 0.95
   flagged[is.na(flagged)] <- FALSE
@@ -795,7 +810,7 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
     })
   })
   cens <- hurdle_exposed_cens(gb, y_obs)
-  ctrl <- levels(grp)[which.min(tapply(predictor, grp, min))]
+  ctrl <- check_fit_control_groups(predictor, grp, recorded_x_control(x))
   pairs <- expand.grid(growth = names(g_fits), survival = names(s_fits),
                        stringsAsFactors = FALSE)
   methods <- unique(unlist(lapply(list(x$growth, x$survival),
@@ -818,7 +833,7 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
       grow[[g]][seq_len(n), , drop = FALSE]
     res <- check_fit_stats(y_obs, yrep, mu_alive[[s]] * mu_grow[[g]], grp,
                            is_mixture = TRUE, cens = cens)
-    res$control <- res$group == ctrl
+    res$control <- res$group %in% ctrl
     if (nrow(pairs) > 1) {
       if (show_weights) {
         res <- data.frame(model = paste(g, s, sep = " / "),

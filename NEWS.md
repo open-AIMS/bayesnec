@@ -1,5 +1,13 @@
 # bayesnec 2.2.0
 
+- `bnec(x_control = ...)` now records a stated control concentration for
+  priors, prediction grids, stored no-effect estimates, estimator defaults,
+  plots and fit checks. An unobserved control is reported as extrapolated;
+  a regularising fit then needs a supplied `top` prior. The control is
+  inherited by grouped, hurdle and joint fits, and by `amend()` and `update()`.
+  Objects saved before this argument existed retain their previous control
+  convention (#586).
+
 - A significant decline between the two highest concentrations now includes
   the highest mean as a percentage of the control mean. When the absolute
   ratio to a finite, positive control mean is at most 5%, the message omits

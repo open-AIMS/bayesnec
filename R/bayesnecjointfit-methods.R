@@ -18,7 +18,8 @@ joint_level_fit <- function(object, level) {
               model = model, group_var = object$group_var,
               level = level, levels = object$levels,
               level_spec = object$level_spec, retained_data = NULL,
-              level_x = joint_level_x(object, level))
+              level_x = joint_level_x(object, level),
+              x_control = recorded_x_control(object))
   out <- allot_class(out, c("bayesnecjointlevel", "bayesnecfit", "bnecfit"))
   # Keep the sampled breakpoint only where it is also the no-effect estimate.
   if (sampled_nec_is_no_effect(model)) {
@@ -231,7 +232,8 @@ bnec_newdata.bayesnecjointfit <- function(x, resolution = 100, x_range = NA) {
   check_args_newdata(resolution, x_range)
   prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
                   resolution = resolution,
-                  level_spec = joint_level_spec(x))$newdata
+                  level_spec = joint_level_spec(x),
+                  x_control = recorded_x_control(x))$newdata
 }
 
 #' @noRd
@@ -242,11 +244,12 @@ bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
   check_args_newdata(resolution, x_range)
   # Default to the level's own range, as bnec_group() gives each level.
   if (all(is.na(x_range)) && length(x$level_x)) {
-    x_range <- range(x$level_x)
+    x_range <- c(control_x(x), max(x$level_x))
   }
   prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
                   resolution = resolution,
-                  level_spec = joint_level_spec(x))$newdata
+                  level_spec = joint_level_spec(x),
+                  x_control = recorded_x_control(x))$newdata
 }
 
 #' Per-level toxicity estimates from a bayesnecjointfit
@@ -472,11 +475,12 @@ joint_level_curve <- function(object, level, resolution = 1000,
                               x_scale = c("recorded", "fitted")) {
   lvl_fit <- joint_level_fit(object, level)
   if (is.na(x_range[1]) && length(lvl_fit$level_x)) {
-    x_range <- range(lvl_fit$level_x)
+    x_range <- c(control_x(lvl_fit), max(lvl_fit$level_x))
   }
   grid <- prediction_grid(object$fit, object$bayesnecformula,
                           x_range = x_range, resolution = resolution,
-                          level_spec = joint_level_spec(object, level))
+                          level_spec = joint_level_spec(object, level),
+                          x_control = recorded_x_control(object))
   if (match.arg(x_scale) == "fitted") {
     fitted_x <- as.numeric(sub_x_transformation(grid$x_seq,
                                                 object$bayesnecformula))

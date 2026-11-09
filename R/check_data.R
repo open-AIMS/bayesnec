@@ -488,6 +488,9 @@ capitalise_first <- function(x) {
 #' the sentence on the \code{nec} and \code{ec50} priors to match the priors
 #' it builds. Advice is withheld where the magnitude of the highest-level mean
 #' is at most 5% of a finite, positive control mean at the lowest predictor value.
+#' @param x_control An explicit control concentration, or \code{NULL} to use
+#' each group's lowest observed predictor value. An unobserved control gives no
+#' control-relative percentage.
 #'
 #' @return \code{NULL}, invisibly. Called for its message.
 #'
@@ -495,7 +498,8 @@ capitalise_first <- function(x) {
 check_response_flattened <- function(data, family, group = NULL,
                                      blocks = c("response", "survival"),
                                      alpha = 0.05, pool_dispersion = TRUE,
-                                     asymptote_observed = TRUE) {
+                                     asymptote_observed = TRUE,
+                                     x_control = NULL) {
   y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
   x <- try(retrieve_var(data, "x_var", error = TRUE), silent = TRUE)
   if (inherits(y, "try-error") || inherits(x, "try-error")) {
@@ -523,7 +527,7 @@ check_response_flattened <- function(data, family, group = NULL,
     if (is.null(level_blocks) || !isTRUE(any(use))) {
       next
     }
-    control_x <- min(x[use])
+    control_x <- if (is.null(x_control)) min(x[use]) else x_control
     views <- flatness_blocks(x[use], y[use], trials[use], denominator[use],
                              family)
     views <- views[intersect(names(views), level_blocks)]
@@ -669,6 +673,49 @@ uses_response_range_defaults <- function(prior, models, family,
     }
   }
   out
+}
+
+#' Require a top prior when the stated control has no response
+#'
+#' @param data A model frame for the formula.
+#' @param family The validated family.
+#' @param models The equations to fit.
+#' @param prior The supplied prior or named prior list.
+#' @param prior_type The requested default-prior set.
+#' @param x_control The stated control, or \code{NULL}.
+#' @param model_survival The survival-block equation, where applicable.
+#' @return Invisible \code{NULL}, or an error before fitting.
+#' @noRd
+check_control_top_prior <- function(data, family, models, prior,
+                                    prior_type, x_control,
+                                    model_survival = NULL) {
+  if (is.null(x_control) || prior_type != "regularizing" ||
+      length(models) == 0L) {
+    return(invisible(NULL))
+  }
+  x <- retrieve_var(data, "x_var", error = TRUE)
+  y <- retrieve_var(data, "y_var", error = TRUE)
+  present <- if (is_hurdle_family(family)) {
+    parts <- split_hurdle_response(x, y)
+    c(response = any(parts$mu$x == x_control),
+      survival = any(parts$hu$x == x_control))
+  } else {
+    c(response = any(x == x_control))
+  }
+  required <- uses_response_range_defaults(
+    prior, models, family, model_survival, affected = "top"
+  )
+  missing <- names(present)[!present & required[names(present)]]
+  if (length(missing) > 0L) {
+    pars <- ifelse(missing == "survival",
+                   paste0(hurdle_dpar(family), "top"), "top")
+    stop("No response was observed at `x_control = ", x_control,
+         "` for ", paste(missing, collapse = " and "),
+         ". Supply a prior for ", paste0("`", pars, "`", collapse = ", "),
+         " or include a control observation before using",
+         " `prior_type = \"regularizing\"`.", call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' The curve parameters a supplied prior sets
