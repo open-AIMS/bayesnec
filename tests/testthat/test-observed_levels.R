@@ -381,6 +381,37 @@ test_that("mean_curve NSEC starts at the latest own control", {
   expect_equal(attr(out, "censored")$lower, 2)
 })
 
+test_that("mean_curve NSEC does not search below the latest own control", {
+  fits <- list(a = list(label = "a"), b = list(label = "b"))
+  local_mocked_bindings(
+    level_x_bounds = function(object) {
+      if (object$label == "a") c(1, 3) else c(2, 3)
+    },
+    level_curve_draws = function(object, x_vec, ...) {
+      intercept <- if (object$label == "a") 11.5 else 12.5
+      list(curve = matrix(rep(intercept - x_vec, each = 2), nrow = 2),
+           control = c(10.5, 10.5), asymptote = 0)
+    },
+    returns_recorded = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  estimate <- function(x_control = "own", extrapolate = FALSE) {
+    bayesnec:::mean_curve_estimate(
+      fits, c(1, 1), "nsec",
+      list(resolution = 3, posterior = TRUE, x_control = x_control,
+           extrapolate = extrapolate)
+    )
+  }
+  own <- estimate()
+  extended <- estimate(extrapolate = c(1, 3))
+  expect_equal(as.numeric(extended), as.numeric(own))
+  expect_equal(attr(extended, "censored")$lower, 2)
+  expect_equal(as.numeric(estimate("shared", c(0.5, 3))),
+               as.numeric(estimate("shared")))
+  expect_equal(as.numeric(estimate(1.5, c(1, 3))),
+               as.numeric(estimate(1.5)))
+})
+
 test_that("mean_curve NSEC censors crossings before the common range", {
   fits <- list(a = list(label = "a"), b = list(label = "b"))
   local_mocked_bindings(

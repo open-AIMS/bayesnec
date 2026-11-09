@@ -912,7 +912,12 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
                                   list(lower = low, upper = high), formula)
       }
     }
-    x_vec <- extend_grid_values(x_vec, lims)
+    grid_lims <- lims
+    if (identical(what, "nsec")) {
+      control_start <- if (own) max(controls) else as.numeric(x_control)
+      grid_lims$lower <- max(grid_lims$lower, control_start)
+    }
+    x_vec <- extend_grid_values(x_vec, grid_lims)
     low <- min(x_vec)
     high <- max(x_vec)
   }
