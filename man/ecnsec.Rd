@@ -10,6 +10,7 @@ ecnsec(
   nsec,
   resolution = 500,
   x_range = NA,
+  extrapolate = FALSE,
   type = "absolute",
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
@@ -33,6 +34,11 @@ matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
 \item{x_range}{A range of x values over which to predict the curve. An
 \code{nsec} outside it is refused; see Details.}
+
+\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
+A single finite number extends the upper end; two finite numbers may
+extend both ends. The original grid points are retained. Limits are on
+the recorded predictor scale. \code{TRUE} and narrowing limits are refused.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
 "absolute" (the default), "relative" or "range". See Details.}
@@ -134,7 +140,8 @@ over: the observed range of the predictor, or \code{x_range} where one is
 supplied. An \code{nsec} outside that range once \code{xform} has been
 applied is refused with a message naming the range, rather than read off
 the curve extended past the data without a message. Supply an
-\code{x_range} that includes \code{nsec} to read the curve there. On a
+\code{x_range} or finite \code{extrapolate} that includes \code{nsec} to
+read the curve there. On a
 \code{\link{bayesnecjointfit}} each level is read over its own observed
 range, and the message names the level that refused \code{nsec}.
 }

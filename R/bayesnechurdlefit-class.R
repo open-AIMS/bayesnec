@@ -53,13 +53,16 @@ is_bayesnechurdlefit <- function(x) {
 #'
 #' @noRd
 hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
-                                   x_control = "own") {
+                                   x_control = "own", grid_limits = NULL,
+                                   x_values = NULL) {
+  if (!is.null(x_values)) x_range <- range(x_values)
   spec <- if (is.null(object$observed_group)) observed_level_spec(object)
   if (!is.null(spec)) {
     if (is.na(x_range[1])) x_range <- range(unlist(spec$x))
     levels <- lapply(seq_len(nrow(spec$combinations)), function(i) {
       hurdle_component_preds(observed_level_fit(object, spec, i),
-                             resolution, x_range, x_control)
+                             resolution, x_range, x_control, grid_limits,
+                             x_values)
     })
     n <- min(vapply(levels, function(x) nrow(x$combined), integer(1)))
     owner <- observed_assignment(spec, n)
@@ -104,10 +107,20 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
     nd_s <- newdata_eval(object$survival, resolution = resolution,
                          x_range = x_range)
   }
+  if (!is.null(x_values)) {
+    nd_s <- newdata_eval(object$survival, length(x_values),
+                         range(x_values), x_values = x_values)
+  } else if (!is.null(grid_limits)) {
+    x_values <- extend_grid_values(nd_s$x_vec, grid_limits)
+    if (!identical(x_values, nd_s$x_vec)) {
+      nd_s <- newdata_eval(object$survival, length(x_values),
+                           range(x_values), x_values = x_values)
+    }
+  }
   # The survival fit carries a different response column (.alive), so each
   # component's newdata must be built from its own model frame.
-  nd_g <- newdata_eval(object$growth, resolution = resolution,
-                       x_range = x_range)
+  nd_g <- newdata_eval(object$growth, resolution = length(nd_s$x_vec),
+                       x_range = range(nd_s$x_vec), x_values = nd_s$x_vec)
   if (!is.null(object$observed_group)) {
     for (v in names(object$observed_group)) {
       nd_g$newdata[[v]] <- object$observed_group[[v]]
@@ -380,7 +393,8 @@ hurdle_component_ne <- function(part, extrapolate, ...) {
 #' @export
 ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
                                   posterior = FALSE, type = "absolute",
-                                  x_range = NA, xform = NULL,
+                                  x_range = NA, extrapolate = FALSE,
+                                  xform = NULL,
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   which = "combined", ..., pool = NULL,
                                   x_control = "own") {
@@ -407,11 +421,13 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
         function(level, control_value, range_override) {
           ecx(level, ecx_val = ecx_val, resolution = resolution,
               posterior = TRUE, type = type, x_range = range_override,
-              xform = xform, prob_vals = prob_vals, which = which,
+              extrapolate = extrapolate, xform = xform,
+              prob_vals = prob_vals, which = which,
               pool = "none", x_control = control_value)
         }, pool, posterior, prob_vals, x_control, x_range,
         curve_args = list(ecx_val = ecx_val, resolution = resolution,
-                          type = type, xform = xform, prob_vals = prob_vals,
+                          type = type, extrapolate = extrapolate,
+                          xform = xform, prob_vals = prob_vals,
                           which = which)
       )
       attr(result, "component") <- which
@@ -419,9 +435,16 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
     }
   }
   # Every curve, growth included, over the whole concentration series.
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range,
-                                  x_control = x_control)
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "ECx")
+  preds <- if (is.null(lims)) {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control)
+  } else {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control,
+                           grid_limits = lims)
+  }
   p_samples <- preds[[which]]
   # Take the control from hurdle_component_preds(), at the lowest observed
   # concentration. p_samples[, 1] would make every estimate depend on x_range.

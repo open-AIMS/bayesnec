@@ -1,5 +1,10 @@
 # bayesnec 2.2.0
 
+- `ecx()` and `ecnsec()` now accept finite `extrapolate` limits, as `nsec()`
+  does. `ecnsec()` can read an NSEC inside the same extension. All three
+  estimators retain the original prediction grid and append extension points,
+  including for model sets, observed level curves and hurdle fits (#589).
+
 - `bnec(x_control = ...)` now records a stated control concentration for
   priors, prediction grids, stored no-effect estimates, estimator defaults,
   plots and fit checks. An unobserved control is reported as extrapolated;

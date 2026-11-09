@@ -17,6 +17,10 @@
 #' as given, on the recorded scale. See Details.
 #' @param x_range A range of x values over which to predict the curve. An
 #' \code{nsec} outside it is refused; see Details.
+#' @param extrapolate \code{FALSE}, the default, uses the prediction range.
+#' A single finite number extends the upper end; two finite numbers may
+#' extend both ends. The original grid points are retained. Limits are on
+#' the recorded predictor scale. \code{TRUE} and narrowing limits are refused.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
@@ -98,7 +102,8 @@
 #' supplied. An \code{nsec} outside that range once \code{xform} has been
 #' applied is refused with a message naming the range, rather than read off
 #' the curve extended past the data without a message. Supply an
-#' \code{x_range} that includes \code{nsec} to read the curve there. On a
+#' \code{x_range} or finite \code{extrapolate} that includes \code{nsec} to
+#' read the curve there. On a
 #' \code{\link{bayesnecjointfit}} each level is read over its own observed
 #' range, and the message names the level that refused \code{nsec}.
 #'
@@ -117,6 +122,7 @@
 #'
 #' @export
 ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
+                   extrapolate = FALSE,
                    type = "absolute",
                  xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
                  pool = NULL, x_control = "own") {
@@ -141,6 +147,7 @@ ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
 #'
 #' @export
 ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
+                             extrapolate = FALSE,
                                type = "absolute",
                              xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
                              posterior = FALSE, pool = NULL,
@@ -181,6 +188,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
     if (!is.null(observed_level_spec(first))) {
       per_model <- function(f) ecnsec(
         f, nsec = nsec, resolution = resolution, x_range = x_range,
+        extrapolate = extrapolate,
         type = type, xform = xform, prob_vals = prob_vals,
         posterior = TRUE, pool = pool, x_control = x_control
       )
@@ -210,12 +218,14 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
         object, level_spec, "ecnsec",
         function(level, control_value, range_override) {
           ecnsec(level, nsec = nsec, resolution = resolution,
-                 x_range = range_override, type = type, xform = xform,
+                 x_range = range_override, extrapolate = extrapolate,
+                 type = type, xform = xform,
                  prob_vals = prob_vals, posterior = TRUE, pool = "none",
                  x_control = control_value)
         },
         pool, posterior, prob_vals, x_control, x_range,
         curve_args = list(nsec = nsec, resolution = resolution,
+                          extrapolate = extrapolate,
                           type = type, xform = xform,
                           prob_vals = prob_vals)
       ))
@@ -223,9 +233,12 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
   }
   nsec_use <- xform(nsec)
 
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "ECNSEC")
   control_reading <- resolve_x_control(object, x_control, x_range)
-  newdata_list <- newdata_eval(
-    object, resolution = resolution, x_range = control_reading$x_range
+  newdata_list <- extended_newdata_eval(
+    object, resolution = resolution, x_range = control_reading$x_range,
+    lims = lims
   )
   # Refuse an nsec outside the chosen grid. Otherwise the curve is evaluated
   # past that grid without reporting the extrapolation.

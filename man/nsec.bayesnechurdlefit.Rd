@@ -46,7 +46,8 @@ return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 \item{extrapolate}{The bound beyond which the estimate is reported as
 censored. \code{FALSE}, the default, censors at the ends of the prediction
 grid. A single number is an upper limit, and a pair of numbers is a lower
-and an upper limit, in that order; the grid is extended to reach them.
+and an upper limit, in that order; points are appended while the original
+grid points and their spacing are retained.
 \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
 See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 

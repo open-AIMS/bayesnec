@@ -47,7 +47,8 @@ return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 \item{extrapolate}{The bound beyond which the estimate is reported as
 censored. \code{FALSE}, the default, censors at the ends of the prediction
 grid. A single number is an upper limit, and a pair of numbers is a lower
-and an upper limit, in that order; the grid is extended to reach them.
+and an upper limit, in that order; points are appended while the original
+grid points and their spacing are retained.
 \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
 See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
@@ -238,7 +239,7 @@ the fit is. An NSEC is the concentration at which a fitted curve reaches a
 reference, so reading one means evaluating that curve on a grid, and no grid
 reaches infinity. Name a finite limit instead.
 
-A finite limit extends the grid the curve is searched on and then censors
+A finite limit appends grid points where the curve is searched and then censors
 there, so \code{extrapolate} does through a checked argument what
 \code{x_range} does through an unchecked one: a limit inside the current
 range is an error rather than a silent tightening, because it would report

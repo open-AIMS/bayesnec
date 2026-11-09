@@ -38,7 +38,8 @@
 #' @param extrapolate The bound beyond which the estimate is reported as
 #' censored. \code{FALSE}, the default, censors at the ends of the prediction
 #' grid. A single number is an upper limit, and a pair of numbers is a lower
-#' and an upper limit, in that order; the grid is extended to reach them.
+#' and an upper limit, in that order; points are appended while the original
+#' grid points and their spacing are retained.
 #' \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
 #' See the \emph{Extrapolation} section of \code{\link{nsec}}.
 #' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"},
@@ -202,7 +203,7 @@
 #' reference, so reading one means evaluating that curve on a grid, and no grid
 #' reaches infinity. Name a finite limit instead.
 #'
-#' A finite limit extends the grid the curve is searched on and then censors
+#' A finite limit appends grid points where the curve is searched and then censors
 #' there, so \code{extrapolate} does through a checked argument what
 #' \code{x_range} does through an unchecked one: a limit inside the current
 #' range is an error rather than a silent tightening, because it would report
@@ -306,19 +307,13 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
       ))
     }
   }
-  # extrapolate becomes x_range, since an NSEC is read off the curve on the
-  # grid. It adds two refusals a bare x_range lacks: of a limit that narrows
-  # the range, and of an infinite limit.
-  lims <- extrapolate_limits(extrapolate,
-                             searched_or_stored_bounds(object, x_range),
-                             "NSEC")
-  if (!is.null(lims)) {
-    report_curve_read_lower_limit(object, lims)
-    x_range <- c(lims$lower, lims$upper)
-  }
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "NSEC")
+  if (!is.null(lims)) report_curve_read_lower_limit(object, lims)
   control_reading <- resolve_x_control(object, x_control, x_range)
-  newdata_list <- newdata_eval(
-    object, resolution = resolution, x_range = control_reading$x_range
+  newdata_list <- extended_newdata_eval(
+    object, resolution = resolution, x_range = control_reading$x_range,
+    lims = lims
   )
   # dpar selects one block of a two-block fit, as in ecx(). NULL gives the
   # positive-part mean times (1 - hu) for a two-block family, and the mean
@@ -455,12 +450,11 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
   }
   # Resolve the limits once for the set, so that every component is searched
   # over one grid rather than against its own range.
-  lims <- extrapolate_limits(extrapolate,
-                             searched_or_stored_bounds(object, x_range),
-                             "NSEC")
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "NSEC")
   if (!is.null(lims)) {
     report_curve_read_lower_limit(object, lims)
-    x_range <- c(lims$lower, lims$upper)
+    extrapolate <- c(lims$lower, lims$upper)
   }
   sample_size <- object$sample_size
   # Use the weighted draw index the rest of the object uses, not a fresh
@@ -474,6 +468,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
     target <- pull_equation(object, mod)
     out <- nsec(target, sig_val = sig_val, resolution = resolution,
                 x_range = x_range, xform = xform, prob_vals = prob_vals,
+                extrapolate = extrapolate,
                 posterior = TRUE, dpar = dpar, pool = pool,
                 x_control = x_control)
     idx <- draw_index[[mod]]

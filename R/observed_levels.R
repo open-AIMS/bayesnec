@@ -828,7 +828,7 @@ level_curve_draws <- function(object, x_vec, x_control = "own",
                 asymptote = asymptote))
   }
   nd <- newdata_eval(object, resolution = length(x_vec),
-                     x_range = range(x_vec))$newdata
+                     x_range = range(x_vec), x_values = x_vec)$newdata
   re_formula <- if (is.null(object$re_formula)) NA else object$re_formula
   epred <- function(data) joint_hurdle_epred(object, data, dpar,
                                                re_formula = re_formula)
@@ -894,22 +894,26 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     low <- max(low, max(controls))
     high <- min(high, min(bounds[, 2]))
   }
-  if (identical(what, "nsec")) {
-    extrapolate <- if (is.null(dots$extrapolate)) FALSE else dots$extrapolate
-    lims <- extrapolate_limits(extrapolate,
-                               list(lower = low, upper = high), "NSEC")
-    if (!is.null(lims)) {
-      control_start <- if (own) max(controls) else as.numeric(x_control)
-      low <- max(lims$lower, control_start)
-      high <- lims$upper
-    }
-  }
   if (!is.finite(low) || !is.finite(high) || low >= high) {
     stop("The levels have no common predictor range for mean_curve.",
          call. = FALSE)
   }
   resolution <- if (is.null(dots$resolution)) 500L else dots$resolution
   x_vec <- seq(low, high, length.out = resolution)
+  extrapolate <- if (is.null(dots$extrapolate)) FALSE else dots$extrapolate
+  lims <- extrapolate_limits(extrapolate,
+                             list(lower = low, upper = high),
+                             toupper(what))
+  if (!is.null(lims)) {
+    for (fit in fits) {
+      fitted_extrapolate_limits(lims,
+                                list(lower = low, upper = high),
+                                ne_grid_formula(fit))
+    }
+    x_vec <- extend_grid_values(x_vec, lims)
+    low <- min(x_vec)
+    high <- max(x_vec)
+  }
   type <- if (is.null(dots$type)) "absolute" else dots$type
   if (identical(what, "ecnsec") && identical(type, "direct")) {
     stop("`type = \"direct\"` has no percent effect for ecnsec().",
@@ -950,9 +954,10 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   }
   for (i in seq_along(fits)) {
     if (is_bayesnechurdlefit(fits[[i]])) {
-      pred <- hurdle_component_preds(fits[[i]], resolution = resolution,
-                                     x_range = c(low, high),
-                                     x_control = x_control)
+      pred <- hurdle_component_preds(fits[[i]], resolution = length(x_vec),
+                                     x_range = range(x_vec),
+                                     x_control = x_control,
+                                     x_values = x_vec)
       component <- if (is.null(dots$which)) "combined" else dots$which
       part <- list(curve = pred[[component]],
                    control = pred$control[[component]], asymptote = 0)

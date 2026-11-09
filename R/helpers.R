@@ -2005,7 +2005,7 @@ check_args_newdata <- function(resolution, x_range) {
 }
 
 #' @noRd
-newdata_eval <- function(object, resolution, x_range) {
+newdata_eval <- function(object, resolution, x_range, x_values = NULL) {
   # Every model of a set shares the data, so one model gives the grid. A
   # hurdle fit takes it from the survival component, which sees every row and
   # so the full predictor range, and adds the growth component's disp()
@@ -2024,7 +2024,19 @@ newdata_eval <- function(object, resolution, x_range) {
   if (!is.null(object$observed_group) && is.na(x_range[1])) {
     x_range <- c(control_x(object), max(object$level_x, na.rm = TRUE))
   }
+  if (!is.null(x_values)) {
+    resolution <- length(x_values)
+    x_range <- range(x_values)
+  }
   newdata <- bnec_newdata(object, resolution = resolution, x_range = x_range)
+  if (!is.null(x_values)) {
+    if (nrow(newdata) != length(x_values)) {
+      stop("The requested grid has ", length(x_values), " points but ",
+           "bnec_newdata() returned ", nrow(newdata), " rows.",
+           call. = FALSE)
+    }
+    newdata[[bnec_pop_vars[["x_var"]]]] <- x_values
+  }
   if (!is.null(object$observed_group)) {
     for (v in names(object$observed_group)) {
       newdata[[v]] <- object$observed_group[[v]][rep(1L, nrow(newdata))]

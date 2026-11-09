@@ -105,6 +105,59 @@ searched_or_stored_bounds <- function(object, x_range) {
        upper = max(search$upper, stored$upper))
 }
 
+#' Validate a curve-read extrapolation against its control and stored grid
+#' @noRd
+curve_extrapolate_limits <- function(extrapolate, object, x_range, x_control,
+                                     estimate) {
+  if (identical(extrapolate, FALSE)) return(NULL)
+  bounds <- searched_or_stored_bounds(object, x_range)
+  if (is.numeric(x_control)) {
+    bounds$lower <- min(bounds$lower, as.numeric(x_control))
+  }
+  lims <- extrapolate_limits(extrapolate, bounds, estimate)
+  fitted_extrapolate_limits(lims, bounds, ne_grid_formula(object))
+  lims
+}
+
+#' Append extrapolation points without changing the original grid
+#' @noRd
+extend_grid_values <- function(x, lims) {
+  if (is.null(lims)) return(x)
+  lower_span <- max(0, min(x) - lims$lower)
+  upper_span <- max(0, lims$upper - max(x))
+  if (lower_span == 0 && upper_span == 0) return(x)
+  if (length(x) < 2L || max(x) <= min(x)) {
+    stop("An extrapolated curve needs at least two distinct grid points.",
+         call. = FALSE)
+  }
+  step <- (max(x) - min(x)) / (length(x) - 1L)
+  needed <- (lower_span + upper_span) / step
+  if (!is.finite(needed) || needed > 20000) {
+    stop("This extrapolation would add more than 20,000 grid points. ",
+         "Use a shorter limit or a lower resolution.", call. = FALSE)
+  }
+  below <- numeric()
+  if (lower_span > 0) {
+    below <- min(x) - step * seq_len(floor(lower_span / step))
+    below <- c(lims$lower, rev(below[below > lims$lower]))
+  }
+  above <- numeric()
+  if (upper_span > 0) {
+    above <- max(x) + step * seq_len(floor(upper_span / step))
+    above <- c(above[above < lims$upper], lims$upper)
+  }
+  c(below, x, above)
+}
+
+#' Build the curve grid with its original points retained
+#' @noRd
+extended_newdata_eval <- function(object, resolution, x_range, lims) {
+  base <- newdata_eval(object, resolution, x_range)
+  x <- extend_grid_values(base$x_vec, lims)
+  if (identical(x, base$x_vec)) return(base)
+  newdata_eval(object, length(x), range(x), x_values = x)
+}
+
 #' Resolve \code{extrapolate} into the pair of limits it names
 #'
 #' \code{extrapolate} is read on the recorded predictor scale, the scale of the
@@ -464,7 +517,7 @@ report_curve_read_lower_limit <- function(object, lims) {
   if (lims$lower < start) {
     message("A curve-read estimate is measured from the control, so the ",
             "search cannot begin below ", signif(start, 3),
-            ", the lowest observed concentration. The lower limit extends ",
+            ", the control concentration. The lower limit extends ",
             "the prediction grid without extending that search, and those ",
             "components stay censored at the control.")
   }
@@ -554,7 +607,8 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
   }
   report_curve_read_lower_limit(object, lims)
   out <- nsec(object, sig_val = sig_val, resolution = resolution,
-              x_range = c(lims$lower, lims$upper), xform = identity,
+              x_range = c(bounds$lower, bounds$upper),
+              extrapolate = c(lims$lower, lims$upper), xform = identity,
               posterior = TRUE)
   # Keep the draws and the censoring record only. The other attributes nsec()
   # attaches describe an NSEC calculation, not the NEC returned here.
@@ -677,7 +731,8 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
     }
     out <- nsec(component_fit(object, success[i]), sig_val = sig_val,
                 resolution = resolution,
-                x_range = c(lims$lower, lims$upper), xform = identity,
+                x_range = c(bounds$lower, bounds$upper),
+                extrapolate = c(lims$lower, lims$upper), xform = identity,
                 posterior = TRUE)
     part <- as.numeric(out)[idx]
     attr(part, "censored") <- subset_censoring(attr(out, "censored"), idx)

@@ -26,6 +26,12 @@
 #' differ only where \code{crf()} transforms the predictor inline; see
 #' Details.
 #' @param x_range A range of x values over which to consider extracting ECx.
+#' @param extrapolate \code{FALSE}, the default, uses the prediction range.
+#' A finite upper limit or a pair of finite lower and upper limits extends the
+#' search grid and marks any unresolved draw as censored at that limit.
+#' Limits are on the recorded predictor scale. \code{TRUE} and limits that
+#' narrow the current range are refused. The original grid points and their
+#' spacing are retained when extension points are appended.
 #' @param pool How observed group levels are combined. `"none"` returns
 #' per-level estimates. `"mixture"` gives each posterior draw to one level, in
 #' proportion to the levels' observation counts, and keeps it at its position,
@@ -222,7 +228,8 @@
 # check warns about a documented argument missing from the usage.
 ecx <- function(object, ecx_val = 10, resolution = 500,
                 posterior = FALSE, type = "absolute", x_range = NA,
-                xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
+                extrapolate = FALSE, xform = NULL,
+                prob_vals = c(0.5, 0.025, 0.975), ...,
                 dpar = NULL, pool = NULL, x_control = "own") {
   UseMethod("ecx")
 }
@@ -243,7 +250,7 @@ ecx <- function(object, ecx_val = 10, resolution = 500,
 #' @export
 ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
                             posterior = FALSE, type = "absolute",
-                            x_range = NA, xform = NULL,
+                            x_range = NA, extrapolate = FALSE, xform = NULL,
                             prob_vals = c(0.5, 0.025, 0.975), ...,
                             dpar = NULL, pool = NULL,
                             x_control = "own") {
@@ -270,13 +277,14 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
         function(level, control_value, range_override) {
           ecx(level, ecx_val = ecx_val, resolution = resolution,
               posterior = TRUE, type = type, x_range = range_override,
-              xform = xform, prob_vals = prob_vals, dpar = dpar,
+              extrapolate = extrapolate, xform = xform,
+              prob_vals = prob_vals, dpar = dpar,
               pool = "none", x_control = control_value)
         },
         pool, posterior, prob_vals, x_control, x_range,
         curve_args = list(ecx_val = ecx_val, resolution = resolution,
                           type = type, xform = xform, prob_vals = prob_vals,
-                          dpar = dpar)
+                          dpar = dpar, extrapolate = extrapolate)
       ))
     }
   }
@@ -294,9 +302,10 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   # parameter. Absolute measures towards 0 by design, and a gaussian mean that
   # declines towards 0 is consistent: the likelihood never tests the sign of y.
   control_reading <- resolve_x_control(object, x_control, x_range)
-  newdata_list <- newdata_eval(
-    object, resolution = resolution, x_range = control_reading$x_range
-  )
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "ECx")
+  newdata_list <- extended_newdata_eval(object, resolution,
+                                        control_reading$x_range, lims)
   # NULL gives a two-block fit's combined mean: positive-part mean times its
   # non-zero probability (1 - hu or 1 - zi). dpar selects one block; invert
   # the zero-probability block so that declines represent decreasing response.
@@ -408,7 +417,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
 #' @export
 ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
                               posterior = FALSE, type = "absolute",
-                              x_range = NA, xform = NULL,
+                              x_range = NA, extrapolate = FALSE, xform = NULL,
                               prob_vals = c(0.5, 0.025, 0.975), ...,
                               dpar = NULL, pool = NULL,
                               x_control = "own") {
@@ -436,11 +445,15 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
       object, "ecx",
       function(f) ecx(f, ecx_val = ecx_val, resolution = resolution,
                       posterior = TRUE, type = type, x_range = x_range,
-                      xform = xform, prob_vals = prob_vals, dpar = dpar,
+                      extrapolate = extrapolate, xform = xform,
+                      prob_vals = prob_vals, dpar = dpar,
                       pool = "none", x_control = x_control),
       posterior, prob_vals
     )))
   }
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "ECx")
+  if (!is.null(lims)) extrapolate <- c(lims$lower, lims$upper)
   # Warn about the relative rename once for the call. sample_ecx() below calls
   # ecx() for each equation with type passed explicitly, which would otherwise
   # warn again for every equation.
@@ -458,7 +471,8 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
     target <- pull_equation(object, mod)
     out <- ecx(target, ecx_val = ecx_val, resolution = resolution,
                posterior = TRUE, type = type,
-               x_range = x_range, xform = xform, prob_vals = prob_vals,
+               x_range = x_range, extrapolate = extrapolate,
+               xform = xform, prob_vals = prob_vals,
                dpar = dpar, pool = pool, x_control = x_control)
     idx <- draw_index[[mod]]
     sample_out <- out[idx]
