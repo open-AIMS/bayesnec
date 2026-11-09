@@ -3,7 +3,7 @@
 bayesnec package are summarised
 as a manecsummary object, which contains the name of the
 non-linear models fitted, the family distribution used
-to fit all the models, the number of post-warm-up draws per model, a table
+to fit all the models, the number of draws in the model average, a table
 containing the model weights, the method to calculate the weights,
 whether this model is an ECx-type model
 (see details below), and the ECx summary values should the user decide
@@ -107,7 +107,7 @@ to calculate them."><meta property="og:image" content="https://open-aims.github.
 <code><a href="bayesnec-package.html">bayesnec</a></code> package are summarised
 as a <code>manecsummary</code> object, which contains the name of the
 non-linear models fitted, the family distribution used
-to fit all the models, the number of post-warm-up draws per model, a table
+to fit all the models, the number of draws in the model average, a table
 containing the model weights, the method to calculate the weights,
 whether this model is an ECx-type model
 (see details below), and the ECx summary values should the user decide
@@ -135,8 +135,8 @@ family distribution and link function used to fit all the models.</p></dd>
 
 
 <dt><code>sample_size</code></dt>
-<dd><p>The number of post-warm-up draws each model in the set
-holds. Where the models hold different numbers, it is the smallest.</p></dd>
+<dd><p>The number of draws in the model average, set to the
+smallest posterior draw count among the component models.</p></dd>
 
 
 <dt><code>mod_weights</code></dt>
