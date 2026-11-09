@@ -300,6 +300,8 @@ ne_prior_bounds <- function(fit) {
 nec_prior_boundary <- function(object) {
   one <- function(fit) {
     if (!sampled_nec_is_no_effect(fit$model, fit$fit) ||
+        (!is.null(fit$hurdle) &&
+         !identical(fit$hurdle$ne_type, "NEC")) ||
         is.null(fit$ne_posterior) ||
         isTRUE(fit$pred_vals$observed_levels)) {
       return(NULL)
@@ -318,6 +320,7 @@ nec_prior_boundary <- function(object) {
     }
     if (length(span) != 1 || !is.finite(span) || span <= 0) return(NULL)
     draws <- as.numeric(fit$ne_posterior)
+    draws <- draws[is.finite(draws)]
     n_draws <- length(draws)
     if (n_draws == 0) return(NULL)
     window <- 0.05 * span
@@ -328,7 +331,7 @@ nec_prior_boundary <- function(object) {
       } else {
         draws <= bound + window & draws >= bound
       }
-      n_near <- sum(near, na.rm = TRUE)
+      n_near <- sum(near)
       list(bound = bound, window = window, n_near = n_near,
            n_draws = n_draws, share = n_near / n_draws)
     }
@@ -374,9 +377,10 @@ format_nec_prior_boundary <- function(record, label) {
   if (!is.null(record$weighted)) {
     sides <- names(record$weighted)[record$weighted > 0.075]
     if (!length(sides)) return(NULL)
-    return(paste0("The model-weighted NEC posterior has ",
+    return(paste0("The model-weighted share from sampled NEC equations is ",
                   paste(paste0(signif(100 * record$weighted[sides], 2),
-                               "% near a ", sides, " prior bound"),
+                               "% near ", ifelse(sides == "upper", "an", "a"),
+                               " ", sides, " prior bound"),
                         collapse = " and "),
                   ". See the prior_bound_summary attribute for each equation."))
   }

@@ -149,6 +149,25 @@ test_that("an interior NEC posterior has a record without a message", {
   expect_null(bayesnec:::nec_prior_boundary(fit))
 })
 
+test_that("the prior-bound share excludes draws without finite estimates", {
+  fit <- nec4param
+  bounds <- bayesnec:::ne_prior_bounds(fit$fit)
+  span <- bounds$ub - bounds$lb
+  fit$ne_posterior <- c(rep(bounds$lb + 0.5 * span, 91),
+                        rep(bounds$ub - 0.01 * span, 9), NA_real_, Inf)
+  record <- bayesnec:::nec_prior_boundary(fit)
+  expect_equal(record$upper$n_near, 9)
+  expect_equal(record$upper$n_draws, 100)
+  expect_equal(record$upper$share, 0.09)
+})
+
+test_that("a curve-read hurdle estimate has no sampled NEC boundary record", {
+  fit <- nec4param
+  fit$hurdle <- list(ne_type = "N(S)EC")
+  fit$ne_type <- "N(S)EC"
+  expect_null(bayesnec:::nec_prior_boundary(fit))
+})
+
 test_that("a model set weights bounded NEC tails by equation weight", {
   set <- manec_example
   fit <- nec4param
@@ -165,7 +184,7 @@ test_that("a model set weights bounded NEC tails by equation weight", {
   expect_null(record$per_equation[["ecx4param"]])
   expect_match(bayesnec:::format_nec_prior_boundary(record,
                                                      "model-averaged"),
-               "model-weighted NEC posterior")
+               "model-weighted share from sampled NEC equations")
   estimate <- suppressMessages(nec(set))
   expect_equal(attr(estimate, "prior_bound_summary"), record)
   s <- bayesnec:::clean_nec_vals(set, set$success_models, "ecx4param",
