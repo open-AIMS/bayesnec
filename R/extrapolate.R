@@ -287,6 +287,115 @@ ne_prior_bounds <- function(fit) {
   list(lb = tightest(rows$lb), ub = tightest(rows$ub))
 }
 
+#' Draws near a bound of the sampled NEC prior
+#'
+#' The five-percent window is measured on the fitted predictor scale. Its
+#' width comes from the two prior bounds where both exist, or the stored
+#' prediction range where only one bound exists.
+#'
+#' @param object A single fit or a model set.
+#' @return A record for a single fit, or per-equation records and their
+#' model-weighted shares for a set. NULL when no sampled NEC has a bound.
+#' @noRd
+nec_prior_boundary <- function(object) {
+  one <- function(fit) {
+    if (!sampled_nec_is_no_effect(fit$model, fit$fit) ||
+        is.null(fit$ne_posterior) ||
+        isTRUE(fit$pred_vals$observed_levels)) {
+      return(NULL)
+    }
+    bounds <- ne_prior_bounds(fit$fit)
+    if (is.null(bounds) || !any(is.finite(c(bounds$lb, bounds$ub)))) {
+      return(NULL)
+    }
+    span <- bounds$ub - bounds$lb
+    if (!is.finite(span) || span <= 0) {
+      grid <- ne_grid_bounds(fit)
+      if (is.null(grid)) return(NULL)
+      fitted <- sub_x_transformation(c(grid$lower, grid$upper),
+                                     fit$bayesnecformula)
+      span <- diff(range(fitted[is.finite(fitted)]))
+    }
+    if (length(span) != 1 || !is.finite(span) || span <= 0) return(NULL)
+    draws <- as.numeric(fit$ne_posterior)
+    n_draws <- length(draws)
+    if (n_draws == 0) return(NULL)
+    window <- 0.05 * span
+    end <- function(bound, upper) {
+      if (!is.finite(bound)) return(NULL)
+      near <- if (upper) {
+        draws >= bound - window & draws <= bound
+      } else {
+        draws <= bound + window & draws >= bound
+      }
+      n_near <- sum(near, na.rm = TRUE)
+      list(bound = bound, window = window, n_near = n_near,
+           n_draws = n_draws, share = n_near / n_draws)
+    }
+    list(lower = end(bounds$lb, FALSE), upper = end(bounds$ub, TRUE))
+  }
+  if (is_bayesnecfit(object)) return(one(object))
+  models <- object$success_models
+  per_equation <- lapply(object$mod_fits[models], one)
+  if (all(vapply(per_equation, is.null, logical(1)))) return(NULL)
+  weights <- as.numeric(object$mod_stats$wi)
+  names(weights) <- object$mod_stats$model
+  weights <- weights[models]
+  weighted <- vapply(c("lower", "upper"), function(side) {
+    sum(vapply(models, function(model) {
+      record <- per_equation[[model]][[side]]
+      if (is.null(record)) 0 else weights[[model]] * record$share
+    }, numeric(1)))
+  }, numeric(1))
+  list(per_equation = per_equation, weighted = weighted)
+}
+
+#' Report a substantial concentration of NEC draws near a prior bound
+#' @param record A record from \code{nec_prior_boundary()}.
+#' @param label The equation name or "model-averaged".
+#' @return NULL, invisibly.
+#' @noRd
+report_nec_prior_boundary <- function(record, label) {
+  note <- format_nec_prior_boundary(record, label)
+  if (!is.null(note)) message(note)
+  invisible(NULL)
+}
+
+#' @noRd
+print_nec_prior_boundary <- function(record, label) {
+  note <- format_nec_prior_boundary(record, label)
+  if (!is.null(note)) cat(note, "\n")
+  invisible(NULL)
+}
+
+#' @noRd
+format_nec_prior_boundary <- function(record, label) {
+  if (is.null(record)) return(NULL)
+  if (!is.null(record$weighted)) {
+    sides <- names(record$weighted)[record$weighted > 0.075]
+    if (!length(sides)) return(NULL)
+    return(paste0("The model-weighted NEC posterior has ",
+                  paste(paste0(signif(100 * record$weighted[sides], 2),
+                               "% near a ", sides, " prior bound"),
+                        collapse = " and "),
+                  ". See the prior_bound_summary attribute for each equation."))
+  }
+  sides <- c("lower", "upper")
+  flagged <- sides[vapply(sides, function(side) {
+    !is.null(record[[side]]) && record[[side]]$share > 0.075
+  }, logical(1))]
+  if (!length(flagged)) return(NULL)
+  detail <- vapply(flagged, function(side) {
+    end <- record[[side]]
+    paste0(end$n_near, " of ", end$n_draws, " draws (",
+           signif(100 * end$share, 2), "%) within the ", side,
+           " 5% of the prior range ending at ", signif(end$bound, 3))
+  }, character(1))
+  paste0("The ", label, " NEC posterior has ",
+         paste(detail, collapse = " and "),
+         ". A credible limit near this bound may be set by the prior.")
+}
+
 #' State that the fit itself stops where the extrapolation was asked to go
 #'
 #' A nec prior truncated at the prediction range holds every draw inside it, so

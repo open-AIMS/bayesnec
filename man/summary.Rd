@@ -115,6 +115,12 @@ returned on the recorded scale as \code{\link{nec}} returns it. An
 \code{xform} supplied in \code{...} is applied to the stored draws and to
 the bound they are censored at instead, as \code{\link{nec}} applies it,
 so the no-effect row and the ECx rows are reported on one scale.
+For a sampled NEC whose prior has a bound and whose threshold has no
+spanning group term, the no-effect row also has a
+\code{"prior_bound_summary"} attribute. It gives the share of draws in
+the last 5\% of the prior range at each end on the fitted predictor scale.
+A printed note appears when a share exceeds 7.5\%; the quantiles do not
+change. A model set includes a per-equation record and model-weighted shares.
 
 \code{posterior = TRUE} is refused. A summary reports each estimate as
 quantiles; the draws themselves are returned by \code{\link{nec}},

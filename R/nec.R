@@ -140,6 +140,13 @@
 #' value, so an entry falling among such draws is the end of the prediction
 #' range rather than a quantile. Attribute \code{"censored_summary"} marks
 #' which entries those are and states how many draws lie beyond each end.
+#' For a sampled NEC with a bounded prior and no spanning group term,
+#' attribute
+#' \code{"prior_bound_summary"} gives the bound and the number and share of
+#' draws within the last 5% of the prior range at each end. On a model set it
+#' gives these values per equation and their model-weighted shares. The
+#' measurement is on the fitted predictor scale; the estimate and its
+#' quantiles are unchanged. A message is emitted when a share exceeds 7.5%.
 #'
 #' @section Capping and dropping:
 #' Two operations are both called censoring and they are not the same. A
@@ -343,6 +350,9 @@ necfit_ne <- function(object, posterior = FALSE, xform = NULL,
                       prob_vals = c(0.5, 0.025, 0.975), extrapolate = FALSE,
                       ...) {
   nec_out <- object$ne_posterior
+  prior_boundary <- if (!posterior && isFALSE(extrapolate)) {
+    nec_prior_boundary(object)
+  } else NULL
   # The default returns the stored posterior and record untouched. The bounds
   # are the stored prediction grid, the value the record and ecx() censor at.
   # ne_grid_bounds() is passed unevaluated: under the default,
@@ -388,6 +398,10 @@ necfit_ne <- function(object, posterior = FALSE, xform = NULL,
   names(nec_estimate) <- clean_names(nec_estimate)
   label <- ne_estimate_label(fit_ne_types(object))
   attr(nec_estimate, "toxicity_estimate") <- label
+  if (!posterior) {
+    attr(nec_estimate, "prior_bound_summary") <- prior_boundary
+    report_nec_prior_boundary(prior_boundary, object$model)
+  }
   attr(nec_out, "toxicity_estimate") <- label
   if (!posterior) {
     nec_estimate
@@ -515,6 +529,9 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
   warn_stale_ne_type(object)
   report_manec_ne_type(manec_component_types(object))
   nec_out <- object$w_ne_posterior
+  prior_boundary <- if (!posterior && isFALSE(extrapolate)) {
+    nec_prior_boundary(object)
+  } else NULL
   # Check the limits against every equation, not the set's label: an infinite
   # limit depends on whether each component samples a NEC. As in
   # nec.bayesnecfit(), ne_grid_bounds() is passed unevaluated.
@@ -554,6 +571,10 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
   names(nec_estimate) <- clean_names(nec_estimate)
   label <- ne_estimate_label(fit_ne_types(object))
   attr(nec_estimate, "toxicity_estimate") <- label
+  if (!posterior) {
+    attr(nec_estimate, "prior_bound_summary") <- prior_boundary
+    report_nec_prior_boundary(prior_boundary, "model-averaged")
+  }
   attr(nec_out, "toxicity_estimate") <- label
   if (!posterior) {
     nec_estimate

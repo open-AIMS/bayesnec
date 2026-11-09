@@ -60,6 +60,12 @@
 #' \code{xform} supplied in \code{...} is applied to the stored draws and to
 #' the bound they are censored at instead, as \code{\link{nec}} applies it,
 #' so the no-effect row and the ECx rows are reported on one scale.
+#' For a sampled NEC whose prior has a bound and whose threshold has no
+#' spanning group term, the no-effect row also has a
+#' \code{"prior_bound_summary"} attribute. It gives the share of draws in
+#' the last 5% of the prior range at each end on the fitted predictor scale.
+#' A printed note appears when a share exceeds 7.5%; the quantiles do not
+#' change. A model set includes a per-equation record and model-weighted shares.
 #'
 #' \code{posterior = TRUE} is refused. A summary reports each estimate as
 #' quantiles; the draws themselves are returned by \code{\link{nec}},
@@ -404,9 +410,11 @@ summary_ne_vals <- function(x, xform) {
   check_xform(xform)
   stored <- if (is_bayesnecfit(x)) x$ne else x$w_ne
   map <- recorded_xform(x, xform)
+  prior_boundary <- nec_prior_boundary(x)
   # Return the stored row itself, not a recomputation, so that a summary
   # of an untransformed fit prints exactly the row stored at fit time.
   if (identical(map, identity)) {
+    attr(stored, "prior_bound_summary") <- prior_boundary
     return(stored)
   }
   post <- if (is_bayesnecfit(x)) x$ne_posterior else x$w_ne_posterior
@@ -416,7 +424,9 @@ summary_ne_vals <- function(x, xform) {
   # not keep an attribute. A decreasing map swaps the end the draws are
   # censored at; xform_censoring() handles that, as it does for nec().
   attr(post, "censored") <- xform_censoring(cens, map)
-  estimates_summary(post)
+  out <- estimates_summary(post)
+  attr(out, "prior_bound_summary") <- prior_boundary
+  out
 }
 
 #' Which candidate models mis-state the control, by ratio

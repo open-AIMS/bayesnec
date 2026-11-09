@@ -832,6 +832,7 @@ print_mat <- function(x, digits = 2) {
   # Drop the record before printing, or print.default() lists it under the
   # matrix.
   attr(out, "censored_summary") <- NULL
+  attr(out, "prior_bound_summary") <- NULL
   print(out, quote = FALSE, right = TRUE)
   invisible(x)
 }
@@ -856,6 +857,7 @@ clean_nec_vals <- function(x, all_models, ecx_models, vals = NULL) {
   # as.matrix() drops the censoring record, so copy it by hand, or summary()
   # prints the bound as though it were a quantile.
   attr(mat, "censored_summary") <- attr(vals, "censored_summary")
+  attr(mat, "prior_bound_summary") <- attr(vals, "prior_bound_summary")
   # Prefer the recorded ne_type: for a hurdle fit the estimate's type depends
   # on the equations of both blocks, not on the model name alone.
   if (!is.null(x$ne_type)) {

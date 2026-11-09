@@ -166,7 +166,9 @@ test_that("the no-effect row is summarised as the stored row was", {
     set <- inherits(fit, "bayesmanecfit")
     stored <- if (set) fit$w_ne else fit$ne
     post <- if (set) fit$w_ne_posterior else fit$ne_posterior
-    expect_identical(ne_vals(fit, identity), stored)
+    expect_identical(as.numeric(ne_vals(fit, identity)), as.numeric(stored))
+    expect_identical(attr(ne_vals(fit, identity), "prior_bound_summary"),
+                     bayesnec:::nec_prior_boundary(fit))
     expect_equal(as.numeric(ne_vals(fit, function(z) z)), as.numeric(stored))
     expect_equal(as.numeric(ne_vals(fit, exp)),
                  as.numeric(bayesnec:::estimates_summary(exp(post))))

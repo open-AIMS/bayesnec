@@ -71,6 +71,13 @@ predicted over, that draw keeps its rank in the summary and is given no
 value, so an entry falling among such draws is the end of the prediction
 range rather than a quantile. Attribute \code{"censored_summary"} marks
 which entries those are and states how many draws lie beyond each end.
+For a sampled NEC with a bounded prior and no spanning group term,
+attribute
+\code{"prior_bound_summary"} gives the bound and the number and share of
+draws within the last 5\% of the prior range at each end. On a model set it
+gives these values per equation and their model-weighted shares. The
+measurement is on the fitted predictor scale; the estimate and its
+quantiles are unchanged. A message is emitted when a share exceeds 7.5\%.
 }
 \description{
 Extracts the predicted NEC value as desired from an object of class

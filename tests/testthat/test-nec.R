@@ -107,6 +107,72 @@ test_that("an uncensored posterior is silent", {
   expect_silent(nec(nec4param))
 })
 
+test_that("a bounded NEC prior reports a concentrated upper tail", {
+  fit <- nec4param
+  bounds <- bayesnec:::ne_prior_bounds(fit$fit)
+  span <- bounds$ub - bounds$lb
+  fit$ne_posterior <- c(rep(bounds$lb + 0.5 * span, 91),
+                        rep(bounds$ub - 0.01 * span, 9))
+  original <- bayesnec:::summarise_censored(fit$ne_posterior,
+                                            c(0.5, 0.025, 0.975))
+  messages <- character()
+  estimate <- withCallingHandlers(nec(fit), message = function(m) {
+    messages <<- c(messages, conditionMessage(m))
+    invokeRestart("muffleMessage")
+  })
+  expect_length(messages, 1)
+  expect_match(messages, "9 of 100 draws")
+  expect_equal(as.numeric(estimate), as.numeric(original))
+  record <- attr(estimate, "prior_bound_summary")
+  expect_equal(record$upper$share, 0.09)
+  expect_equal(record$upper$bound, bounds$ub)
+  expect_equal(record$lower$share, 0)
+  s <- bayesnec:::clean_nec_vals(fit, fit$model, NULL,
+                                 bayesnec:::summary_ne_vals(fit, NULL))
+  expect_equal(attr(s, "prior_bound_summary")$upper, record$upper)
+  expect_match(paste(capture.output(bayesnec:::print_nec_prior_boundary(
+    attr(s, "prior_bound_summary"), fit$model)), collapse = " "),
+    "9 of 100 draws")
+})
+
+test_that("an interior NEC posterior has a record without a message", {
+  fit <- nec4param
+  bounds <- bayesnec:::ne_prior_bounds(fit$fit)
+  span <- bounds$ub - bounds$lb
+  fit$ne_posterior <- c(rep(bounds$lb + 0.5 * span, 94),
+                        rep(bounds$ub - 0.01 * span, 6))
+  expect_silent(estimate <- nec(fit))
+  expect_equal(attr(estimate, "prior_bound_summary")$upper$share, 0.06)
+  fit$fit$prior$ub[fit$fit$prior$nlpar == "nec"] <- ""
+  expect_null(attr(nec(fit), "prior_bound_summary")$upper)
+  fit$pred_vals$observed_levels <- TRUE
+  expect_null(bayesnec:::nec_prior_boundary(fit))
+})
+
+test_that("a model set weights bounded NEC tails by equation weight", {
+  set <- manec_example
+  fit <- nec4param
+  bounds <- bayesnec:::ne_prior_bounds(fit$fit)
+  span <- bounds$ub - bounds$lb
+  fit$ne_posterior <- c(rep(bounds$lb + 0.5 * span, 90),
+                        rep(bounds$ub - 0.01 * span, 10))
+  set$mod_fits[[fit$model]] <- fit
+  record <- bayesnec:::nec_prior_boundary(set)
+  weight <- as.numeric(set$mod_stats$wi)[match(fit$model,
+                                               set$mod_stats$model)]
+  expect_equal(record$per_equation[[fit$model]]$upper$share, 0.1)
+  expect_equal(record$weighted[["upper"]], weight * 0.1)
+  expect_null(record$per_equation[["ecx4param"]])
+  expect_match(bayesnec:::format_nec_prior_boundary(record,
+                                                     "model-averaged"),
+               "model-weighted NEC posterior")
+  estimate <- suppressMessages(nec(set))
+  expect_equal(attr(estimate, "prior_bound_summary"), record)
+  s <- bayesnec:::clean_nec_vals(set, set$success_models, "ecx4param",
+                                 bayesnec:::summary_ne_vals(set, NULL))
+  expect_equal(attr(s, "prior_bound_summary"), record)
+})
+
 # No-effect argument validation
 
 test_that("no_effect is refused rather than discarded off a joint refit", {

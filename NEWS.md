@@ -1,5 +1,12 @@
 # bayesnec 2.2.0
 
+- `nec()` and printed `summary()` now identify sampled NEC posteriors with
+  substantial mass near a finite prior bound. The `prior_bound_summary`
+  attribute gives the bound and the number and share of draws in the outer 5%
+  of the prior range. A note appears when that share exceeds 7.5%; model sets
+  also give per-equation and model-weighted shares. The posterior and its
+  quantiles are unchanged (#584).
+
 - Model sets can now combine equations with different numbers of retained
   posterior draws. Model weights use each equation's pointwise leave-one-out
   scores, and the model average samples from all draws of each equation. The

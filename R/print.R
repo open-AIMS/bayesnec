@@ -85,6 +85,7 @@ print.necsummary <- function(x, ...) {
   print_mat(x$nec_vals)
   print_censoring_note(attr(x$nec_vals, "censored_summary"),
                        rownames(x$nec_vals)[1])
+  print_nec_prior_boundary(attr(x$nec_vals, "prior_bound_summary"), x$model)
   if (!is.null(x$ecs)) {
     cat("\n\n")
     for (i in seq_along(x$ecs)) {
@@ -138,6 +139,8 @@ print.manecsummary <- function(x, ...) {
   }
   print_mat(x$nec_vals)
   print_censoring_note(attr(x$nec_vals, "censored_summary"), neclab)
+  print_nec_prior_boundary(attr(x$nec_vals, "prior_bound_summary"),
+                           "model-averaged")
   cat("\n\n")
   if (!is.null(x$ecs)) {
     for (i in seq_along(x$ecs)) {

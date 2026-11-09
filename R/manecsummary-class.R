@@ -37,6 +37,11 @@
 #' range rather than a quantile, and states how many draws lie beyond each end.
 #' The count is over the weighted draws, so it is the share of the
 #' model-averaged posterior that is censored and not the share of equations.
+#' Attribute \code{"prior_bound_summary"} gives the share of sampled NEC
+#' draws without spanning group terms that fall within
+#' the last 5% of each bounded prior end for every equation,
+#' and their model-weighted shares. The bounds are on the fitted predictor
+#' scale. A printed note appears where a weighted share exceeds 7.5%.
 #' @slot ecs A \code{\link[base]{list}} containing the ECx values
 #' should the user decide to calculate them (see the non-exported
 #' \code{bayesnec:::summary.bayesnecfit} help file for details). Different
