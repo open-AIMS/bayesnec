@@ -83,107 +83,82 @@ par(op)
 
 ## Fitting and checks
 
-We fitted Gaussian responses with an identity link. For the marine data, we fitted monotone `neclin` and five hormesis equations: `neclinhorme`, `nechorme`, `nechorme4`, `ecxhormebc4` and `ecxhormebc5`. We fitted the five hormesis equations to lettuce biomass using `log(concentration + 0.1)` because the recorded concentrations span more than two orders of magnitude; the offset retains the control. All returned concentrations below are in mg/L. Each fit used four chains of 2000 iterations, including 1000 warm-up iterations. We combined the fitted equations with `c()` so that `bayesnec` could estimate pseudo-BMA model weights from Pareto-smoothed importance sampling leave-one-out cross-validation (PSIS-LOO) and form model-averaged predictions [@vehtari2017; @fisher2023ieam]. We compared observed treatment means with fitted and model-averaged means, used `check_fit()` with 1000 posterior predictive datasets and examined sampler and PSIS-LOO diagnostics.
+We fitted Gaussian responses with an identity link. The marine candidate set included monotone `neclin` and five hormesis equations; the lettuce set included the five hormesis equations. Lettuce concentration was entered as `log(concentration + 0.1)` because its recorded values span more than two orders of magnitude; the offset retains the control. All returned concentrations below are in mg/L. We retained equations with Rhat at most 1.01, minimum effective sample size at least 400 and no divergent transitions. We replaced unreliable observation-wise leave-one-out scores with exact refits for lettuce before calculating pseudo-BMA model weights [@vehtari2017]. The [research compendium](https://github.com/open-AIMS/hormesis-nsec-compendium) contains the fitting calls and the sampler screen.
 
-The following calls show how to fit both candidate sets, inspect their weights and extract the NSEC and ECNSEC for `neclinhorme`. They are not evaluated when the vignette is built; the displayed results were prepared from the separately saved fits, with model-specific initial values documented in the research compendium.
+The following calls read the saved, screened sets produced by the compendium script and show how to obtain weights, no-effect estimates and their associated effect sizes. The chunk is not evaluated during the vignette build because the marine individual observations are not redistributed with the package.
 
 
 ``` r
 library(bayesnec)
-source("data-raw/hormesis_negri.R") # run from a source checkout
-negri <- read.csv("ignore/hormesis_data/hormesis_negri_2021.csv")
-negri$conc <- (negri$source_conc_ug_l_tah - 1) / 1000
-marine_models <- c("neclin", "neclinhorme", "nechorme", "nechorme4",
-                   "ecxhormebc4", "ecxhormebc5")
-marine_set <- bnec(sgr ~ crf(conc, model = marine_models),
-                   data = negri, family = gaussian(),
-                   chains = 4, cores = 4, iter = 2000, warmup = 1000,
-                   seed = 570, init = 0,
-                   control = list(adapt_delta = 0.995, max_treedepth = 12))
+# From the compendium root, after analysis/hormesis_case_fits.R
+marine_set <- readRDS("ignore/hormesis_data/marine_set_final.rds")
+lettuce_set <- readRDS("ignore/hormesis_data/lettuce_set_final.rds")
 summary(marine_set, check_fit = FALSE)$mod_weights
-nec(marine_set) # N(S)EC: NEC from neclin and NSECs from the other equations
-fit_marine <- pull_out(marine_set, model = "neclinhorme")
+nec(marine_set) # N(S)EC from a NEC and hormesis NSECs
+summary(lettuce_set, check_fit = FALSE)$mod_weights
+nsec(lettuce_set, sig_val = 0.01)
+autoplot(marine_set, nec = FALSE)
+autoplot(lettuce_set, nec = FALSE)
+
+fit_marine <- readRDS("ignore/hormesis_data/fit_final_marine_neclinhorme.rds")
 curve_params(fit_marine) # sampled peak parameter
 nsec_marine <- nsec(fit_marine, sig_val = 0.01)
-attr(nsec_marine, "ecnsec_relativeP") # ECNSEC for the NSEC draws
-ecnsec(fit_marine, nsec = nsec_marine[1])
-check_fit(fit_marine, ndraws = 1000, seed = 570)
-autoplot(marine_set, nec = FALSE) # model-averaged fitted curve
-
-lettuce <- read.csv(system.file("extdata", "hormesis_lettuce_1993.csv",
-                                package = "bayesnec"))
-lettuce_models <- c("neclinhorme", "nechorme", "nechorme4",
-                    "ecxhormebc4", "ecxhormebc5")
-lettuce_set <- bnec(weight ~ crf(log(conc + 0.1), model = lettuce_models),
-                    data = lettuce, family = gaussian(),
-                    chains = 4, cores = 4, iter = 2000, warmup = 1000,
-                    seed = 570, init = 0,
-                    control = list(adapt_delta = 0.999, max_treedepth = 12))
-summary(lettuce_set, check_fit = FALSE)$mod_weights
-nsec(lettuce_set, sig_val = 0.01) # model-averaged NSEC
-fit_lettuce <- pull_out(lettuce_set, model = "neclinhorme")
+attr(nsec_marine, "ecnsec_relativeP") # paired ECNSEC
+fit_lettuce <- readRDS("ignore/hormesis_data/fit_final_lettuce_nechorme.rds")
 nsec_lettuce <- nsec(fit_lettuce, sig_val = 0.01)
 attr(nsec_lettuce, "ecnsec_relativeP")
-ecnsec(fit_lettuce, nsec = nsec_lettuce[1])
-check_fit(fit_lettuce, ndraws = 1000, seed = 570)
-autoplot(lettuce_set, nec = FALSE)
 ```
-
 
 # Fitted examples
 
 ## *Cladocopium goreaui* growth rates
 
-The ten marine controls had a mean growth rate of 0.108 d^-1^. Treatment means at 0.58 and 1.17 mg/L TAH were 22% and 18% above that mean, followed by declines at higher concentrations. For `neclinhorme`, the peak parameter was 0.91 mg/L TAH (95% credible interval 0.59–1.47), while the NSEC was 2.01 mg/L (1.81–2.20; Table 2). The associated ECNSEC was 10.8% (2.3–18.2%). The peak describes maximum stimulation; the NSEC is the statistical no-effect estimate obtained by interpolation on the declining limb.
+The ten marine controls had a mean growth rate of 0.108 d^-1^. Treatment means at 0.58 and 1.17 mg/L total aromatic hydrocarbons (TAH) were 22% and 18% above that mean, followed by a decline at higher concentrations. For the retained `neclinhorme` equation, the sampled peak was 0.92 mg/L TAH (95% credible interval 0.56–1.46), while its NSEC was 2.00 mg/L (1.80–2.18) and its paired ECNSEC was 10.6% (2.2–17.8%; Table 2). The NSEC is on the declining limb, between the 1.75 and 2.33 mg/L treatments; the peak parameter describes stimulation instead.
 
-| Equation | Pseudo-BMA weight | Fitted control (d^-1^) | NSEC, mg/L TAH (95% CrI) | ECNSEC, % (95% CrI) | EC10, mg/L TAH (95% CrI) | Difference in ELPD (SE) | Divergent transitions |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `neclin`, monotone | 0.001 | 0.119 | 1.71 (1.42–2.04) | 7.9 (1.4–13.3) | 1.77 (1.49–2.23) | −7.7 (2.9) | 0 |
-| `neclinhorme`, linear threshold | 0.191 | 0.111 | 2.01 (1.81–2.20) | 10.8 (2.3–18.2) | 1.98 (1.64–2.29) | −3.3 (3.8) | 1 |
-| `nechorme`, exponential threshold | <0.001 | 0.109 | 2.90 (2.73–3.15) | 7.9 (1.2–13.3) | 2.91 (2.75–3.17) | −15.2 (4.4) | 0 |
-| `nechorme4`, four-parameter threshold | <0.001 | 0.109 | 2.18 (1.90–2.94) | 10.2 (1.8–16.8) | 2.27 (1.81–2.94) | −7.9 (2.2) | 0 |
-| `ecxhormebc4`, smooth hormesis | 0.030 | 0.112 | 2.33 (1.82–2.66) | 6.9 (0.9–12.4) | 2.50 (2.08–2.85) | −7.4 (3.9) | 0 |
-| `ecxhormebc5`, five-parameter smooth | 0.777 | 0.114 | 2.12 (1.76–2.41) | 8.7 (1.8–14.0) | 2.19 (1.75–2.56) | 0 (reference) | 3 |
+| Equation | Pseudo-BMA weight | Fitted control (d^-1^) | NSEC, mg/L TAH (95% CrI) | ECNSEC, % (95% CrI) | EC10, mg/L TAH (95% CrI) |
+| --- | --- | --- | --- | --- | --- |
+| `neclin` | 0.002 | 0.119 | 1.71 (1.42–2.04) | 7.9 (1.4–13.2) | 1.77 (1.49–2.23) |
+| `neclinhorme` | 0.191 | 0.111 | 2.00 (1.80–2.18) | 10.6 (2.2–17.8) | 1.98 (1.65–2.28) |
+| `nechorme` | <0.001 | 0.109 | 2.90 (2.73–3.15) | 7.9 (1.2–13.3) | 2.91 (2.75–3.17) |
+| `ecxhormebc4` | 0.031 | 0.112 | 2.33 (1.82–2.66) | 6.9 (0.9–12.4) | 2.50 (2.08–2.85) |
+| `ecxhormebc5` | 0.776 | 0.114 | 2.09 (1.73–2.41) | 8.4 (1.6–13.7) | 2.20 (1.74–2.57) |
 
-Table 2. Four-chain fits to individual *C. goreaui* growth rates. The fitted control is the posterior median of the mean at zero concentration, against an observed control mean of 0.108 d^-1^. ECNSEC is the posterior percentage decline associated with each draw of the NSEC; its interval describes uncertainty in that effect. NSEC was calculated for all equations to compare a common control-based location; the usual default for monotone `neclin` is its sampled NEC. Divergent transitions remained despite `adapt_delta = 0.995`; their estimates warrant caution. Weights use pseudo-BMA applied to PSIS-LOO; ELPD is expected log predictive density. Exposure checks and a fuller posterior predictive assessment would be needed before using these estimates for a guideline.
+Table 2. Estimates from the five equations retained for the marine growth rates. ECNSEC is paired with each posterior draw of the NSEC. The monotone `neclin` equation usually returns its sampled NEC through `nec()`; its NSEC is shown here for a common control-based comparison. The fitted control is the posterior median at zero concentration, against an observed control mean of 0.108 d^-1^.
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-example10-marine-fits.png" alt="Figure 3. Model-averaged fitted mean and the means of six candidate equations (blue), with 95% credible bands (shaded), for individual *C. goreaui* growth rates. Candidate panel headings give pseudo-BMA weights. The purple line in the model-average panel marks the N(S)EC. Black points are treatment means calculated from the Negri et al. (2021) workbook (CC BY-NC 3.0 Australia); individual observations are not redistributed with the package. TAH concentrations are relative to the source-coded control." width="100%" />
-<p class="caption">Figure 3. Model-averaged fitted mean and the means of six candidate equations (blue), with 95% credible bands (shaded), for individual *C. goreaui* growth rates. Candidate panel headings give pseudo-BMA weights. The purple line in the model-average panel marks the N(S)EC. Black points are treatment means calculated from the Negri et al. (2021) workbook (CC BY-NC 3.0 Australia); individual observations are not redistributed with the package. TAH concentrations are relative to the source-coded control.</p>
+<img src="vignette-fig-example10-marine-fits.png" alt="Figure 3. Model-averaged fitted mean and five retained candidate equations (blue), with 95% credible bands, for individual *C. goreaui* growth rates. Candidate headings give pseudo-BMA weights; the purple line marks the model-averaged N(S)EC. Black points are treatment means from the Negri et al. (2021) workbook (CC BY-NC 3.0 Australia). TAH concentrations are relative to the source-coded control." width="100%" />
+<p class="caption">Figure 3. Model-averaged fitted mean and five retained candidate equations (blue), with 95% credible bands, for individual *C. goreaui* growth rates. Candidate headings give pseudo-BMA weights; the purple line marks the model-averaged N(S)EC. Black points are treatment means from the Negri et al. (2021) workbook (CC BY-NC 3.0 Australia). TAH concentrations are relative to the source-coded control.</p>
 </div>
 
-The marine model average combines the `neclin` NEC with NSECs from five hormesis equations, so `nec()` calls its result an N(S)EC [@fisher2023ieam]. The five-parameter Brain–Cousens equation had a pseudo-BMA weight of 0.777 and `neclinhorme` had 0.191 (Table 2). Their weighted posterior gave an N(S)EC of 2.09 mg/L TAH (1.77–2.43), with an estimated 8.7% decline at its median concentration (0.1–19.0%; Figure 3). The leading equation had three divergent transitions, and its ELPD advantage over `neclinhorme` was 3.3 (SE 3.8), so the weight should be read with those diagnostics.
-
-The `neclinhorme` declining limb overpredicted growth at 1.75 mg/L (fitted 0.108 d^-1^, observed 0.092 d^-1^) and underpredicted it at 2.92 mg/L (fitted 0.068 d^-1^, observed 0.085 d^-1^; Figure 3). Its NSEC is above the 1.75 mg/L treatment, whose observed mean was 15% below the control. This discrepancy concerns the fit near the crossing, not the definition of an NSEC. The other equations changed the estimated location but did not resolve the local fit. In 1000 posterior predictive datasets, the observed 1.75 mg/L mean lay outside the central 95% range for `neclinhorme` (`check_fit()` upper-tail probability 0.986). The observed control residual standard deviation was 0.0076 d^-1^, compared with a median simulated value of 0.0145 d^-1^. These checks limit interpretation of the numerical estimates from this series.
+The model-averaged curve rises modestly before declining (Figure 3). Its N(S)EC was 2.07 mg/L TAH (1.74–2.42), with an estimated 8.4% decline at that median concentration (−0.1–18.7%). The average combines the `neclin` NEC with NSECs from four hormesis equations [@fisher2023ieam]. The smooth `ecxhormebc5` equation received 0.776 of the weight and `neclinhorme` received 0.191, so the average follows the smooth declining limb while retaining the threshold equation's evidence for a low-dose rise.
 
 ## Lettuce biomass
 
-The lettuce mean at 1 mg/L was 1.250, approximately 28% above the control mean of 0.979, although the two control observations differed substantially (Figure 2). The three threshold equations reproduced a low-dose rise, with fitted means of 1.095–1.154 at 1 mg/L; the smooth Brain–Cousens fits showed less of the rise (Figure 4). All five equations estimated an NSEC between tested concentrations, with a nonzero associated ECNSEC (Table 3).
+The lettuce mean at 1 mg/L was 1.250, approximately 28% above the control mean of 0.979 (Figure 2). The three retained threshold equations reproduced a low-dose rise, with fitted means of 1.095–1.154 at 1 mg/L; the smooth `ecxhormebc4` equation showed less of the rise (Figure 4). Their NSECs are all interpolated between treatments and have nonzero paired ECNSECs (Table 3).
 
-| Equation | Pseudo-BMA weight | Fitted control | Fitted mean at 1 mg/L | NSEC, mg/L (95% CrI) | ECNSEC, % (95% CrI) | Divergent transitions |
-| --- | --- | --- | --- | --- | --- | --- |
-| `neclinhorme` | 0.188 | 1.044 | 1.095 | 5.90 (2.98–10.20) | 20.7 (4.7–31.0) | 0 |
-| `nechorme` | 0.538 | 1.026 | 1.154 | 4.74 (2.95–8.11) | 19.0 (4.1–29.3) | 0 |
-| `nechorme4` | 0.178 | 1.029 | 1.145 | 4.96 (2.68–9.35) | 20.8 (4.4–30.8) | 3 |
-| `ecxhormebc4` | 0.063 | 1.054 | 1.062 | 6.86 (2.80–13.83) | 22.8 (4.9–35.1) | 0 |
-| `ecxhormebc5` | 0.032 | 1.042 | 1.077 | 6.32 (2.66–14.61) | 23.1 (5.5–35.5) | 24 |
-| **Model average** | — | — | — | **5.04 (2.82–9.95)** | **19.9 (4.6–30.7)** | — |
+| Equation | Pseudo-BMA weight | Fitted control | Fitted mean at 1 mg/L | NSEC, mg/L (95% CrI) | ECNSEC, % (95% CrI) |
+| --- | --- | --- | --- | --- | --- |
+| `neclinhorme` | 0.238 | 1.044 | 1.095 | 5.90 (2.98–10.20) | 20.7 (4.7–31.0) |
+| `nechorme` | 0.435 | 1.026 | 1.154 | 4.74 (2.95–8.11) | 19.0 (4.1–29.3) |
+| `nechorme4` | 0.259 | 1.026 | 1.148 | 4.85 (2.73–8.66) | 20.2 (4.4–30.1) |
+| `ecxhormebc4` | 0.068 | 1.055 | 1.058 | 6.97 (2.89–13.93) | 23.0 (4.9–35.0) |
+| **Model average** | — | — | — | **5.07 (2.90–9.90)** | **20.0 (4.2–30.2)** |
 
-Table 3. Posterior median fitted means, NSECs and paired ECNSECs for lettuce shoot biomass. The model-average row combines the five candidate equations with their pseudo-BMA weights; its ECNSEC is paired with the sampled NSEC. Observed treatment means were 0.979 at the control and 1.250 at 1 mg/L. The `nechorme4` and `ecxhormebc5` fits had divergent transitions, and all five fits had at least one PSIS-LOO Pareto $k$ value above 0.7. These diagnostics limit the precision of the weights and model-averaged result.
+Table 3. Posterior medians and 95% credible intervals for lettuce shoot biomass. The model-average row combines the four retained equations with their pseudo-BMA weights; its ECNSEC is paired with the sampled NSEC. The observed means were 0.979 at the control and 1.250 at 1 mg/L.
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-example10-lettuce-fit.png" alt="Figure 4. Model-averaged fitted mean and the means of five candidate equations (brown), with 95% credible bands (shaded), for lettuce biomass. Candidate panel headings give pseudo-BMA weights. The purple line in the model-average panel marks the NSEC. Pale points are individual observations and black points are treatment means. The `nechorme4` and `ecxhormebc5` fits had divergent transitions; all five fits had PSIS-LOO Pareto k values above 0.7." width="100%" />
-<p class="caption">Figure 4. Model-averaged fitted mean and the means of five candidate equations (brown), with 95% credible bands (shaded), for lettuce biomass. Candidate panel headings give pseudo-BMA weights. The purple line in the model-average panel marks the NSEC. Pale points are individual observations and black points are treatment means. The `nechorme4` and `ecxhormebc5` fits had divergent transitions; all five fits had PSIS-LOO Pareto k values above 0.7.</p>
+<img src="vignette-fig-example10-lettuce-fit.png" alt="Figure 4. Model-averaged fitted mean and four retained candidate equations (brown), with 95% credible bands, for lettuce biomass. Candidate headings give pseudo-BMA weights; the purple line marks the model-averaged NSEC. Pale points are individual observations and black points are treatment means." width="100%" />
+<p class="caption">Figure 4. Model-averaged fitted mean and four retained candidate equations (brown), with 95% credible bands, for lettuce biomass. Candidate headings give pseudo-BMA weights; the purple line marks the model-averaged NSEC. Pale points are individual observations and black points are treatment means.</p>
 </div>
 
-The model-averaged NSEC was 5.04 mg/L (2.82–9.95), with an ECNSEC of 19.9% (4.6–30.7%). `nechorme` received the largest weight, 0.538, followed by `neclinhorme` at 0.188 and `nechorme4` at 0.178. The observed 1 mg/L mean was above each fitted mean; with only two observations per concentration, these comparisons have limited power. The high Pareto $k$ values and sampler divergences make the weights and numerical NSEC less secure for this series. They do not change the interpretation of NSEC as an interpolated statistical no-effect estimate with a corresponding ECNSEC.
+The model-averaged NSEC was 5.07 mg/L (2.90–9.90), between the 3.2 and 10 mg/L treatments, with a paired ECNSEC of 20.0% (4.2–30.2%). The three threshold equations accounted for 0.932 of the model weight, so their shared low-dose rise is apparent in the averaged curve (Figure 4). The control has only two observations, which contributes to the broad intervals around the estimated location and effect.
 
 # Interpretation
 
-The hormesis equations in `bayesnec` retain the stimulated observations and allow the NSEC to be read from a decline relative to the fitted control. This statistical no-effect location can have an associated nonzero ECNSEC, just as a NOEC can represent a nonzero effect [@fisher2023ieam]. Unlike the NOEC, the NSEC uses the fitted concentration–response curve to interpolate between tested treatments [@fisherfox2023]. The marine example also shows why a numerical estimate must be read with its fitted curve and posterior predictive checks: the local `neclinhorme` mismatch affects confidence in its reported value. For guideline assessment, the exposure measurements, endpoint relevance and fit around the crossing also need examination.
+For both endpoints, the fitted response rises above the control before falling. `bayesnec` distinguishes the peak parameter of a threshold hormesis equation from the no-effect estimate read on its descending limb. An NSEC can have a nonzero ECNSEC, as a NOEC can, while its fitted curve locates it between tested concentrations [@fisherfox2023; @fisher2023ieam]. The marine N(S)EC and lettuce NSEC therefore describe the return towards and below the unexposed response after stimulation. A guideline assessment would also consider exposure measurements and the biological meaning of the measured endpoint.
 
 # Reproducibility
 
-The marine observations are imported locally by `data-raw/hormesis_negri.R`; the fitting code above is not run during a vignette build. The marine fits used seed 570 on `bayesnec` commits `a1fcf719` and `0b8acbdd`. The lettuce fits used seed 570 on commits `0b8acbdd` and `98c76be8` (`brms` 2.23.0, `rstan` 2.32.7, R 4.6.1). `data-raw/hormesis_fit_plots.R` recreates Figures 3 and 4 from saved fits and prints the `check_fit()` summaries. The [research compendium](https://github.com/open-AIMS/hormesis-nsec-compendium) contains the complete fitting script, broader literature review and exploratory simulation.
+The marine observations are imported locally by `data-raw/hormesis_negri.R` and are not redistributed with the package. Initial fits used seed 570 on `bayesnec` commits `a1fcf719`, `0b8acbdd` and `98c76be8`. The sampler refits and Figures 3 and 4 used the same seed with the fitting code at commit `afb1f206` (R 4.6.1, `brms` 2.23.0 and `rstan` 2.32.7). The [research compendium](https://github.com/open-AIMS/hormesis-nsec-compendium) contains `analysis/hormesis_case_fits.R`, which saves the screened model sets and exact lettuce LOO scores. `data-raw/hormesis_fit_plots.R` recreates the figures and estimate summary from those saved objects.
 
 # References

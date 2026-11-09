@@ -168,4 +168,3 @@ print(marine_average)
 print(marine_average_effect)
 print(lettuce_average)
 print(lettuce_average_effect)
-
