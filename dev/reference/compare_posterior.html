@@ -254,10 +254,10 @@ not every pair can always reach its largest share at once. Terms the levels
 do not share, such as plates that belong to one level, are chosen for each
 level independently, in proportion to its counts within the shared value.</p>
 <p>With <code>comparison = "fitted"</code>, every level is predicted over one grid
-spanning the levels' combined range, or at the rows of <code>newdata</code>, as
-the band of <code><a href="autoplot.html">autoplot</a></code> predicts it: at the observed group levels
-where a group term spans concentrations, and on the population curve
-otherwise. Only <code>newdata</code>, <code>ndraws</code> and <code>draw_ids</code> are
+spanning the levels' combined range, or at the rows of <code>newdata</code>: at
+the observed group levels where a group term spans concentrations, as
+<code><a href="ecx.html">ecx</a></code> reads them, and on the population curve otherwise. The
+band of <code><a href="autoplot.html">autoplot</a></code> is the population curve in both cases. Only <code>newdata</code>, <code>ndraws</code> and <code>draw_ids</code> are
 taken through <code>...</code>, and <code>make_newdata = FALSE</code> requires
 <code>newdata</code>. <code>seed</code> changes the result only where <code>ndraws</code>
 selects the draws.</p>

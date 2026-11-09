@@ -321,6 +321,18 @@ supplying it together with <code>model</code> or <code>average</code> is an erro
 <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of them, returned invisibly, as described under
 <code>multi_facet</code>.</p>
     </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p>Where a group-level term spans the predictor, as a plate does when
+each plate is tested at every concentration, the curve and credible band
+are those of the population curve, with every group deviation set to zero.
+The band is therefore the 95% credible interval of the expected response
+of a typical level, and it does not include the variation between levels:
+the observations of a level whose deviation is large can lie outside it.
+The NEC, NSEC and ECx lines are read from the observed levels instead (see
+<code>pool</code> in <code><a href="ecx.html">ecx</a></code>), so they need not fall where the plotted
+curve equals the corresponding response.</p>
+    </div>
 
     <div id="ref-examples">
     <h2>Examples</h2>

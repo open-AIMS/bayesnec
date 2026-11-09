@@ -835,15 +835,20 @@ plate against its own control (its fitted mean at its lowest
 concentration). The plates are then pooled by mixing their posterior
 draws in proportion to each plate’s number of observations, so the
 estimate describes the 17 plates that were tested and not a new plate.
-The band that <code><a href="../reference/autoplot.html">autoplot()</a></code> and <code><a href="../reference/ggbnec_data.html">ggbnec_data()</a></code>
-draw is a mixture of the plates’ curves in the same proportions.
-<code>pool</code> selects another combination (e.g. one estimate per
-plate with <code>pool = "none"</code>), and <code>x_control</code> sets
-the concentration at which each plate’s control is read (see
-<code><a href="../reference/ecx.html">?ecx</a></code>). The cell term in D is set to zero in these
-predictions, as on the single plate, because each cell is observed at
-one concentration, so its deviation remains part of the uncertainty in
-the control.</p>
+The curve and band that <code><a href="../reference/autoplot.html">autoplot()</a></code> and
+<code><a href="../reference/ggbnec_data.html">ggbnec_data()</a></code> draw are those of the population curve, with
+every plate’s deviation at zero. The band is therefore the credible
+interval of the mean response of a typical plate, and it does not
+include the differences between plates. The EC10 and NSEC are read from
+the plates’ own curves, so their lines need not fall where the plotted
+curve has fallen by 10 per cent or below the 0.01 quantile of its
+control. <code>pool</code> selects another combination (e.g. one
+estimate per plate with <code>pool = "none"</code>), and
+<code>x_control</code> sets the concentration at which each plate’s
+control is read (see <code><a href="../reference/ecx.html">?ecx</a></code>). The cell term in D is set to
+zero in these predictions, as on the single plate, because each cell is
+observed at one concentration, so its deviation remains part of the
+uncertainty in the control.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_pooled</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">rlu_cens</span> <span class="op">|</span> <span class="fu">cens</span><span class="op">(</span><span class="va">censoring</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">conc</span><span class="op">)</span>, <span class="st">"all"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>                     <span class="fu">disp</span><span class="op">(</span><span class="st">"power"</span><span class="op">)</span>,</span>
@@ -968,14 +973,14 @@ shows each fit.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"none"</span>, strip.background <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>        strip.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-fig-plate-terms-1.png" alt="The zinc readings at 15 minutes fitted with each plate structure (panels A to D). Each point is one well, and each thin line joins one plate's observed means, coloured by plate; these do not change between panels. The dashed black line is the median of the model-averaged curve and the grey band its 95% credible interval, taken in panels B to D over the mixture of the observed plates' curves. The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds." width="100%"><p class="caption">
+<img src="vignette-fig-fig-plate-terms-1.png" alt="The zinc readings at 15 minutes fitted with each plate structure (panels A to D). Each point is one well, and each thin line joins one plate's observed means, coloured by plate; these do not change between panels. The dashed black line is the median of the model-averaged curve and the grey band its 95% credible interval, in panels B to D for the population curve, with each plate's deviation at zero. The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds." width="100%"><p class="caption">
 The zinc readings at 15 minutes fitted with each plate structure (panels
 A to D). Each point is one well, and each thin line joins one plate’s
 observed means, coloured by plate; these do not change between panels.
 The dashed black line is the median of the model-averaged curve and the
-grey band its 95% credible interval, taken in panels B to D over the
-mixture of the observed plates’ curves. The blue lines mark the EC10 and
-the orange lines the NSEC, solid at the median and dashed at the 95%
+grey band its 95% credible interval, in panels B to D for the population
+curve, with each plate’s deviation at zero. The blue lines mark the EC10
+and the orange lines the NSEC, solid at the median and dashed at the 95%
 bounds.
 </p>
 </div>
@@ -986,11 +991,12 @@ fitted curve, its band, and the EC10 and NSEC.</p>
 plates are counted as residual variation, and one curve is fitted to the
 wells of all 17 plates as though they came from one plate. Its band is
 therefore narrow, with an upper bound 1.14 times its lower bound at the
-lowest concentration. With a plate term (panels B to D), the band is
-that of the mixture of the plates’ curves, so at the lowest
-concentration it includes the differences in gain between plates as well
-as the uncertainty in each plate’s curve, and its upper bound is 5.0 to
-5.4 times its lower bound.</p>
+lowest concentration. With a plate term (panels B to D), the upper bound
+is 1.5 to 1.6 times the lower bound, because the population curve then
+describes a typical plate, and its height is estimated from plates that
+differ in gain. The band does not include those differences themselves,
+and the mean reading of 11 of the 17 plates at their lowest
+concentration is outside it.</p>
 <p>The EC10 interval depends on the kind of plate term.
 <code>ogl(plate)</code> (B) scales each plate’s curve by one factor,
 which cancels in an effect measured from that plate’s own control, so in
@@ -1217,10 +1223,10 @@ from the table above in this way.</p>
 <span>  <span class="fu">mark_estimate</span><span class="op">(</span><span class="fu">by_level</span><span class="op">(</span><span class="va">level_ec10</span><span class="op">)</span>, <span class="st">"EC10"</span>, <span class="va">ec10_colour</span>, vjust <span class="op">=</span> <span class="fl">3.2</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="va">log_x</span> <span class="op">+</span> <span class="va">rlu_axes</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-fig-metals-1.png" alt="The copper and zinc readings at 15 minutes, with the model-averaged curve of each metal's separate fit (dashed line, the median over the mixture of that metal's plates) and its 95% credible interval (grey band). The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds." width="95%"><p class="caption">
+<img src="vignette-fig-fig-metals-1.png" alt="The copper and zinc readings at 15 minutes, with the model-averaged curve of each metal's separate fit (dashed line, the population curve, with each plate's deviation at zero) and its 95% credible interval (grey band). The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds." width="95%"><p class="caption">
 The copper and zinc readings at 15 minutes, with the model-averaged
-curve of each metal’s separate fit (dashed line, the median over the
-mixture of that metal’s plates) and its 95% credible interval (grey
+curve of each metal’s separate fit (dashed line, the population curve,
+with each plate’s deviation at zero) and its 95% credible interval (grey
 band). The blue lines mark the EC10 and the orange lines the NSEC, solid
 at the median and dashed at the 95% bounds.
 </p>

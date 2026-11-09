@@ -147,16 +147,18 @@ when every supplied column was used by the fit.</p></dd>
 <dt><code>pred_vals</code></dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> with <code>data</code>, a
 <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> of summary posterior predicted values over
-a grid set by <code>resolution</code> and <code>x_range</code>, and a flag
-<code>observed_levels</code> recording whether spanning group terms were read.
+a grid set by <code>resolution</code> and <code>x_range</code>. Where a group term
+spans concentrations, the summaries describe the population curve, and the
+flags <code>observed_levels</code> and <code>band = "population"</code> record that
+the no-effect summaries read the observed levels and the band does not.
 Up to and including version 2.1.3.6 it also held <code>posterior</code>, the full
 <code>n_draws x resolution</code> matrix those summaries came from. That matrix
 dominated the size of a fitted object and is no longer stored; it is
 recomputed from <code>fit</code> where it is needed. To obtain it directly, use
 <code>posterior_epred(x, newdata = bnec_newdata(x, resolution = 1000),
-re_formula = NA)</code> where no group term spans concentrations. A fit saved
-before observed-level curves were stored retains its earlier values and
-gives a warning when they are displayed.</p></dd>
+re_formula = NA)</code>. A fit saved by an earlier development version without
+both flags retains its earlier values and gives a warning when they are
+displayed.</p></dd>
 
 
 <dt><code>top</code></dt>
