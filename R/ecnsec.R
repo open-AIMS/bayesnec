@@ -122,10 +122,9 @@
 #'
 #' @export
 ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
-                   extrapolate = FALSE,
-                   type = "absolute",
-                 xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
-                 pool = NULL, x_control = "own") {
+                   type = "absolute", xform = NULL,
+                   prob_vals = c(0.5, 0.025, 0.975), ...,
+                   pool = NULL, x_control = "own", extrapolate = FALSE) {
   UseMethod("ecnsec")
 }
 
@@ -147,11 +146,10 @@ ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
 #'
 #' @export
 ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
-                             extrapolate = FALSE,
-                               type = "absolute",
+                             type = "absolute",
                              xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
                              posterior = FALSE, pool = NULL,
-                             x_control = "own") {
+                             x_control = "own", extrapolate = FALSE) {
   # One value: the curve is read at one point.
   chk_number(nsec)
   chk_logical(posterior)

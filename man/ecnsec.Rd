@@ -10,13 +10,13 @@ ecnsec(
   nsec,
   resolution = 500,
   x_range = NA,
-  extrapolate = FALSE,
   type = "absolute",
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
   pool = NULL,
-  x_control = "own"
+  x_control = "own",
+  extrapolate = FALSE
 )
 }
 \arguments{
@@ -34,11 +34,6 @@ matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
 \item{x_range}{A range of x values over which to predict the curve. An
 \code{nsec} outside it is refused; see Details.}
-
-\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
-A single finite number extends the upper end; two finite numbers may
-extend both ends. The original grid points are retained. Limits are on
-the recorded predictor scale. \code{TRUE} and narrowing limits are refused.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
 "absolute" (the default), "relative" or "range". See Details.}
@@ -70,6 +65,11 @@ a single finite number specifies
 the concentration directly. A shared control below a level's observations
 extrapolates its curve and gives a warning. Level controls are recorded in
 the result's \code{x_control} attribute.}
+
+\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
+A single finite number extends the upper end; two finite numbers may
+extend both ends. The original grid points are retained. Limits are on
+the recorded predictor scale. \code{TRUE} and narrowing limits are refused.}
 }
 \value{
 A vector containing the estimated ECNSEC value, including upper and

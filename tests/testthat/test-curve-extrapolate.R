@@ -15,6 +15,46 @@ test_that("finite extensions retain every original prediction node", {
   expect_gt(length(extended$x_vec), length(base$x_vec))
 })
 
+test_that("existing positional arguments retain their ECx and ECNSEC meanings", {
+  fit <- suppressMessages(suppressWarnings(
+    pull_out(manec_example, model = "ecx4param")
+  ))
+  old_ecx <- suppressWarnings(ecx(
+    fit, 20, 30, FALSE, "absolute", c(0.5, 0.9), identity
+  ))
+  named_ecx <- suppressWarnings(ecx(
+    fit, ecx_val = 20, resolution = 30, posterior = FALSE,
+    type = "absolute", x_range = c(0.5, 0.9), xform = identity
+  ))
+  expect_equal(old_ecx, named_ecx)
+
+  old_ecnsec <- ecnsec(fit, 0.7, 30, c(0.5, 0.9), "absolute", identity)
+  named_ecnsec <- ecnsec(
+    fit, nsec = 0.7, resolution = 30, x_range = c(0.5, 0.9),
+    type = "absolute", xform = identity
+  )
+  expect_equal(old_ecnsec, named_ecnsec)
+
+  part <- nec4param
+  hurdle <- structure(list(
+    growth = part, survival = part, data = part$fit$data,
+    formula = part$bayesnecformula, y_var = "y"
+  ), class = c("bayesnechurdlefit", "bnecfit"))
+  old_hurdle_ecx <- suppressWarnings(ecx(
+    hurdle, 20, 30, FALSE, "absolute", c(0.5, 0.9), identity
+  ))
+  named_hurdle_ecx <- suppressWarnings(ecx(
+    hurdle, ecx_val = 20, resolution = 30, posterior = FALSE,
+    type = "absolute", x_range = c(0.5, 0.9), xform = identity
+  ))
+  expect_equal(old_hurdle_ecx, named_hurdle_ecx)
+  expect_equal(
+    ecnsec(hurdle, 0.7, 30, c(0.5, 0.9), "absolute", identity),
+    ecnsec(hurdle, nsec = 0.7, resolution = 30,
+           x_range = c(0.5, 0.9), type = "absolute", xform = identity)
+  )
+})
+
 test_that("ECx, NSEC and ECNSEC share a finite extended range", {
   fit <- suppressMessages(suppressWarnings(
     pull_out(manec_example, model = "ecx4param")

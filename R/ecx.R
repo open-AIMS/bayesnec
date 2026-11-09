@@ -228,9 +228,9 @@
 # check warns about a documented argument missing from the usage.
 ecx <- function(object, ecx_val = 10, resolution = 500,
                 posterior = FALSE, type = "absolute", x_range = NA,
-                extrapolate = FALSE, xform = NULL,
-                prob_vals = c(0.5, 0.025, 0.975), ...,
-                dpar = NULL, pool = NULL, x_control = "own") {
+                xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
+                dpar = NULL, pool = NULL, x_control = "own",
+                extrapolate = FALSE) {
   UseMethod("ecx")
 }
 
@@ -250,10 +250,10 @@ ecx <- function(object, ecx_val = 10, resolution = 500,
 #' @export
 ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
                             posterior = FALSE, type = "absolute",
-                            x_range = NA, extrapolate = FALSE, xform = NULL,
+                            x_range = NA, xform = NULL,
                             prob_vals = c(0.5, 0.025, 0.975), ...,
                             dpar = NULL, pool = NULL,
-                            x_control = "own") {
+                            x_control = "own", extrapolate = FALSE) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_numeric(ecx_val)
@@ -417,10 +417,10 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
 #' @export
 ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
                               posterior = FALSE, type = "absolute",
-                              x_range = NA, extrapolate = FALSE, xform = NULL,
+                              x_range = NA, xform = NULL,
                               prob_vals = c(0.5, 0.025, 0.975), ...,
                               dpar = NULL, pool = NULL,
-                              x_control = "own") {
+                              x_control = "own", extrapolate = FALSE) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_numeric(ecx_val)

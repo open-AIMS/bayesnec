@@ -11,13 +11,13 @@
   posterior = FALSE,
   type = "absolute",
   x_range = NA,
-  extrapolate = FALSE,
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   which = "combined",
   ...,
   pool = NULL,
-  x_control = "own"
+  x_control = "own",
+  extrapolate = FALSE
 )
 }
 \arguments{
@@ -43,13 +43,6 @@ just the median and 95 credible intervals.}
 "absolute" (the default), "relative", "range" or "direct". See Details.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
-
-\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
-A finite upper limit or a pair of finite lower and upper limits extends the
-search grid and marks any unresolved draw as censored at that limit.
-Limits are on the recorded predictor scale. \code{TRUE} and limits that
-narrow the current range are refused. The original grid points and their
-spacing are retained when extension points are appended.}
 
 \item{xform}{\code{NULL}, the default, or a function. \code{NULL} returns
 the estimate on the scale the predictor was recorded on. A function is
@@ -83,6 +76,13 @@ a single finite number specifies
 the concentration directly. A shared control below a level's observations
 extrapolates its curve and gives a warning. Level controls are recorded in
 the result's \code{x_control} attribute.}
+
+\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
+A finite upper limit or a pair of finite lower and upper limits extends the
+search grid and marks any unresolved draw as censored at that limit.
+Limits are on the recorded predictor scale. \code{TRUE} and limits that
+narrow the current range are refused. The original grid points and their
+spacing are retained when extension points are appended.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and

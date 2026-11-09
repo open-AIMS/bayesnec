@@ -1491,11 +1491,11 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' @export
 ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
                                      x_range = NA,
-                                     extrapolate = FALSE,
                                      type = "absolute", xform = NULL,
                                      prob_vals = c(0.5, 0.025, 0.975), ...,
                                      posterior = FALSE, which = "combined",
-                                     pool = NULL, x_control = "own") {
+                                     pool = NULL, x_control = "own",
+                                     extrapolate = FALSE) {
   which <- hurdle_check_which(which)
   check_removed_args(list(...))
   # One value: the curve is interpolated at one point.
