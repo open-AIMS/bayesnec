@@ -47,6 +47,27 @@ test_that("weighted_draw_index samples the full posterior of each model", {
   expect_true(any(idx$b > 1000))
 })
 
+test_that("weighted_draw_index allocates exactly the stated draw count", {
+  stats <- data.frame(wi = rep(1 / 3, 3), row.names = c("a", "b", "c"))
+  for (n in c(1L, 26L, 28L)) {
+    idx <- bayesnec:::weighted_draw_index(rownames(stats), n, stats,
+                                          seed = 583)
+    expect_equal(sum(lengths(idx)), n)
+    expect_true(all(unlist(idx) <= n))
+  }
+})
+
+test_that("sets without a stored index retain the earlier allocation", {
+  stats <- data.frame(wi = rep(1 / 3, 3), row.names = c("a", "b", "c"))
+  models <- rownames(stats)
+  legacy <- list(sample_size = 26, mod_stats = stats, w_draw_seed = 583,
+                 w_draw_index = NULL)
+  old <- bayesnec:::weighted_draw_index(models, 26, stats, seed = 583,
+                                        exact_total = FALSE)
+  expect_equal(sum(lengths(old)), 27)
+  expect_identical(bayesnec:::pull_draw_index(legacy, models, 26), old)
+})
+
 test_that("weighted_draw_index leaves the caller's RNG stream alone", {
   stats <- data.frame(wi = c(0.5, 0.5),
                       row.names = c("nec4param", "ecx4param"))

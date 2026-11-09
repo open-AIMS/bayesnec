@@ -569,6 +569,13 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   lpd_point <- do.call(cbind, pointwise)
   method <- match.arg(loo_w_controls$method, c("stacking", "pseudobma"))
   loo_w_controls$method <- NULL
+  unknown_weight_args <- setdiff(names(loo_w_controls),
+                                 c("BB", "BB_n", "alpha", "optim_method",
+                                   "optim_control", "r_eff_list", "cores"))
+  if (length(unknown_weight_args) > 0L) {
+    stop("Unknown loo_controls$weights argument: ",
+         paste(unknown_weight_args, collapse = ", "), ".", call. = FALSE)
+  }
   if (method == "pseudobma") {
     weight_fun <- pseudobma_weights
     weight_args <- loo_w_controls[intersect(names(loo_w_controls),

@@ -129,8 +129,8 @@ with_preserved_rng_state <- function(expr) {
 
 #' Realise the model-averaging draw once, reproducibly
 #'
-#' Model averaging keeps \code{round(sample_size * wi)} of each component's
-#' draws. The draw is seeded from a value stored on the
+#' Model averaging apportions \code{sample_size} draws by model weight. The
+#' draw is seeded from a value stored on the
 #' \code{bayesmanecfit}, so that every quantity computed from one object uses
 #' the same draws, and the caller's RNG state is restored afterwards.
 #'
@@ -146,23 +146,34 @@ with_preserved_rng_state <- function(expr) {
 #' @param seed A \code{\link[base]{numeric}} vector of length 1, or NULL.
 #' @param draw_counts Optional named draw counts for each component. If omitted,
 #' each component has \code{sample_size} available draws.
+#' @param exact_total Whether rounding must preserve \code{sample_size}. Set
+#' to \code{FALSE} only when rebuilding an older object without a stored index.
 #'
 #' @return A named \code{\link[base]{list}} of integer vectors, the draw
 #' indices kept for each model.
 #' @noRd
 weighted_draw_index <- function(model_set, sample_size, mod_stats, seed,
-                                draw_counts = NULL) {
+                                draw_counts = NULL, exact_total = TRUE) {
   if (is.null(seed)) {
     # Objects saved before the seed was stored have none. Any fixed value
     # makes every call on such an object agree.
     seed <- 216
   }
+  shares <- sample_size * mod_stats[model_set, "wi"]
+  sizes <- as.integer(round(shares))
+  remainder <- as.integer(sample_size - sum(sizes))
+  if (exact_total && remainder != 0L) {
+    # Adjust the largest rounding errors so the mixture has sample_size rows.
+    adjust <- order(shares - sizes, decreasing = remainder > 0L)[
+      seq_len(abs(remainder))]
+    sizes[adjust] <- sizes[adjust] + sign(remainder)
+  }
+  names(sizes) <- model_set
   with_preserved_rng_state({
     set.seed(seed, sample.kind = "Rejection")
     out <- lapply(model_set, function(index) {
-      size <- as.integer(round(sample_size * mod_stats[index, "wi"]))
       n <- if (is.null(draw_counts)) sample_size else draw_counts[[index]]
-      sample(seq_len(n), size)
+      sample(seq_len(n), sizes[[index]])
     })
   })
   names(out) <- model_set
@@ -215,7 +226,8 @@ pull_draw_index <- function(object, model_set, sample_size, draw_counts = NULL) 
       draw_counts <- if (same_n) fit_counts else pmin(fit_counts, sample_size)
     }
     weighted_draw_index(model_set, sample_size, object$mod_stats,
-                        object$w_draw_seed, draw_counts = draw_counts)
+                        object$w_draw_seed, draw_counts = draw_counts,
+                        exact_total = !is.null(idx))
   }
 }
 

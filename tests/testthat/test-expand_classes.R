@@ -220,13 +220,12 @@ test_that("new loo_controls are incorporated", {
     suppressWarnings()
 })
 
-test_that("each model is thinned to exactly its share of the weighted draws", {
+test_that("weighted draws respect model shares and the total count", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # Check each model's contribution count against round(sample_size * wi)
-  # and check membership in its posterior. Derive counts from the fixture
-  # weights so regenerated example objects remain testable.
+  # Check each model's contribution against its weighted share and check
+  # membership in its posterior.
   set.seed(180)
   tt5 <- expand_manec(tt1, formulas) |>
     suppressMessages() |>
@@ -235,25 +234,22 @@ test_that("each model is thinned to exactly its share of the weighted draws", {
   expect_null(tt5$w_pred_vals$posterior)
   n <- tt5$sample_size
   formulas_by_model <- lapply(tt5$mod_fits, `[[`, "bayesnecformula")
+  idx <- tt5$w_draw_index
   for (mod in tt5$success_models) {
     full <- bayesnec:::posterior_on_grid(tt5$mod_fits[[mod]]$fit,
                                          formulas_by_model[[mod]],
                                          resolution = 1000)
-    idx <- bayesnec:::weighted_draw_index(tt5$success_models, n,
-                                          tt5$mod_stats, tt5$w_draw_seed)
     drawn <- bayesnec:::w_grid_pred_calc(mod, tt5$mod_fits, formulas_by_model,
                                          NA, 1000, idx)
-    expect_equal(nrow(drawn), round(n * tt5$mod_stats[mod, "wi"]))
+    expect_equal(nrow(drawn), length(idx[[mod]]))
+    expect_lte(abs(nrow(drawn) - n * tt5$mod_stats[mod, "wi"]), 1)
     expect_equal(ncol(drawn), 1000)
     # Copied values permit exact row-sum comparison on this fixture. Equal
     # row sums alone do not establish row identity for arbitrary matrices.
     expect_true(all(rowSums(drawn) %in% rowSums(full)))
   }
   # The rows contributed across all models account for the whole weighted set.
-  expect_equal(sum(round(n * tt5$mod_stats$wi)),
-               sum(vapply(tt5$success_models, function(mod) {
-                 as.integer(round(n * tt5$mod_stats[mod, "wi"]))
-               }, integer(1))))
+  expect_equal(sum(lengths(idx)), n)
   # The summary the plot methods use spans the grid it is supposed to.
   expect_equal(nrow(tt5$w_pred_vals$data), 1000)
   expect_named(tt5$w_pred_vals$data, c("x", "Estimate", "Q2.5", "Q97.5"))
@@ -475,6 +471,17 @@ test_that("model weights require the same scored observations", {
     },
     .package = "bayesnec"
   )
+})
+
+test_that("model weighting rejects misspelled controls", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  fits <- manec_example$mod_fits
+  expect_error(suppressMessages(suppressWarnings(expand_manec(
+    fits, lapply(fits, `[[`, "bayesnecformula"),
+    loo_controls = list(weights = list(BB_n_typo = 5))))),
+    "Unknown loo_controls\\$weights argument: BB_n_typo", fixed = FALSE)
 })
 
 # manec_example holds 50 post-warmup draws in each of 2 chains. `by = 4` keeps
