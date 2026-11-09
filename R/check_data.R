@@ -570,7 +570,7 @@ check_response_flattened <- function(data, family, group = NULL,
   }
   if (length(declining) > 0) {
     report <- paste(declining, collapse = "\n")
-    if (length(needs_advice) > 0) {
+    if (length(needs_advice) > 0 || !isTRUE(asymptote_observed)) {
       # The declaration changes what the threshold priors admit, so the
       # sentence about them follows it.
       threshold_priors <- if (isTRUE(asymptote_observed)) {
@@ -583,10 +583,15 @@ check_response_flattened <- function(data, family, group = NULL,
                " supplied as a concentration or already logged; ?bnec tabulates",
                " the four under asymptote_observed.")
       }
+      identification <- if (isTRUE(asymptote_observed)) {
+        paste0("The lower asymptote may not be identified for ",
+               paste(needs_advice, collapse = ", "), ": where an")
+      } else {
+        "The lower asymptote may not be identified by this design: where an"
+      }
       report <- paste0(
         report, "\n",
-        "The lower asymptote may not be identified for ",
-        paste(needs_advice, collapse = ", "), ": where an",
+        identification,
         " equation estimates bot its default prior is derived from the observed",
         " response, and", threshold_priors,
         " Inspect the entries with get_priors() and",

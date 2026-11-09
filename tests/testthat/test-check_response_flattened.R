@@ -87,6 +87,18 @@ test_that("a decline close to zero retains its contrast without asymptote advice
                      fixed = TRUE))
   expect_false(grepl("asymptote_observed = FALSE", msg, fixed = TRUE))
 
+  declared <- capture_messages(check_response_flattened(
+    bdat, binomial(link = "identity"), asymptote_observed = FALSE
+  ))
+  expect_match(declared, still_declining, fixed = TRUE)
+  expect_match(declared,
+               "The lower asymptote may not be identified by this design",
+               fixed = TRUE)
+  expect_match(declared, "put a threshold above the tested range in their tail",
+               fixed = TRUE)
+  expect_false(grepl("declare it with asymptote_observed = FALSE", declared,
+                     fixed = TRUE))
+
   d$surv[d$conc == 16] <- c(28, 30, 32, 29, 31, 30)
   d$surv[d$conc == 32] <- c(8, 9, 10, 11, 12, 10)
   bdat <- flat_bdat(surv | trials(n) ~ crf(conc, "nec4param"), d)
