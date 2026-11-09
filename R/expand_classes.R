@@ -469,7 +469,7 @@ posterior_on_grid <- function(fit, formula, x_range = NA, resolution = 1000) {
 #' the input model list. This includes \code{retained_data} when compatible
 #' retained columns were present on the input objects.
 #'
-#' @importFrom loo loo_model_weights
+#' @importFrom loo pseudobma_weights stacking_weights
 #' @importFrom stats quantile
 #' @importFrom chk chk_numeric
 #'
@@ -512,18 +512,8 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   })
   object <- mod_fits
   formula <- formula[success_models]
-  draw_counts <- vapply(object, function(x) brms::ndraws(x$fit), numeric(1))
-  if (length(unique(draw_counts)) > 1L) {
-    stop("Cannot combine models with different numbers of posterior draws: ",
-         paste(paste0(names(draw_counts), " = ", draw_counts),
-               collapse = ", "),
-         ". Refit with matching retained draw counts; set thin during fitting ",
-         "if the iteration counts differ.", call. = FALSE)
-  }
-  # define_loo_controls(), not validate_loo_controls(), on both branches.
-  # Validation leaves `method` NULL, and loo::loo_model_weights() then
-  # defaults to stacking. Every route that assembles a set reaches this line,
-  # so the pseudo-BMA default is supplied here.
+  # Validation can leave `method` NULL. Supply the pseudo-BMA default at this
+  # shared assembly point before choosing the weight function.
   fam_tag <- object[[1]]$fit$family$family
   loo_controls <- if (missing(loo_controls)) {
     define_loo_controls(family_str = fam_tag)
@@ -569,9 +559,29 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   mod_stats$elpd <- vapply(scores$criteria, function(l) {
     l$estimates["elpd_loo", "Estimate"]
   }, numeric(1))
-  loo_mw_args <- c(list(x = scores$criteria), loo_w_controls)
-  mod_stats$wi <- do.call(loo_model_weights, loo_mw_args)
-  attr(mod_stats$wi, "method") <- loo_w_controls$method
+  pointwise <- lapply(scores$criteria, function(x) x$pointwise[, "elpd_loo"])
+  n_units <- lengths(pointwise)
+  if (length(unique(n_units)) != 1L) {
+    stop("Cannot weight models with different numbers of observations: ",
+         paste(paste0(names(n_units), " = ", n_units), collapse = ", "),
+         ".", call. = FALSE)
+  }
+  lpd_point <- do.call(cbind, pointwise)
+  method <- match.arg(loo_w_controls$method, c("stacking", "pseudobma"))
+  loo_w_controls$method <- NULL
+  if (method == "pseudobma") {
+    weight_fun <- pseudobma_weights
+    weight_args <- loo_w_controls[intersect(names(loo_w_controls),
+                                             c("BB", "BB_n", "alpha"))]
+  } else {
+    weight_fun <- stacking_weights
+    weight_args <- loo_w_controls[intersect(names(loo_w_controls),
+                                             c("optim_method", "optim_control"))]
+  }
+  mod_stats$wi <- do.call(weight_fun,
+                          c(list(lpd_point = lpd_point), weight_args))
+  names(mod_stats$wi) <- names(scores$criteria)
+  attr(mod_stats$wi, "method") <- method
   attr(mod_stats$wi, "leave_out") <- scores$leave_out
   report_weight_k(scores$criteria, mod_stats$wi, scores$leave_out,
                   loo_controls$refit, loo_controls$report_k)
@@ -582,8 +592,9 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   # cannot change if sample() changes between R versions. The seed covers a
   # caller thinning to a different number of draws.
   draw_seed <- sample.int(.Machine$integer.max, 1)
+  draw_counts <- vapply(mod_fits, function(x) brms::ndraws(x$fit), numeric(1))
   draw_index <- weighted_draw_index(success_models, sample_size, mod_stats,
-                                    draw_seed)
+                                    draw_seed, draw_counts)
   ne_posterior <- unlist(lapply(success_models, w_nec_calc,
                                  object, draw_index))
   # Build the combined record under the same draw index as the mixture, so

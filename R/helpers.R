@@ -140,15 +140,18 @@ with_preserved_rng_state <- function(expr) {
 #'
 #' @param model_set A \code{\link[base]{character}} vector of model names.
 #' @param sample_size A \code{\link[base]{numeric}} vector of length 1, the
-#' number of draws available per component.
+#' number of draws in the model-averaged mixture.
 #' @param mod_stats A \code{\link[base]{data.frame}} with a \code{wi} column
 #' and model names as row names.
 #' @param seed A \code{\link[base]{numeric}} vector of length 1, or NULL.
+#' @param draw_counts Optional named draw counts for each component. If omitted,
+#' each component has \code{sample_size} available draws.
 #'
 #' @return A named \code{\link[base]{list}} of integer vectors, the draw
 #' indices kept for each model.
 #' @noRd
-weighted_draw_index <- function(model_set, sample_size, mod_stats, seed) {
+weighted_draw_index <- function(model_set, sample_size, mod_stats, seed,
+                                draw_counts = NULL) {
   if (is.null(seed)) {
     # Objects saved before the seed was stored have none. Any fixed value
     # makes every call on such an object agree.
@@ -158,7 +161,8 @@ weighted_draw_index <- function(model_set, sample_size, mod_stats, seed) {
     set.seed(seed, sample.kind = "Rejection")
     out <- lapply(model_set, function(index) {
       size <- as.integer(round(sample_size * mod_stats[index, "wi"]))
-      sample(seq_len(sample_size), size)
+      n <- if (is.null(draw_counts)) sample_size else draw_counts[[index]]
+      sample(seq_len(n), size)
     })
   })
   names(out) <- model_set
@@ -175,11 +179,13 @@ weighted_draw_index <- function(model_set, sample_size, mod_stats, seed) {
 #' @param object An object of class \code{\link{bayesmanecfit}}.
 #' @param model_set A \code{\link[base]{character}} vector of model names.
 #' @param sample_size A \code{\link[base]{numeric}} vector of length 1, the
-#' number of draws available per component.
+#' number of draws in the model-averaged mixture.
+#' @param draw_counts Optional named counts of the draws available to the
+#' caller for each component.
 #'
 #' @return A named \code{\link[base]{list}} of integer vectors.
 #' @noRd
-pull_draw_index <- function(object, model_set, sample_size) {
+pull_draw_index <- function(object, model_set, sample_size, draw_counts = NULL) {
   idx <- object$w_draw_index
   # `==`, not identical(): sample_size is a double on the object and an integer
   # from nrow(), and identical() would always take the fallback.
@@ -189,11 +195,27 @@ pull_draw_index <- function(object, model_set, sample_size) {
     sample_size <- object$sample_size
     same_n <- TRUE
   }
-  if (!is.null(idx) && same_n && all(model_set %in% names(idx))) {
+  fit_counts <- if (!is.null(object$mod_fits)) {
+    vapply(object$mod_fits[model_set], function(x) brms::ndraws(x$fit),
+           numeric(1))
+  } else NULL
+  if (!is.null(idx) && same_n && all(model_set %in% names(idx)) &&
+      (is.null(draw_counts) ||
+       (!is.null(fit_counts) &&
+        isTRUE(all(draw_counts[model_set] == fit_counts[model_set]))))) {
     idx[model_set]
   } else {
+    legacy_n <- !is.null(fit_counts) && same_n &&
+      isTRUE(object$sample_size < min(fit_counts)) &&
+      undercounted_set(object, min(fit_counts))
+    if (legacy_n) {
+      # An older set used its recorded count even when the fits held one more.
+      draw_counts <- NULL
+    } else if (is.null(draw_counts) && !is.null(fit_counts)) {
+      draw_counts <- if (same_n) fit_counts else pmin(fit_counts, sample_size)
+    }
     weighted_draw_index(model_set, sample_size, object$mod_stats,
-                        object$w_draw_seed)
+                        object$w_draw_seed, draw_counts = draw_counts)
   }
 }
 

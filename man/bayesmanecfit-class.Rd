@@ -42,9 +42,8 @@ names the grouping each of whose levels that score left out, or is
 \code{"observation"}. See the \code{loo_controls} argument of
 \code{\link{bnec}}.}
 
-\item{\code{sample_size}}{The number of posterior draws each component model holds,
-from which model averaging draws. Every component must hold the same number
-of draws when the set is assembled.}
+\item{\code{sample_size}}{The number of draws in the model-averaged mixture, set to
+the smallest posterior draw count among the component models.}
 
 \item{\code{w_draw_index}}{The realised model-averaging draw: a
 \code{\link[base]{list}} of the row indices kept for each component model.

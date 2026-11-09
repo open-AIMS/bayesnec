@@ -1,5 +1,12 @@
 # bayesnec 2.2.0
 
+- Model sets can now combine equations with different numbers of retained
+  posterior draws. Model weights use each equation's pointwise leave-one-out
+  scores, and the model average samples from all draws of each equation. The
+  total number of draws in the average is the smallest count among the
+  equations. A longer refit can therefore be combined with the original set
+  without thinning it to match the other equations (#583).
+
 - The no-effect estimate of the six hormesis threshold equations, `nechorme`,
   `nechorme4`, `neclinhorme`, `nechormepwr`, `nechorme4pwr` and
   `nechormepwr01`, is now their NSEC: the concentration at which the fitted

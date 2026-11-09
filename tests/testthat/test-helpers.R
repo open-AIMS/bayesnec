@@ -36,6 +36,17 @@ test_that("weighted_draw_index is a pure function of its arguments", {
   expect_identical(n1, n2)
 })
 
+test_that("weighted_draw_index samples the full posterior of each model", {
+  stats <- data.frame(wi = c(0.75, 0.25), row.names = c("a", "b"))
+  counts <- c(a = 1000, b = 2000)
+  idx <- bayesnec:::weighted_draw_index(names(counts), 1000, stats,
+                                        seed = 583, draw_counts = counts)
+  expect_equal(lengths(idx), c(a = 750L, b = 250L))
+  expect_true(all(idx$a <= counts["a"]))
+  expect_true(all(idx$b <= counts["b"]))
+  expect_true(any(idx$b > 1000))
+})
+
 test_that("weighted_draw_index leaves the caller's RNG stream alone", {
   stats <- data.frame(wi = c(0.5, 0.5),
                       row.names = c("nec4param", "ecx4param"))

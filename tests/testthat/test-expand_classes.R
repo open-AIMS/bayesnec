@@ -400,29 +400,81 @@ thin_prebayesnecfit <- function(x, by) {
   x
 }
 
-test_that("unequal draw counts are refused before model weighting", {
+test_that("model sets use every available draw when counts differ", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  set.seed(548)
-  short <- thin_prebayesnecfit(manec_example$mod_fits$nec4param, by = 4)
-  long <- manec_example$mod_fits$ecx4param
+  set.seed(583)
+  short <- thin_prebayesnecfit(manec_example$mod_fits$ecx4param, by = 4)
+  long <- manec_example$mod_fits$nec4param
   expect_equal(brms::ndraws(short$fit), 26)
   expect_equal(brms::ndraws(long$fit), 100)
-  fits <- list(nec4param = short, ecx4param = long)
+  fits <- list(nec4param = long, ecx4param = short)
   formulas <- lapply(fits, `[[`, "bayesnecformula")
-  expected <- paste0(
-    "Cannot combine models with different numbers of posterior draws: ",
-    "nec4param = 26, ecx4param = 100. Refit with matching retained draw ",
-    "counts; set thin during fitting if the iteration counts differ."
-  )
-  expect_error(expand_manec(fits, formulas), expected, fixed = TRUE)
+  controls <- list(weights = list(method = "pseudobma", BB = FALSE))
+  set <- suppressMessages(suppressWarnings(
+    expand_manec(fits, formulas, loo_controls = controls)))
+  expect_equal(set$sample_size, 26)
+  pointwise <- lapply(set$mod_fits, function(x) {
+    x$fit$criteria$loo$pointwise[, "elpd_loo"]
+  })
+  expected <- loo::pseudobma_weights(do.call(cbind, pointwise), BB = FALSE)
+  expect_equal(as.numeric(set$mod_stats$wi), as.numeric(expected))
+  expect_true(any(set$w_draw_index$nec4param > 26))
+  expect_true(all(set$w_draw_index$ecx4param <= 26))
 
+  long_single <- pull_out(manec_example, "nec4param")
   short_single <- thin_prebayesnecfit(
-    pull_out(manec_example, "nec4param"), by = 4
+    pull_out(manec_example, "ecx4param"), by = 4
   )
-  long_single <- pull_out(manec_example, "ecx4param")
-  expect_error(c(short_single, long_single), expected, fixed = TRUE)
+  combined <- suppressMessages(suppressWarnings(c(long_single, short_single)))
+  expect_s3_class(combined, "bayesmanecfit")
+  expect_equal(combined$sample_size, 26)
+  expect_true(any(combined$w_draw_index$nec4param > 26))
+  predictions <- brms::posterior_epred(combined)
+  expect_equal(nrow(predictions), combined$sample_size)
+  expect_equal(predictions, do.call(rbind, lapply(names(combined$mod_fits),
+    function(m) {
+      brms::posterior_epred(combined$mod_fits[[m]]$fit)[
+        combined$w_draw_index[[m]], , drop = FALSE]
+    })))
+})
+
+test_that("equal-draw sets retain loo weights and draw indices", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  set.seed(583)
+  fits <- manec_example$mod_fits
+  controls <- list(weights = list(method = "pseudobma", BB = FALSE))
+  out <- suppressMessages(suppressWarnings(expand_manec(
+    fits, lapply(fits, `[[`, "bayesnecformula"), loo_controls = controls)))
+  criteria <- lapply(out$mod_fits, function(x) x$fit$criteria$loo)
+  expected <- loo::loo_model_weights(criteria, method = "pseudobma", BB = FALSE)
+  expect_equal(as.numeric(out$mod_stats$wi), as.numeric(expected))
+  expect_identical(out$w_draw_index,
+                   weighted_draw_index(out$success_models, out$sample_size,
+                                       out$mod_stats, out$w_draw_seed))
+})
+
+test_that("model weights require the same scored observations", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  criterion <- weight_criteria
+  with_mocked_bindings(
+    expect_error(suppressMessages(suppressWarnings(expand_manec(
+      manec_example$mod_fits,
+      lapply(manec_example$mod_fits, `[[`, "bayesnecformula")))),
+      "different numbers of observations"),
+    weight_criteria = function(...) {
+      out <- criterion(...)
+      out$criteria[[2]]$pointwise <- out$criteria[[2]]$pointwise[-1, ,
+                                                                drop = FALSE]
+      out
+    },
+    .package = "bayesnec"
+  )
 })
 
 # manec_example holds 50 post-warmup draws in each of 2 chains. `by = 4` keeps
@@ -449,8 +501,9 @@ indices_used <- function(expr) {
   seen <- list()
   with_mocked_bindings(
     expr,
-    pull_draw_index = function(object, model_set, sample_size) {
-      out <- pull(object, model_set, sample_size)
+    pull_draw_index = function(object, model_set, sample_size,
+                               draw_counts = NULL) {
+      out <- pull(object, model_set, sample_size, draw_counts)
       seen[[length(seen) + 1]] <<- out
       out
     },
