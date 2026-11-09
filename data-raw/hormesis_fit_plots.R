@@ -1,33 +1,24 @@
-# Reproduce the case-study figures and concentration-level fit checks in example10.
-# Run after the non-evaluated fit code in vignettes/example10.Rmd.orig has saved
-# the fitted objects under ignore/hormesis_data/.
+# Reproduce the case-study figures and estimate summaries in Example 10.
+# Run after the compendium fitting script has saved the screened fits and
+# model sets under ignore/hormesis_data/.
 
 pkgload::load_all(".", export_all = FALSE, helpers = FALSE, quiet = TRUE)
 
 fit_dir <- "ignore/hormesis_data"
-marine_fits <- list(
-  neclin = readRDS(file.path(fit_dir, "fit_neclin.rds")),
-  neclinhorme = readRDS(file.path(fit_dir, "fit_neclinhorme.rds")),
-  nechorme = readRDS(file.path(fit_dir, "fit_marine_nechorme.rds")),
-  nechorme4 = readRDS(file.path(fit_dir, "fit_marine_nechorme4.rds")),
-  ecxhormebc4 = readRDS(file.path(fit_dir, "fit_ecxhormebc4.rds")),
-  ecxhormebc5 = readRDS(file.path(fit_dir, "fit_marine_bc5.rds"))
-)
-lettuce_fits <- list(
-  neclinhorme = readRDS(file.path(fit_dir,
-                                   "fit_lettuce_log_neclinhorme.rds")),
-  nechorme = readRDS(file.path(fit_dir, "fit_lettuce_log_nechorme.rds")),
-  nechorme4 = readRDS(file.path(fit_dir, "fit_lettuce_log_nechorme4.rds")),
-  ecxhormebc4 = readRDS(file.path(fit_dir,
-                                   "fit_lettuce_log_ecxhormebc4.rds")),
-  ecxhormebc5 = readRDS(file.path(fit_dir,
-                                   "fit_lettuce_log_ecxhormebc5.rds"))
-)
-
-set.seed(570)
-marine_set <- do.call(base::c, unname(marine_fits))
-set.seed(570)
-lettuce_set <- do.call(base::c, unname(lettuce_fits))
+marine_set <- readRDS(file.path(fit_dir, "marine_set_final.rds"))
+lettuce_set <- readRDS(file.path(fit_dir, "lettuce_set_final.rds"))
+read_case_fits <- function(case, models) {
+  stats::setNames(lapply(models, function(model) {
+    readRDS(file.path(fit_dir,
+                      sprintf("fit_final_%s_%s.rds", case, model)))
+  }), models)
+}
+marine_fits <- read_case_fits("marine", marine_set$success_models)
+lettuce_fits <- read_case_fits("lettuce", lettuce_set$success_models)
+stopifnot(all(!bayesnec::check_sampling(marine_set,
+                                       divergence_cutoff = 0)$failed),
+          all(!bayesnec::check_sampling(lettuce_set,
+                                       divergence_cutoff = 0)$failed))
 marine_weights <- stats::setNames(as.numeric(marine_set$mod_stats$wi),
                                   marine_set$mod_stats$model)
 lettuce_weights <- stats::setNames(as.numeric(lettuce_set$mod_stats$wi),
@@ -178,14 +169,3 @@ print(marine_average_effect)
 print(lettuce_average)
 print(lettuce_average_effect)
 
-fits_to_check <- c(
-  stats::setNames(marine_fits, paste0("marine_", names(marine_fits))),
-  stats::setNames(lettuce_fits, paste0("lettuce_", names(lettuce_fits))))
-for (model in names(fits_to_check)) {
-  check <- bayesnec::check_fit(fits_to_check[[model]], ndraws = 1000,
-                               seed = 570)
-  cat("\n", model, "\n", sep = "")
-  print(as.data.frame(check)[, c("group", "n", "obs_mean", "sim_mean",
-                                 "ppp_mean", "obs_sd", "sim_sd", "ppp_sd")],
-        digits = 3, row.names = FALSE)
-}

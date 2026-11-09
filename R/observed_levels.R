@@ -275,7 +275,11 @@ pull_equation <- function(object, model) {
   old <- bnec_state$skip_level_display
   bnec_state$skip_level_display <- TRUE
   on.exit(bnec_state$skip_level_display <- old, add = TRUE)
-  out <- suppressMessages(pull_out(object, model = model))
+  # The estimators use the saved posterior, not the model's LOO score. A set
+  # scored with reloo = TRUE must not repeat its exact refits for each read.
+  out <- suppressMessages(pull_out(
+    object, model = model, loo_controls = list(fitting = list())
+  ))
   source <- object$mod_fits[[model]]
   if (!is.null(object$observed_group)) {
     for (field in c("observed_group", "level_x", "re_formula")) {
