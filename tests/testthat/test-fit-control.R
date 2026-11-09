@@ -121,3 +121,17 @@ test_that("model sets refuse equations fitted against different controls", {
   b$call_args <- list(x_control = 0.002)
   expect_error(c(a, b), "different control concentrations")
 })
+
+test_that("model sets accept equal controls despite different model names", {
+  a <- nec4param
+  b <- ecx4param
+  a$call_args <- list(x_control = 0.001)
+  b$call_args <- list(x_control = 0.001)
+  combined <- suppressWarnings(suppressMessages(c(a, b)))
+  expect_s3_class(combined, "bayesmanecfit")
+  expect_equal(bayesnec:::control_x(combined), 0.001)
+  # Objects saved before x_control existed use their common observed minimum.
+  legacy <- suppressWarnings(suppressMessages(c(nec4param, ecx4param)))
+  expect_s3_class(legacy, "bayesmanecfit")
+  expect_equal(bayesnec:::control_x(legacy), min(nec4param$fit$data$x))
+})

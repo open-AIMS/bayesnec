@@ -69,8 +69,7 @@ c.bnecfit <- function(x, ...) {
     check_data_equality(mod_fits)
   }
   controls <- vapply(mod_fits, control_x, numeric(1))
-  if (!isTRUE(all.equal(unname(controls), rep(controls[1],
-                                          length(controls))))) {
+  if (any(controls != controls[[1]])) {
     stop("The objects use different control concentrations. Refit them with",
          " the same `x_control` before combining them.", call. = FALSE)
   }

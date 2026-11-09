@@ -664,7 +664,8 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
   # round draws only the slots still empty.
   draw <- function(n) {
     do.call(make_inits,
-            c(list(model, fct_args), modifyList(dots, list(chains = n))))
+            c(list(model, fct_args),
+              utils::modifyList(dots, list(chains = n))))
   }
   # Hold a constant equation to the support, not the band:
   # check_init_predictions() requires a declining curve with more than three

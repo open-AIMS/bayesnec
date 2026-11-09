@@ -1494,7 +1494,7 @@ test_that("a joint level's grid and control value are its own", {
   captured <- NULL
   local_mocked_bindings(
     prediction_grid = function(fit, formula, x_range, resolution,
-                               level_spec) {
+                               level_spec, x_control = NULL) {
       captured <<- x_range
       list(newdata = data.frame(x = x_range))
     },
