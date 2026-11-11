@@ -79,10 +79,29 @@
 #' parameter and is not on the predictor axis at all, so it is returned as
 #' sampled.
 #'
+#' Under the default \code{asymptote_observed = TRUE}, the \code{nec} and
+#' \code{ec50} priors are both bounded at the lowest and highest
+#' concentrations tested. Where the data do not place the parameter inside
+#' that range, a credible limit near a bound is set by the prior. For every
+#' sampled \code{nec} and \code{ec50} row with a bounded prior, the table's
+#' attribute \code{"prior_bound_summary"} gives the number and share of draws
+#' within the outer 5% of the prior range at each bounded end, with the bound
+#' on the scale of the row and on the fitted scale. These are the columns
+#' \code{\link{nec}} describes, and \code{model}, \code{dpar} and
+#' \code{parameter} match the rows of the table. A message names each
+#' parameter for which the share exceeds 7.5%, after multiplying it by the
+#' equation's model weight, as \code{\link{nec}} does on a model set. The
+#' \code{ec50} parameter is not the estimate \code{\link{ecx}} returns with
+#' \code{ecx_val = 50}. That estimate is read off the fitted curve, and its
+#' own \code{"censored_summary"} describes draws whose curve does not cross
+#' within the prediction range.
+#'
 #' @return With \code{summary = TRUE}, a \code{\link[base]{data.frame}} with
 #' columns \code{model}, \code{wi}, \code{dpar}, \code{link}, \code{parameter},
 #' \code{Estimate}, \code{Q2.5} and \code{Q97.5}, ordered by decreasing
-#' \code{wi} and then by the parameter order given above.
+#' \code{wi} and then by the parameter order given above, and with the
+#' \code{"prior_bound_summary"} attribute described in Details. A
+#' \code{\link{bayesnecgroupfit}} adds a \code{level} column to that record.
 #'
 #' \code{Estimate} is the posterior median and the interval is equal-tailed,
 #' which is what \code{\link[brms]{fixef}(robust = TRUE)} reports for the same
@@ -159,8 +178,14 @@ curve_params.bayesnecfit <- function(object, summary = TRUE, xform = NULL,
   report_scales(object, paste(object$model, "fit"))
   # wi is 1, not NA: a fit holds one equation and is the whole of its set. A
   # fit from pull_out() does not keep the weight it had in its set.
-  one_fit_params(object$fit, models = dpar_models(object), wi = 1,
-                     summary = summary, xform = recorded_xform(object, xform))
+  out <- one_fit_params(object$fit, models = dpar_models(object), wi = 1,
+                        summary = summary,
+                        xform = recorded_xform(object, xform),
+                        grid_span = function() fitted_grid_span(object))
+  if (summary) {
+    report_param_prior_boundary(attr(out, "prior_bound_summary"))
+  }
+  out
 }
 
 #' @rdname curve_params
@@ -188,18 +213,23 @@ curve_params.bayesmanecfit <- function(object, summary = TRUE,
   # and posteriors to reach the same brmsfit.
   wi <- model_weights_for(object, mods)
   ord <- order(wi, decreasing = TRUE)
+  grid_span <- function() fitted_grid_span(object)
   out <- lapply(ord, function(i) {
     one_fit_params(object$mod_fits[[mods[i]]]$fit,
                        models = dpar_models(object$mod_fits[[mods[i]]]),
-                       wi = wi[i], summary = summary, xform = xform)
+                       wi = wi[i], summary = summary, xform = xform,
+                       grid_span = grid_span)
   })
   if (!summary) {
     res <- setNames(unlist(out, recursive = FALSE), mods[ord])
     attr(res, "link") <- attr(out[[1]], "link")
     return(res)
   }
+  record <- bind_prior_records(lapply(out, attr, "prior_bound_summary"))
   out <- do.call(rbind, out)
   rownames(out) <- NULL
+  attr(out, "prior_bound_summary") <- record
+  report_param_prior_boundary(record, set = TRUE)
   out
 }
 
@@ -505,17 +535,27 @@ select_curve_cols <- function(draws, prefix = "") {
 #' @param wi A \code{\link[base]{numeric}} model weight.
 #' @param summary A \code{\link[base]{logical}} value.
 #' @param xform A function, from \code{recorded_xform()}.
+#' @param grid_span As for \code{prior_bound_rows()}.
 #'
-#' @return A \code{\link[base]{data.frame}}, or a
-#' \code{\link[base]{list}} of one draws matrix.
+#' @return A \code{\link[base]{data.frame}} with attribute
+#' \code{"prior_bound_summary"}, or a \code{\link[base]{list}} of one draws
+#' matrix.
 #'
 #' @noRd
-one_fit_params <- function(fit, models, wi, summary, xform) {
+one_fit_params <- function(fit, models, wi, summary, xform,
+                           grid_span = function() NA_real_) {
   dpars <- fit_dpars(fit$family)
   links <- fit_links(fit)
+  records <- list()
   blocks <- lapply(names(dpars), function(d) {
     draws <- curve_param_draws(fit, dpars[[d]])
     report_absent_params(colnames(draws), models[[d]], d)
+    # Read the prior bounds before the map: both are on the fitted scale.
+    if (summary) {
+      records[[d]] <<- param_prior_boundary(fit, draws, dpars[[d]],
+                                            models[[d]], wi, d, grid_span,
+                                            xform)
+    }
     # A draw a grid-read inverse cannot place is NA, with a message, so that
     # one equation's ec50 beyond the grid does not stop the whole table.
     for (p in intersect(colnames(draws), x_scale_par_names())) {
@@ -566,6 +606,27 @@ one_fit_params <- function(fit, models, wi, summary, xform) {
     # shape rather than NULL so that rbind over a set does not drop a column.
     out <- empty_params_table()
   }
+  attr(out, "prior_bound_summary") <- bind_prior_records(records)
+  out
+}
+
+#' Bind prior-bound records, with a level column where levels are given
+#' @param records A \code{\link[base]{list}} of records or \code{NULL}s.
+#' @param levels The level of each record, or \code{NULL}.
+#' @return A \code{\link[base]{data.frame}}, or \code{NULL}.
+#' @noRd
+bind_prior_records <- function(records, levels = NULL) {
+  if (!is.null(levels)) {
+    records <- lapply(seq_along(records), function(i) {
+      if (is.null(records[[i]])) {
+        return(NULL)
+      }
+      cbind(data.frame(level = levels[i], stringsAsFactors = FALSE),
+            records[[i]])
+    })
+  }
+  out <- do.call(rbind, records)
+  if (!is.null(out)) rownames(out) <- NULL
   out
 }
 

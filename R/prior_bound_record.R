@@ -348,3 +348,67 @@ print_nec_prior_boundary <- function(record, label) {
   if (!is.null(note)) cat(note, "\n")
   invisible(NULL)
 }
+
+#' Prior-bound rows for the predictor-scale parameters of one block
+#'
+#' @param fit A \code{\link[brms]{brmsfit}}.
+#' @param draws The block's draws-by-parameter matrix, on the fitted scale.
+#' @param prefix The block's \pkg{brms} prefix, \code{""} for the mean block.
+#' @param model,wi,dpar The equation, its model weight and its block.
+#' @param grid_span As for \code{prior_bound_rows()}.
+#' @param map The function the parameters are returned through.
+#'
+#' @return A \code{\link[base]{data.frame}}, or \code{NULL}.
+#' @noRd
+param_prior_boundary <- function(fit, draws, prefix, model, wi, dpar,
+                                 grid_span, map) {
+  pars <- intersect(colnames(draws), x_scale_par_names())
+  out <- do.call(rbind, lapply(pars, function(p) {
+    rows <- prior_bound_rows(draws[, p],
+                             prior_par_bounds(fit, paste0(prefix, p)),
+                             grid_span, map)
+    if (is.null(rows)) {
+      return(NULL)
+    }
+    data.frame(model = unname(model), wi = wi, dpar = dpar, parameter = p,
+               rows, stringsAsFactors = FALSE)
+  }))
+  if (!is.null(out)) rownames(out) <- NULL
+  out
+}
+
+#' Report the curve parameters with a substantial share near a prior bound
+#'
+#' The share is multiplied by the equation's model weight, which is 1 for a
+#' single fit.
+#'
+#' @param record The \code{prior_bound_summary} of a
+#' \code{\link{curve_params}} table.
+#' @param set Whether the table is of a model set, whose weights are named.
+#' @return \code{NULL}, invisibly.
+#' @noRd
+report_param_prior_boundary <- function(record, set = FALSE) {
+  if (is.null(record)) {
+    return(invisible(NULL))
+  }
+  # Weight the share, so that an equation the model average barely uses is
+  # not named, as nec() weights it.
+  flagged <- record[record$wi * record$share > prior_bound_threshold(), ,
+                    drop = FALSE]
+  if (nrow(flagged) == 0) {
+    return(invisible(NULL))
+  }
+  clauses <- vapply(seq_len(nrow(flagged)), function(i) {
+    row <- flagged[i, ]
+    block <- if (identical(row$dpar, "mu")) "" else paste0(row$dpar, " block ")
+    weight <- if (set) paste0(" (model weight ", signif(row$wi, 2), ")") else
+      ""
+    paste0("The ", block, row$parameter, " posterior of ", row$model, weight,
+           " has ", prior_bound_clause(row), ".")
+  }, character(1))
+  message(prior_bound_note(paste(
+    c(clauses, "A credible limit near such a bound may be set by the prior."),
+    collapse = " "
+  )))
+  invisible(NULL)
+}

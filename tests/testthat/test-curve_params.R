@@ -293,7 +293,9 @@ test_that("nec and ec50 default to the recorded scale on a transformed fit", {
   on_x <- fitted$parameter %in% c("nec", "ec50")
   expect_true(any(on_x))
   expect_false(isTRUE(all.equal(by_default[on_x, ], fitted[on_x, ])))
-  expect_identical(by_default[!on_x, ], fitted[!on_x, ])
+  # The prior-bound record gives each bound on its row's scale.
+  expect_identical(without_record(by_default[!on_x, ]),
+                   without_record(fitted[!on_x, ]))
   # The draws form takes the same map.
   expect_equal(curve_params(tf, summary = FALSE)$nec4param[, "nec"],
                curve_params(nec4param, summary = FALSE)$nec4param[, "nec"]^2)
@@ -366,4 +368,72 @@ test_that("each level of a group takes the recorded scale", {
   gf <- fake_group(list(a = tf, b = tf, c = tf))
   expect_silent(out <- curve_params(gf))
   expect_equal(out, curve_params(gf, xform = function(x) x^2))
+})
+
+# Prior-bound record
+
+test_that("the nec and ec50 rows keep a record of their prior bounds", {
+  # manec_example as fitted, with every draw well inside both bounds.
+  out <- prior_bound_notes(curve_params(manec_example))
+  expect_length(out$notes, 0)
+  record <- attr(out$value, "prior_bound_summary")
+  expect_equal(unique(paste(record$model, record$parameter)),
+               c("nec4param nec", "ecx4param ec50"))
+  expect_equal(record$side, rep(c("lower", "upper"), 2))
+  rows <- match(paste(record$model, record$dpar, record$parameter),
+                paste(out$value$model, out$value$dpar, out$value$parameter))
+  expect_false(anyNA(rows))
+  expect_equal(record$wi, out$value$wi[rows])
+  draws <- curve_params(manec_example, summary = FALSE)
+  expect_equal(record$n_draws, rep(nrow(draws$ecx4param), 4))
+  expect_equal(record$share, rep(0, 4))
+})
+
+test_that("an ec50 posterior near its bound is named", {
+  fit <- ecx4param
+  fit$fit <- tighten_upper_bound(fit$fit, "ec50")
+  share <- upper_bound_share(fit$fit, "ec50")
+  out <- prior_bound_notes(curve_params(fit))
+  expect_length(out$notes, 1)
+  expect_match(out$notes, "The ec50 posterior of ecx4param has", fixed = TRUE)
+  record <- attr(out$value, "prior_bound_summary")
+  expect_equal(record$share[record$side == "upper"], share)
+  expect_identical(without_record(out$value),
+                   without_record(curve_params(ecx4param)))
+  # ecx(ecx_val = 50) reads a crossing off the curve, and keeps no record.
+  expect_null(attr(ecx(fit, ecx_val = 50), "prior_bound_summary"))
+})
+
+test_that("a model set names a flagged equation by its weight", {
+  set <- manec_example
+  set$mod_fits$nec4param$fit <- tighten_upper_bound(
+    set$mod_fits$nec4param$fit, "nec"
+  )
+  set$mod_fits$ecx4param$fit <- tighten_upper_bound(
+    set$mod_fits$ecx4param$fit, "ec50"
+  )
+  wi <- setNames(set$mod_stats$wi, set$mod_stats$model)
+  share <- upper_bound_share(set$mod_fits$ecx4param$fit, "ec50")
+  # The ec50 share is over 7.5% of ecx4param's draws, but not once weighted.
+  expect_gt(share, 0.075)
+  expect_lt(wi[["ecx4param"]] * share, 0.075)
+  out <- prior_bound_notes(curve_params(set))
+  expect_length(out$notes, 1)
+  expect_match(out$notes, paste0("nec4param (model weight ",
+                                 signif(wi[["nec4param"]], 2), ")"),
+               fixed = TRUE)
+  expect_no_match(out$notes, "ecx4param", fixed = TRUE)
+  record <- attr(out$value, "prior_bound_summary")
+  expect_equal(record$share[record$parameter == "ec50" &
+                              record$side == "upper"], share)
+  expect_identical(without_record(out$value),
+                   without_record(curve_params(manec_example)))
+})
+
+test_that("the record gives each bound on the scale of its row", {
+  tf <- transformed_x_fit(nec4param, "nec4param")
+  record <- attr(curve_params(tf), "prior_bound_summary")
+  expect_equal(record$bound, record$fitted_bound^2)
+  fitted <- attr(curve_params(tf, xform = identity), "prior_bound_summary")
+  expect_equal(fitted$bound, fitted$fitted_bound)
 })

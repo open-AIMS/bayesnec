@@ -238,3 +238,9 @@ prior_bound_notes <- function(expr) {
   })
   list(value = value, notes = notes)
 }
+
+# The table without its prior-bound record, to compare estimates alone.
+without_record <- function(x) {
+  attr(x, "prior_bound_summary") <- NULL
+  x
+}
