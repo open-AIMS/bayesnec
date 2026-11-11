@@ -28,8 +28,10 @@
 #' recorded predictor scale. It sets the lower bound of the default
 #' \code{nec} and \code{ec50} priors, the prediction grid, the stored
 #' no-effect estimate, and the defaults of \code{ecx()}, \code{nsec()}
-#' and \code{ecnsec()}. It must lie below the highest observed value; if
-#' \code{x_range} is supplied, its lower end must equal the control.
+#' and \code{ecnsec()}. It must lie below the highest observed value, and
+#' cannot be negative where the predictor is treated as a concentration (see
+#' \code{predictor_scale}). If \code{x_range} is supplied, its lower end must
+#' equal the control.
 #' A control below the observed range extrapolates the curve. With
 #' \code{prior_type = "regularizing"}, an unobserved control requires a
 #' supplied \code{top} prior.
@@ -159,8 +161,10 @@
 #' highest predictor level reached the lower asymptote of the curve. The default
 #' \code{TRUE} is the assumption both default prior sets are built on. Under it
 #' the \code{nec} and \code{ec50} priors are bounded to the tested range, from
-#' the lowest predictor value to the highest, because on a design that reached
-#' the asymptote the decline begins, and passes its midpoint, inside that range.
+#' the control concentration (the lowest predictor value unless
+#' \code{x_control} states another) to the highest, because on a design that
+#' reached the asymptote the decline begins, and passes its midpoint, inside
+#' that range.
 #' \code{FALSE} states that the series stopped short of the asymptote, which
 #' changes the \code{bot} prior, removes the upper bound of the \code{nec} and
 #' \code{ec50} priors, and widens the initial-value search. The \code{bot}
@@ -179,7 +183,7 @@
 #'
 #' Without the upper bound, a threshold above the highest concentration lies in
 #' the tail of the \code{nec} or \code{ec50} prior rather than outside its
-#' support. The lower bound stays at the lowest value tested. How far into the
+#' support. The lower bound stays at the control concentration. How far into the
 #' tail is a property of the branch and of \code{prior_type} together rather
 #' than of either alone. Three of the four combinations set the spread by a
 #' coverage rule that reaches the farthest concentration tested, at the 95%

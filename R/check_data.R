@@ -487,7 +487,7 @@ capitalise_first <- function(x) {
 #' \code{\link{bnec}}. \code{FALSE} drops the advice to set it, and changes
 #' the sentence on the \code{nec} and \code{ec50} priors to match the priors
 #' it builds. Advice is withheld where the magnitude of the highest-level mean
-#' is at most 5% of a finite, positive control mean at the lowest predictor value.
+#' is at most 5% of a finite, positive control mean.
 #' @param x_control A stated control on the fitted predictor scale, the scale
 #' of the model-frame column, or \code{NULL} to use each group's lowest
 #' observed predictor value. An unobserved control gives no control-relative

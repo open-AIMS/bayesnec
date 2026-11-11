@@ -379,3 +379,22 @@ test_that("a spanning group fit stores its NSEC at the recorded control", {
                                   sig_val = 0.2, x_control = "shared"))
   expect_equal(own, shared)
 })
+
+test_that("estimators measure from the recorded control by default", {
+  skip_on_cran()
+  fit <- ecx4param
+  fit$call_args <- list(x_control = 0.001)
+  lowest <- min(fit$fit$data$x)
+  value <- function(x) as.numeric(x)
+  expect_equal(value(ecx(fit, resolution = 50)),
+               value(ecx(fit, resolution = 50, x_control = 0.001)))
+  expect_false(isTRUE(all.equal(
+    value(ecx(fit, resolution = 50)),
+    value(ecx(fit, resolution = 50, x_control = lowest))
+  )))
+  expect_equal(value(nsec(fit, resolution = 50)),
+               value(nsec(fit, resolution = 50, x_control = 0.001)))
+  expect_equal(value(ecnsec(fit, nsec = 1, resolution = 50)),
+               value(ecnsec(fit, nsec = 1, resolution = 50,
+                            x_control = 0.001)))
+})

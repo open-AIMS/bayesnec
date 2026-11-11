@@ -89,9 +89,10 @@ terms default to \code{"mixture"}.}
 its lowest observed concentration for an older fit or one fitted without
 \code{x_control}. \code{"shared"} reads the lowest control across levels;
 a single finite number specifies
-the concentration directly. A shared control below a level's observations
-extrapolates its curve and gives a warning. Level controls are recorded in
-the result's \code{x_control} attribute.}
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and
@@ -103,9 +104,10 @@ Extracts the predicted ECx value as desired from an object of class
 }
 \details{
 \bold{Every ECx is measured from the control.} The control is the
-predicted mean at the lowest concentration in the supplied predictor, taken
-per posterior draw. \code{type} names what the percentage is measured
-\emph{towards}:
+predicted mean at the control concentration, taken per posterior draw: the
+\code{x_control} stated in \code{\link{bnec}}, or else the lowest
+concentration in the supplied predictor. \code{type} names what the
+percentage is measured \emph{towards}:
 
 \itemize{
 \item \code{"absolute"} (the default) --- control to 0.
@@ -126,7 +128,7 @@ a percentage, and the x value at which the curve reaches it is returned.
 \code{"range"} is what \code{"relative"} computed in versions up to
 2.1.3, except that the span was taken from the maximum of the predicted
 curve rather than from the control. The two differ only for a curve whose
-maximum is not at the lowest concentration, which in practice means a
+maximum is not at the control concentration, which in practice means a
 hormetic one.
 
 Measuring from the control rather than from the maximum of the predicted

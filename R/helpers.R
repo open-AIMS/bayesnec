@@ -2390,8 +2390,9 @@ check_resolution <- function(resolution) {
 
 #' The predictor value the control is read at
 #'
-#' The lowest \emph{observed} value of the predictor named in \code{crf()}, on
-#' the scale the user supplied it on. It is read from the data, not from the
+#' The control recorded at fitting, or else the lowest \emph{observed} value
+#' of the predictor named in \code{crf()}, on the scale the user supplied it
+#' on. It is read from the data, not from the
 #' prediction grid, so that \code{x_range} does not change it or any estimate
 #' anchored on it. A \code{\link{bayesnechurdlefit}} reads it from the
 #' survival component, which sees every concentration tested.
@@ -2600,9 +2601,10 @@ resolve_x_control <- function(object, x_control, x_range) {
 
 #' The lowest observed predictor value of one fit
 #'
-#' The rule \code{control_x()} and \code{control_posterior()} share. One level
-#' of a joint refit reads its own lowest concentration, not the lowest of every
-#' level together. See \code{joint_level_x()}.
+#' The control where none was recorded at fitting, and the value a call-time
+#' control is compared with. One level of a joint refit reads its own lowest
+#' concentration, not the lowest of every level together. See
+#' \code{joint_level_x()}.
 #'
 #' @param grid_obj A \code{\link{bayesnecfit}}, already taken from its model
 #' set or hurdle fit.
@@ -2763,11 +2765,10 @@ family_has_lower_bound <- function(family) {
 
 #' The control posterior
 #'
-#' The predicted mean at the lowest \emph{observed} concentration, per draw.
+#' The predicted mean at the control concentration, per draw.
 #'
-#' Read at the lowest observed predictor value, not at the first column of the
-#' prediction grid, so that \code{x_range} does not change any reported
-#' estimate.
+#' Read at \code{control_x()}, not at the first column of the prediction grid,
+#' so that \code{x_range} does not change any reported estimate.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
 #' @param newdata The prediction grid, used as the template for the columns
@@ -3027,7 +3028,7 @@ remap_censored_summary <- function(cens, map, decreasing, probs = NULL) {
 check_removed_args <- function(dots) {
   if ("hormesis_def" %in% names(dots)) {
     stop("hormesis_def has been removed. Every ECx, NSEC and ECNSEC is now ",
-         "measured from the control -- the predicted mean at the lowest ",
+         "measured from the control -- the predicted mean at the control ",
          "concentration -- which is what hormesis_def = \"control\" selected. ",
          "There is no longer an option to measure from the maximum of the ",
          "predicted curve. Drop the argument.", call. = FALSE)
