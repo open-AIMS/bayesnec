@@ -252,23 +252,6 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   ))
   fit_dots <- list(...)
   stated_control <- dots_arg(fit_dots, "x_control")
-  if (is.numeric(stated_control) && length(stated_control) == 1L &&
-      is.finite(stated_control)) {
-    below_growth <- stated_control < min(retrieve_var(
-      growth_frame, "x_var", error = TRUE
-    ))
-    below_survival <- stated_control < min(retrieve_var(
-      survival_frame, "x_var", error = TRUE
-    ))
-    if (below_growth || below_survival) {
-      blocks <- c(if (below_growth) "growth", if (below_survival) "survival")
-      message("The control at ", signif(stated_control, 3), " is below the",
-              " lowest observed concentration in the ",
-              paste(blocks, collapse = " and "),
-              " component; the curve from control to its data is",
-              " extrapolated.")
-    }
-  }
   for (part in list(
     list(frame = growth_frame, formula = formula, family = family_growth,
          models = growth_models),
@@ -283,7 +266,8 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     check_control_top_prior(
       part$frame, part$family, part$models,
       dots_arg(fit_dots, "prior"),
-      dots_arg(fit_dots, "prior_type", "uninformative"), stated_control
+      dots_arg(fit_dots, "prior_type", "uninformative"), stated_control,
+      part$formula
     )
   }
   check_group_terms(growth_models, formula, report = FALSE)
@@ -321,6 +305,20 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     model = get_model_from_formula(formula),
     flat_remedy = hurdle_growth_flat_remedy()
   )
+  if (!is.null(stated_control)) {
+    at <- fitted_x_control(stated_control, formula)
+    below_growth <- at < min(retrieve_var(growth_frame, "x_var", error = TRUE))
+    below_survival <- at < min(retrieve_var(survival_frame, "x_var",
+                                            error = TRUE))
+    if (below_growth || below_survival) {
+      blocks <- c(if (below_growth) "growth", if (below_survival) "survival")
+      message("The control at ", signif(stated_control, 3), " is below the",
+              " lowest observed concentration in the ",
+              paste(blocks, collapse = " and "),
+              " component; the curve from the control to its data is",
+              " extrapolated.")
+    }
+  }
   message("Fitting the growth component (", sum(y > 0), " survivors of ",
           length(y), ") with a ", family_growth$family, " distribution.")
   # User aterms pass through unchanged: a survivor below the recording limit is

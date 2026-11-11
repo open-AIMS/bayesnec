@@ -1077,7 +1077,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # two-block fit against the equation that block will use.
   model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
   check_control_top_prior(bdat, brm_args$family, model, brm_args$prior,
-                          prior_type, x_control, model_survival)
+                          prior_type, x_control, formula,
+                          model_survival = model_survival)
   # Report a response still declining at the top of the series. A partial prior
   # does not silence the report, because fill_missing_priors() fills the omitted
   # bot, nec and ec50 rows from the same defaults.

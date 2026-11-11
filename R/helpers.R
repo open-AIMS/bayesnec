@@ -2462,10 +2462,12 @@ fitted_x_control <- function(x_control, formula) {
 
 #' Validate a control concentration before fitting
 #'
-#' @param x_control The requested control, or \code{NULL}.
+#' @param x_control The requested control on the recorded scale, or
+#' \code{NULL}.
 #' @param formula The formula whose predictor transformation is fitted.
-#' @param predictor The observed predictor on its recorded scale.
-#' @param x_range The requested prediction range.
+#' @param predictor The observed predictor on the fitted scale, as read from
+#' the model frame.
+#' @param x_range The requested prediction range, on the recorded scale.
 #' @param predictor_scale The predictor-scale declaration.
 #' @param report Whether to report extrapolation below the data.
 #' @return The control, invisibly, or \code{NULL}.
@@ -2479,16 +2481,16 @@ check_fit_x_control <- function(x_control, formula, predictor, x_range = NA,
       !is.finite(x_control)) {
     stop("`x_control` must be NULL or one finite number.", call. = FALSE)
   }
-  validate_predictor_scale(predictor_scale, c(x_control, predictor))
   transformed <- tryCatch(
-    suppressWarnings(sub_x_transformation(x_control, formula)),
+    suppressWarnings(fitted_x_control(x_control, formula)),
     error = function(e) NA_real_
   )
   if (length(transformed) != 1L || !is.finite(transformed)) {
     stop("`x_control = ", x_control, "` is not finite under the crf()",
          " predictor transformation.", call. = FALSE)
   }
-  if (x_control >= max(predictor)) {
+  validate_predictor_scale(predictor_scale, c(transformed, predictor))
+  if (transformed >= max(predictor)) {
     stop("`x_control` must be below the highest observed concentration.",
          call. = FALSE)
   }
@@ -2497,10 +2499,10 @@ check_fit_x_control <- function(x_control, formula, predictor, x_range = NA,
     stop("The lower end of `x_range` must equal `x_control` when both are",
          " supplied.", call. = FALSE)
   }
-  if (report && x_control < min(predictor)) {
+  if (report && transformed < min(predictor)) {
     message("The control at ", signif(x_control, 3), " is below the lowest",
-            " observed concentration, ", signif(min(predictor), 3),
-            "; the curve from control to the data is extrapolated.")
+            " observed concentration; the curve from the control to the data",
+            " is extrapolated.")
   }
   invisible(as.numeric(x_control))
 }

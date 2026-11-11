@@ -486,7 +486,7 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
       attr(level_frame, "bnec_pop") <- attr(bdat, "bnec_pop")
       check_control_top_prior(level_frame, family, models[[level]],
                               brm_args$prior,
-                              prior_args$prior_type, x_control)
+                              prior_args$prior_type, x_control, formula)
     }
   }
   refit <- fit_bayesnec(formula = formula, data = data, model = rep_model,

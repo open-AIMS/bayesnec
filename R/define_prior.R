@@ -731,6 +731,12 @@ predictor_prior <- function(predictor, prior_type = "uninformative",
 #' @param supplied_pars The curve parameters the caller's own prior sets, from
 #' \code{supplied_curve_pars()}. Where it holds \code{"bot"}, the declaration
 #' needs no floor, because the caller's entry replaces the one it would build.
+#' @param x_control The stated control on the recorded scale, or \code{NULL}.
+#' Used only in messages.
+#' @param x_control_fitted The stated control on the fitted scale of
+#' \code{predictor}. It sets the lower bound of the \code{nec} and
+#' \code{ec50} entries. Defaults to \code{x_control}, which is correct only
+#' for an untransformed predictor.
 #'
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #' @importFrom brms prior_string
@@ -833,14 +839,17 @@ define_prior <- function(model, family, predictor, response,
     }
   }
   response <- response_link_scale(response, family)
-  if (prior_type == "regularizing" && !is.null(x_control) &&
-      !any(predictor == x_control) && !"top" %in% supplied_pars) {
+  # `predictor` is on the fitted scale, so compare it with the transformed
+  # control; `x_control` is kept for the message.
+  if (prior_type == "regularizing" && !is.null(x_control_fitted) &&
+      !any(predictor == x_control_fitted) && !"top" %in% supplied_pars) {
     stop("The regularizing prior for `top` needs an observed response at",
          " `x_control = ", x_control, "`. Supply a `top` prior or include a",
          " control observation.", call. = FALSE)
   }
-  top_rows <- if (!is.null(x_control) && any(predictor == x_control)) {
-    predictor >= x_control
+  top_rows <- if (!is.null(x_control_fitted) &&
+                    any(predictor == x_control_fitted)) {
+    predictor >= x_control_fitted
   } else {
     rep(TRUE, length(predictor))
   }

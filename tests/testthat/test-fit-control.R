@@ -135,3 +135,132 @@ test_that("model sets accept equal controls despite different model names", {
   expect_s3_class(legacy, "bayesmanecfit")
   expect_equal(bayesnec:::control_x(legacy), min(nec4param$fit$data$x))
 })
+
+# nec_data$x spans 0.032 to 3.22, which is -3.43 to 1.17 on the log scale. A
+# stated control is on the recorded scale, the model frame on the fitted one.
+test_that("pre-fit control checks compare on the fitted scale", {
+  f <- y ~ crf(log(x), "nec3param")
+  p <- get_priors(f, data = nec_data, family = Beta(), x_control = 2)
+  expect_equal(as.numeric(p$lb[p$nlpar == "nec"]), log(2))
+  expect_error(get_priors(f, data = nec_data, family = Beta(), x_control = 4),
+               "below the highest observed concentration")
+  expect_error(get_priors(f, data = nec_data, family = Beta(),
+                          x_control = -1),
+               "not finite under the crf\\(\\) predictor transformation")
+  expect_no_error(get_priors(f, data = nec_data, family = Beta(),
+                             x_control = min(nec_data$x),
+                             prior_type = "regularizing"))
+  expect_error(get_priors(f, data = nec_data, family = Beta(),
+                          x_control = 0.01, prior_type = "regularizing"),
+               "Supply a prior for `top`")
+  expect_error(bayesnec:::define_prior(
+    "nec3param", Beta(), log(nec_data$x), nec_data$y,
+    prior_type = "regularizing", x_control = 0.01,
+    x_control_fitted = log(0.01)
+  ), "needs an observed response")
+  expect_no_error(bayesnec:::define_prior(
+    "nec3param", Beta(), log(nec_data$x), nec_data$y,
+    prior_type = "regularizing", x_control = min(nec_data$x),
+    x_control_fitted = log(min(nec_data$x))
+  ))
+  frame <- model.frame(bnf(f), data = nec_data)
+  expect_no_error(bayesnec:::check_control_top_prior(
+    frame, Beta(), "nec3param", NULL, "regularizing", min(nec_data$x),
+    bnf(f)
+  ))
+})
+
+log_control_data <- function() {
+  set.seed(5)
+  x <- rep(c(0.5, 1, 2, 4, 8, 16), each = 4)
+  data.frame(x = x, y = stats::rgamma(length(x), shape = 50,
+                                      rate = 50 / (100 * exp(-0.2 * x))))
+}
+
+test_that("bnec reports a logged control on the fitted scale", {
+  d <- log_control_data()
+  f <- y ~ crf(log(x), "nec4param")
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  run <- function(x_control) {
+    out <- character(0)
+    withCallingHandlers(
+      expect_error(bnec(f, d, family = Gamma(link = "identity"),
+                        x_control = x_control), "fit reached"),
+      message = function(m) {
+        out <<- c(out, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    )
+    paste(out, collapse = "")
+  }
+  observed <- run(0.5)
+  expect_match(observed, "is 4.48% of the control mean at log\\(x\\) = -0.693")
+  expect_no_match(observed, "below the lowest observed concentration")
+  below <- run(0.25)
+  expect_match(below, "The control at 0.25 is below the lowest observed")
+  expect_match(below, "percentage is unavailable because the mean at log\\(x\\)")
+  expect_no_match(run(4), "below the lowest observed concentration")
+})
+
+test_that("grouped and hurdle pre-fit checks transform the control", {
+  d <- log_control_data()
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  d <- d[!(d$site == "b" & d$x == 0.5), ]
+  received <- NULL
+  local_mocked_bindings(
+    bnec = function(...) {
+      received <<- list(...)
+      stop("fit reached")
+    },
+    .package = "bayesnec"
+  )
+  top <- brms::prior_string("normal(90, 10)", nlpar = "top")
+  msgs <- character(0)
+  withCallingHandlers(
+    expect_error(bnec_group(
+      y ~ crf(log(x), "nec4param"), d, group_var = "site",
+      family = Gamma(link = "identity"), prior_type = "regularizing",
+      prior = top, x_control = 0.5
+    ), "fit reached"),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_true(any(grepl("below the lowest observed concentration in 1 group",
+                        msgs)))
+  expect_equal(received$x_control, 0.5)
+  expect_error(suppressMessages(bnec_group(
+    y ~ crf(log(x), "nec4param"), d, group_var = "site",
+    family = Gamma(link = "identity"), x_control = 16
+  )), "below the highest observed concentration")
+
+  h <- log_control_data()
+  h$y[h$x == 16] <- 0
+  h$y[h$x == 8][1:2] <- 0
+  msgs <- character(0)
+  withCallingHandlers(
+    expect_error(bnec_hurdle(
+      y ~ crf(log(x), "nec3param"), h, prior_type = "regularizing",
+      x_control = 0.5
+    ), "fit reached"),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_false(any(grepl("below the lowest observed", msgs)))
+  msgs <- character(0)
+  withCallingHandlers(
+    expect_error(bnec_hurdle(y ~ crf(log(x), "nec3param"), h,
+                             x_control = 0.25), "fit reached"),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_true(any(grepl("growth and survival component", msgs)))
+})
