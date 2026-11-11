@@ -313,3 +313,32 @@ test_that("a call-time control is compared with the lowest observation", {
     list(a = above, b = equal), list(x_control = lowest + 0.1)
   ))
 })
+
+# A control below nec_data's lowest concentration, 0.0323, moves the lower
+# bound of the default nec prior to the control.
+below_control_fit <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      cached <<- suppressWarnings(suppressMessages(bnec(
+        y ~ crf(x, "nec4param"), data = nec_data, family = Beta(),
+        x_control = 0.01, chains = 2, iter = 400, warmup = 200, seed = 591,
+        refresh = 0
+      )))
+    }
+    cached
+  }
+})
+
+test_that("the prior-bound record reports a control below the data", {
+  skip_on_cran()
+  fit <- below_control_fit()
+  expect_equal(bayesnec:::recorded_x_control(fit), 0.01)
+  record <- attr(prior_bound_notes(curve_params(fit))$value,
+                 "prior_bound_summary")
+  lower <- record[record$parameter == "nec" & record$side == "lower", ]
+  expect_equal(nrow(lower), 1)
+  expect_equal(lower$fitted_bound, 0.01)
+  expect_equal(lower$bound, 0.01)
+  expect_equal(bayesnec:::ne_prior_bounds(fit$fit)$lb, 0.01)
+})
