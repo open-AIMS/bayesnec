@@ -62,7 +62,10 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
     observed_level_spec(object)
   }
   if (!is.null(spec)) {
-    if (is.na(x_range[1])) x_range <- range(unlist(spec$x))
+    if (is.na(x_range[1])) {
+      x_range <- c(min(observed_level_controls(object, spec)),
+                   max(unlist(spec$x)))
+    }
     levels <- lapply(seq_len(nrow(spec$combinations)), function(i) {
       hurdle_component_preds(observed_level_fit(object, spec, i),
                              resolution, x_range, x_control)
@@ -93,7 +96,7 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
                                combined = controls("combined"))))
   }
   if (!is.null(object$observed_group) && is.na(x_range[1])) {
-    x_range <- range(object$level_x)
+    x_range <- level_read_span(object)
   }
   if (is.numeric(x_control)) {
     control_reading <- resolve_x_control(object, x_control, x_range)

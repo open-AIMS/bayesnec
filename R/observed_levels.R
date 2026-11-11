@@ -365,7 +365,7 @@ observed_level_fit <- function(object, spec, i, with_ne = FALSE) {
       )[, 1])
       ne <- pmin(ne, hu_ne)
     }
-    bounds <- sub_x_transformation(range(out$level_x),
+    bounds <- sub_x_transformation(level_read_span(out),
                                    out$bayesnecformula)
     attr(ne, "censored") <- censoring_record(
       max(bounds), min(bounds), ne >= max(bounds), ne <= min(bounds)
@@ -383,6 +383,16 @@ observed_level_fit <- function(object, spec, i, with_ne = FALSE) {
 record_level_controls <- function(result, values) {
   attr(result, "x_control") <- values
   result
+}
+
+#' The concentrations one observed level is read over
+#'
+#' @param level One observed level, from \code{observed_level_fit()}.
+#' @return Its control and its highest observed concentration, on the recorded
+#' scale.
+#' @noRd
+level_read_span <- function(level) {
+  c(control_x(level), max(level$level_x))
 }
 
 #' Each observed level's own control concentration

@@ -1234,7 +1234,7 @@ joint_block_ne <- function(object, dpar) {
       object$fit, newdata = nd, nlpar = nlpar,
       re_formula = spec$re_formula, transform = TRUE
     )[, 1])
-    with_record(draws, range(level$level_x))
+    with_record(draws, level_read_span(level))
   })
   pool_observed_draws(parts, spec)
 }

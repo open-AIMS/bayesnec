@@ -528,3 +528,45 @@ test_that("a call-time control below the levels warns of extrapolation", {
   # The recorded control was reported at fitting.
   expect_no_warning(run("shared"))
 })
+
+test_that("an observed level's nec censoring starts at the recorded control", {
+  spec <- list(combinations = data.frame(plate = c("p1", "p2")),
+               x = list(c(0.05, 0.4, 1), c(0.05, 0.4, 1)),
+               n = c(3L, 3L), re_formula = NA)
+  fit <- nec4param
+  plain <- bayesnec:::observed_level_fit(fit, spec, 1, with_ne = TRUE)
+  expect_equal(attr(plain$ne_posterior, "censored")$lower, 0.05)
+  fit$call_args <- list(x_control = 0.01)
+  level <- bayesnec:::observed_level_fit(fit, spec, 1, with_ne = TRUE)
+  expect_equal(attr(level$ne_posterior, "censored")$lower, 0.01)
+  expect_equal(attr(level$ne_posterior, "censored")$upper, 1)
+})
+
+test_that("an observed hurdle level's grid starts at the recorded control", {
+  spec <- list(combinations = data.frame(plate = c("p1", "p2")),
+               x = list(c(0.05, 0.4, 1), c(0.1, 0.4, 2)),
+               n = c(3L, 3L), re_formula = NA)
+  pair <- bayesnec:::allot_class(
+    list(growth = nec4param, survival = nec4param),
+    c("bayesnechurdlefit", "bnecfit")
+  )
+  ranges <- list()
+  local_mocked_bindings(
+    observed_level_spec = function(object) spec,
+    newdata_eval = function(object, resolution, x_range) {
+      ranges[[length(ranges) + 1]] <<- x_range
+      stop("grid built")
+    }
+  )
+  expect_error(bayesnec:::hurdle_component_preds(pair, resolution = 5),
+               "grid built")
+  expect_equal(ranges[[1]], c(0.05, 2))
+  pair$survival$call_args <- list(x_control = 0.01)
+  expect_error(bayesnec:::hurdle_component_preds(pair, resolution = 5),
+               "grid built")
+  expect_equal(ranges[[2]], c(0.01, 2))
+  level <- bayesnec:::observed_level_fit(pair, spec, 2)
+  expect_error(bayesnec:::hurdle_component_preds(level, resolution = 5),
+               "grid built")
+  expect_equal(ranges[[3]], c(0.01, 2))
+})

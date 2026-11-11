@@ -342,3 +342,40 @@ test_that("the prior-bound record reports a control below the data", {
   expect_equal(lower$bound, 0.01)
   expect_equal(bayesnec:::ne_prior_bounds(fit$fit)$lb, 0.01)
 })
+
+# Three plates spanning the series, the lowest concentration 0.05, with a
+# control stated below it.
+plate_control_fit <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      set.seed(554)
+      d <- expand.grid(x = c(0.05, 0.15, 0.4, 0.8, 1.5, 3),
+                       plate = paste0("p", 1:3), replicate = 1:3)
+      gain <- c(p1 = 0.85, p2 = 1, p3 = 1.2)
+      d$y <- 3 * gain[as.character(d$plate)] *
+        exp(-0.35 * pmax(d$x - 0.6, 0)) + stats::rnorm(nrow(d), 0, 0.12)
+      d$plate <- as.character(d$plate)
+      cached <<- suppressWarnings(suppressMessages(bnec(
+        y ~ crf(x, "ecx4param") + ogl(plate), data = d, family = "gaussian",
+        x_control = 0.01, sig_val = 0.2, resolution = 40, iter = 300,
+        warmup = 150, chains = 2, seed = 554, refresh = 0
+      )))
+    }
+    cached
+  }
+})
+
+test_that("a spanning group fit stores its NSEC at the recorded control", {
+  skip_on_cran()
+  fit <- plate_control_fit()
+  post <- suppressWarnings(nsec(fit, posterior = TRUE, resolution = 40,
+                                sig_val = 0.2))
+  expect_equal(unname(attr(post, "x_control")), rep(0.01, 3))
+  expect_equal(as.numeric(fit$ne_posterior), as.numeric(post))
+  own <- suppressWarnings(nsec(fit, pool = "none", resolution = 40,
+                               sig_val = 0.2))
+  shared <- suppressWarnings(nsec(fit, pool = "none", resolution = 40,
+                                  sig_val = 0.2, x_control = "shared"))
+  expect_equal(own, shared)
+})

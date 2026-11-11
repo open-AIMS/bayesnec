@@ -223,7 +223,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   if (!is.null(observed)) {
     level_fit <- allot_class(
       list(fit = fit, bayesnecformula = formula, model = object$model,
-           ne_posterior = ne_posterior),
+           ne_posterior = ne_posterior,
+           x_control = recorded_x_control(object)),
       c("bayesnecfit", "bnecfit")
     )
     ne_posterior <- if (!is.null(hurdle_parts) &&
@@ -237,7 +238,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
           re_formula = observed$re_formula, transform = TRUE
         )[, 1])
         out <- pmin(level$ne_posterior, hu_ne)
-        bounds <- sub_x_transformation(range(level$level_x), formula)
+        bounds <- sub_x_transformation(level_read_span(level), formula)
         attr(out, "censored") <- censoring_record(
           max(bounds), min(bounds), out >= max(bounds),
           out <= min(bounds)
