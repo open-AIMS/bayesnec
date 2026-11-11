@@ -21,6 +21,8 @@
 #' A single finite number extends the upper end; two finite numbers may
 #' extend both ends. The original grid points are retained. Limits are on
 #' the recorded predictor scale. \code{TRUE} and narrowing limits are refused.
+#' For \code{type = "range"} the lowest response is taken over the prediction
+#' range before it is extended.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
@@ -275,7 +277,8 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
       object, NULL, ecx_asymptote(object, "relative"),
       newdata_list$newdata
     ),
-    range = apply(p_samples, 1, min, na.rm = TRUE)
+    range = apply(p_samples[, newdata_list$original, drop = FALSE], 1, min,
+                  na.rm = TRUE)
   )
   ecnsecP <- (control_draws - at_nsec) / (control_draws - floor_draws) * 100
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)

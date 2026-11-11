@@ -40,6 +40,10 @@ is_bayesnechurdlefit <- function(x) {
 #' @param levels \code{TRUE} to mix the observed levels of a group term that
 #' spans the series, or \code{FALSE} for the population curve, with group
 #' deviations at zero, as the plotted band uses.
+#' @param grid_limits Limits from \code{curve_extrapolate_limits()} to extend
+#' the grid to, or \code{NULL}.
+#' @param x_values A grid to predict at, used as given. It overrides
+#' \code{resolution}, \code{x_range} and \code{grid_limits}.
 #' @details Draws are paired by row, which is valid because the two posteriors
 #' are independent. Where the fits hold different numbers of draws, both are
 #' truncated to the smaller.
@@ -50,8 +54,10 @@ is_bayesnechurdlefit <- function(x) {
 #' truncated to the same draws.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{x}, \code{growth},
-#' \code{survival} and \code{combined}, and \code{control}, a list of the same
-#' three names holding one control value per draw.
+#' \code{survival} and \code{combined}; \code{control}, a list of the same
+#' three names holding one control value per draw; and \code{original}, a
+#' \code{\link[base]{logical}} vector marking the columns of the grid before
+#' \code{grid_limits} extended it.
 #'
 #' @importFrom brms posterior_epred
 #'
@@ -97,7 +103,8 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
                 survival = combine("survival"), combined = combine("combined"),
                 control = list(growth = controls("growth"),
                                survival = controls("survival"),
-                               combined = controls("combined"))))
+                               combined = controls("combined")),
+                original = levels[[1]]$original))
   }
   if (!is.null(object$observed_group) && is.na(x_range[1])) {
     x_range <- level_read_span(object)
@@ -117,9 +124,11 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
     nd_s <- newdata_eval(object$survival, resolution = resolution,
                          x_range = x_range)
   }
+  base_x <- nd_s$x_vec
   if (!is.null(x_values)) {
     nd_s <- newdata_eval(object$survival, length(x_values),
                          range(x_values), x_values = x_values)
+    base_x <- x_values
   } else if (!is.null(grid_limits)) {
     x_values <- extend_grid_values(nd_s$x_vec, grid_limits)
     if (!identical(x_values, nd_s$x_vec)) {
@@ -158,7 +167,8 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
   c_g <- c_g[seq_len(n)]
   c_s <- c_s[seq_len(n)]
   list(x = nd_g$x_vec, growth = g, survival = s, combined = g * s,
-       control = list(growth = c_g, survival = c_s, combined = c_g * c_s))
+       control = list(growth = c_g, survival = c_s, combined = c_g * c_s),
+       original = original_columns(nd_g$x_vec, base_x))
 }
 
 #' @noRd
@@ -446,20 +456,17 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
   # Every curve, growth included, over the whole concentration series.
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "ECx")
-  preds <- if (is.null(lims)) {
-    hurdle_component_preds(object, resolution = resolution,
-                           x_range = x_range, x_control = x_control)
-  } else {
-    hurdle_component_preds(object, resolution = resolution,
-                           x_range = x_range, x_control = x_control,
-                           grid_limits = lims)
-  }
+  start <- curve_search_start(object, x_control)
+  report_curve_read_lower_limit(extrapolate, lims, start)
+  preds <- hurdle_component_preds(object, resolution = resolution,
+                                  x_range = x_range, x_control = x_control,
+                                  grid_limits = ecx_grid_limits(lims, start))
   p_samples <- preds[[which]]
   # Take the control from hurdle_component_preds(), at the control
   # concentration. p_samples[, 1] would make every estimate depend on x_range.
   control <- preds$control[[which]]
   out <- ecx_from_posterior(p_samples, preds$x, ecx_val, type, control,
-                            NA_real_)
+                            NA_real_, preds$original)
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
   attr(out, "below_range") <- NULL

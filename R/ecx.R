@@ -31,7 +31,11 @@
 #' search grid and marks any unresolved draw as censored at that limit.
 #' Limits are on the recorded predictor scale. \code{TRUE} and limits that
 #' narrow the current range are refused. The original grid points and their
-#' spacing are retained when extension points are appended.
+#' spacing are retained when extension points are appended. The search begins
+#' at the control, so a lower limit extends it only where the prediction range
+#' begins above the control. For \code{type = "range"} the lowest response is
+#' taken over the prediction range before it is extended, so a limit beyond
+#' the data does not change the estimate.
 #' @param pool How observed group levels are combined. `"none"` returns
 #' per-level estimates. `"mixture"` gives each posterior draw to one level, in
 #' proportion to the levels' observation counts, and keeps it at its position,
@@ -306,8 +310,11 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   control_reading <- resolve_x_control(object, x_control, x_range)
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "ECx")
-  newdata_list <- extended_newdata_eval(object, resolution,
-                                        control_reading$x_range, lims)
+  report_curve_read_lower_limit(extrapolate, lims, control_reading$value)
+  newdata_list <- extended_newdata_eval(
+    object, resolution, control_reading$x_range,
+    ecx_grid_limits(lims, control_reading$value)
+  )
   # NULL gives a two-block fit's combined mean: positive-part mean times its
   # non-zero probability (1 - hu or 1 - zi). dpar selects one block; invert
   # the zero-probability block so that declines represent decreasing response.
@@ -327,7 +334,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
     object, dpar, asymptote, newdata_list$newdata
   )
   ecx_out <- ecx_from_posterior(p_samples, x_vec, ecx_val, type, control,
-                                asymptote)
+                                asymptote, newdata_list$original)
   below <- attr(ecx_out, "below_range")
   above <- is.na(ecx_out) & !below
   attr(ecx_out, "below_range") <- NULL
@@ -453,9 +460,9 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
       posterior, prob_vals
     )))
   }
-  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
-                                   "ECx")
-  if (!is.null(lims)) extrapolate <- c(lims$lower, lims$upper)
+  # Refuse a bad limit once for the set. Each equation reads the limit as
+  # given, and once_level_note() below prints its lower-limit message once.
+  curve_extrapolate_limits(extrapolate, object, x_range, x_control, "ECx")
   # Warn about the relative rename once for the call. sample_ecx() below calls
   # ecx() for each equation with type passed explicitly, which would otherwise
   # warn again for every equation.
@@ -846,9 +853,24 @@ manec_asymptote <- function(object) {
 #' The reference for every type is the control, this draw's predicted mean at
 #' the control concentration.
 #'
+#' @param p_samples A draws by grid \code{\link[base]{matrix}} of predicted
+#' means.
+#' @param x_vec The grid, the columns of \code{p_samples}.
+#' @param ecx_val,type As \code{\link{ecx}} takes them.
+#' @param control The control posterior, one value per draw.
+#' @param asymptote The asymptote \code{type = "relative"} measures towards.
+#' @param original A \code{\link[base]{logical}} vector marking the columns of
+#' the grid before \code{extrapolate} extended it, or \code{NULL} for every
+#' column. \code{type = "range"} takes its lowest response over them, and
+#' \code{crossing_in_segments()} searches them as the unextended grid.
+#'
+#' @return A \code{\link[base]{numeric}} vector, one value per draw, with a
+#' \code{below_range} attribute marking the draws already past the target
+#' where the grid begins.
 #' @noRd
 ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
-                               asymptote) {
+                               asymptote, original = NULL) {
+  if (is.null(original)) original <- rep(TRUE, ncol(p_samples))
   n_draws <- nrow(p_samples)
   control <- rep_len(control, n_draws)
   asymptote <- rep_len(asymptote, n_draws)
@@ -864,10 +886,10 @@ ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
       absolute = control[i] * (1 - ecx_val / 100),
       relative = control[i] - (control[i] - asymptote[i]) * (ecx_val / 100),
       range = control[i] -
-        (control[i] - min(y, na.rm = TRUE)) * (ecx_val / 100),
+        (control[i] - min(y[original], na.rm = TRUE)) * (ecx_val / 100),
       direct = ecx_val
     )
-    val <- crossing_x(y, target, x_vec)
+    val <- crossing_in_segments(y, target, x_vec, original)
     # With no crossing, mark a draw below range only if its first grid response
     # is at or below a target below the control. Classify every other missing
     # crossing at the upper end, whether outside the grid or absent altogether.
@@ -879,4 +901,41 @@ ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
   }, numeric(1))
   attr(out, "below_range") <- below_range
   out
+}
+
+#' The first crossing of an ECx target on a grid that may be extended
+#'
+#' \code{crossing_x()} finds a root numerically over the whole grid it is
+#' given, so its result depends slightly on the grid's length. The original
+#' grid is therefore searched on its own, between the points added below it
+#' and those added above, so that a crossing inside it is the one found
+#' without the extension.
+#'
+#' @param y One predicted curve.
+#' @param target The response the curve is to reach.
+#' @param x_vec The grid \code{y} is predicted at.
+#' @param original A \code{\link[base]{logical}} vector marking the columns of
+#' the unextended grid.
+#'
+#' @return The crossing, or \code{NA} where the curve has reached the target
+#' at the start of the grid or does not reach it.
+#' @noRd
+crossing_in_segments <- function(y, target, x_vec, original) {
+  n <- length(y)
+  first <- min(which(original))
+  last <- max(which(original))
+  if (first == 1L && last == n) {
+    return(crossing_x(y, target, x_vec))
+  }
+  for (s in list(seq_len(first), first:last, last:n)) {
+    if (length(s) < 2L) next
+    # A segment already at or below the target where it starts has no crossing
+    # of its own, and the search stops, as crossing_x() stops at the start.
+    if (!is.na(y[s[1]]) && !is.na(target) && y[s[1]] <= target) {
+      return(NA_real_)
+    }
+    val <- crossing_x(y[s], target, x_vec[s])
+    if (!is.na(val)) return(val)
+  }
+  NA_real_
 }

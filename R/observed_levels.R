@@ -253,9 +253,10 @@ note_excluded_levels <- function(spec) {
   invisible(NULL)
 }
 
-#' Print each excluded-level note once
+#' Print each repeated note once
 #'
-#' The equations of a model set share their data, so each repeats the note.
+#' The equations and levels of one call each repeat the excluded-level note
+#' and the lower-limit message of \code{report_curve_read_lower_limit()}.
 #'
 #' @param expr The expression to evaluate.
 #' @return The value of \code{expr}.
@@ -484,10 +485,10 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
     (is.null(object$hurdle) || identical(object$hurdle$ne_type, "NEC")) &&
     (!is_bayesnecfit(object) ||
        sampled_nec_is_no_effect(object$model, object$fit))
-  draws <- lapply(seq_along(labels), function(i) {
+  draws <- once_level_note(lapply(seq_along(labels), function(i) {
     fun(observed_level_fit(object, spec, i, with_ne = with_ne),
         control_value, range_override)
-  })
+  }))
   names(draws) <- labels
   if (identical(what, "nec")) {
     label <- ne_estimate_label(unlist(lapply(draws, attr,
@@ -960,13 +961,24 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
       }
     }
     grid_lims <- lims
-    if (identical(what, "nsec")) {
+    if (what %in% c("ecx", "nsec")) {
+      # Each level is measured from its own control, so the shared search
+      # cannot begin below the highest of them.
       control_start <- if (own) max(controls) else as.numeric(x_control)
-      grid_lims$lower <- max(grid_lims$lower, control_start)
+      report_curve_read_lower_limit(
+        extrapolate, lims, control_start,
+        if (own) "the highest of the levels' control concentrations" else
+          "the control concentration"
+      )
+      grid_lims <- ecx_grid_limits(grid_lims, control_start)
     }
+    x_base <- x_vec
     x_vec <- extend_grid_values(x_vec, grid_lims)
+    original <- original_columns(x_vec, x_base)
     low <- min(x_vec)
     high <- max(x_vec)
+  } else {
+    original <- rep(TRUE, length(x_vec))
   }
   type <- if (is.null(dots$type)) "absolute" else dots$type
   if (identical(what, "ecnsec") && identical(type, "direct")) {
@@ -1045,7 +1057,8 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   }
   if (identical(what, "ecnsec")) {
     floor <- switch(type, absolute = 0, relative = asymptote,
-                    range = apply(curve, 1, min, na.rm = TRUE))
+                    range = apply(curve[, original, drop = FALSE], 1, min,
+                                  na.rm = TRUE))
     out <- (control - at_nsec) / (control - floor) * 100
     if (isTRUE(dots$posterior)) return(out)
     probs <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else
@@ -1057,7 +1070,7 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   if (identical(what, "ecx")) {
     effect <- if (is.null(dots$ecx_val)) 10 else dots$ecx_val
     out <- ecx_from_posterior(curve, x_vec, effect, type, control,
-                              asymptote)
+                              asymptote, original)
   } else {
     sig <- if (is.null(dots$sig_val)) 0.01 else dots$sig_val
     reference <- stats::quantile(control, sig)

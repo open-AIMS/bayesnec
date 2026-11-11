@@ -207,9 +207,12 @@
 #' reference, so reading one means evaluating that curve on a grid, and no grid
 #' reaches infinity. Name a finite limit instead.
 #'
-#' A finite limit appends grid points where the curve is searched and then censors
-#' there, so \code{extrapolate} does through a checked argument what
-#' \code{x_range} does through an unchecked one: a limit inside the current
+#' A finite limit appends points to the grid the curve is searched on, at the
+#' grid's own spacing, and then censors there. The points of the unextended
+#' grid are kept, so an estimate inside the data is read off the same points
+#' as without \code{extrapolate}. Widening \code{x_range} to the same limit
+#' instead spreads \code{resolution} points over the wider range, so its grid
+#' is coarser and its estimates can differ slightly. A limit inside the current
 #' range is an error rather than a silent tightening, because it would report
 #' an estimate as censored at a value the fit had no trouble identifying. Use
 #' \code{x_range} to narrow the range.
@@ -224,13 +227,14 @@
 #' so both have to be cleared. \code{\link{nec}} measures against that stored
 #' grid alone, having no \code{x_range} of its own, so the two agree on a fit
 #' whose grid reaches beyond the data and can differ on one whose grid stops
-#' short of it.
+#' short of it. For each observed level of a group term the range is that
+#' level's own, from its control to its highest concentration.
 #'
-#' A lower limit extends the grid but not the search. The reference is a
-#' quantile of the control posterior, so the control is where the search
+#' A lower limit below the control does not extend the search. The reference
+#' is a quantile of the control posterior, so the control is where the search
 #' begins, and a draw already past the reference there has no identifiable
 #' crossing at any lower concentration. Such a limit is accepted, and a message
-#' states that the estimate stays censored at the control.
+#' states that the search begins at the control.
 #'
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
@@ -313,8 +317,8 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   }
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "NSEC")
-  if (!is.null(lims)) report_curve_read_lower_limit(object, lims)
   control_reading <- resolve_x_control(object, x_control, x_range)
+  report_curve_read_lower_limit(extrapolate, lims, control_reading$value)
   newdata_list <- extended_newdata_eval(
     object, resolution = resolution, x_range = control_reading$x_range,
     lims = lims
@@ -452,14 +456,9 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
       posterior, prob_vals
     )))
   }
-  # Resolve the limits once for the set, so that every component is searched
-  # over one grid rather than against its own range.
-  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
-                                   "NSEC")
-  if (!is.null(lims)) {
-    report_curve_read_lower_limit(object, lims)
-    extrapolate <- c(lims$lower, lims$upper)
-  }
+  # Refuse a bad limit once for the set. Each equation reads the limit as
+  # given, and once_level_note() below prints its lower-limit message once.
+  curve_extrapolate_limits(extrapolate, object, x_range, x_control, "NSEC")
   sample_size <- object$sample_size
   # Use the weighted draw index the rest of the object uses, not a fresh
   # sample(): the estimate is then the same on every call, and each NSEC and

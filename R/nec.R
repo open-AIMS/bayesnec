@@ -213,15 +213,16 @@
 #' A finite limit applies to both classes, by a different route for each. The
 #' threshold components are compared against it, which requires no further
 #' computation because every draw of a sampled \code{nec} already has a value.
-#' The curve-read components are re-evaluated on a grid extended to it, through
-#' the \code{x_range} argument of \code{\link{nsec}}. That recomputes from the
-#' stored fit and needs no refit, but it does evaluate the curve once for each
-#' such equation, at a run time proportional to \code{resolution}. The
-#' re-evaluation reuses the \code{sig_val} the fit was built with unless
-#' \code{sig_val} is given, and the number of grid points the fit stored
-#' unless \code{resolution} is given. Over a wider range the grid is
-#' therefore proportionally coarser, and its numbers can differ in the last
-#' digits from the stored summary.
+#' The curve-read components are re-evaluated by \code{\link{nsec}}, with its
+#' \code{extrapolate} argument, on the stored prediction range with points
+#' appended out to the limit. That recomputes from the stored fit and needs no
+#' refit, but it does evaluate the curve once for each such equation, at a run
+#' time proportional to the number of grid points. The re-evaluation reuses
+#' the \code{sig_val} the fit was built with unless \code{sig_val} is given,
+#' and the number of grid points the fit stored unless \code{resolution} is
+#' given. The appended points keep that grid's spacing, so a wider range adds
+#' points rather than coarsening the grid, and its numbers can differ in the
+#' last digits from the stored summary.
 #'
 #' Two requests re-evaluate nothing and return what \code{extrapolate = FALSE}
 #' returns: a limit equal to the current bounds, and any limit on a fit with no
@@ -249,9 +250,9 @@
 #' user prior that sets a wider one. The lower bound at the lowest value tested
 #' applies under both settings and is reported by the other arm of the same
 #' message. And a curve-read
-#' component is measured from the control, so a lower limit below the lowest
-#' observed concentration extends the grid without extending the search, and
-#' those components stay censored at the control.
+#' component is measured from the control, so a lower limit below the control
+#' concentration does not extend its search, and a message states that the
+#' search begins at the control.
 #'
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
