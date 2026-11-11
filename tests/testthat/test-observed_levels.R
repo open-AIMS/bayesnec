@@ -456,8 +456,11 @@ test_that("saved population displays identify their earlier prediction basis", {
     .package = "bayesnec"
   )
   expect_warning(bayesnec:::warn_stale_observed_display(fit),
-                 "saved before observed-level display values")
+                 "no-effect summary describes the population curve")
   fit$pred_vals$observed_levels <- TRUE
+  expect_warning(bayesnec:::warn_stale_observed_display(fit),
+                 "band mixes the curves of the observed levels")
+  fit$pred_vals$band <- "population"
   expect_silent(bayesnec:::warn_stale_observed_display(fit))
 })
 

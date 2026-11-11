@@ -141,10 +141,10 @@ do not share, such as plates that belong to one level, are chosen for each
 level independently, in proportion to its counts within the shared value.
 
 With \code{comparison = "fitted"}, every level is predicted over one grid
-spanning the levels' combined range, or at the rows of \code{newdata}, as
-the band of \code{\link{autoplot}} predicts it: at the observed group levels
-where a group term spans concentrations, and on the population curve
-otherwise. Only \code{newdata}, \code{ndraws} and \code{draw_ids} are
+spanning the levels' combined range, or at the rows of \code{newdata}: at
+the observed group levels where a group term spans concentrations, as
+\code{\link{ecx}} reads them, and on the population curve otherwise. The
+band of \code{\link{autoplot}} is the population curve in both cases. Only \code{newdata}, \code{ndraws} and \code{draw_ids} are
 taken through \code{...}, and \code{make_newdata = FALSE} requires
 \code{newdata}. \code{seed} changes the result only where \code{ndraws}
 selects the draws.

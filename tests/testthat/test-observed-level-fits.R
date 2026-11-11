@@ -171,6 +171,15 @@ test_that("a pooled estimate holds each level's own draw at its position", {
     take <- owner == i
     expect_equal(band[take, ], full[take, ])
   }
+  # Row k holds draw_ids[k], although brms returns draw_ids in sorted order.
+  ids <- c(40L, 3L, 17L, 3L)
+  full <- brms::posterior_epred(fit$fit, newdata = nd, re_formula = NA)
+  expect_equal(unname(bayesnec:::block_epred(fit$fit, fit$bayesnecformula, nd,
+                                             draw_ids = ids)),
+               unname(full[ids, ]))
+  some <- bayesnec:::observed_grid_posterior(fit$fit, fit$bayesnecformula, nd,
+                                             spec, draw_ids = ids)
+  expect_equal(some, band[ids, ])
 })
 
 test_that("the toxicant mixtures of a joint refit pair by posterior draw", {
@@ -215,16 +224,26 @@ test_that("the toxicant mixtures of a joint refit pair by posterior draw", {
   fitted <- compare_posterior(fit, comparison = "fitted", resolution = 5)
   expect_equal(fitted$diff_list[["a-b"]],
                fitted$posterior_list$a - fitted$posterior_list$b)
-  # The fitted comparison reads the plates the plotted band reads.
+  # The plotted band is the population curve; the fitted comparison reads
+  # the plates.
   x_range <- range(unlist(lapply(fit$levels, function(l) {
     bayesnec:::joint_level_x(fit, l)
   })))
   for (tox in fit$levels) {
     curve <- bayesnec:::joint_level_curve(fit, tox, resolution = 5,
                                           x_range = x_range)
-    expect_equal(unname(apply(fitted$posterior_list[[tox]], 2,
-                              stats::median)),
-                 curve$Estimate, label = tox)
+    grid <- bayesnec:::prediction_grid(
+      fit$fit, fit$bayesnecformula, x_range = x_range, resolution = 5,
+      level_spec = bayesnec:::joint_level_spec(fit, tox)
+    )
+    population <- brms::posterior_epred(fit$fit, newdata = grid$newdata,
+                                        re_formula = NA)
+    expect_equal(curve$Estimate,
+                 unname(apply(population, 2, stats::median)), label = tox)
+    expect_false(isTRUE(all.equal(
+      unname(apply(fitted$posterior_list[[tox]], 2, stats::median)),
+      curve$Estimate
+    )), label = tox)
   }
 })
 
@@ -243,6 +262,15 @@ test_that("stored smooth no-effect draws use the recorded significance", {
                                  xform = identity))
   expect_false(isTRUE(all.equal(as.numeric(direct), as.numeric(other))))
   expect_true(isTRUE(smooth$pred_vals$observed_levels))
+  expect_identical(smooth$pred_vals$band, "population")
+  # The stored band is the population curve, with the plate deviations at zero.
+  grid <- bayesnec:::prediction_grid(smooth$fit, smooth$bayesnecformula,
+                                     resolution = nrow(smooth$pred_vals$data))
+  population <- stats::fitted(smooth$fit, newdata = grid$newdata,
+                              robust = TRUE, re_formula = NA,
+                              scale = "response")
+  expect_equal(smooth$pred_vals$data$Q2.5, unname(population[, "Q2.5"]))
+  expect_equal(smooth$pred_vals$data$Q97.5, unname(population[, "Q97.5"]))
   mixture <- suppressMessages(ecx(smooth, posterior = TRUE,
                                   resolution = 30))
   shares <- table(attr(mixture, "level")) / length(mixture)
@@ -251,13 +279,21 @@ test_that("stored smooth no-effect draws use the recorded significance", {
                tolerance = 1 / length(mixture))
   stale <- smooth
   stale$pred_vals$observed_levels <- NULL
+  stale$pred_vals$band <- NULL
   expect_false(bayesnec:::needs_observed_rebuild(smooth))
   expect_true(bayesnec:::needs_observed_rebuild(stale))
-  expect_warning(summary(stale), "saved before observed-level")
+  expect_warning(summary(stale), "no-effect summary describes the population")
+  # A fit saved with a band mixing the observed levels is stale as well.
+  mixed_band <- smooth
+  mixed_band$pred_vals$band <- NULL
+  expect_true(bayesnec:::needs_observed_rebuild(mixed_band))
+  expect_warning(summary(mixed_band), "band mixes the curves")
   rebuilt <- suppressWarnings(suppressMessages(amend(
     stale, resolution = 40
   )))
   expect_true(isTRUE(rebuilt$pred_vals$observed_levels))
+  expect_identical(rebuilt$pred_vals$band, "population")
+  expect_false(bayesnec:::needs_observed_rebuild(rebuilt))
 })
 
 test_that("a saved observed-level hormesis fit reads each level's NSEC", {
@@ -348,12 +384,23 @@ test_that("hurdle endpoints and band read observed levels", {
   level <- bayesnec:::observed_level_fit(fit, spec, 1)
   level_band <- bayesnec:::hurdle_component_preds(level, resolution = 12)
   expect_false(isTRUE(all.equal(band$combined, level_band$combined)))
+  # The plotted panels use the population curves.
+  population <- bayesnec:::hurdle_component_preds(fit, resolution = 12,
+                                                  levels = FALSE)
+  nd <- bayesnec:::newdata_eval(fit$growth, resolution = 12,
+                                x_range = range(population$x))$newdata
+  growth <- brms::posterior_epred(fit$growth, newdata = nd, re_formula = NA)
+  expect_equal(population$growth,
+               growth[seq_len(nrow(population$growth)), , drop = FALSE])
+  panel <- bayesnec:::hurdle_panel(fit, "combined", 12, NA)
+  expect_equal(unname(panel$est),
+               unname(apply(population$combined, 2, stats::median)))
   expect_true(is.finite(unname(suppressWarnings(suppressMessages(ecx(
     fit, pool = "mean_curve", resolution = 25
   )))[1])))
 })
 
-test_that("the block panels of a joint refit read its observed levels", {
+test_that("the block panels of a joint refit draw the population curves", {
   skip_on_cran()
   skip_if_not_installed("rstan")
   fit <- joint_fit_cache()
@@ -362,12 +409,11 @@ test_that("the block panels of a joint refit read its observed levels", {
   grid <- fit$pred_vals$data$x
   nd <- bnec_newdata(fit, resolution = length(grid), x_range = range(grid))
   band <- function(dpar) {
-    bayesnec:::observed_grid_posterior(fit$fit, fit$bayesnecformula, nd,
-                                       spec, dpar = dpar)
+    bayesnec:::block_epred(fit$fit, fit$bayesnecformula, nd, re_formula = NA,
+                           dpar = dpar)
   }
   growth <- band("mu")
   survival <- band("hu")
-  # The block bands pair the levels and draws of the stored combined band.
   expect_equal(growth * survival, band(NULL))
   drawn <- function(name) d$y_e[d$panel == name & !is.na(d$y_e)]
   medians <- function(draws) unname(apply(draws, 2, stats::median))
@@ -375,9 +421,11 @@ test_that("the block panels of a joint refit read its observed levels", {
   expect_equal(drawn("Probability of survival"), medians(survival))
   expect_equal(drawn("Response per individual exposed"),
                fit$pred_vals$data$Estimate)
-  population <- bayesnec:::joint_hurdle_epred(fit, nd, "mu", re_formula = NA)
+  expect_equal(fit$pred_vals$data$Estimate, medians(band(NULL)))
+  observed <- bayesnec:::observed_grid_posterior(fit$fit, fit$bayesnecformula,
+                                                 nd, spec, dpar = "mu")
   expect_false(isTRUE(all.equal(drawn("Response of survivors"),
-                                medians(population))))
+                                medians(observed))))
 
   # Both blocks are threshold equations, so the stored combined NEC is the
   # smaller of the two block NECs, level by level and draw by draw.
