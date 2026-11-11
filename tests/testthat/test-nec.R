@@ -192,6 +192,29 @@ test_that("a model set weights bounded NEC tails by equation weight", {
   expect_equal(attr(s, "prior_bound_summary"), record)
 })
 
+test_that("only population-level nec rows bound the threshold", {
+  fit <- nec4param
+  prior <- fit$fit$prior
+  bounds <- bayesnec:::ne_prior_bounds(fit$fit)
+  rows <- prior$nlpar == "nec" & prior$class == "b" & nzchar(prior$lb)
+  # A (nec | g) term adds an sd row on nec, bounded below at zero.
+  sd_row <- prior[rows, ]
+  sd_row$class <- "sd"
+  sd_row$lb <- "0"
+  sd_row$ub <- ""
+  fit$fit$prior <- rbind(prior, sd_row)
+  expect_equal(bayesnec:::ne_prior_bounds(fit$fit), bounds)
+  # A joint fit's estimate is the per-draw minimum of both blocks' nec.
+  joint <- nec4param
+  joint$fit$family <- brms::hurdle_gamma(link = "identity",
+                                         link_hu = "identity")
+  hu <- prior[rows, ]
+  hu$nlpar <- "hunec"
+  hu$ub <- "2"
+  joint$fit$prior <- rbind(prior, hu)
+  expect_equal(bayesnec:::ne_prior_bounds(joint$fit)$ub, 2)
+})
+
 # No-effect argument validation
 
 test_that("no_effect is refused rather than discarded off a joint refit", {
