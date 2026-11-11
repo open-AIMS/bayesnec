@@ -4,7 +4,9 @@
   the highest mean as a percentage of the control mean. When the absolute
   ratio to a finite, positive control mean is at most 5%, the message omits
   advice to declare the lower asymptote unobserved. The contrast is still
-  reported; grouped levels and hurdle response blocks are assessed separately
+  reported; where the lowest predictor value is not finite, as for a control
+  at 0 under `crf(log(x), ...)`, there is no control mean and the advice is
+  kept. Grouped levels and hurdle response blocks are assessed separately
   (#585).
 
 - `nec()`, printed `summary()` and `curve_params()` now report a sampled `nec`
