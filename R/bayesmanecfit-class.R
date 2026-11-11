@@ -56,7 +56,8 @@
 #' @slot w_pred_vals A \code{\link[base]{list}} with \code{data}, a
 #' \code{\link[base]{data.frame}} of summary model-weighted
 #' posterior predicted values over a grid set by \code{resolution} and
-#' \code{x_range}, and an \code{observed_levels} flag. Up to and including
+#' \code{x_range}, and the \code{observed_levels} and \code{band} flags
+#' described for \code{pred_vals} in \code{\link{bayesnecfit}}. Up to and including
 #' version 2.1.3.6 it also held
 #' \code{posterior}, the full \code{sample_size x resolution} matrix of
 #' weighted draws those summaries came from. Once the per-model matrices were

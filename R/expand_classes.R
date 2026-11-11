@@ -41,21 +41,18 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   observed <- if (isTRUE(bnec_state$skip_level_display)) NULL else
     observed_level_spec(list(fit = fit, bayesnecformula = formula))
   # Compute the grid posterior only where it is used, and never store it: it
-  # would be by far the largest part of a fitted object.
+  # would be by far the largest part of a fitted object. It is the population
+  # curve, with every group deviation at zero, whatever the estimators read.
   pred_posterior <- NULL
   get_pred_posterior <- function() {
     if (is.null(pred_posterior)) {
-      pred_posterior <<- if (is.null(observed)) {
-        factorised_count_epred(fit, formula, newdata = new_dat,
-                               re_formula = NA)
-      } else {
-        observed_grid_posterior(fit, formula, new_dat, observed)
-      }
+      pred_posterior <<- factorised_count_epred(fit, formula,
+                                                newdata = new_dat,
+                                                re_formula = NA)
     }
     pred_posterior
   }
-  if (!is.null(observed) ||
-      is_factorised_count_formula(formula, fit$family)) {
+  if (is_factorised_count_formula(formula, fit$family)) {
     y_pred_m <- summarise_epred(get_pred_posterior(), robust = TRUE)
   } else {
     y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA,
@@ -140,9 +137,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     ne_off_curve
   }
   if (mod_class == "ecx") {
-    # Under observed levels the NSEC is read per level below. The grid
-    # posterior here mixes levels with one control column, so it must not be
-    # used for the NSEC or its censoring messages.
+    # Under observed levels the NSEC is read per level below, not off the
+    # population curve on this grid.
     if (is.null(observed)) {
       ne_posterior <- get_ne_off_curve()
       extracted_params$ne <- estimates_summary(ne_posterior)
@@ -164,7 +160,10 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     }
   }
   pred_vals <- list(data = pred_data)
-  if (!is.null(observed)) pred_vals$observed_levels <- TRUE
+  if (!is.null(observed)) {
+    pred_vals$observed_levels <- TRUE
+    pred_vals$band <- "population"
+  }
   # A hurdle fit has a second block. Keep its threshold beside the combined
   # one, and report the combined threshold: posterior_epred() returns
   # mu * (1 - hu), so pred_vals describes the combined endpoint.
@@ -438,13 +437,7 @@ add_grid_levels <- function(newdata, level_spec, n_x) {
 posterior_on_grid <- function(fit, formula, x_range = NA, resolution = 1000) {
   new_dat <- prediction_grid(fit, formula, x_range = x_range,
                              resolution = resolution)$newdata
-  observed <- observed_level_spec(list(fit = fit,
-                                       bayesnecformula = formula))
-  if (is.null(observed)) {
-    factorised_count_epred(fit, formula, newdata = new_dat, re_formula = NA)
-  } else {
-    observed_grid_posterior(fit, formula, new_dat, observed)
-  }
+  factorised_count_epred(fit, formula, newdata = new_dat, re_formula = NA)
 }
 
 #' Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}
@@ -636,6 +629,7 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
     isTRUE(f$pred_vals$observed_levels)
   }, logical(1)))) {
     w_pred_vals$observed_levels <- TRUE
+    w_pred_vals$band <- "population"
   }
   out <- list(mod_fits = mod_fits, success_models = success_models,
               mod_stats = mod_stats, sample_size = sample_size,

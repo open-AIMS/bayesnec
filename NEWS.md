@@ -95,7 +95,11 @@
   excluded from estimates, with a message naming it. If every level has only
   one concentration, the term remains at zero when curves are predicted. This
   applies to single fits, model sets, hurdle fits and joint refits, and to
-  curves and no-effect summaries stored during fitting (#554).
+  no-effect summaries stored during fitting (#554). The curve and credible
+  band of `autoplot()` and `ggbnec_data()` remain the population curve, with
+  group deviations at zero, so they do not include the variation between
+  levels, and the estimate lines need not fall where that curve equals the
+  corresponding response.
 - `pool` selects per-level estimates, an observation-weighted mixture, a
   weighted mean of estimates, or an estimate from the weighted mean curve.
   A joint refit returns levels by default; a single fit with a spanning group
@@ -113,9 +117,8 @@
   those values from the stored model; the endpoint functions read observed
   levels directly from either an old or a new fit.
 - `ggbnec_data()` now reads a single fit's credible band from its stored
-  `pred_vals`, so the band uses the same observed-level basis as the stored
-  no-effect summary. Its numerical values can differ slightly from the older
-  band built with `conditional_effects()`.
+  `pred_vals`. Its numerical values can differ slightly from the older band
+  built with `conditional_effects()`.
 
 ## Default priors
 

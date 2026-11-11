@@ -643,10 +643,14 @@ from each observed plate's own curve, with all of that plate's deviations, and
 measure each plate against its own control (its fitted mean at its lowest
 concentration). The plates are then pooled by mixing their posterior draws in
 proportion to each plate's number of observations, so the estimate describes
-the `r n_distinct(zn15$plate)` plates that were tested and not a new plate. The
-band that `autoplot()` and `ggbnec_data()` draw is a mixture of the plates'
-curves in the same proportions. `pool` selects another combination (e.g. one estimate per plate
-with `pool = "none"`), and `x_control` sets the concentration at which each
+the `r n_distinct(zn15$plate)` plates that were tested and not a new plate.
+The curve and band that `autoplot()` and `ggbnec_data()` draw are those of the
+population curve, with every plate's deviation at zero. The band is therefore
+the credible interval of the mean response of a typical plate, and it does not
+include the differences between plates. The EC10 and NSEC are read from the
+plates' own curves, so their lines need not fall where the plotted curve has
+fallen by 10 per cent or below the 0.01 quantile of its control. `pool` selects
+another combination (e.g. one estimate per plate with `pool = "none"`), and `x_control` sets the concentration at which each
 plate's control is read (see `?ecx`). The cell term in D is set to zero in
 these predictions, as on the single plate, because each cell is observed at one
 concentration, so its deviation remains part of the uncertainty in the control.
@@ -744,7 +748,7 @@ w_arm <- set_weights(fit_pgl_cell)
 top_arm <- names(which.max(w_arm))
 ```
 
-```{r fig-plate-terms, fig.width = 8, fig.asp = 0.85, out.width = "100%", fig.cap = "The zinc readings at 15 minutes fitted with each plate structure (panels A to D). Each point is one well, and each thin line joins one plate's observed means, coloured by plate; these do not change between panels. The dashed black line is the median of the model-averaged curve and the grey band its 95% credible interval, taken in panels B to D over the mixture of the observed plates' curves. The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds."}
+```{r fig-plate-terms, fig.width = 8, fig.asp = 0.85, out.width = "100%", fig.cap = "The zinc readings at 15 minutes fitted with each plate structure (panels A to D). Each point is one well, and each thin line joins one plate's observed means, coloured by plate; these do not change between panels. The dashed black line is the median of the model-averaged curve and the grey band its 95% credible interval, in panels B to D for the population curve, with each plate's deviation at zero. The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds."}
 plate_panels <- c("(A) No plate term", "(B) ogl(plate)", "(C) pgl(plate)",
                   "(D) pgl(plate) + ogl(conc_group)")
 plate_plot <- do.call(rbind, Map(function(x, panel) {
@@ -785,6 +789,21 @@ band_span <- vapply(plate_fits, function(x) {
   d <- x$w_pred_vals$data[which.min(x$w_pred_vals$data$x), ]
   d$Q97.5 / d$Q2.5
 }, numeric(1))
+# The plates whose mean reading at their lowest concentration is outside the
+# band of each plate-term panel at the lowest concentration.
+plate_low <- zn15 |>
+  group_by(plate) |>
+  filter(conc == min(conc)) |>
+  summarise(m = mean(rlu_cens), .groups = "drop")
+band_outside <- vapply(plate_fits[-1], function(x) {
+  d <- x$w_pred_vals$data[which.min(x$w_pred_vals$data$x), ]
+  sum(plate_low$m < d$Q2.5 | plate_low$m > d$Q97.5)
+}, numeric(1))
+outside_text <- if (min(band_outside) == max(band_outside)) {
+  as.character(min(band_outside))
+} else {
+  paste(min(band_outside), "to", max(band_outside))
+}
 widest_ec10 <- which.max(ec10_span)
 ec10_factor <- ec10_range[2] / ec10_range[1]
 nsec_factor <- nsec_range[2] / nsec_range[1]
@@ -837,11 +856,11 @@ counted as residual variation, and one curve is fitted to the wells of all
 `r n_distinct(zn15$plate)` plates as though they came from one plate. Its band
 is therefore narrow, with an upper bound `r round(band_span[1], 2)` times its
 lower bound at the lowest concentration. With a plate term (panels B to D), the
-band is that of the mixture of the plates' curves, so at the lowest
-concentration it includes the differences in gain between plates as well as the
-uncertainty in each plate's curve, and its upper bound is
-`r fmt(min(band_span[-1]))` to `r fmt(max(band_span[-1]))` times its lower
-bound.
+upper bound is `r fmt(min(band_span[-1]))` to `r fmt(max(band_span[-1]))` times
+the lower bound`r if (min(band_span[-1]) > band_span[1]) ", because the population curve then describes a typical plate, and its height is estimated from plates that differ in gain" else ""`.
+The band does not include those differences themselves, and the mean reading
+of `r outside_text` of the `r n_distinct(zn15$plate)` plates at their lowest
+concentration is outside it.
 
 The EC10 interval depends on the kind of plate term. `ogl(plate)` (B) scales
 each plate's curve by one factor, which cancels in an effect measured from that
@@ -1001,7 +1020,7 @@ identifies the panels by a column named `model`, so a layer added to the plot
 needs that column to be drawn in the right panel. We add the EC10 and NSEC of
 each metal from the table above in this way.
 
-```{r fig-metals, fig.asp = 0.5, out.width = "95%", fig.cap = "The copper and zinc readings at 15 minutes, with the model-averaged curve of each metal's separate fit (dashed line, the median over the mixture of that metal's plates) and its 95% credible interval (grey band). The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds."}
+```{r fig-metals, fig.asp = 0.5, out.width = "95%", fig.cap = "The copper and zinc readings at 15 minutes, with the model-averaged curve of each metal's separate fit (dashed line, the population curve, with each plate's deviation at zero) and its 95% credible interval (grey band). The blue lines mark the EC10 and the orange lines the NSEC, solid at the median and dashed at the 95% bounds."}
 by_level <- function(tab) {
   data.frame(model = paste0(fits_tox$group_var, " = ", tab$level),
              tab[, c("Q50", "Q2.5", "Q97.5")])
