@@ -304,11 +304,14 @@ compare_joint_fitted <- function(x, resolution, x_range, make_newdata,
          " hold the rows of every level. Supply `newdata` with the predictor",
          " values at which to compare the levels.", call. = FALSE)
   }
+  stated <- recorded_x_control(x)
   if (is.na(x_range[1])) {
     values <- unlist(lapply(x$levels, function(level) {
       joint_level_x(x, level)
     }))
-    if (length(values)) x_range <- range(values)
+    if (length(values)) {
+      x_range <- c(if (is.null(stated)) min(values) else stated, max(values))
+    }
   }
   n <- brms::ndraws(x$fit)
   keep <- if (!is.null(dots$draw_ids)) {
@@ -332,7 +335,7 @@ compare_joint_fitted <- function(x, resolution, x_range, make_newdata,
     } else {
       grid <- prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
                               resolution = resolution,
-                              level_spec = level_spec)
+                              level_spec = level_spec, x_control = stated)
       nd <- grid$newdata
       x_vec <<- grid$x_seq
     }
