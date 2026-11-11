@@ -256,7 +256,14 @@ curve_params.bayesnechurdlefit <- function(object, summary = TRUE,
   }
   quiet <- options(bayesnec.link_reported = TRUE)
   on.exit(options(quiet), add = TRUE)
-  hurdle_delegate(object, curve_params, summary = summary, xform = xform, ...)
+  list(growth = with_prior_bound_label(
+         "growth component",
+         curve_params(object$growth, summary = summary, xform = xform, ...)
+       ),
+       survival = with_prior_bound_label(
+         "survival component",
+         curve_params(object$survival, summary = summary, xform = xform, ...)
+       ))
 }
 
 #' @rdname curve_params
@@ -273,11 +280,18 @@ curve_params.bayesnecgroupfit <- function(object, summary = TRUE,
   report_scales(representative_fit(object$fits[[1]]), "fitted group")
   quiet <- options(bayesnec.link_reported = TRUE)
   on.exit(options(quiet), add = TRUE)
-  out <- group_lapply(object, curve_params, summary = summary, xform = xform,
-                      ...)
+  out <- lapply(seq_along(object$fits), function(i) {
+    with_prior_bound_label(
+      paste("Level", object$levels[i]),
+      curve_params(object$fits[[i]], summary = summary, xform = xform, ...)
+    )
+  })
+  names(out) <- object$levels
   if (!summary) {
     return(out)
   }
+  record <- bind_prior_records(lapply(out, attr, "prior_bound_summary"),
+                               object$levels)
   # Bind into one table with a level column, as nec() and ecx() do on this
   # class. The per-level results already have named columns, so rbind() cannot
   # mislabel them.
@@ -286,6 +300,7 @@ curve_params.bayesnecgroupfit <- function(object, summary = TRUE,
           out[[i]])
   }))
   rownames(out) <- NULL
+  attr(out, "prior_bound_summary") <- record
   out
 }
 

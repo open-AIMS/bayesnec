@@ -306,6 +306,22 @@ test_that("a model set notes the model-weighted share of its equations", {
                as.numeric(suppressMessages(nec(manec_example))))
 })
 
+test_that("each level of a group keeps its record and is named", {
+  group <- structure(list(fits = list(a = nec4param, b = near_bound_fit(20)),
+                          group_var = "site", levels = c("a", "b"),
+                          formula = nec4param$bayesnecformula,
+                          data = nec4param$fit$data,
+                          family = nec4param$fit$family,
+                          n = c(50L, 50L)),
+                     class = c("bayesnecgroupfit", "bnecfit"))
+  out <- prior_bound_notes(nec(group))
+  expect_length(out$notes, 1)
+  expect_match(out$notes, "^Level b: The nec4param NEC posterior")
+  record <- attr(out$value, "prior_bound_summary")
+  expect_equal(unique(record$level), "b")
+  expect_equal(record$share[record$side == "upper"], 0.2)
+})
+
 # No-effect argument validation
 
 test_that("no_effect is refused rather than discarded off a joint refit", {

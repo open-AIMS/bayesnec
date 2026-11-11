@@ -412,3 +412,20 @@ report_param_prior_boundary <- function(record, set = FALSE) {
   )))
   invisible(NULL)
 }
+
+#' Prefix the prior-bound notes raised by an expression
+#'
+#' For a method that calls another once per level or component, whose note
+#' would otherwise not say which one it describes.
+#'
+#' @param label The prefix, such as \code{"Level a"}.
+#' @param expr The expression.
+#' @return The value of \code{expr}.
+#' @noRd
+with_prior_bound_label <- function(label, expr) {
+  withCallingHandlers(expr, bayesnec_prior_bound_note = function(m) {
+    message(prior_bound_note(paste0(label, ": ",
+                                    sub("\n$", "", conditionMessage(m)))))
+    invokeRestart("muffleMessage")
+  })
+}

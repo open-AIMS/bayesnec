@@ -437,3 +437,19 @@ test_that("the record gives each bound on the scale of its row", {
   fitted <- attr(curve_params(tf, xform = identity), "prior_bound_summary")
   expect_equal(fitted$bound, fitted$fitted_bound)
 })
+
+test_that("a group or hurdle pair names the level or component", {
+  flagged <- ecx4param
+  flagged$fit <- tighten_upper_bound(flagged$fit, "ec50")
+  out <- prior_bound_notes(
+    curve_params(fake_group(list(a = nec4param, b = flagged)))
+  )
+  expect_match(out$notes, "^Level b: The ec50 posterior of ecx4param")
+  record <- attr(out$value, "prior_bound_summary")
+  expect_equal(unique(record$level), c("a", "b"))
+  pair <- suppressMessages(prior_bound_notes(
+    curve_params(fake_hurdle(growth = flagged, survival = nec4param))
+  ))
+  expect_match(pair$notes, "^growth component: The ec50 posterior")
+  expect_false(is.null(attr(pair$value$survival, "prior_bound_summary")))
+})
