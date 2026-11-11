@@ -1567,7 +1567,7 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
                      curve = paste("the", which, "curve"))
   p_samples <- preds[[which]]
   # The percentage effect at nsec, against the reference ecx() uses for the
-  # same type, with the control at the lowest observed concentration.
+  # same type, with the control at the control concentration.
   control <- preds$control[[which]]
   original <- if (is.null(preds$original)) TRUE else preds$original
   floor_draws <- switch(

@@ -159,7 +159,9 @@
 #' \code{attr(, "weighted_share")} gives the model-weighted share at each end,
 #' which is the share the 7.5% applies to. On a
 #' \code{\link{bayesnecgroupfit}} each level's record is kept, with a
-#' \code{level} column, on the table. The estimate and its quantiles are
+#' \code{level} column, on the table, and \code{attr(, "weighted_share")} is a
+#' list of those shares named by level, for the levels fitted as a model set.
+#' The estimate and its quantiles are
 #' unchanged. There is no record where the estimate is not a sampled NEC, as
 #' for an NSEC, a two-block fit with a smooth block or the combined estimate
 #' of a \code{\link{bayesnechurdlefit}}; where it is read per observed level;

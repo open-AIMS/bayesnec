@@ -2528,10 +2528,14 @@ check_fit_x_control <- function(x_control, formula, predictor, x_range = NA,
   }
   predictor_scale <- validate_predictor_scale(predictor_scale,
                                               c(transformed, predictor))
-  # The concentration branch of predictor_prior() clamps the nec and ec50
-  # lower bound at 0, so a negative control there would not be the bound.
+  # define_prior() clamps the nec and ec50 lower bound at 0 on a concentration
+  # predictor, so a negative control there would not be the bound.
   if (transformed < 0 && !predictor_is_logged(predictor, predictor_scale)) {
-    stop("`x_control = ", x_control, "` is negative, but the predictor is",
+    stop("`x_control = ", x_control, "` is ",
+         if (isTRUE(all.equal(transformed, as.numeric(x_control)))) "negative"
+         else paste0(signif(transformed, 3),
+                     " on the transformed predictor scale"),
+         ", but the predictor is",
          " treated as a concentration, which has no value below zero. Use",
          " `predictor_scale = \"log\"` if the predictor is already logged.",
          call. = FALSE)

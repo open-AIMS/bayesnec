@@ -315,9 +315,9 @@ recorded predictor scale. It sets the lower bound of the default
 \code{nec} and \code{ec50} priors, the prediction grid, the stored
 no-effect estimate, and the defaults of \code{ecx()}, \code{nsec()}
 and \code{ecnsec()}. It must lie below the highest observed value, and
-cannot be negative where the predictor is treated as a concentration (see
-\code{predictor_scale}). If \code{x_range} is supplied, its lower end must
-equal the control.
+cannot be negative, after any \code{crf()} transformation, where the
+predictor is treated as a concentration (see \code{predictor_scale}). If
+\code{x_range} is supplied, its lower end must equal the control.
 A control below the observed range extrapolates the curve. With
 \code{prior_type = "regularizing"}, an unobserved control requires a
 supplied \code{top} prior.}

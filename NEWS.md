@@ -11,14 +11,14 @@
 
 - `bnec(x_control = ...)` now records a stated control concentration for
   priors, prediction grids, stored no-effect estimates, estimator defaults,
-  plots and fit checks. The control is given on the recorded scale, also
-  under a transformed predictor such as `crf(log(x), ...)`, and is refused if
-  negative where the predictor is treated as a concentration. A control below
-  the lowest concentration tested is reported as an extrapolation, and a
-  regularising fit with no observation at the control needs a supplied `top`
-  prior. The control is inherited by grouped, hurdle and joint fits, and by
-  `amend()` and `update()`. Objects saved before this argument existed retain
-  their previous control convention (#586).
+  plots and fit checks. The control is given on the recorded scale, also under
+  a transformed predictor such as `crf(log(x), ...)`, and is refused if
+  negative after that transformation where the predictor is treated as a
+  concentration. A control below the lowest concentration tested is reported
+  as an extrapolation, and a regularising fit with no observation at the
+  control needs a supplied `top` prior. The control is inherited by grouped,
+  hurdle and joint fits, and by `amend()` and `update()`. Objects saved before
+  this argument existed retain their previous control convention (#586).
 
 - A significant decline between the two highest concentrations now includes
   the highest mean as a percentage of the control mean. When the absolute
