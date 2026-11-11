@@ -322,6 +322,25 @@ test_that("each level of a group keeps its record and is named", {
   expect_equal(record$share[record$side == "upper"], 0.2)
 })
 
+test_that("a group keeps the weighted share of a model-set level", {
+  set <- manec_example
+  set$mod_fits$nec4param$fit <- tighten_upper_bound(
+    set$mod_fits$nec4param$fit, "nec"
+  )
+  group <- structure(list(fits = list(a = manec_example, b = set),
+                          group_var = "site", levels = c("a", "b"),
+                          formula = nec4param$bayesnecformula,
+                          data = nec4param$fit$data,
+                          family = nec4param$fit$family,
+                          n = c(50L, 50L)),
+                     class = c("bayesnecgroupfit", "bnecfit"))
+  out <- suppressMessages(prior_bound_notes(nec(group)))
+  record <- attr(out$value, "prior_bound_summary")
+  shares <- attr(record, "weighted_share")
+  expect_named(shares, "b")
+  expect_equal(shares$b, attr(bayesnec:::nec_prior_boundary(set), "weighted_share"))
+})
+
 # No-effect argument validation
 
 test_that("no_effect is refused rather than discarded off a joint refit", {

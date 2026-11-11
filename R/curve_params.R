@@ -628,10 +628,16 @@ one_fit_params <- function(fit, models, wi, summary, xform,
 #' Bind prior-bound records, with a level column where levels are given
 #' @param records A \code{\link[base]{list}} of records or \code{NULL}s.
 #' @param levels The level of each record, or \code{NULL}.
-#' @return A \code{\link[base]{data.frame}}, or \code{NULL}.
+#' @return A \code{\link[base]{data.frame}}, or \code{NULL}. Where levels are
+#' given, \code{attr(, "weighted_share")} is a list named by level holding the
+#' \code{"weighted_share"} of each level that has one, because \code{rbind()}
+#' drops it.
 #' @noRd
 bind_prior_records <- function(records, levels = NULL) {
+  shares <- NULL
   if (!is.null(levels)) {
+    shares <- stats::setNames(lapply(records, attr, "weighted_share"), levels)
+    shares <- shares[!vapply(shares, is.null, logical(1))]
     records <- lapply(seq_along(records), function(i) {
       if (is.null(records[[i]])) {
         return(NULL)
@@ -642,6 +648,7 @@ bind_prior_records <- function(records, levels = NULL) {
   }
   out <- do.call(rbind, records)
   if (!is.null(out)) rownames(out) <- NULL
+  if (!is.null(out) && length(shares) > 0) attr(out, "weighted_share") <- shares
   out
 }
 
