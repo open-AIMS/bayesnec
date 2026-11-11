@@ -284,6 +284,17 @@ test_that("a negative control is refused on a concentration-scale predictor", {
                              family = Beta(), x_control = -4))
 })
 
+test_that("a positive control is refused when its log is negative", {
+  d <- data.frame(x = rep(c(1, 2, 4, 8, 16, 32), each = 4),
+                  y = rep(c(0.9, 0.85, 0.5, 0.3, 0.2, 0.1), each = 4))
+  expect_error(
+    get_priors(y ~ crf(log(x), "nec3param"), d, family = Beta(),
+               x_control = 0.5),
+    "`x_control = 0.5` is -0.693 on the transformed predictor scale",
+    fixed = TRUE
+  )
+})
+
 test_that("a call-time control is compared with the lowest observation", {
   lowest <- min(ecx4param$fit$data$x)
   above <- ecx4param
