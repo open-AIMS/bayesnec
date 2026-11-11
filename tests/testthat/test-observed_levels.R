@@ -482,3 +482,34 @@ test_that("pooled observed-level ECx retains the value used by plot labels", {
   expect_equal(plotted$ecx_int[4], 10)
   expect_equal(attr(estimate, "resolution"), 20)
 })
+
+# Two plates whose lowest concentration is 0.05, on a fit that records a
+# control of 0.01. `read_at` returns the control each level was read at.
+recorded_control_levels <- function() {
+  fit <- ecx4param
+  fit$call_args <- list(x_control = 0.01)
+  spec <- list(combinations = data.frame(plate = c("p1", "p2")),
+               x = list(c(0.05, 0.4, 1), c(0.05, 0.4, 1)),
+               n = c(3L, 3L), re_formula = NA)
+  read_at <- function(level, control, range) {
+    rep(bayesnec:::resolve_x_control(level, control, range)$value, 10)
+  }
+  list(fit = fit, spec = spec, read_at = read_at)
+}
+
+test_that("observed levels read and label a recorded control", {
+  case <- recorded_control_levels()
+  run <- function(x_control) {
+    bayesnec:::estimate_observed_levels(
+      case$fit, case$spec, "nsec", case$read_at, pool = "none",
+      posterior = TRUE, prob_vals = c(0.5, 0.025, 0.975),
+      x_control = x_control
+    )
+  }
+  own <- run("own")
+  expect_equal(unlist(own, use.names = FALSE), rep(0.01, 20))
+  expect_equal(unname(attr(own, "x_control")), c(0.01, 0.01))
+  shared <- suppressWarnings(run("shared"))
+  expect_equal(unlist(shared, use.names = FALSE), rep(0.01, 20))
+  expect_equal(unname(attr(shared, "x_control")), c(0.01, 0.01))
+})

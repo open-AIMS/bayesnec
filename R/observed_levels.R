@@ -385,6 +385,19 @@ record_level_controls <- function(result, values) {
   result
 }
 
+#' Each observed level's own control concentration
+#'
+#' @param object A fit with observed group levels.
+#' @param spec Its observed level specification.
+#' @return One number per level: the control recorded at fitting, or else the
+#' level's lowest observed concentration.
+#' @noRd
+observed_level_controls <- function(object, spec) {
+  lows <- vapply(spec$x, min, numeric(1))
+  stated <- recorded_x_control(object)
+  if (is.null(stated)) lows else rep(stated, length(lows))
+}
+
 #' Control record for a model set containing observed group levels
 #' @param first The first equation's stored fit.
 #' @param choice The validated control option.
@@ -394,9 +407,7 @@ model_set_control_recorder <- function(first, choice) {
   spec <- observed_level_spec(first)
   if (is.null(spec)) return(identity)
   labels <- level_labels(spec$combinations)
-  stated <- recorded_x_control(first)
-  values <- setNames(if (is.null(stated)) vapply(spec$x, min, numeric(1))
-                     else rep(stated, length(spec$x)), labels)
+  values <- setNames(observed_level_controls(first, spec), labels)
   if (!identical(choice, "own")) values[] <- as.numeric(choice)
   function(x) record_level_controls(x, values)
 }
@@ -430,14 +441,13 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
   }
   note_excluded_levels(spec)
   labels <- level_labels(spec$combinations)
-  controls <- setNames(vapply(spec$x, min, numeric(1)), labels)
+  controls <- setNames(observed_level_controls(object, spec), labels)
   control_value <- x_control
   range_override <- x_range
   if (identical(what, "nec")) {
     record_level_controls <- function(result, values) result
   } else if (identical(x_control, "shared") || is.numeric(x_control)) {
-    lows <- vapply(spec$x, min, numeric(1))
-    control_value <- checked_shared_control(object, x_control, lows)
+    control_value <- checked_shared_control(object, x_control, controls)
     controls[] <- as.numeric(control_value)
     if (is.na(x_range[1])) {
       range_override <- c(as.numeric(control_value),
@@ -515,9 +525,7 @@ shared_level_control <- function(fits, dots) {
   if (!identical(choice, "shared") && !is.numeric(choice)) return(dots)
   lows <- unlist(lapply(fits, function(fit) {
     spec <- observed_level_spec(fit)
-    if (is.null(spec)) control_x(fit) else
-      if (is.null(recorded_x_control(fit))) vapply(spec$x, min, numeric(1))
-      else rep(control_x(fit), length(spec$x))
+    if (is.null(spec)) control_x(fit) else observed_level_controls(fit, spec)
   }), use.names = FALSE)
   value <- checked_shared_control(fits[[1]], choice, lows)
   dots$x_control <- value
@@ -537,9 +545,8 @@ model_set_control <- function(object, choice) {
   if (identical(choice, "own")) return(choice)
   if (!identical(choice, "shared") && !is.numeric(choice)) return(choice)
   spec <- observed_level_spec(object)
-  lows <- if (is.null(spec)) control_x(object) else if (
-    is.null(recorded_x_control(object))) vapply(spec$x, min, numeric(1))
-  else rep(control_x(object), length(spec$x))
+  lows <- if (is.null(spec)) control_x(object) else
+    observed_level_controls(object, spec)
   checked_shared_control(object, choice, lows)
 }
 
