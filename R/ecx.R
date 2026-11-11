@@ -310,7 +310,8 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   control_reading <- resolve_x_control(object, x_control, x_range)
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "ECx")
-  report_curve_read_lower_limit(extrapolate, lims, control_reading$value)
+  report_curve_read_lower_limit(extrapolate, lims, control_reading$value,
+                                curve_start_label(object, x_control))
   newdata_list <- extended_newdata_eval(
     object, resolution, control_reading$x_range,
     ecx_grid_limits(lims, control_reading$value)

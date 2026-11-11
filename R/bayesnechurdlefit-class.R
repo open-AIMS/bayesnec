@@ -457,10 +457,16 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "ECx")
   start <- curve_search_start(object, x_control)
-  report_curve_read_lower_limit(extrapolate, lims, start)
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range, x_control = x_control,
-                                  grid_limits = ecx_grid_limits(lims, start))
+  report_curve_read_lower_limit(extrapolate, lims, start,
+                                curve_start_label(object, x_control))
+  preds <- if (is.null(lims)) {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control)
+  } else {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control,
+                           grid_limits = ecx_grid_limits(lims, start))
+  }
   p_samples <- preds[[which]]
   # Take the control from hurdle_component_preds(), at the control
   # concentration. p_samples[, 1] would make every estimate depend on x_range.

@@ -308,10 +308,16 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "NSEC")
   at <- curve_search_start(object, x_control)
-  report_curve_read_lower_limit(extrapolate, lims, at)
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range, x_control = x_control,
-                                  grid_limits = lims)
+  report_curve_read_lower_limit(extrapolate, lims, at,
+                                curve_start_label(object, x_control))
+  preds <- if (is.null(lims)) {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control)
+  } else {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control,
+                           grid_limits = lims)
+  }
   p_samples <- preds[[which]]
   # The control is read at the control concentration, not the first grid
   # column, so x_range does not change the reference.
@@ -1547,9 +1553,14 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "ECNSEC")
   # The grid ecx() and nsec() read, so that all three read one curve.
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range, x_control = x_control,
-                                  grid_limits = lims)
+  preds <- if (is.null(lims)) {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control)
+  } else {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control,
+                           grid_limits = lims)
+  }
   # Check nsec against the grid the curve was predicted over, so that the range
   # refused and the range read cannot differ.
   check_ecnsec_range(object, nsec, nsec_use, range(preds$x), x_range, xform,
@@ -1558,11 +1569,11 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
   # The percentage effect at nsec, against the reference ecx() uses for the
   # same type, with the control at the lowest observed concentration.
   control <- preds$control[[which]]
+  original <- if (is.null(preds$original)) TRUE else preds$original
   floor_draws <- switch(
     type,
     absolute = 0,
-    range = apply(p_samples[, preds$original, drop = FALSE], 1, min,
-                  na.rm = TRUE)
+    range = apply(p_samples[, original, drop = FALSE], 1, min, na.rm = TRUE)
   )
   at_nsec <- curve_draws_at(p_samples, preds$x, nsec_use)
   out <- (control - at_nsec) / (control - floor_draws) * 100

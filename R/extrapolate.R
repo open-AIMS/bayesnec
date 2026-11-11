@@ -154,6 +154,22 @@ curve_search_start <- function(object, x_control) {
   if (is.numeric(x_control)) as.numeric(x_control) else control_x(object)
 }
 
+#' A noun phrase naming the concentration a curve-read search starts at
+#'
+#' @inheritParams curve_search_start
+#'
+#' @return A \code{\link[base]{character}} value for a message.
+#' @noRd
+curve_start_label <- function(object, x_control) {
+  if (is.numeric(x_control) && !is_recorded_control(object, x_control)) {
+    return("the control concentration set by x_control")
+  }
+  if (!is.null(recorded_x_control(object))) {
+    return("the recorded control concentration")
+  }
+  "the lowest observed concentration"
+}
+
 #' Limits for an ECx grid, which does not extend below the control
 #'
 #' Below the control a hormesis curve can lie under the ECx target, and a
@@ -468,12 +484,12 @@ report_bounded_ne_prior <- function(priors, lims) {
 #' @param extrapolate The caller's argument.
 #' @param lims The resolved limits on the recorded scale, or \code{NULL}.
 #' @param start The concentration the search starts at, on the recorded scale.
-#' @param what A noun phrase naming \code{start} in the message.
+#' @param what A noun phrase naming \code{start} in the message, from
+#' \code{curve_start_label()}.
 #'
 #' @return \code{NULL}, invisibly. Called for the message.
 #' @noRd
-report_curve_read_lower_limit <- function(extrapolate, lims, start,
-                                          what = "the control concentration") {
+report_curve_read_lower_limit <- function(extrapolate, lims, start, what) {
   if (!is.null(lims) && length(extrapolate) == 2L && lims$lower < start) {
     text <- paste0(
       "A curve-read estimate is measured from the control, so the search ",

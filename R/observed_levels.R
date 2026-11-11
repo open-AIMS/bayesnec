@@ -965,11 +965,18 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
       # Each level is measured from its own control, so the shared search
       # cannot begin below the highest of them.
       control_start <- if (own) max(controls) else as.numeric(x_control)
-      report_curve_read_lower_limit(
-        extrapolate, lims, control_start,
-        if (own) "the highest of the levels' control concentrations" else
-          "the control concentration"
-      )
+      recorded <- vapply(fits, function(f) !is.null(recorded_x_control(f)),
+                         logical(1))
+      label <- if (!own) {
+        curve_start_label(fits[[1]], x_control)
+      } else if (all(recorded)) {
+        "the recorded control concentration"
+      } else if (!any(recorded)) {
+        "the highest of the levels' lowest observed concentrations"
+      } else {
+        "the highest of the levels' control concentrations"
+      }
+      report_curve_read_lower_limit(extrapolate, lims, control_start, label)
       grid_lims <- ecx_grid_limits(grid_lims, control_start)
     }
     x_base <- x_vec

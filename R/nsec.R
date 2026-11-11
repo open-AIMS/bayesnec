@@ -318,7 +318,8 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "NSEC")
   control_reading <- resolve_x_control(object, x_control, x_range)
-  report_curve_read_lower_limit(extrapolate, lims, control_reading$value)
+  report_curve_read_lower_limit(extrapolate, lims, control_reading$value,
+                                curve_start_label(object, x_control))
   newdata_list <- extended_newdata_eval(
     object, resolution = resolution, x_range = control_reading$x_range,
     lims = lims
