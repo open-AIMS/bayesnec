@@ -283,3 +283,33 @@ test_that("a negative control is refused on a concentration-scale predictor", {
   expect_no_error(get_priors(y ~ crf(log_x, "nec3param"), nec_data,
                              family = Beta(), x_control = -4))
 })
+
+test_that("a call-time control is compared with the lowest observation", {
+  lowest <- min(ecx4param$fit$data$x)
+  above <- ecx4param
+  above$call_args <- list(x_control = 0.0484)
+  expect_no_warning(bayesnec:::resolve_x_control(above, lowest, NA))
+  below <- ecx4param
+  below$call_args <- list(x_control = 0)
+  expect_warning(bayesnec:::resolve_x_control(below, 0.01, NA),
+                 paste0("0.01 is below the lowest observed concentration, ",
+                        signif(lowest, 3)))
+  other <- below
+  other$fit$data$x <- other$fit$data$x + 0.1
+  fits <- list(a = below, b = other)
+  # The recorded control was reported at fitting, so it is not warned of again.
+  expect_no_warning(
+    dots <- bayesnec:::shared_level_control(fits, list(x_control = "shared"))
+  )
+  expect_equal(as.numeric(dots$x_control), 0)
+  expect_no_warning(bayesnec:::resolve_x_control(below, 0, NA))
+  expect_warning(
+    bayesnec:::shared_level_control(fits, list(x_control = 0.01)),
+    "below the lowest observation of 2 level\\(s\\)"
+  )
+  equal <- above
+  equal$fit$data$x <- equal$fit$data$x + 0.1
+  expect_no_warning(bayesnec:::shared_level_control(
+    list(a = above, b = equal), list(x_control = lowest + 0.1)
+  ))
+})

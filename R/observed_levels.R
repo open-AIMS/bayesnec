@@ -447,7 +447,8 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
   if (identical(what, "nec")) {
     record_level_controls <- function(result, values) result
   } else if (identical(x_control, "shared") || is.numeric(x_control)) {
-    control_value <- checked_shared_control(object, x_control, controls)
+    control_value <- checked_shared_control(object, x_control, controls,
+                                            vapply(spec$x, min, numeric(1)))
     controls[] <- as.numeric(control_value)
     if (is.na(x_range[1])) {
       range_override <- c(as.numeric(control_value),
@@ -523,11 +524,16 @@ shared_level_control <- function(fits, dots) {
   choice <- dots$x_control
   if (is.null(choice) || identical(choice, "own")) return(dots)
   if (!identical(choice, "shared") && !is.numeric(choice)) return(dots)
-  lows <- unlist(lapply(fits, function(fit) {
+  controls <- unlist(lapply(fits, function(fit) {
     spec <- observed_level_spec(fit)
     if (is.null(spec)) control_x(fit) else observed_level_controls(fit, spec)
   }), use.names = FALSE)
-  value <- checked_shared_control(fits[[1]], choice, lows)
+  lows <- unlist(lapply(fits, function(fit) {
+    spec <- observed_level_spec(fit)
+    if (is.null(spec)) observed_low_x(fit) else
+      vapply(spec$x, min, numeric(1))
+  }), use.names = FALSE)
+  value <- checked_shared_control(fits[[1]], choice, controls, lows)
   dots$x_control <- value
   if (is.null(dots$x_range) || is.na(dots$x_range[1])) {
     highs <- vapply(fits, function(f) level_x_bounds(f)[2], numeric(1))
@@ -545,9 +551,13 @@ model_set_control <- function(object, choice) {
   if (identical(choice, "own")) return(choice)
   if (!identical(choice, "shared") && !is.numeric(choice)) return(choice)
   spec <- observed_level_spec(object)
-  lows <- if (is.null(spec)) control_x(object) else
-    observed_level_controls(object, spec)
-  checked_shared_control(object, choice, lows)
+  if (is.null(spec)) {
+    return(checked_shared_control(object, choice, control_x(object),
+                                  observed_low_x(object)))
+  }
+  checked_shared_control(object, choice,
+                         observed_level_controls(object, spec),
+                         vapply(spec$x, min, numeric(1)))
 }
 
 #' Validate one control concentration for several levels
@@ -557,19 +567,22 @@ model_set_control <- function(object, choice) {
 #'
 #' @param object A fit whose formula names the predictor transformation.
 #' @param choice \code{"shared"} or one number.
-#' @param lows The lowest observed concentration of each level.
+#' @param controls The control concentration of each level, from which
+#' \code{"shared"} takes the lowest.
+#' @param lows The lowest observed concentration of each level, which a
+#' control below extrapolates.
 #' @return The control concentration, marked so that it warns once.
 #' @noRd
-checked_shared_control <- function(object, choice, lows) {
+checked_shared_control <- function(object, choice, controls, lows = controls) {
   if (isTRUE(attr(choice, "warned"))) return(choice)
   shared <- identical(choice, "shared")
-  value <- if (shared) min(lows) else choice
+  value <- if (shared) min(controls) else choice
   if (!is.numeric(value) || length(value) != 1L || !is.finite(value)) {
     stop("`x_control` must be \"own\", \"shared\", or one finite number.",
          call. = FALSE)
   }
   check_control_finite(object, value)
-  beyond <- value < lows
+  beyond <- value < lows & !is_recorded_control(object, value)
   if (any(beyond)) {
     warning(if (shared) "The shared control concentration, " else
               "The control concentration, ",

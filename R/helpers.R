@@ -2407,6 +2407,30 @@ control_x <- function(object) {
   if (!is.null(recorded)) {
     return(recorded)
   }
+  observed_low_x(object)
+}
+
+#' Whether a call-time control is the one recorded at fitting
+#'
+#' \code{bnec()} reported that control if it lies below the data, so the
+#' estimators do not warn about it again.
+#'
+#' @param object A fitted bayesnec object.
+#' @param value One number.
+#' @return A \code{\link[base]{logical}} value.
+#' @noRd
+is_recorded_control <- function(object, value) {
+  stated <- recorded_x_control(object)
+  !is.null(stated) && isTRUE(as.numeric(value) == as.numeric(stated))
+}
+
+#' The lowest observed concentration of a fit, whatever its control
+#'
+#' @param object A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}},
+#' \code{\link{bayesnechurdlefit}}, observed level or joint level.
+#' @return A \code{\link[base]{numeric}} value on the recorded scale.
+#' @noRd
+observed_low_x <- function(object) {
   if (!is.null(object$observed_group) && length(object$level_x)) {
     return(min(object$level_x))
   }
@@ -2552,7 +2576,7 @@ resolve_x_control <- function(object, x_control, x_range) {
     grid_obj <- grid_equation(grid_obj)
   }
   check_control_finite(object, x_control)
-  low <- control_x(object)
+  low <- observed_low_x(object)
   high <- if (length(grid_obj$level_x)) max(grid_obj$level_x) else {
     frame <- stats::model.frame(grid_obj$bayesnecformula,
                                 data = grid_obj$fit$data)
@@ -2564,10 +2588,11 @@ resolve_x_control <- function(object, x_control, x_range) {
     stop("`x_control` must be below the highest concentration in the",
          " prediction range.", call. = FALSE)
   }
-  if (x_control < low && !isTRUE(attr(x_control, "warned"))) {
+  if (x_control < low && !isTRUE(attr(x_control, "warned")) &&
+      !is_recorded_control(object, x_control)) {
     warning("The control at ", signif(x_control, 3), " is below the lowest",
             " observed concentration, ", signif(low, 3),
-            "; the curve from control to the data is extrapolated.",
+            "; the curve from the control to the data is extrapolated.",
             call. = FALSE)
   }
   list(value = as.numeric(x_control), x_range = c(x_control, high))

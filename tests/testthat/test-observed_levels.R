@@ -509,7 +509,22 @@ test_that("observed levels read and label a recorded control", {
   own <- run("own")
   expect_equal(unlist(own, use.names = FALSE), rep(0.01, 20))
   expect_equal(unname(attr(own, "x_control")), c(0.01, 0.01))
-  shared <- suppressWarnings(run("shared"))
+  shared <- run("shared")
   expect_equal(unlist(shared, use.names = FALSE), rep(0.01, 20))
   expect_equal(unname(attr(shared, "x_control")), c(0.01, 0.01))
+})
+
+test_that("a call-time control below the levels warns of extrapolation", {
+  case <- recorded_control_levels()
+  run <- function(x_control) {
+    bayesnec:::estimate_observed_levels(
+      case$fit, case$spec, "nsec", case$read_at, pool = "none",
+      posterior = TRUE, prob_vals = c(0.5, 0.025, 0.975),
+      x_control = x_control
+    )
+  }
+  expect_warning(run(0.02),
+                 "0.02, is below the lowest observation of 2 level\\(s\\)")
+  # The recorded control was reported at fitting.
+  expect_no_warning(run("shared"))
 })
