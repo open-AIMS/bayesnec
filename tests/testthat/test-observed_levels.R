@@ -570,3 +570,24 @@ test_that("an observed hurdle level's grid starts at the recorded control", {
                "grid built")
   expect_equal(ranges[[3]], c(0.01, 2))
 })
+
+test_that("pull_equation does not repeat a set's exact leave-one-out refits", {
+  set <- with_expand_record(
+    manec_example,
+    expand_record(fitting = list(reloo = TRUE), leave_out = "observation")
+  )
+  seen <- NULL
+  local_mocked_bindings(
+    expand_manec = function(..., loo_controls) {
+      seen <<- loo_controls
+      stop("expand_manec reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(bayesnec:::pull_equation(set, "ecx4param"),
+               "expand_manec reached")
+  expect_null(seen$fitting$reloo)
+  # pull_out() itself keeps the recorded controls.
+  expect_error(pull_out(set, model = "ecx4param"), "expand_manec reached")
+  expect_true(seen$fitting$reloo)
+})
