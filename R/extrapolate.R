@@ -326,7 +326,8 @@ report_bounded_ne_prior <- function(priors, lims) {
 #'
 #' An NSEC is the concentration at which a curve reaches a quantile of the
 #' control posterior, so the control is both the reference and the point the
-#' search starts from. A limit below the lowest observed concentration
+#' search starts from. The control is the recorded \code{x_control}, or the
+#' lowest observed concentration where none is recorded. A limit below it
 #' therefore extends the grid without extending the search, and the draws that
 #' had already passed the reference at the control stay censored there.
 #'
@@ -338,9 +339,14 @@ report_bounded_ne_prior <- function(priors, lims) {
 report_curve_read_lower_limit <- function(object, lims) {
   start <- control_x(object)
   if (lims$lower < start) {
+    what <- if (is.null(recorded_x_control(object))) {
+      "the lowest observed concentration"
+    } else {
+      "the control concentration"
+    }
     message("A curve-read estimate is measured from the control, so the ",
-            "search cannot begin below ", signif(start, 3),
-            ", the lowest observed concentration. The lower limit extends ",
+            "search cannot begin below ", signif(start, 3), ", ", what,
+            ". The lower limit extends ",
             "the prediction grid without extending that search, and those ",
             "components stay censored at the control.")
   }

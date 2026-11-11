@@ -320,7 +320,7 @@ joint_estimate_table <- function(object, what, fun, ..., pool = "none",
 #' returns \code{\link{nsec}} on that level. Do not use \code{expand_nec()}'s
 #' \code{nsec_off_curve()} here: it reads the control at the lowest
 #' concentration of every level together, and \code{nsec()} at the level's own
-#' lowest concentration.
+#' control concentration.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param no_effect A \code{\link[base]{logical}} value, see

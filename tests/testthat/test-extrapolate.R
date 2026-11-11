@@ -357,6 +357,20 @@ test_that("a lower limit below the control is accepted and reported", {
   )
 })
 
+test_that("the lower-limit message names a recorded control as the control", {
+  f <- suppressMessages(suppressWarnings(pull_out(manec_example,
+                                                  model = "ecx4param")))
+  expect_message(
+    suppressWarnings(nsec(f, extrapolate = c(0.001, 5), resolution = 50)),
+    "the lowest observed concentration"
+  )
+  f$call_args$x_control <- 0.01
+  expect_message(
+    suppressWarnings(nsec(f, extrapolate = c(0.001, 4), resolution = 50)),
+    "below 0.01, the control concentration"
+  )
+})
+
 # Two NEC names share one stored fit solely to exercise the pure-NEC
 # branch. Its posterior draws are synthetic, not independent fitted models.
 pure_nec_stub <- function(posterior = as.numeric(manec_example$w_ne_posterior),
