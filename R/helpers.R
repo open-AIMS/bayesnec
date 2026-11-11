@@ -2444,6 +2444,22 @@ recorded_x_control <- function(object) {
   object$call_args$x_control
 }
 
+#' A stated control on the fitted predictor scale
+#'
+#' A model frame holds the predictor after the \code{crf()} transformation, so
+#' compare a stated control with it only through this.
+#'
+#' @param x_control The stated control on the recorded scale, or \code{NULL}.
+#' @param formula The formula whose \code{crf()} term gives the transformation.
+#' @return A number, or \code{NULL}.
+#' @noRd
+fitted_x_control <- function(x_control, formula) {
+  if (is.null(x_control)) {
+    return(NULL)
+  }
+  as.numeric(sub_x_transformation(x_control, formula))
+}
+
 #' Validate a control concentration before fitting
 #'
 #' @param x_control The requested control, or \code{NULL}.

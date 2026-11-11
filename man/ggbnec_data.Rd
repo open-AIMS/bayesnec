@@ -70,6 +70,12 @@ factor whose levels follow \code{which}.
 \description{
 Creates the data.frame for plotting with \code{\link{autoplot}}.
 }
+\details{
+The curve and credible band are those \code{\link{autoplot}}
+draws: where a group-level term spans the predictor, the population curve,
+with every group deviation set to zero. See the Details of
+\code{\link{autoplot}}.
+}
 \examples{
 \donttest{
 library(bayesnec)

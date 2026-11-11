@@ -304,7 +304,7 @@ bnec_group <- function(formula, data, group_var, family = NULL,
         }),
         pool_dispersion = is.null(parse_disp_term(formula)),
         asymptote_observed = declared,
-        x_control = stated_control
+        x_control = fitted_x_control(stated_control, formula)
       )
     }
     # The union of the per-level sets: every equation some level will fit.

@@ -488,9 +488,10 @@ capitalise_first <- function(x) {
 #' the sentence on the \code{nec} and \code{ec50} priors to match the priors
 #' it builds. Advice is withheld where the magnitude of the highest-level mean
 #' is at most 5% of a finite, positive control mean at the lowest predictor value.
-#' @param x_control An explicit control concentration, or \code{NULL} to use
-#' each group's lowest observed predictor value. An unobserved control gives no
-#' control-relative percentage.
+#' @param x_control A stated control on the fitted predictor scale, the scale
+#' of the model-frame column, or \code{NULL} to use each group's lowest
+#' observed predictor value. An unobserved control gives no control-relative
+#' percentage.
 #'
 #' @return \code{NULL}, invisibly. Called for its message.
 #'
@@ -527,7 +528,10 @@ check_response_flattened <- function(data, family, group = NULL,
     if (is.null(level_blocks) || !isTRUE(any(use))) {
       next
     }
-    control_x <- if (is.null(x_control)) min(x[use]) else x_control
+    # The control is the lowest predictor value, finite or not: a -Inf control
+    # must not be replaced by the lowest finite level.
+    seen <- !is.na(group) & group == level & !is.na(x) & is.finite(y)
+    control_x <- if (is.null(x_control)) min(x[seen]) else x_control
     views <- flatness_blocks(x[use], y[use], trials[use], denominator[use],
                              family)
     views <- views[intersect(names(views), level_blocks)]
@@ -538,14 +542,19 @@ check_response_flattened <- function(data, family, group = NULL,
       if (identical(result$status, "failed")) {
         untestable <- c(untestable, label)
       } else if (isTRUE(result$declining)) {
-        control_mean <- flatness_level_mean(views[[name]], control_x)
+        control_mean <- if (is.finite(control_x)) {
+          flatness_level_mean(views[[name]], control_x)
+        } else NA_real_
         relative <- if (is.finite(control_mean) && control_mean > 0) {
           result$upper_mean / control_mean
         } else NA_real_
         if (!is.finite(relative) || abs(relative) > 0.05) {
           needs_advice <- c(needs_advice, label)
         }
-        relative_text <- if (is.finite(relative)) {
+        relative_text <- if (!is.finite(control_x)) {
+          paste0(" A control-relative percentage is unavailable because the",
+                 " lowest value of ", x_label, " is not finite.")
+        } else if (is.finite(relative)) {
           paste0(" The mean at ", x_label, " = ",
                  signif(result$upper_x, 3), " is ",
                  signif(100 * relative, 3),

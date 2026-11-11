@@ -1093,7 +1093,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
       blocks = names(sensitive_blocks)[sensitive_blocks],
       pool_dispersion = is.null(parse_disp_term(formula)),
       asymptote_observed = asymptote_observed,
-      x_control = x_control
+      x_control = fitted_x_control(x_control, formula)
     )
   }
   # Make the asymptote declaration after the report it answers and before the
