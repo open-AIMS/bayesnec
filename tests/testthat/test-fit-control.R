@@ -206,9 +206,12 @@ test_that("bnec reports a logged control on the fitted scale", {
 })
 
 test_that("grouped and hurdle pre-fit checks transform the control", {
+  # Halve the series so that each level's logged predictor has a negative
+  # value, which "auto" needs to treat it as logged.
   d <- log_control_data()
+  d$x <- d$x / 2
   d$site <- rep(c("a", "b"), length.out = nrow(d))
-  d <- d[!(d$site == "b" & d$x == 0.5), ]
+  d <- d[!(d$site == "b" & d$x == 0.25), ]
   received <- NULL
   local_mocked_bindings(
     bnec = function(...) {
@@ -223,7 +226,7 @@ test_that("grouped and hurdle pre-fit checks transform the control", {
     expect_error(bnec_group(
       y ~ crf(log(x), "nec4param"), d, group_var = "site",
       family = Gamma(link = "identity"), prior_type = "regularizing",
-      prior = top, x_control = 0.5
+      prior = top, x_control = 0.25
     ), "fit reached"),
     message = function(m) {
       msgs <<- c(msgs, conditionMessage(m))
@@ -232,10 +235,10 @@ test_that("grouped and hurdle pre-fit checks transform the control", {
   )
   expect_true(any(grepl("below the lowest observed concentration in 1 group",
                         msgs)))
-  expect_equal(received$x_control, 0.5)
+  expect_equal(received$x_control, 0.25)
   expect_error(suppressMessages(bnec_group(
     y ~ crf(log(x), "nec4param"), d, group_var = "site",
-    family = Gamma(link = "identity"), x_control = 16
+    family = Gamma(link = "identity"), x_control = 8
   )), "below the highest observed concentration")
 
   h <- log_control_data()
@@ -263,4 +266,20 @@ test_that("grouped and hurdle pre-fit checks transform the control", {
     }
   )
   expect_true(any(grepl("growth and survival component", msgs)))
+})
+
+test_that("a negative control is refused on a concentration-scale predictor", {
+  f <- y ~ crf(x, c("nec3param", "ecxll4"))
+  expect_error(get_priors(f, nec_data, family = Beta(), x_control = -0.5),
+               "treated as a concentration")
+  expect_error(get_priors(f, nec_data, family = Beta(), x_control = -0.5,
+                          predictor_scale = "concentration"),
+               "requires a non-negative predictor")
+  # A logged predictor may have a negative control. Under "auto" nec_data$x
+  # reads as a concentration, so the declaration is needed.
+  p <- get_priors(f, nec_data, family = Beta(), x_control = -0.5,
+                  predictor_scale = "log")
+  expect_equal(as.numeric(p$nec3param$lb[p$nec3param$nlpar == "nec"]), -0.5)
+  expect_no_error(get_priors(y ~ crf(log_x, "nec3param"), nec_data,
+                             family = Beta(), x_control = -4))
 })
