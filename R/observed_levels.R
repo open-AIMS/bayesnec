@@ -583,7 +583,7 @@ model_set_control <- function(object, choice) {
 #' control below extrapolates.
 #' @return The control concentration, marked so that it warns once.
 #' @noRd
-checked_shared_control <- function(object, choice, controls, lows = controls) {
+checked_shared_control <- function(object, choice, controls, lows) {
   if (isTRUE(attr(choice, "warned"))) return(choice)
   shared <- identical(choice, "shared")
   value <- if (shared) min(controls) else choice
