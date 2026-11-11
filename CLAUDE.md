@@ -22,9 +22,11 @@ CRAN release. `R-CMD-check.yaml` runs on push only for those two branches, and
 every other branch is checked through its pull request instead, so a push to a
 branch with no pull request open is not checked.
 
-A fix that has to be propagated through a stack of branches queues two workflow
-runs per branch on a repository that runs one job at a time. Merge it down the
-whole stack first, then push once. Never call `gh pr merge --delete-branch` on
+Each push to a branch with an open pull request starts an `R-CMD-check` run and
+cancels any run still in progress on that pull request. Changing the pull
+request's base does the same, so retarget a stacked pull request only after its
+check has finished. Runs on different pull requests proceed in parallel. Merge a
+fix down the whole stack of branches first, then push once. Never call `gh pr merge --delete-branch` on
 the base of a stacked pull request: deleting the base closes the dependent pull
 request, and it cannot be reopened until the branch is restored.
 
