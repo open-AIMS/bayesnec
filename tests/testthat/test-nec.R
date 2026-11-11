@@ -168,28 +168,39 @@ test_that("a curve-read hurdle estimate has no sampled NEC boundary record", {
   expect_null(bayesnec:::nec_prior_boundary(fit))
 })
 
-test_that("a model set weights bounded NEC tails by equation weight", {
+test_that("a fitted model set is read through each equation's own draws", {
+  # manec_example is as fitted: its mod_fits hold prebayesnecfit objects,
+  # which store no no-effect posterior.
+  expect_s3_class(manec_example$mod_fits$nec4param, "prebayesnecfit")
+  record <- bayesnec:::nec_prior_boundary(manec_example)
+  expect_false(is.null(record$per_equation$nec4param))
+  expect_null(record$per_equation$ecx4param)
+  pulled <- suppressMessages(
+    bayesnec:::pull_equation(manec_example, "nec4param")
+  )
+  expect_identical(
+    bayesnec:::set_equation_ne_draws(manec_example$mod_fits$nec4param,
+                                     "nec4param"),
+    as.numeric(pulled$ne_posterior)
+  )
+  expect_equal(record$per_equation$nec4param$upper$n_draws,
+               length(pulled$ne_posterior))
+})
+
+test_that("a model set notes the model-weighted share of its equations", {
   set <- manec_example
-  fit <- nec4param
-  bounds <- bayesnec:::ne_prior_bounds(fit$fit)
-  span <- bounds$ub - bounds$lb
-  fit$ne_posterior <- c(rep(bounds$lb + 0.5 * span, 90),
-                        rep(bounds$ub - 0.01 * span, 10))
-  set$mod_fits[[fit$model]] <- fit
-  record <- bayesnec:::nec_prior_boundary(set)
-  weight <- as.numeric(set$mod_stats$wi)[match(fit$model,
-                                               set$mod_stats$model)]
-  expect_equal(record$per_equation[[fit$model]]$upper$share, 0.1)
-  expect_equal(record$weighted[["upper"]], weight * 0.1)
-  expect_null(record$per_equation[["ecx4param"]])
-  expect_match(bayesnec:::format_nec_prior_boundary(record,
-                                                     "model-averaged"),
-               "model-weighted share from sampled NEC equations")
-  estimate <- suppressMessages(nec(set))
-  expect_equal(attr(estimate, "prior_bound_summary"), record)
-  s <- bayesnec:::clean_nec_vals(set, set$success_models, "ecx4param",
-                                 bayesnec:::summary_ne_vals(set, NULL))
-  expect_equal(attr(s, "prior_bound_summary"), record)
+  set$mod_fits$nec4param$fit <- tighten_upper_bound(
+    set$mod_fits$nec4param$fit, "nec"
+  )
+  share <- upper_bound_share(set$mod_fits$nec4param$fit, "nec")
+  wi <- set$mod_stats$wi[set$mod_stats$model == "nec4param"]
+  out <- suppressMessages(prior_bound_notes(nec(set)))
+  expect_length(out$notes, 1)
+  record <- attr(out$value, "prior_bound_summary")
+  expect_equal(record$per_equation$nec4param$upper$share, share)
+  expect_equal(record$weighted[["upper"]], wi * share)
+  expect_equal(as.numeric(out$value),
+               as.numeric(suppressMessages(nec(manec_example))))
 })
 
 test_that("only population-level nec rows bound the threshold", {

@@ -327,8 +327,21 @@ nec_prior_boundary <- function(object) {
     list(lower = end(bounds$lb, FALSE), upper = end(bounds$ub, TRUE))
   }
   if (is_bayesnecfit(object)) return(one(object))
+  if (isTRUE(object$w_pred_vals$observed_levels) ||
+      !is.null(observed_level_spec(object))) {
+    return(NULL)
+  }
   models <- object$success_models
-  per_equation <- lapply(object$mod_fits[models], one)
+  # mod_fits holds prebayesnecfit objects, which store no no-effect posterior.
+  per_equation <- lapply(models, function(model) {
+    pre <- object$mod_fits[[model]]
+    if (is.null(pre$fit)) return(NULL)
+    one(list(model = model, fit = pre$fit,
+             bayesnecformula = pre$bayesnecformula,
+             ne_posterior = set_equation_ne_draws(pre, model),
+             pred_vals = object$w_pred_vals))
+  })
+  names(per_equation) <- models
   if (all(vapply(per_equation, is.null, logical(1)))) return(NULL)
   weights <- as.numeric(object$mod_stats$wi)
   names(weights) <- object$mod_stats$model
@@ -349,7 +362,7 @@ nec_prior_boundary <- function(object) {
 #' @noRd
 report_nec_prior_boundary <- function(record, label) {
   note <- format_nec_prior_boundary(record, label)
-  if (!is.null(note)) message(note)
+  if (!is.null(note)) message(prior_bound_note(note))
   invisible(NULL)
 }
 

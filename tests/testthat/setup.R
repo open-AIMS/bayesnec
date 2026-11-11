@@ -194,3 +194,37 @@ expanded_ecx4param <- function(record) {
     loo_controls = record$loo_controls, model = "ecx4param"
   )))
 }
+
+# Prior-bound records. Move draws or a stored prior bound without refitting;
+# the counts test the report, not a posterior a sampler would produce.
+
+# Set the upper bound of a parameter's stored prior just above its largest
+# draw, so that its highest draws lie within the outer 5% of the range.
+tighten_upper_bound <- function(fit, par) {
+  prior <- fit$prior
+  rows <- prior$nlpar == par & prior$class == "b" & nzchar(prior$ub)
+  draws <- brms::as_draws_df(fit)[[paste0("b_", par, "_Intercept")]]
+  prior$ub[rows] <- as.character(max(draws) + 0.001)
+  fit$prior <- prior
+  fit
+}
+
+# The share of a parameter's draws within the outer 5% below its upper bound.
+upper_bound_share <- function(fit, par) {
+  prior <- fit$prior
+  rows <- prior$nlpar == par & prior$class == "b" & nzchar(prior$ub)
+  lb <- as.numeric(prior$lb[rows])
+  ub <- as.numeric(prior$ub[rows])
+  draws <- brms::as_draws_df(fit)[[paste0("b_", par, "_Intercept")]]
+  mean(draws >= ub - 0.05 * (ub - lb) & draws <= ub)
+}
+
+# Collect the prior-bound notes and let every other message through.
+prior_bound_notes <- function(expr) {
+  notes <- character()
+  value <- withCallingHandlers(expr, bayesnec_prior_bound_note = function(m) {
+    notes <<- c(notes, conditionMessage(m))
+    invokeRestart("muffleMessage")
+  })
+  list(value = value, notes = notes)
+}
