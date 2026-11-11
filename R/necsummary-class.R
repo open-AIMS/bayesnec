@@ -29,11 +29,10 @@
 #' this estimate will be a NSEC proxy. Where any posterior draw lies beyond the
 #' range the model was predicted over, attribute \code{"censored_summary"}
 #' marks which entries are the end of that range rather than a quantile, and
-#' states how many draws lie beyond each end. Attribute
-#' \code{"prior_bound_summary"} gives the share of sampled NEC draws without
-#' spanning group terms that fall within
-#' the last 5% of each bounded prior end, measured on the fitted predictor
-#' scale; a printed note appears when a share exceeds 7.5%.
+#' states how many draws lie beyond each end. Where more than 7.5% of the
+#' draws of a sampled NEC lie within the outer 5% of its prior range,
+#' attribute \code{"prior_bound_summary"} gives the record \code{\link{nec}}
+#' describes and a printed note appears.
 #' @slot ecs A \code{\link[base]{list}} containing the ECx values
 #' should the user decide to calculate them (see the non-exported
 #' \code{bayesnec:::summary.bayesnecfit} help file for details).

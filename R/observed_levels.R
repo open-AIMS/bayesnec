@@ -18,7 +18,7 @@ fitted_group_terms <- function(fit) {
   terms[!duplicated(keys)]
 }
 
-#' Warn when a saved fit still holds population-level display values
+#' Warn when a saved fit holds display values of an earlier version
 #' @param object A single fit or model set.
 #' @return Invisible NULL.
 #' @noRd
@@ -29,27 +29,40 @@ warn_stale_observed_display <- function(object) {
   } else {
     stored <- object$pred_vals
   }
-  warning("This fit was saved before observed-level display values were",
-          " stored. Its stored summary and plotted band still describe the",
-          " zero-deviation curve. Rebuild the display values with",
-          " amend(x, resolution = ", nrow(stored$data), "); ecx(), nsec(),",
-          " ecnsec() and nec() already read the observed levels directly.",
-          call. = FALSE)
+  stale <- if (isTRUE(stored$observed_levels)) {
+    paste0("Its plotted band mixes the curves of the observed levels,",
+           " where this version plots the population curve.")
+  } else {
+    paste0("Its stored no-effect summary describes the population curve,",
+           " where this version reads the observed levels.")
+  }
+  warning("This fit was saved by an earlier version of bayesnec. ", stale,
+          " Rebuild the stored values with amend(x, resolution = ",
+          nrow(stored$data), "); ecx(), nsec(), ecnsec() and nec() already",
+          " read the observed levels directly.", call. = FALSE)
   invisible(NULL)
 }
 
 #' Whether a saved fit needs its observed-level display rebuilt
+#'
+#' A fit with a spanning group term is current when its stored values carry
+#' both flags: \code{observed_levels}, for no-effect summaries read from the
+#' observed levels, and \code{band = "population"}, for a band drawn from the
+#' population curve.
 #' @param object A single fit or model set.
 #' @return A logical value.
 #' @noRd
 needs_observed_rebuild <- function(object) {
+  current <- function(stored) {
+    isTRUE(stored$observed_levels) && identical(stored$band, "population")
+  }
   if (inherits(object, "bayesmanecfit")) {
-    if (isTRUE(object$w_pred_vals$observed_levels)) return(FALSE)
+    if (current(object$w_pred_vals)) return(FALSE)
     return(any(vapply(object$mod_fits, function(fit) {
       !is.null(fit$fit) && !is.null(observed_level_spec(fit))
     }, logical(1))))
   }
-  !isTRUE(object$pred_vals$observed_levels) &&
+  !current(object$pred_vals) &&
     !is.null(object$fit) && !is.null(observed_level_spec(object))
 }
 

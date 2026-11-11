@@ -98,10 +98,18 @@ group_estimate_table <- function(object, what, fun, ..., pool = "none",
     return(finish(mean_curve_estimate(object$fits, object$n, what, dots)))
   }
   if (identical(pool, "none")) {
-    est <- lapply(object$fits, function(f) do.call(fun, c(list(f), dots)))
+    est <- lapply(seq_along(object$fits), function(i) {
+      with_prior_bound_label(paste("Level", object$levels[i]),
+                             do.call(fun, c(list(object$fits[[i]]), dots)))
+    })
     names(est) <- object$levels
     if (posterior) return(finish(est))
-    return(finish(estimate_table(est, object$levels, what)))
+    out <- estimate_table(est, object$levels, what)
+    # The table's numeric columns drop each level's record.
+    attr(out, "prior_bound_summary") <- bind_prior_records(
+      lapply(est, attr, "prior_bound_summary"), object$levels
+    )
+    return(finish(out))
   }
   dots$posterior <- TRUE
   draws <- lapply(object$fits, function(f) do.call(fun, c(list(f), dots)))

@@ -166,14 +166,42 @@ test_that("the no-effect row is summarised as the stored row was", {
     set <- inherits(fit, "bayesmanecfit")
     stored <- if (set) fit$w_ne else fit$ne
     post <- if (set) fit$w_ne_posterior else fit$ne_posterior
-    expect_identical(as.numeric(ne_vals(fit, identity)), as.numeric(stored))
-    expect_identical(attr(ne_vals(fit, identity), "prior_bound_summary"),
-                     bayesnec:::nec_prior_boundary(fit))
+    expect_identical(ne_vals(fit, identity), stored)
     expect_equal(as.numeric(ne_vals(fit, function(z) z)), as.numeric(stored))
     expect_equal(as.numeric(ne_vals(fit, exp)),
                  as.numeric(bayesnec:::estimates_summary(exp(post))))
   }
   expect_error(ne_vals(nec4param, "exp"), "xform must be a function")
+})
+
+test_that("a flagged no-effect row keeps the record nec() gives", {
+  # Relabel the predictor without refitting, so that the stored draws and
+  # prior bounds are read as log(x + 1).
+  fit <- near_bound_fit(20)
+  fit$bayesnecformula <- bnf(y ~ crf(log(x + 1), model = "nec4param"))
+  record <- attr(prior_bound_notes(nec(fit))$value, "prior_bound_summary")
+  out <- summarise(fit)
+  expect_identical(attr(out$nec_vals, "prior_bound_summary"), record)
+  printed <- paste(capture.output(suppressWarnings(print(out))),
+                   collapse = " ")
+  expect_match(printed, "within the upper 5% of its prior range",
+               fixed = TRUE)
+  expect_match(printed, "on the fitted scale", fixed = TRUE)
+})
+
+test_that("a model set summary keeps each equation's record", {
+  set <- manec_example
+  set$mod_fits$nec4param$fit <- tighten_upper_bound(
+    set$mod_fits$nec4param$fit, "nec"
+  )
+  record <- attr(suppressMessages(prior_bound_notes(nec(set)))$value,
+                 "prior_bound_summary")
+  out <- summarise(set)
+  expect_identical(attr(out$nec_vals, "prior_bound_summary"), record)
+  expect_identical(as.numeric(out$nec_vals),
+                   as.numeric(summarise(manec_example)$nec_vals))
+  printed <- capture.output(suppressWarnings(print(out)))
+  expect_true(any(grepl("Weighted by model weight", printed, fixed = TRUE)))
 })
 
 test_that("posterior = TRUE is refused rather than printed (#439)", {
