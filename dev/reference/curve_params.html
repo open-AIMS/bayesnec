@@ -153,7 +153,9 @@ and unused by the other two.</p></dd>
     <p>With <code>summary = TRUE</code>, a <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> with
 columns <code>model</code>, <code>wi</code>, <code>dpar</code>, <code>link</code>, <code>parameter</code>,
 <code>Estimate</code>, <code>Q2.5</code> and <code>Q97.5</code>, ordered by decreasing
-<code>wi</code> and then by the parameter order given above.</p>
+<code>wi</code> and then by the parameter order given above, and with the
+<code>"prior_bound_summary"</code> attribute described in Details. A
+<code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> adds a <code>level</code> column to that record.</p>
 <p><code>Estimate</code> is the posterior median and the interval is equal-tailed,
 which is what <code><a href="https://rdrr.io/pkg/nlme/man/fixed.effects.html" class="external-link">fixef</a>(robust = TRUE)</code> reports for the same
 fit. For a single-block monotone threshold fit the <code>nec</code> row is the
@@ -247,6 +249,22 @@ applied to them on the transformed scale, so <code>xform = identity</code>
 returns that scale. Every other parameter is a response level or a shape
 parameter and is not on the predictor axis at all, so it is returned as
 sampled.</p>
+<p>Under the default <code>asymptote_observed = TRUE</code>, the <code>nec</code> and
+<code>ec50</code> priors are both bounded at the lowest and highest
+concentrations tested. Where the data do not place the parameter inside
+that range, a credible limit near a bound is set by the prior. For every
+sampled <code>nec</code> and <code>ec50</code> row with a bounded prior, the table's
+attribute <code>"prior_bound_summary"</code> gives the number and share of draws
+within the outer 5% of the prior range at each bounded end, with the bound
+on the scale of the row and on the fitted scale. These are the columns
+<code><a href="nec.html">nec</a></code> describes, and <code>model</code>, <code>dpar</code> and
+<code>parameter</code> match the rows of the table. A message names each
+parameter for which the share exceeds 7.5%, after multiplying it by the
+equation's model weight, as <code><a href="nec.html">nec</a></code> does on a model set. The
+<code>ec50</code> parameter is not the estimate <code><a href="ecx.html">ecx</a></code> returns with
+<code>ecx_val = 50</code>. That estimate is read off the fitted curve, and its
+own <code>"censored_summary"</code> describes draws whose curve does not cross
+within the prediction range.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>

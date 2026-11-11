@@ -146,7 +146,10 @@ the two blocks of a hurdle fit use different equation types.</p></dd>
 this estimate will be a NSEC proxy. Where any posterior draw lies beyond the
 range the model was predicted over, attribute <code>"censored_summary"</code>
 marks which entries are the end of that range rather than a quantile, and
-states how many draws lie beyond each end.</p></dd>
+states how many draws lie beyond each end. Where more than 7.5% of the
+draws of a sampled NEC lie within the outer 5% of its prior range,
+attribute <code>"prior_bound_summary"</code> gives the record <code><a href="nec.html">nec</a></code>
+describes and a printed note appears.</p></dd>
 
 
 <dt><code>ecs</code></dt>

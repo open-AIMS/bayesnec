@@ -228,7 +228,12 @@ predictor inline, that posterior is on the transformed scale, and the row is
 returned on the recorded scale as <code><a href="nec.html">nec</a></code> returns it. An
 <code>xform</code> supplied in <code>...</code> is applied to the stored draws and to
 the bound they are censored at instead, as <code><a href="nec.html">nec</a></code> applies it,
-so the no-effect row and the ECx rows are reported on one scale.</p>
+so the no-effect row and the ECx rows are reported on one scale.
+Where more than 7.5% of the draws of a sampled NEC lie within the outer 5%
+of its prior range, the no-effect row has the <code>"prior_bound_summary"</code>
+attribute <code><a href="nec.html">nec</a></code> describes, on the scale of the row, and the
+printed summary gives the note <code><a href="nec.html">nec</a></code> gives. For a model set the
+7.5% applies to the model-weighted share. The quantiles do not change.</p>
 <p><code>posterior = TRUE</code> is refused. A summary reports each estimate as
 quantiles; the draws themselves are returned by <code><a href="nec.html">nec</a></code>,
 <code><a href="nsec.html">nsec</a></code> and <code><a href="ecx.html">ecx</a></code> with <code>posterior = TRUE</code>.</p>
