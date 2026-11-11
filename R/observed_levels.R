@@ -275,11 +275,10 @@ pull_equation <- function(object, model) {
   old <- bnec_state$skip_level_display
   bnec_state$skip_level_display <- TRUE
   on.exit(bnec_state$skip_level_display <- old, add = TRUE)
-  # The estimators use the saved posterior, not the model's LOO score. Do not
-  # repeat exact observation or group LOO refits for each equation read.
+  # The estimators read the saved posterior, not the LOO score. Pass empty
+  # fitting controls so a set scored with reloo is not refitted per equation.
   out <- suppressMessages(pull_out(
-    object, model = model,
-    loo_controls = list(fitting = list(), refit = FALSE)
+    object, model = model, loo_controls = list(fitting = list())
   ))
   source <- object$mod_fits[[model]]
   if (!is.null(object$observed_group)) {

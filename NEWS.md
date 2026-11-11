@@ -1,7 +1,5 @@
 # bayesnec 2.2.0
 
-- Reading a no-effect or effect estimate from a model set scored with exact
-  leave-one-out refits no longer repeats those refits for each equation.
 - The no-effect estimate of the six hormesis threshold equations, `nechorme`,
   `nechorme4`, `neclinhorme`, `nechormepwr`, `nechorme4pwr` and
   `nechormepwr01`, is now their NSEC: the concentration at which the fitted
