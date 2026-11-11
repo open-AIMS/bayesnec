@@ -267,24 +267,13 @@ recensor_sampled <- function(values, lims) {
 #' nec parameter.
 #' @noRd
 ne_prior_bounds <- function(fit) {
-  prior <- fit$prior
-  if (is.null(prior) || !all(c("nlpar", "lb", "ub") %in% names(prior))) {
-    return(NULL)
+  # A joint two-block fit reports the per-draw minimum of both blocks' nec, so
+  # read the second block's prior as well.
+  nlpars <- "nec"
+  if (is_hurdle_family(fit$family)) {
+    nlpars <- c(nlpars, paste0(hurdle_dpar(fit$family), "nec"))
   }
-  rows <- prior[!is.na(prior$nlpar) & prior$nlpar == "nec", , drop = FALSE]
-  if (nrow(rows) == 0) {
-    return(NULL)
-  }
-  # Take the smallest bound over the rows, not the first row. A joint two-block
-  # fit has a nec in each block, and the reported estimate is their per-draw
-  # minimum, to which the smaller of each pair of bounds applies.
-  tightest <- function(values) {
-    values <- values[!is.na(values) & nzchar(values)]
-    values <- suppressWarnings(as.numeric(values))
-    values <- values[!is.na(values)]
-    if (length(values) == 0) NA_real_ else min(values)
-  }
-  list(lb = tightest(rows$lb), ub = tightest(rows$ub))
+  prior_par_bounds(fit, nlpars)
 }
 
 #' State that the fit itself stops where the extrapolation was asked to go

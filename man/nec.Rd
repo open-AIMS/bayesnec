@@ -71,6 +71,34 @@ predicted over, that draw keeps its rank in the summary and is given no
 value, so an entry falling among such draws is the end of the prediction
 range rather than a quantile. Attribute \code{"censored_summary"} marks
 which entries those are and states how many draws lie beyond each end.
+
+Under the default \code{asymptote_observed = TRUE}, the \code{nec} prior is
+bounded at the lowest and highest concentrations tested. Where the data do
+not place the threshold inside that range, much of the posterior can lie
+near a bound, and a credible limit there is set by the prior. Where more
+than 7.5\% of the finite draws of a sampled NEC lie within the outer 5\% of
+its prior range at either end, a message says so and attribute
+\code{"prior_bound_summary"} holds a \code{\link[base]{data.frame}} with one
+row per bounded end. Its columns are the equation (\code{model}), its model
+weight (\code{wi}), \code{parameter}, \code{side}, the bound on the scale of
+the returned estimate (\code{bound}) and on the fitted scale
+(\code{fitted_bound}), and the number (\code{n_near}) and share
+(\code{share}) of \code{n_draws} finite draws within that 5\%. The window is
+measured on the fitted scale, as 5\% of the prior range, or of the
+prediction range where only one end is bounded. On a model set there is a
+row per sampled NEC equation, each from that equation's own draws, and
+\code{attr(, "weighted_share")} gives the model-weighted share at each end,
+which is the share the 7.5\% applies to. On a
+\code{\link{bayesnecgroupfit}} each level's record is kept, with a
+\code{level} column, on the table, and \code{attr(, "weighted_share")} is a
+list of those shares named by level, for the levels fitted as a model set.
+The estimate and its quantiles are
+unchanged. There is no record where the estimate is not a sampled NEC, as
+for an NSEC, a two-block fit with a smooth block or the combined estimate
+of a \code{\link{bayesnechurdlefit}}; where it is read per observed level;
+or with \code{posterior = TRUE} or \code{extrapolate}.
+\code{\link{curve_params}} gives the same record for every sampled
+\code{nec} and \code{ec50} parameter, whatever the share.
 }
 \description{
 Extracts the predicted NEC value as desired from an object of class

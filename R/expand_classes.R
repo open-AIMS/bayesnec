@@ -177,13 +177,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     # The two blocks may carry different equations (see the model_survival
     # argument of bnec), so each has its own class and the combined threshold
     # is derived differently depending on the pair.
-    hu_model <- dpar_models(object)[[hu_dpar]]
-    hu_sampled <- if (is.character(hu_model) && length(hu_model) == 1 &&
-                      !is.na(hu_model)) {
-      sampled_nec_is_no_effect(hu_model)
-    } else {
-      !is.null(hu_ne_posterior)
-    }
+    hu_sampled <- hu_block_samples_nec(object, hu_dpar,
+                                       !is.null(hu_ne_posterior))
     hu_class <- if (hu_sampled) "nec" else "ecx"
     if (mod_class == "nec" && hu_class == "nec") {
       # Below both thresholds mu sits at top and (1 - hu) at its control value,

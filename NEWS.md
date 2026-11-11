@@ -1,5 +1,16 @@
 # bayesnec 2.2.0
 
+- `nec()`, printed `summary()` and `curve_params()` now report a sampled `nec`
+  or `ec50` posterior with much of its mass near a bound of its prior. Under
+  the default `asymptote_observed = TRUE` both priors are bounded at the
+  tested range, so a credible limit near a bound can be set by the prior.
+  Where more than 7.5% of draws lie within the outer 5% of the prior range,
+  `nec()` and `summary()` give a note and a `prior_bound_summary` attribute
+  with the bound on the reported and the fitted scale. For a model set the
+  record gives each sampled NEC equation and the model-weighted share.
+  `curve_params()` gives the same record for every bounded `nec` and `ec50`
+  row. The estimates are unchanged (#584).
+
 - Model sets can now combine equations with different numbers of retained
   posterior draws. Model weights use each equation's pointwise leave-one-out
   scores, and the model average samples from all draws of each equation. The

@@ -37,6 +37,10 @@
 #' range rather than a quantile, and states how many draws lie beyond each end.
 #' The count is over the weighted draws, so it is the share of the
 #' model-averaged posterior that is censored and not the share of equations.
+#' Where more than 7.5% of the draws of the sampled NEC equations, weighted by
+#' model weight, lie within the outer 5% of their prior range, attribute
+#' \code{"prior_bound_summary"} gives the per-equation record
+#' \code{\link{nec}} describes and a printed note appears.
 #' @slot ecs A \code{\link[base]{list}} containing the ECx values
 #' should the user decide to calculate them (see the non-exported
 #' \code{bayesnec:::summary.bayesnecfit} help file for details). Different

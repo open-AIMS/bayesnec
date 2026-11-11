@@ -49,7 +49,11 @@ the weighted posterior lies beyond the range the models were predicted over,
 attribute \code{"censored_summary"} marks which entries are the end of that
 range rather than a quantile, and states how many draws lie beyond each end.
 The count is over the weighted draws, so it is the share of the
-model-averaged posterior that is censored and not the share of equations.}
+model-averaged posterior that is censored and not the share of equations.
+Where more than 7.5\% of the draws of the sampled NEC equations, weighted by
+model weight, lie within the outer 5\% of their prior range, attribute
+\code{"prior_bound_summary"} gives the per-equation record
+\code{\link{nec}} describes and a printed note appears.}
 
 \item{\code{ecs}}{A \code{\link[base]{list}} containing the ECx values
 should the user decide to calculate them (see the non-exported
