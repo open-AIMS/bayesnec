@@ -456,13 +456,13 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
   # Every curve, growth included, over the whole concentration series.
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "ECx")
-  start <- curve_search_start(object, x_control)
-  report_curve_read_lower_limit(extrapolate, lims, start,
-                                curve_start_label(object, x_control))
   preds <- if (is.null(lims)) {
     hurdle_component_preds(object, resolution = resolution,
                            x_range = x_range, x_control = x_control)
   } else {
+    start <- curve_search_start(object, x_control)
+    report_curve_read_lower_limit(extrapolate, lims, start,
+                                  curve_start_label(object, x_control))
     hurdle_component_preds(object, resolution = resolution,
                            x_range = x_range, x_control = x_control,
                            grid_limits = ecx_grid_limits(lims, start))
