@@ -209,7 +209,7 @@ get_priors.formula <- function(object, data, family = NULL,
   model <- check_models(requested, family, bdat)
   model_survival <- check_model_survival(model_survival, family, bdat)
   check_control_top_prior(bdat, family, model, NULL, prior_type,
-                          x_control, model_survival)
+                          x_control, object, model_survival = model_survival)
   if (length(model) == 0) {
     stop("No valid models have been supplied for this data type.",
          call. = FALSE)

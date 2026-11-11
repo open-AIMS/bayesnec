@@ -37,9 +37,10 @@
 #' its lowest observed concentration for an older fit or one fitted without
 #' \code{x_control}. `"shared"` reads the lowest control across levels;
 #' a single finite number specifies
-#' the concentration directly. A shared control below a level's observations
-#' extrapolates its curve and gives a warning. Level controls are recorded in
-#' the result's \code{x_control} attribute.
+#' the concentration directly. A control below a level's observations
+#' extrapolates its curve, and gives a warning unless it is the control
+#' recorded at fitting. Level controls are recorded in the result's
+#' \code{x_control} attribute.
 #' @param ... Further arguments to pass to class specific methods.
 #'
 #' @details NSEC is no-effect toxicity metric that estimates the concentration
@@ -65,7 +66,7 @@
 #' contrasted draw by draw, as \code{\link{compare_posterior}} does.
 #'
 #' The effect is measured from the control --- the predicted mean at the
-#' lowest concentration in the supplied predictor, per posterior draw --- and
+#' control concentration, per posterior draw --- and
 #' \code{type} names what it is measured towards, exactly as in
 #' \code{\link{ecx}}: "absolute" (the default) towards 0, "relative" towards
 #' the equation's theoretical asymptote, "range" towards the lowest response

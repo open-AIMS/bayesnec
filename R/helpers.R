@@ -2402,8 +2402,9 @@ check_resolution <- function(resolution) {
 
 #' The predictor value the control is read at
 #'
-#' The lowest \emph{observed} value of the predictor named in \code{crf()}, on
-#' the scale the user supplied it on. It is read from the data, not from the
+#' The control recorded at fitting, or else the lowest \emph{observed} value
+#' of the predictor named in \code{crf()}, on the scale the user supplied it
+#' on. It is read from the data, not from the
 #' prediction grid, so that \code{x_range} does not change it or any estimate
 #' anchored on it. A \code{\link{bayesnechurdlefit}} reads it from the
 #' survival component, which sees every concentration tested.
@@ -2419,6 +2420,30 @@ control_x <- function(object) {
   if (!is.null(recorded)) {
     return(recorded)
   }
+  observed_low_x(object)
+}
+
+#' Whether a call-time control is the one recorded at fitting
+#'
+#' \code{bnec()} reported that control if it lies below the data, so the
+#' estimators do not warn about it again.
+#'
+#' @param object A fitted bayesnec object.
+#' @param value One number.
+#' @return A \code{\link[base]{logical}} value.
+#' @noRd
+is_recorded_control <- function(object, value) {
+  stated <- recorded_x_control(object)
+  !is.null(stated) && isTRUE(as.numeric(value) == as.numeric(stated))
+}
+
+#' The lowest observed concentration of a fit, whatever its control
+#'
+#' @param object A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}},
+#' \code{\link{bayesnechurdlefit}}, observed level or joint level.
+#' @return A \code{\link[base]{numeric}} value on the recorded scale.
+#' @noRd
+observed_low_x <- function(object) {
   if (!is.null(object$observed_group) && length(object$level_x)) {
     return(min(object$level_x))
   }
@@ -2456,12 +2481,30 @@ recorded_x_control <- function(object) {
   object$call_args$x_control
 }
 
+#' A stated control on the fitted predictor scale
+#'
+#' A model frame holds the predictor after the \code{crf()} transformation, so
+#' compare a stated control with it only through this.
+#'
+#' @param x_control The stated control on the recorded scale, or \code{NULL}.
+#' @param formula The formula whose \code{crf()} term gives the transformation.
+#' @return A number, or \code{NULL}.
+#' @noRd
+fitted_x_control <- function(x_control, formula) {
+  if (is.null(x_control)) {
+    return(NULL)
+  }
+  as.numeric(sub_x_transformation(x_control, formula))
+}
+
 #' Validate a control concentration before fitting
 #'
-#' @param x_control The requested control, or \code{NULL}.
+#' @param x_control The requested control on the recorded scale, or
+#' \code{NULL}.
 #' @param formula The formula whose predictor transformation is fitted.
-#' @param predictor The observed predictor on its recorded scale.
-#' @param x_range The requested prediction range.
+#' @param predictor The observed predictor on the fitted scale, as read from
+#' the model frame.
+#' @param x_range The requested prediction range, on the recorded scale.
 #' @param predictor_scale The predictor-scale declaration.
 #' @param report Whether to report extrapolation below the data.
 #' @return The control, invisibly, or \code{NULL}.
@@ -2475,16 +2518,25 @@ check_fit_x_control <- function(x_control, formula, predictor, x_range = NA,
       !is.finite(x_control)) {
     stop("`x_control` must be NULL or one finite number.", call. = FALSE)
   }
-  validate_predictor_scale(predictor_scale, c(x_control, predictor))
   transformed <- tryCatch(
-    suppressWarnings(sub_x_transformation(x_control, formula)),
+    suppressWarnings(fitted_x_control(x_control, formula)),
     error = function(e) NA_real_
   )
   if (length(transformed) != 1L || !is.finite(transformed)) {
     stop("`x_control = ", x_control, "` is not finite under the crf()",
          " predictor transformation.", call. = FALSE)
   }
-  if (x_control >= max(predictor)) {
+  predictor_scale <- validate_predictor_scale(predictor_scale,
+                                              c(transformed, predictor))
+  # The concentration branch of predictor_prior() clamps the nec and ec50
+  # lower bound at 0, so a negative control there would not be the bound.
+  if (transformed < 0 && !predictor_is_logged(predictor, predictor_scale)) {
+    stop("`x_control = ", x_control, "` is negative, but the predictor is",
+         " treated as a concentration, which has no value below zero. Use",
+         " `predictor_scale = \"log\"` if the predictor is already logged.",
+         call. = FALSE)
+  }
+  if (transformed >= max(predictor)) {
     stop("`x_control` must be below the highest observed concentration.",
          call. = FALSE)
   }
@@ -2493,10 +2545,10 @@ check_fit_x_control <- function(x_control, formula, predictor, x_range = NA,
     stop("The lower end of `x_range` must equal `x_control` when both are",
          " supplied.", call. = FALSE)
   }
-  if (report && x_control < min(predictor)) {
+  if (report && transformed < min(predictor)) {
     message("The control at ", signif(x_control, 3), " is below the lowest",
-            " observed concentration, ", signif(min(predictor), 3),
-            "; the curve from control to the data is extrapolated.")
+            " observed concentration; the curve from the control to the data",
+            " is extrapolated.")
   }
   invisible(as.numeric(x_control))
 }
@@ -2537,7 +2589,7 @@ resolve_x_control <- function(object, x_control, x_range) {
     grid_obj <- grid_equation(grid_obj)
   }
   check_control_finite(object, x_control)
-  low <- control_x(object)
+  low <- observed_low_x(object)
   high <- if (length(grid_obj$level_x)) max(grid_obj$level_x) else {
     frame <- stats::model.frame(grid_obj$bayesnecformula,
                                 data = grid_obj$fit$data)
@@ -2549,10 +2601,11 @@ resolve_x_control <- function(object, x_control, x_range) {
     stop("`x_control` must be below the highest concentration in the",
          " prediction range.", call. = FALSE)
   }
-  if (x_control < low && !isTRUE(attr(x_control, "warned"))) {
+  if (x_control < low && !isTRUE(attr(x_control, "warned")) &&
+      !is_recorded_control(object, x_control)) {
     warning("The control at ", signif(x_control, 3), " is below the lowest",
             " observed concentration, ", signif(low, 3),
-            "; the curve from control to the data is extrapolated.",
+            "; the curve from the control to the data is extrapolated.",
             call. = FALSE)
   }
   list(value = as.numeric(x_control), x_range = c(x_control, high))
@@ -2560,9 +2613,10 @@ resolve_x_control <- function(object, x_control, x_range) {
 
 #' The lowest observed predictor value of one fit
 #'
-#' The rule \code{control_x()} and \code{control_posterior()} share. One level
-#' of a joint refit reads its own lowest concentration, not the lowest of every
-#' level together. See \code{joint_level_x()}.
+#' The control where none was recorded at fitting, and the value a call-time
+#' control is compared with. One level of a joint refit reads its own lowest
+#' concentration, not the lowest of every level together. See
+#' \code{joint_level_x()}.
 #'
 #' @param grid_obj A \code{\link{bayesnecfit}}, already taken from its model
 #' set or hurdle fit.
@@ -2723,11 +2777,10 @@ family_has_lower_bound <- function(family) {
 
 #' The control posterior
 #'
-#' The predicted mean at the lowest \emph{observed} concentration, per draw.
+#' The predicted mean at the control concentration, per draw.
 #'
-#' Read at the lowest observed predictor value, not at the first column of the
-#' prediction grid, so that \code{x_range} does not change any reported
-#' estimate.
+#' Read at \code{control_x()}, not at the first column of the prediction grid,
+#' so that \code{x_range} does not change any reported estimate.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
 #' @param newdata The prediction grid, used as the template for the columns
@@ -2987,7 +3040,7 @@ remap_censored_summary <- function(cens, map, decreasing, probs = NULL) {
 check_removed_args <- function(dots) {
   if ("hormesis_def" %in% names(dots)) {
     stop("hormesis_def has been removed. Every ECx, NSEC and ECNSEC is now ",
-         "measured from the control -- the predicted mean at the lowest ",
+         "measured from the control -- the predicted mean at the control ",
          "concentration -- which is what hormesis_def = \"control\" selected. ",
          "There is no longer an option to measure from the maximum of the ",
          "predicted curve. Drop the argument.", call. = FALSE)

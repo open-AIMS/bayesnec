@@ -18,7 +18,7 @@ fitted_group_terms <- function(fit) {
   terms[!duplicated(keys)]
 }
 
-#' Warn when a saved fit still holds population-level display values
+#' Warn when a saved fit holds display values of an earlier version
 #' @param object A single fit or model set.
 #' @return Invisible NULL.
 #' @noRd
@@ -29,27 +29,40 @@ warn_stale_observed_display <- function(object) {
   } else {
     stored <- object$pred_vals
   }
-  warning("This fit was saved before observed-level display values were",
-          " stored. Its stored summary and plotted band still describe the",
-          " zero-deviation curve. Rebuild the display values with",
-          " amend(x, resolution = ", nrow(stored$data), "); ecx(), nsec(),",
-          " ecnsec() and nec() already read the observed levels directly.",
-          call. = FALSE)
+  stale <- if (isTRUE(stored$observed_levels)) {
+    paste0("Its plotted band mixes the curves of the observed levels,",
+           " where this version plots the population curve.")
+  } else {
+    paste0("Its stored no-effect summary describes the population curve,",
+           " where this version reads the observed levels.")
+  }
+  warning("This fit was saved by an earlier version of bayesnec. ", stale,
+          " Rebuild the stored values with amend(x, resolution = ",
+          nrow(stored$data), "); ecx(), nsec(), ecnsec() and nec() already",
+          " read the observed levels directly.", call. = FALSE)
   invisible(NULL)
 }
 
 #' Whether a saved fit needs its observed-level display rebuilt
+#'
+#' A fit with a spanning group term is current when its stored values carry
+#' both flags: \code{observed_levels}, for no-effect summaries read from the
+#' observed levels, and \code{band = "population"}, for a band drawn from the
+#' population curve.
 #' @param object A single fit or model set.
 #' @return A logical value.
 #' @noRd
 needs_observed_rebuild <- function(object) {
+  current <- function(stored) {
+    isTRUE(stored$observed_levels) && identical(stored$band, "population")
+  }
   if (inherits(object, "bayesmanecfit")) {
-    if (isTRUE(object$w_pred_vals$observed_levels)) return(FALSE)
+    if (current(object$w_pred_vals)) return(FALSE)
     return(any(vapply(object$mod_fits, function(fit) {
       !is.null(fit$fit) && !is.null(observed_level_spec(fit))
     }, logical(1))))
   }
-  !isTRUE(object$pred_vals$observed_levels) &&
+  !current(object$pred_vals) &&
     !is.null(object$fit) && !is.null(observed_level_spec(object))
 }
 
@@ -275,7 +288,11 @@ pull_equation <- function(object, model) {
   old <- bnec_state$skip_level_display
   bnec_state$skip_level_display <- TRUE
   on.exit(bnec_state$skip_level_display <- old, add = TRUE)
-  out <- suppressMessages(pull_out(object, model = model))
+  # The estimators read the saved posterior, not the LOO score. Pass empty
+  # fitting controls so a set scored with reloo is not refitted per equation.
+  out <- suppressMessages(pull_out(
+    object, model = model, loo_controls = list(fitting = list())
+  ))
   source <- object$mod_fits[[model]]
   if (!is.null(object$observed_group)) {
     for (field in c("observed_group", "level_x", "re_formula")) {
@@ -352,7 +369,7 @@ observed_level_fit <- function(object, spec, i, with_ne = FALSE) {
       )[, 1])
       ne <- pmin(ne, hu_ne)
     }
-    bounds <- sub_x_transformation(range(out$level_x),
+    bounds <- sub_x_transformation(level_read_span(out),
                                    out$bayesnecformula)
     attr(ne, "censored") <- censoring_record(
       max(bounds), min(bounds), ne >= max(bounds), ne <= min(bounds)
@@ -372,6 +389,29 @@ record_level_controls <- function(result, values) {
   result
 }
 
+#' The concentrations one observed level is read over
+#'
+#' @param level One observed level, from \code{observed_level_fit()}.
+#' @return Its control and its highest observed concentration, on the recorded
+#' scale.
+#' @noRd
+level_read_span <- function(level) {
+  c(control_x(level), max(level$level_x))
+}
+
+#' Each observed level's own control concentration
+#'
+#' @param object A fit with observed group levels.
+#' @param spec Its observed level specification.
+#' @return One number per level: the control recorded at fitting, or else the
+#' level's lowest observed concentration.
+#' @noRd
+observed_level_controls <- function(object, spec) {
+  lows <- vapply(spec$x, min, numeric(1))
+  stated <- recorded_x_control(object)
+  if (is.null(stated)) lows else rep(stated, length(lows))
+}
+
 #' Control record for a model set containing observed group levels
 #' @param first The first equation's stored fit.
 #' @param choice The validated control option.
@@ -381,9 +421,7 @@ model_set_control_recorder <- function(first, choice) {
   spec <- observed_level_spec(first)
   if (is.null(spec)) return(identity)
   labels <- level_labels(spec$combinations)
-  stated <- recorded_x_control(first)
-  values <- setNames(if (is.null(stated)) vapply(spec$x, min, numeric(1))
-                     else rep(stated, length(spec$x)), labels)
+  values <- setNames(observed_level_controls(first, spec), labels)
   if (!identical(choice, "own")) values[] <- as.numeric(choice)
   function(x) record_level_controls(x, values)
 }
@@ -417,14 +455,14 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
   }
   note_excluded_levels(spec)
   labels <- level_labels(spec$combinations)
-  controls <- setNames(vapply(spec$x, min, numeric(1)), labels)
+  controls <- setNames(observed_level_controls(object, spec), labels)
   control_value <- x_control
   range_override <- x_range
   if (identical(what, "nec")) {
     record_level_controls <- function(result, values) result
   } else if (identical(x_control, "shared") || is.numeric(x_control)) {
-    lows <- vapply(spec$x, min, numeric(1))
-    control_value <- checked_shared_control(object, x_control, lows)
+    control_value <- checked_shared_control(object, x_control, controls,
+                                            vapply(spec$x, min, numeric(1)))
     controls[] <- as.numeric(control_value)
     if (is.na(x_range[1])) {
       range_override <- c(as.numeric(control_value),
@@ -500,13 +538,16 @@ shared_level_control <- function(fits, dots) {
   choice <- dots$x_control
   if (is.null(choice) || identical(choice, "own")) return(dots)
   if (!identical(choice, "shared") && !is.numeric(choice)) return(dots)
+  controls <- unlist(lapply(fits, function(fit) {
+    spec <- observed_level_spec(fit)
+    if (is.null(spec)) control_x(fit) else observed_level_controls(fit, spec)
+  }), use.names = FALSE)
   lows <- unlist(lapply(fits, function(fit) {
     spec <- observed_level_spec(fit)
-    if (is.null(spec)) control_x(fit) else
-      if (is.null(recorded_x_control(fit))) vapply(spec$x, min, numeric(1))
-      else rep(control_x(fit), length(spec$x))
+    if (is.null(spec)) observed_low_x(fit) else
+      vapply(spec$x, min, numeric(1))
   }), use.names = FALSE)
-  value <- checked_shared_control(fits[[1]], choice, lows)
+  value <- checked_shared_control(fits[[1]], choice, controls, lows)
   dots$x_control <- value
   if (is.null(dots$x_range) || is.na(dots$x_range[1])) {
     highs <- vapply(fits, function(f) level_x_bounds(f)[2], numeric(1))
@@ -524,10 +565,13 @@ model_set_control <- function(object, choice) {
   if (identical(choice, "own")) return(choice)
   if (!identical(choice, "shared") && !is.numeric(choice)) return(choice)
   spec <- observed_level_spec(object)
-  lows <- if (is.null(spec)) control_x(object) else if (
-    is.null(recorded_x_control(object))) vapply(spec$x, min, numeric(1))
-  else rep(control_x(object), length(spec$x))
-  checked_shared_control(object, choice, lows)
+  if (is.null(spec)) {
+    return(checked_shared_control(object, choice, control_x(object),
+                                  observed_low_x(object)))
+  }
+  checked_shared_control(object, choice,
+                         observed_level_controls(object, spec),
+                         vapply(spec$x, min, numeric(1)))
 }
 
 #' Validate one control concentration for several levels
@@ -537,19 +581,22 @@ model_set_control <- function(object, choice) {
 #'
 #' @param object A fit whose formula names the predictor transformation.
 #' @param choice \code{"shared"} or one number.
-#' @param lows The lowest observed concentration of each level.
+#' @param controls The control concentration of each level, from which
+#' \code{"shared"} takes the lowest.
+#' @param lows The lowest observed concentration of each level, which a
+#' control below extrapolates.
 #' @return The control concentration, marked so that it warns once.
 #' @noRd
-checked_shared_control <- function(object, choice, lows) {
+checked_shared_control <- function(object, choice, controls, lows) {
   if (isTRUE(attr(choice, "warned"))) return(choice)
   shared <- identical(choice, "shared")
-  value <- if (shared) min(lows) else choice
+  value <- if (shared) min(controls) else choice
   if (!is.numeric(value) || length(value) != 1L || !is.finite(value)) {
     stop("`x_control` must be \"own\", \"shared\", or one finite number.",
          call. = FALSE)
   }
   check_control_finite(object, value)
-  beyond <- value < lows
+  beyond <- value < lows & !is_recorded_control(object, value)
   if (any(beyond)) {
     warning(if (shared) "The shared control concentration, " else
               "The control concentration, ",

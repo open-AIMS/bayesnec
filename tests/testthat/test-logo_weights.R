@@ -205,6 +205,20 @@ test_that("selected criteria report high k in contributing equations", {
     "1 of 4 observations")
 })
 
+test_that("the k report ends its line before the next message", {
+  l <- structure(list(pointwise = matrix(0, 4, 1),
+                      diagnostics = list(pareto_k = c(0.2, 0.9, 0.3, 0.1))),
+                 group = "cell")
+  out <- utils::capture.output({
+    bayesnec:::report_weight_k(list(ecxlin = l), 1, "observation")
+    message("No observation is at the stated control concentration.")
+  }, type = "message")
+  expect_length(out, 2)
+  expect_match(out[1], "^The leave-one-observation-out score")
+  expect_identical(out[2],
+                   "No observation is at the stated control concentration.")
+})
+
 test_that("selected criteria retain loo's draw-dependent k diagnostic", {
   criterion <- function(k, draws) {
     structure(list(pointwise = matrix(0, 2, 1),

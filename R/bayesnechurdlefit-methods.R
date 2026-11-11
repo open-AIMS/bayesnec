@@ -1057,7 +1057,7 @@ hurdle_raw_data <- function(object, recorded = FALSE) {
 #' @noRd
 hurdle_panel <- function(object, which, resolution, x_range) {
   preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range)
+                                  x_range = x_range, levels = FALSE)
   p <- preds[[which]]
   # On the recorded scale, as preds$x is.
   raw <- hurdle_raw_data(object, recorded = TRUE)

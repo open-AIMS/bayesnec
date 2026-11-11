@@ -66,6 +66,23 @@ test_that("joint fitted curves retain shared posterior rows", {
   expect_equal(ncol(raw$posterior_list$low), 3L)
 })
 
+test_that("a joint fitted comparison starts its grid at the recorded control", {
+  real_grid <- bayesnec:::prediction_grid
+  starts <- numeric(0)
+  local_mocked_bindings(prediction_grid = function(...) {
+    out <- real_grid(...)
+    starts <<- c(starts, min(out$x_seq))
+    out
+  })
+  joint <- joint_split()
+  compare_posterior(joint, comparison = "fitted", resolution = 6, ndraws = 5)
+  expect_equal(starts, rep(min(joint$data$x), 2))
+  starts <- numeric(0)
+  joint$x_control <- 0.01
+  compare_posterior(joint, comparison = "fitted", resolution = 6, ndraws = 5)
+  expect_equal(starts, c(0.01, 0.01))
+})
+
 test_that("paired joint differences retain positive covariance", {
   joint <- structure(list(levels = c("a", "b"), model = "nec4param"),
                      class = "bayesnecjointfit")

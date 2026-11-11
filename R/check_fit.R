@@ -250,7 +250,8 @@ check_fit_groups <- function(predictor, group = NULL) {
 #'
 #' @param predictor The observed predictor values.
 #' @param grp Their diagnostic groups.
-#' @param x_control A recorded explicit control, or \code{NULL}.
+#' @param x_control A recorded explicit control on the scale of
+#' \code{predictor}, or \code{NULL}.
 #' @return Character group labels. Empty when an explicit control was absent.
 #' @noRd
 check_fit_control_groups <- function(predictor, grp, x_control = NULL) {
@@ -810,7 +811,11 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
     })
   })
   cens <- hurdle_exposed_cens(gb, y_obs)
-  ctrl <- check_fit_control_groups(predictor, grp, recorded_x_control(x))
+  # `predictor` comes from the model frame, on the fitted scale.
+  ctrl <- check_fit_control_groups(
+    predictor, grp,
+    fitted_x_control(recorded_x_control(x), s_fits[[1]]$bayesnecformula)
+  )
   pairs <- expand.grid(growth = names(g_fits), survival = names(s_fits),
                        stringsAsFactors = FALSE)
   methods <- unique(unlist(lapply(list(x$growth, x$survival),

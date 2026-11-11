@@ -38,16 +38,18 @@ when every supplied column was used by the fit.}
 
 \item{\code{pred_vals}}{A \code{\link[base]{list}} with \code{data}, a
 \code{\link[base]{data.frame}} of summary posterior predicted values over
-a grid set by \code{resolution} and \code{x_range}, and a flag
-\code{observed_levels} recording whether spanning group terms were read.
+a grid set by \code{resolution} and \code{x_range}. Where a group term
+spans concentrations, the summaries describe the population curve, and the
+flags \code{observed_levels} and \code{band = "population"} record that
+the no-effect summaries read the observed levels and the band does not.
 Up to and including version 2.1.3.6 it also held \code{posterior}, the full
 \code{n_draws x resolution} matrix those summaries came from. That matrix
 dominated the size of a fitted object and is no longer stored; it is
 recomputed from \code{fit} where it is needed. To obtain it directly, use
 \code{posterior_epred(x, newdata = bnec_newdata(x, resolution = 1000),
-re_formula = NA)} where no group term spans concentrations. A fit saved
-before observed-level curves were stored retains its earlier values and
-gives a warning when they are displayed.}
+re_formula = NA)}. A fit saved by an earlier development version without
+both flags retains its earlier values and gives a warning when they are
+displayed.}
 
 \item{\code{top}}{The estimate for parameter "top" in the fitted model.}
 

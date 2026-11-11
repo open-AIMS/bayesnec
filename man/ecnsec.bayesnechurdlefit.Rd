@@ -68,9 +68,10 @@ terms default to \code{"mixture"}.}
 its lowest observed concentration for an older fit or one fitted without
 \code{x_control}. \code{"shared"} reads the lowest control across levels;
 a single finite number specifies
-the concentration directly. A shared control below a level's observations
-extrapolates its curve and gives a warning. Level controls are recorded in
-the result's \code{x_control} attribute.}
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
 
 \item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
 A single finite number extends the upper end; two finite numbers may

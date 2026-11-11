@@ -423,7 +423,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   }
   if (any(needs_fit)) {
     check_control_top_prior(bdat, family, model_set[needs_fit], fit_prior,
-                            prior_type, x_control,
+                            prior_type, x_control, formula,
                             model_survival = call_args$model_survival)
   }
   # Carry existing fits over here, in the parent. Returned from a worker, each

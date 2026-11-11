@@ -266,19 +266,6 @@ bnec_group <- function(formula, data, group_var, family = NULL,
       check_model_survival(dots_arg(dots, "model_survival"), family, mod_dat)
     )
     stated_control <- dots_arg(dots, "x_control")
-    if (is.numeric(stated_control) && length(stated_control) == 1L &&
-        is.finite(stated_control)) {
-      lows <- vapply(levs, function(level) min(retrieve_var(
-        mod_dat[grp == level, , drop = FALSE], "x_var", error = TRUE
-      )), numeric(1))
-      if (any(stated_control < lows)) {
-        message("The control at ", signif(stated_control, 3),
-                " is below the lowest observed concentration in ",
-                sum(stated_control < lows), " group level(s); those curves",
-                " are extrapolated from control to the data.")
-      }
-      dots[[".bayesnec_control_checked"]] <- TRUE
-    }
     for (level in levs) {
       level_frame <- mod_dat[grp == level, , drop = FALSE]
       attr(level_frame, "bnec_pop") <- attr(mod_dat, "bnec_pop")
@@ -289,8 +276,21 @@ bnec_group <- function(formula, data, group_var, family = NULL,
       check_control_top_prior(
         level_frame, family, level_models[[level]], dots_arg(dots, "prior"),
         dots_arg(dots, "prior_type", "uninformative"), stated_control,
-        level_survival
+        formula, model_survival = level_survival
       )
+    }
+    if (!is.null(stated_control)) {
+      at <- fitted_x_control(stated_control, formula)
+      lows <- vapply(levs, function(level) min(retrieve_var(
+        mod_dat[grp == level, , drop = FALSE], "x_var", error = TRUE
+      )), numeric(1))
+      if (any(at < lows)) {
+        message("The control at ", signif(stated_control, 3),
+                " is below the lowest observed concentration in ",
+                sum(at < lows), " group level(s); those curves",
+                " are extrapolated from the control to the data.")
+      }
+      dots[[".bayesnec_control_checked"]] <- TRUE
     }
     sensitive_blocks <- lapply(level_models, function(models) {
       uses_response_range_defaults(dots_arg(dots, "prior"), models, family,
@@ -304,7 +304,7 @@ bnec_group <- function(formula, data, group_var, family = NULL,
         }),
         pool_dispersion = is.null(parse_disp_term(formula)),
         asymptote_observed = declared,
-        x_control = stated_control
+        x_control = fitted_x_control(stated_control, formula)
       )
     }
     # The union of the per-level sets: every equation some level will fit.

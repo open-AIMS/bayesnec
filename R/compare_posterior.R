@@ -185,10 +185,10 @@ compare_posterior.bayesnecgroupfit <- function(x, ...) {
 #' level independently, in proportion to its counts within the shared value.
 #'
 #' With \code{comparison = "fitted"}, every level is predicted over one grid
-#' spanning the levels' combined range, or at the rows of \code{newdata}, as
-#' the band of \code{\link{autoplot}} predicts it: at the observed group levels
-#' where a group term spans concentrations, and on the population curve
-#' otherwise. Only \code{newdata}, \code{ndraws} and \code{draw_ids} are
+#' spanning the levels' combined range, or at the rows of \code{newdata}: at
+#' the observed group levels where a group term spans concentrations, as
+#' \code{\link{ecx}} reads them, and on the population curve otherwise. The
+#' band of \code{\link{autoplot}} is the population curve in both cases. Only \code{newdata}, \code{ndraws} and \code{draw_ids} are
 #' taken through \code{...}, and \code{make_newdata = FALSE} requires
 #' \code{newdata}. \code{seed} changes the result only where \code{ndraws}
 #' selects the draws.
@@ -275,8 +275,8 @@ compare_posterior.bayesnecjointfit <- function(x, comparison = "n(s)ec",
 
 #' Fitted-curve contrasts from one joint posterior
 #'
-#' Each level is predicted as \code{joint_level_curve()} predicts the band,
-#' at the same draws for every level.
+#' Each level is predicted at its observed group levels, as \code{ecx()}
+#' reads them, at the same draws for every level.
 #'
 #' @param x A joint refit.
 #' @param resolution,x_range,make_newdata,seed,... See
@@ -304,11 +304,14 @@ compare_joint_fitted <- function(x, resolution, x_range, make_newdata,
          " hold the rows of every level. Supply `newdata` with the predictor",
          " values at which to compare the levels.", call. = FALSE)
   }
+  stated <- recorded_x_control(x)
   if (is.na(x_range[1])) {
     values <- unlist(lapply(x$levels, function(level) {
       joint_level_x(x, level)
     }))
-    if (length(values)) x_range <- range(values)
+    if (length(values)) {
+      x_range <- c(if (is.null(stated)) min(values) else stated, max(values))
+    }
   }
   n <- brms::ndraws(x$fit)
   keep <- if (!is.null(dots$draw_ids)) {
@@ -332,7 +335,7 @@ compare_joint_fitted <- function(x, resolution, x_range, make_newdata,
     } else {
       grid <- prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
                               resolution = resolution,
-                              level_spec = level_spec)
+                              level_spec = level_spec, x_control = stated)
       nd <- grid$newdata
       x_vec <<- grid$x_seq
     }

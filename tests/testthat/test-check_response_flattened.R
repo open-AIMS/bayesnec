@@ -1071,3 +1071,17 @@ test_that("the report rate on a flat top is near the stated alpha", {
   }
   expect_gt(rate(declining_block, TRUE), 0.5)
 })
+
+test_that("a non-finite control level is not replaced by the lowest finite one", {
+  d <- data.frame(x = rep(c(0, 1, 2, 4), each = 4), y = declining_y)
+  bdat <- flat_bdat(y ~ crf(log(x), "nec3param"), d)
+  msg <- paste(capture_messages(
+    check_response_flattened(bdat, gaussian(link = "identity"))
+  ), collapse = "")
+  expect_match(msg, still_declining)
+  expect_match(msg, "control-relative percentage is unavailable", fixed = TRUE)
+  expect_match(msg, "is not finite", fixed = TRUE)
+  expect_false(grepl("of the control mean", msg, fixed = TRUE))
+  # The advice is kept although the lowest finite level is far above the top.
+  expect_match(msg, "default nec and ec50 priors", fixed = TRUE)
+})

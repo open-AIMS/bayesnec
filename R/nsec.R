@@ -29,9 +29,10 @@
 #' its lowest observed concentration for an older fit or one fitted without
 #' \code{x_control}. `"shared"` reads the lowest control across levels;
 #' a single finite number specifies
-#' the concentration directly. A shared control below a level's observations
-#' extrapolates its curve and gives a warning. Level controls are recorded in
-#' the result's \code{x_control} attribute.
+#' the concentration directly. A control below a level's observations
+#' extrapolates its curve, and gives a warning unless it is the control
+#' recorded at fitting. Level controls are recorded in the result's
+#' \code{x_control} attribute.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
@@ -80,11 +81,13 @@
 #' contrasted draw by draw, as \code{\link{compare_posterior}} does.
 #' 
 #' The reference is the \code{sig_val} quantile of the control posterior,
-#' the control being the predicted mean at the lowest concentration in the
-#' supplied predictor. That holds for every equation, hormetic ones included:
-#' the \code{hormesis_def} argument selected between the control and the
-#' maximum of the predicted curve and has been removed, because a target
-#' below the control is crossed exactly once whatever the curve does above it.
+#' the control being the predicted mean at the control concentration: the
+#' \code{x_control} stated in \code{\link{bnec}}, or else the lowest
+#' concentration in the supplied predictor. That holds for every equation,
+#' hormetic ones included: the \code{hormesis_def} argument selected between
+#' the control and the maximum of the predicted curve and has been removed,
+#' because a target below the control is crossed exactly once whatever the
+#' curve does above it.
 #' For a hormesis threshold equation, \code{\link{nec}} uses this NSEC as its
 #' no-effect estimate. Its \code{nec} parameter, the concentration at which
 #' the decline term starts, remains available through
@@ -112,10 +115,11 @@
 #' The crossing is sought at or above the control, so extending \code{x_range}
 #' below the data does not place an estimate below any tested concentration.
 #'
-#' Two limits on that. The value is the lowest \emph{observed} concentration,
-#' where Fisher and Fox (2023) report zero concentration, which they reach by
-#' extrapolating the fitted curve below the data. The two agree where the control
-#' of the design is a true zero and the predictor is untransformed; otherwise the
+#' Two limits on that. The value is the control concentration, which is the
+#' lowest \emph{observed} concentration unless \code{\link{bnec}} was given
+#' \code{x_control}. Fisher and Fox (2023) report zero concentration, which
+#' they reach by extrapolating the fitted curve below the data. The two agree
+#' where the control is 0 and the predictor is untransformed; otherwise the
 #' bound reported here is the control rather than the 0 of their Table 3. And
 #' it applies where the prediction grid begins at the control. Where
 #' \code{x_range} begins at a higher concentration, a draw already at or below
@@ -325,8 +329,8 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   )
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
-  # Read the control at the lowest observed concentration, not the first grid
-  # column, so that x_range does not change the reference.
+  # Read the control at the control concentration, not the first grid column,
+  # so that x_range does not change the reference.
   control <- control_posterior(object, newdata_list$newdata, epred_fun,
                                x_at = control_reading$value)
   reference <- quantile(control, sig_val)
