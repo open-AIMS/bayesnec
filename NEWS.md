@@ -1,9 +1,13 @@
 # bayesnec 2.2.0
 
 - `ecx()` and `ecnsec()` now accept finite `extrapolate` limits, as `nsec()`
-  does. `ecnsec()` can read an NSEC inside the same extension. All three
-  estimators retain the original prediction grid and append extension points,
-  including for model sets, observed level curves and hurdle fits (#589).
+  does, and `ecnsec()` can read an NSEC inside the same extension. All three
+  estimators keep the original prediction grid and append points beyond it at
+  the same spacing, including for model sets, observed level curves and hurdle
+  fits, so an estimate found inside the data is unchanged by a limit beyond it.
+  For `type = "range"` the lowest response is taken over the unextended range.
+  The ECx search begins at the control, as the NSEC search does, and each
+  observed level of a group term is extended from its own control (#589).
 
 - `bnec(x_control = ...)` now records a stated control concentration for
   priors, prediction grids, stored no-effect estimates, estimator defaults,
@@ -677,8 +681,8 @@
   on the default `bnec()` model set, which fits equations of both classes,
   `TRUE` is an error naming the finite form. A finite limit applies to that set,
   releasing the threshold components by comparison and re-evaluating the
-  curve-read ones on a grid extended to the limit, through the `x_range`
-  argument `nsec()` already takes, which needs no refit.
+  curve-read ones on the stored grid with points appended out to the limit,
+  which needs no refit.
 
   A limit inside the current range is an error rather than a silent tightening;
   narrow the range with `x_range`. The range a limit is measured against is the
@@ -696,8 +700,8 @@
   stored on the fit is itself bounded, a message names that bound, because the
   posterior holds no draw beyond it and a wider limit returns the same
   truncated posterior. And a curve-read component is measured from the control,
-  so a lower limit below the lowest observed concentration extends the grid
-  without extending the search.
+  so a lower limit below the control concentration does not extend its search,
+  and a message states that the search begins at the control.
 
 - `compare_estimates()` and `compare_posterior()` now compare a censored draw
   through its censoring record instead of deleting it. For many pairs the

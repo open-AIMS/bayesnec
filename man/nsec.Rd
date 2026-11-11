@@ -243,9 +243,12 @@ the fit is. An NSEC is the concentration at which a fitted curve reaches a
 reference, so reading one means evaluating that curve on a grid, and no grid
 reaches infinity. Name a finite limit instead.
 
-A finite limit appends grid points where the curve is searched and then censors
-there, so \code{extrapolate} does through a checked argument what
-\code{x_range} does through an unchecked one: a limit inside the current
+A finite limit appends points to the grid the curve is searched on, at the
+grid's own spacing, and then censors there. The points of the unextended
+grid are kept, so an estimate inside the data is read off the same points
+as without \code{extrapolate}. Widening \code{x_range} to the same limit
+instead spreads \code{resolution} points over the wider range, so its grid
+is coarser and its estimates can differ slightly. A limit inside the current
 range is an error rather than a silent tightening, because it would report
 an estimate as censored at a value the fit had no trouble identifying. Use
 \code{x_range} to narrow the range.
@@ -260,13 +263,14 @@ would report the estimate as censored inside the grid the fit was built on,
 so both have to be cleared. \code{\link{nec}} measures against that stored
 grid alone, having no \code{x_range} of its own, so the two agree on a fit
 whose grid reaches beyond the data and can differ on one whose grid stops
-short of it.
+short of it. For each observed level of a group term the range is that
+level's own, from its control to its highest concentration.
 
-A lower limit extends the grid but not the search. The reference is a
-quantile of the control posterior, so the control is where the search
+A lower limit below the control does not extend the search. The reference
+is a quantile of the control posterior, so the control is where the search
 begins, and a draw already past the reference there has no identifiable
 crossing at any lower concentration. Such a limit is accepted, and a message
-states that the estimate stays censored at the control.
+states that the search begins at the control.
 }
 
 \examples{

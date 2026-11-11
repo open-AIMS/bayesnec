@@ -70,7 +70,9 @@ recorded at fitting. Level controls are recorded in the result's
 \item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
 A single finite number extends the upper end; two finite numbers may
 extend both ends. The original grid points are retained. Limits are on
-the recorded predictor scale. \code{TRUE} and narrowing limits are refused.}
+the recorded predictor scale. \code{TRUE} and narrowing limits are refused.
+For \code{type = "range"} the lowest response is taken over the prediction
+range before it is extended.}
 }
 \value{
 A vector containing the estimated ECNSEC value, including upper and
