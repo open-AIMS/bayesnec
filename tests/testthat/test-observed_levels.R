@@ -482,3 +482,24 @@ test_that("pooled observed-level ECx retains the value used by plot labels", {
   expect_equal(plotted$ecx_int[4], 10)
   expect_equal(attr(estimate, "resolution"), 20)
 })
+
+test_that("pull_equation does not repeat a set's exact leave-one-out refits", {
+  set <- with_expand_record(
+    manec_example,
+    expand_record(fitting = list(reloo = TRUE), leave_out = "observation")
+  )
+  seen <- NULL
+  local_mocked_bindings(
+    expand_manec = function(..., loo_controls) {
+      seen <<- loo_controls
+      stop("expand_manec reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(bayesnec:::pull_equation(set, "ecx4param"),
+               "expand_manec reached")
+  expect_null(seen$fitting$reloo)
+  # pull_out() itself keeps the recorded controls.
+  expect_error(pull_out(set, model = "ecx4param"), "expand_manec reached")
+  expect_true(seen$fitting$reloo)
+})
