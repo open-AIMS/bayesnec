@@ -254,6 +254,24 @@ test_that("a finite limit extends both halves of a mixed set", {
   expect_length(as.numeric(post), length(m$w_ne_posterior))
 })
 
+test_that("nec() on a mixed set reports a lower limit once", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  m <- truncated_manec_fit()
+  notes <- character()
+  withCallingHandlers(
+    suppressWarnings(nec(m, extrapolate = c(0.016, 3))),
+    message = function(msg) {
+      if (grepl("cannot begin below", conditionMessage(msg))) {
+        notes <<- c(notes, conditionMessage(msg))
+      }
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_length(notes, 1L)
+})
+
 test_that("a limit inside the stored grid is refused on a fit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

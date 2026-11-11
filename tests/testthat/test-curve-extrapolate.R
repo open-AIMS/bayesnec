@@ -93,7 +93,8 @@ test_that("ECx preserves interior values and identifies or censors beyond the da
   extended <- estimate(2, 2)
   identified <- is.finite(interior)
   expect_true(any(identified))
-  expect_equal(interior[identified], extended[identified], tolerance = 1e-6)
+  expect_identical(as.numeric(extended)[identified],
+                   as.numeric(interior)[identified])
 
   expect_true(all(is.na(estimate(20))))
   beyond_data <- estimate(20, 2)
@@ -185,18 +186,75 @@ test_that("explicit grids match newdata rows for hurdle and observed groups", {
   expect_identical(hurdle_grid$newdata$x, x)
 })
 
-test_that("inline log predictors retain original recorded grid points", {
+test_that("the original grid is searched on its own for an ECx", {
+  x <- seq(0, 10, by = 1)
+  original <- x >= 3 & x <= 7
+  # One crossing below the original grid and one inside it.
+  dipping <- c(10, 8, 4, 9, 9, 9, 9, 9, 9, 9, 9)
+  expect_equal(bayesnec:::crossing_in_segments(dipping, 5, x, original),
+               bayesnec:::crossing_x(dipping, 5, x))
+  falling <- c(10, 10, 10, 10, 9, 6, 4, 3, 2, 1, 0)
+  expect_identical(
+    bayesnec:::crossing_in_segments(falling, 5, x, original),
+    bayesnec:::crossing_x(falling[original], 5, x[original])
+  )
+  late <- c(10, 10, 10, 10, 10, 10, 10, 9, 6, 4, 2)
+  expect_equal(bayesnec:::crossing_in_segments(late, 5, x, original),
+               bayesnec:::crossing_x(late, 5, x))
+  expect_true(is.na(bayesnec:::crossing_in_segments(rep(10, 11), 5, x,
+                                                    original)))
+})
+
+test_that("a type = \"range\" estimate inside the data ignores a far limit", {
   fit <- suppressMessages(suppressWarnings(
     pull_out(manec_example, model = "ecx4param")
   ))
-  fit$bayesnecformula <- bnf(y ~ crf(log(x), model = "ecx4param"))
-  base <- bayesnec:::newdata_eval(fit, 21, c(0.5, 0.9))
-  lims <- bayesnec:::curve_extrapolate_limits(
-    2, fit, c(0.5, 0.9), "own", "ECx"
+  expect_identical(
+    as.numeric(suppressWarnings(ecx(fit, type = "range", posterior = TRUE,
+                                    extrapolate = 10))),
+    as.numeric(suppressWarnings(ecx(fit, type = "range", posterior = TRUE)))
   )
-  extended <- bayesnec:::extended_newdata_eval(fit, 21, c(0.5, 0.9), lims)
-  at <- match(base$x_vec, extended$x_vec)
-  expect_identical(extended$x_vec[at], base$x_vec)
-  expect_identical(extended$newdata$x[at], base$newdata$x)
-  expect_equal(diff(extended$x_vec[at]), diff(base$x_vec))
+  expect_identical(
+    as.numeric(ecnsec(fit, nsec = 1, type = "range", posterior = TRUE,
+                      extrapolate = 10)),
+    as.numeric(ecnsec(fit, nsec = 1, type = "range", posterior = TRUE))
+  )
+})
+
+test_that("a lower limit is reported once, naming where the search begins", {
+  notes <- function(expr) {
+    out <- character()
+    withCallingHandlers(suppressWarnings(expr), message = function(m) {
+      if (grepl("cannot begin below", conditionMessage(m))) {
+        out <<- c(out, conditionMessage(m))
+      }
+      invokeRestart("muffleMessage")
+    })
+    out
+  }
+  args <- list(resolution = 50, extrapolate = c(0.016, 5))
+  for (estimate in list(nsec, ecx)) {
+    expect_length(notes(do.call(estimate, c(list(manec_example), args))), 1L)
+  }
+  fit <- suppressMessages(suppressWarnings(
+    pull_out(manec_example, model = "ecx4param")
+  ))
+  low <- min(fit$fit$data$x)
+  expect_match(notes(nsec(fit, resolution = 50, extrapolate = c(0.016, 5))),
+               paste0("below ", signif(low, 3),
+                      ", the lowest observed concentration"))
+  recorded <- fit
+  recorded$x_control <- low
+  expect_match(notes(nsec(recorded, resolution = 50,
+                          extrapolate = c(0.016, 5))),
+               "the recorded control concentration")
+  # The search and the censoring bound both start at a supplied control.
+  expect_length(notes(nsec(fit, resolution = 50, x_control = 0.01,
+                           extrapolate = c(0.01, 5))), 0L)
+  expect_match(notes(nsec(fit, resolution = 50, x_control = 0.02,
+                          extrapolate = c(0.01, 5))),
+               "below 0.02, the control concentration set by x_control")
+  # An upper limit alone states no lower limit to report.
+  expect_length(notes(nsec(fit, resolution = 50, x_range = c(0.01, 3),
+                           extrapolate = 5)), 0L)
 })

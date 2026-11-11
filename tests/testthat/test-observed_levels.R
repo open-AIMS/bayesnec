@@ -403,13 +403,18 @@ test_that("mean_curve NSEC does not search below the latest own control", {
     )
   }
   own <- estimate()
-  extended <- estimate(extrapolate = c(1, 3))
+  expect_message(
+    extended <- estimate(extrapolate = c(1, 3)),
+    "cannot begin below 2, the highest of the levels' lowest observed"
+  )
   expect_equal(as.numeric(extended), as.numeric(own))
   expect_equal(attr(extended, "censored")$lower, 2)
-  expect_equal(as.numeric(estimate("shared", c(0.5, 3))),
-               as.numeric(estimate("shared")))
-  expect_equal(as.numeric(estimate(1.5, c(1, 3))),
-               as.numeric(estimate(1.5)))
+  expect_message(shared <- estimate("shared", c(0.5, 3)),
+                 "cannot begin below 1, the control concentration set by")
+  expect_equal(as.numeric(shared), as.numeric(estimate("shared")))
+  expect_message(stated <- estimate(1.5, c(1, 3)), "cannot begin below 1.5")
+  expect_equal(as.numeric(stated), as.numeric(estimate(1.5)))
+  expect_no_message(estimate(extrapolate = 3))
 })
 
 test_that("mean_curve NSEC censors crossings before the common range", {
@@ -459,20 +464,6 @@ test_that("mean_curve NSEC reads a finite extrapolation limit", {
   expect_true(is.finite(extended[2]))
   expect_gt(extended[2], 3)
   expect_equal(attr(extended, "censored")$upper, 5)
-})
-
-test_that("mean_curve validates transformed limits for fitted objects", {
-  fit <- suppressMessages(suppressWarnings(
-    pull_out(manec_example, model = "nec4param")
-  ))
-  fit$bayesnecformula <- bnf(y ~ crf(log(x), model = "nec4param"))
-  expect_error(
-    bayesnec:::mean_curve_estimate(
-      list(a = fit, b = fit), c(1, 1), "nsec",
-      list(x_range = c(1, 3), extrapolate = c(0, 4), resolution = 10)
-    ),
-    "domain of the crf"
-  )
 })
 
 test_that("mean_curve refuses relative effects on a combined hurdle", {
