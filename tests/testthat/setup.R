@@ -197,6 +197,16 @@ expanded_ecx4param <- function(record) {
 
 # Prior-bound records. Move draws or a stored prior bound without refitting;
 # the counts test the report, not a posterior a sampler would produce.
+near_bound_fit <- function(n_near, side = "upper", fit = nec4param,
+                           n = 100) {
+  bounds <- bayesnec:::ne_prior_bounds(fit$fit)
+  span <- bounds$ub - bounds$lb
+  edge <- if (side == "upper") bounds$ub - 0.01 * span else
+    bounds$lb + 0.01 * span
+  fit$ne_posterior <- c(rep(bounds$lb + 0.5 * span, n - n_near),
+                        rep(edge, n_near))
+  fit
+}
 
 # Set the upper bound of a parameter's stored prior just above its largest
 # draw, so that its highest draws lie within the outer 5% of the range.
