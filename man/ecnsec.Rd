@@ -15,7 +15,8 @@ ecnsec(
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
   pool = NULL,
-  x_control = "own"
+  x_control = "own",
+  extrapolate = FALSE
 )
 }
 \arguments{
@@ -65,6 +66,13 @@ the concentration directly. A control below a level's observations
 extrapolates its curve, and gives a warning unless it is the control
 recorded at fitting. Level controls are recorded in the result's
 \code{x_control} attribute.}
+
+\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
+A single finite number extends the upper end; two finite numbers may
+extend both ends. The original grid points are retained. Limits are on
+the recorded predictor scale. \code{TRUE} and narrowing limits are refused.
+For \code{type = "range"} the lowest response is taken over the prediction
+range before it is extended.}
 }
 \value{
 A vector containing the estimated ECNSEC value, including upper and
@@ -135,7 +143,8 @@ over: the observed range of the predictor, or \code{x_range} where one is
 supplied. An \code{nsec} outside that range once \code{xform} has been
 applied is refused with a message naming the range, rather than read off
 the curve extended past the data without a message. Supply an
-\code{x_range} that includes \code{nsec} to read the curve there. On a
+\code{x_range} or finite \code{extrapolate} that includes \code{nsec} to
+read the curve there. On a
 \code{\link{bayesnecjointfit}} each level is read over its own observed
 range, and the message names the level that refused \code{nsec}.
 }

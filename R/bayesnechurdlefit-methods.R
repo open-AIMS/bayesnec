@@ -305,24 +305,23 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
       return(result)
     }
   }
-  # As in nsec.bayesnecfit(), extrapolate sets the searched grid. It is
-  # measured against the whole concentration series.
-  lims <- extrapolate_limits(extrapolate,
-                             searched_or_stored_bounds(object, x_range),
-                             "NSEC")
-  if (!is.null(lims)) {
-    report_curve_read_lower_limit(object, lims)
-    x_range <- c(lims$lower, lims$upper)
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "NSEC")
+  at <- curve_search_start(object, x_control)
+  report_curve_read_lower_limit(extrapolate, lims, at,
+                                curve_start_label(object, x_control))
+  preds <- if (is.null(lims)) {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control)
+  } else {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control,
+                           grid_limits = lims)
   }
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range,
-                                  x_control = x_control)
   p_samples <- preds[[which]]
   # The control is read at the control concentration, not the first grid
   # column, so x_range does not change the reference.
   reference <- quantile(preds$control[[which]], sig_val)
-  at <- if (is.numeric(x_control)) as.numeric(x_control) else
-    control_x(object)
   out <- nsec_from_posterior(p_samples, reference, preds$x, at,
                              preds$control[[which]])
   below <- attr(out, "below_range")
@@ -1493,7 +1492,8 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
                                      type = "absolute", xform = NULL,
                                      prob_vals = c(0.5, 0.025, 0.975), ...,
                                      posterior = FALSE, which = "combined",
-                                     pool = NULL, x_control = "own") {
+                                     pool = NULL, x_control = "own",
+                                     extrapolate = FALSE) {
   which <- hurdle_check_which(which)
   check_removed_args(list(...))
   # One value: the curve is interpolated at one point.
@@ -1535,11 +1535,13 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
         object, spec, "ecnsec",
         function(level, control_value, range_override) {
           ecnsec(level, nsec = nsec, resolution = resolution,
-                 x_range = range_override, type = type, xform = xform,
+                 x_range = range_override, extrapolate = extrapolate,
+                 type = type, xform = xform,
                  prob_vals = prob_vals, posterior = TRUE, which = which,
                  pool = "none", x_control = control_value)
         }, pool, posterior, prob_vals, x_control, x_range,
         curve_args = list(nsec = nsec, resolution = resolution,
+                          extrapolate = extrapolate,
                           type = type, xform = xform, prob_vals = prob_vals,
                           which = which)
       )
@@ -1548,10 +1550,17 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
     }
   }
   nsec_use <- xform(nsec)
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "ECNSEC")
   # The grid ecx() and nsec() read, so that all three read one curve.
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range,
-                                  x_control = x_control)
+  preds <- if (is.null(lims)) {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control)
+  } else {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control,
+                           grid_limits = lims)
+  }
   # Check nsec against the grid the curve was predicted over, so that the range
   # refused and the range read cannot differ.
   check_ecnsec_range(object, nsec, nsec_use, range(preds$x), x_range, xform,
@@ -1560,9 +1569,12 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
   # The percentage effect at nsec, against the reference ecx() uses for the
   # same type, with the control at the control concentration.
   control <- preds$control[[which]]
-  floor_draws <- switch(type,
-                        absolute = 0,
-                        range = apply(p_samples, 1, min, na.rm = TRUE))
+  original <- if (is.null(preds$original)) TRUE else preds$original
+  floor_draws <- switch(
+    type,
+    absolute = 0,
+    range = apply(p_samples[, original, drop = FALSE], 1, min, na.rm = TRUE)
+  )
   at_nsec <- curve_draws_at(p_samples, preds$x, nsec_use)
   out <- (control - at_nsec) / (control - floor_draws) * 100
   estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)

@@ -61,6 +61,30 @@ hurdle_fit_cache <- local({
   }
 })
 
+# A hormesis equation with plates p1 and p2 tested from 1 and p3 from 2.
+# Below each level's control the curve lies under its ECx target.
+hormesis_fit_cache <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      set.seed(592)
+      d <- expand.grid(x = c(1, 2, 4, 6, 8, 12, 16),
+                       plate = paste0("p", 1:3), replicate = 1:2)
+      d <- d[!(d$plate == "p3" & d$x == 1), , drop = FALSE]
+      gain <- c(p1 = 0.9, p2 = 1, p3 = 1.1)[as.character(d$plate)]
+      d$plate <- as.character(d$plate)
+      d$y <- gain * (10 + 2 * d$x) * exp(-0.25 * pmax(d$x - 4, 0)) +
+        stats::rnorm(nrow(d), 0, 0.7)
+      cached <<- suppressWarnings(suppressMessages(bnec(
+        y ~ crf(x, "nechorme") + ogl(plate), data = d, family = "gaussian",
+        iter = 500, warmup = 250, chains = 2, seed = 5922, refresh = 0,
+        resolution = 40
+      )))
+    }
+    cached
+  }
+})
+
 joint_fit_cache <- local({
   cached <- NULL
   function() {
@@ -497,4 +521,122 @@ test_that("a joint refit reads its spanning group levels", {
     re_formula = spec$re_formula, transform = TRUE
   )[, 1]
   expect_equal(as.numeric(level$ne_posterior), as.numeric(pmin(mu, hu)))
+})
+
+lower_limit_notes <- function(expr) {
+  notes <- character()
+  value <- withCallingHandlers(
+    suppressWarnings(expr),
+    message = function(m) {
+      if (grepl("cannot begin below", conditionMessage(m))) {
+        notes <<- c(notes, conditionMessage(m))
+      }
+      invokeRestart("muffleMessage")
+    }
+  )
+  list(value = value, notes = notes)
+}
+
+test_that("an ECx inside the data is unchanged by a limit beyond it", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- hormesis_fit_cache()
+  read <- function(...) {
+    lower_limit_notes(ecx(fit, posterior = TRUE, resolution = 50, ...))
+  }
+  base <- read(pool = "none")$value
+  # A pair reaching below every control, and an upper limit alone, which
+  # extended plate p3 below its own control at 2.
+  pair <- read(pool = "none", extrapolate = c(0.1, 30))
+  upper <- read(pool = "none", extrapolate = 30)
+  for (level in names(base)) {
+    expect_identical(as.numeric(pair$value[[level]]),
+                     as.numeric(base[[level]]))
+    expect_identical(as.numeric(upper$value[[level]]),
+                     as.numeric(base[[level]]))
+  }
+  expect_true(all(is.finite(base[["plate=p3"]])))
+  expect_length(upper$notes, 0L)
+  expect_length(pair$notes, 2L)
+  expect_match(pair$notes, "lowest observed concentration", all = TRUE)
+  ranged <- read(pool = "none", type = "range")$value
+  ranged_far <- read(pool = "none", type = "range", extrapolate = 30)$value
+  expect_identical(as.numeric(ranged_far[["plate=p3"]]),
+                   as.numeric(ranged[["plate=p3"]]))
+  mixed <- read(extrapolate = c(0.1, 30))
+  expect_identical(as.numeric(mixed$value), as.numeric(read()$value))
+  expect_length(mixed$notes, 2L)
+  curve <- read(pool = "mean_curve", extrapolate = c(0.1, 30))
+  expect_identical(as.numeric(curve$value),
+                   as.numeric(read(pool = "mean_curve")$value))
+  expect_length(curve$notes, 1L)
+  expect_match(curve$notes, "highest of the levels' lowest observed")
+})
+
+test_that("a level is extended from its own control", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- hormesis_fit_cache()
+  upper <- lower_limit_notes(nsec(fit, pool = "none", posterior = TRUE,
+                                  resolution = 50, extrapolate = 30))
+  expect_length(upper$notes, 0L)
+  expect_equal(attr(upper$value[["plate=p3"]], "censored")$lower, 2)
+  pooled <- lower_limit_notes(nsec(fit, pool = "mean_curve", resolution = 50,
+                                   extrapolate = c(0.1, 30)))
+  expect_length(pooled$notes, 1L)
+  expect_match(pooled$notes, "cannot begin below 2,")
+  expect_equal(as.numeric(pooled$value),
+               as.numeric(suppressMessages(nsec(fit, pool = "mean_curve",
+                                                resolution = 50))))
+  necs <- lower_limit_notes(nec(fit, pool = "none", extrapolate = 30))
+  expect_length(necs$notes, 0L)
+
+  set <- observed_fit_cache()
+  set_upper <- lower_limit_notes(nsec(set, resolution = 30, extrapolate = 5))
+  expect_length(set_upper$notes, 0L)
+  # Plates p1 and p2 start at 0.05 and p3 at 0.15: one note for each control,
+  # not one for each equation.
+  set_pair <- lower_limit_notes(nsec(set, resolution = 30,
+                                     extrapolate = c(0.01, 5)))
+  expect_length(set_pair$notes, 2L)
+
+  hurdle <- hurdle_fit_cache()
+  for (estimate in list(nsec, ecx)) {
+    out <- lower_limit_notes(estimate(hurdle, pool = "none", resolution = 25,
+                                      posterior = TRUE, extrapolate = 6))
+    expect_length(out$notes, 0L)
+  }
+  hurdle_nsec <- lower_limit_notes(nsec(hurdle, pool = "none", resolution = 25,
+                                        posterior = TRUE, extrapolate = 6))
+  expect_equal(attr(hurdle_nsec$value[["plate=p3"]], "censored")$lower, 0.15)
+})
+
+test_that("limits on a crf(log(x)) fit are checked on the recorded scale", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- logged_fit_cache()
+  spec <- bayesnec:::observed_level_spec(fit)
+  level <- bayesnec:::observed_level_fit(fit, spec, 1)
+  base <- bayesnec:::newdata_eval(level, 21, NA)
+  lims <- bayesnec:::curve_extrapolate_limits(10, level, NA, "own", "ECx")
+  extended <- bayesnec:::extended_newdata_eval(level, 21, NA, lims)
+  at <- match(base$x_vec, extended$x_vec)
+  expect_identical(extended$x_vec[at], base$x_vec)
+  expect_identical(extended$newdata$x[at], base$newdata$x)
+  expect_true(all(extended$original[at]))
+  expect_equal(max(extended$x_vec), 10)
+  inside <- suppressMessages(ecx(fit, pool = "none", posterior = TRUE,
+                                 resolution = 30))
+  beyond <- suppressWarnings(suppressMessages(ecx(
+    fit, pool = "none", posterior = TRUE, resolution = 30, extrapolate = 10
+  )))
+  found <- is.finite(inside[["plate=p1"]])
+  expect_true(any(found))
+  expect_identical(as.numeric(beyond[["plate=p1"]])[found],
+                   as.numeric(inside[["plate=p1"]])[found])
+  for (pool in c("none", "mean_curve")) {
+    expect_error(suppressMessages(ecx(fit, pool = pool, resolution = 30,
+                                      extrapolate = c(0, 4))),
+                 "domain of the crf")
+  }
 })

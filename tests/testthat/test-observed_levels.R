@@ -381,6 +381,42 @@ test_that("mean_curve NSEC starts at the latest own control", {
   expect_equal(attr(out, "censored")$lower, 2)
 })
 
+test_that("mean_curve NSEC does not search below the latest own control", {
+  fits <- list(a = list(label = "a"), b = list(label = "b"))
+  local_mocked_bindings(
+    level_x_bounds = function(object) {
+      if (object$label == "a") c(1, 3) else c(2, 3)
+    },
+    level_curve_draws = function(object, x_vec, ...) {
+      intercept <- if (object$label == "a") 11.5 else 12.5
+      list(curve = matrix(rep(intercept - x_vec, each = 2), nrow = 2),
+           control = c(10.5, 10.5), asymptote = 0)
+    },
+    returns_recorded = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  estimate <- function(x_control = "own", extrapolate = FALSE) {
+    bayesnec:::mean_curve_estimate(
+      fits, c(1, 1), "nsec",
+      list(resolution = 3, posterior = TRUE, x_control = x_control,
+           extrapolate = extrapolate)
+    )
+  }
+  own <- estimate()
+  expect_message(
+    extended <- estimate(extrapolate = c(1, 3)),
+    "cannot begin below 2, the highest of the levels' lowest observed"
+  )
+  expect_equal(as.numeric(extended), as.numeric(own))
+  expect_equal(attr(extended, "censored")$lower, 2)
+  expect_message(shared <- estimate("shared", c(0.5, 3)),
+                 "cannot begin below 1, the control concentration set by")
+  expect_equal(as.numeric(shared), as.numeric(estimate("shared")))
+  expect_message(stated <- estimate(1.5, c(1, 3)), "cannot begin below 1.5")
+  expect_equal(as.numeric(stated), as.numeric(estimate(1.5)))
+  expect_no_message(estimate(extrapolate = 3))
+})
+
 test_that("mean_curve NSEC censors crossings before the common range", {
   fits <- list(a = list(label = "a"), b = list(label = "b"))
   local_mocked_bindings(
@@ -406,9 +442,11 @@ test_that("mean_curve NSEC censors crossings before the common range", {
 
 test_that("mean_curve NSEC reads a finite extrapolation limit", {
   fits <- list(a = list(), b = list())
+  grids <- list()
   local_mocked_bindings(
     level_x_bounds = function(object) c(0, 3),
     level_curve_draws = function(object, x_vec, ...) {
+      grids[[length(grids) + 1L]] <<- x_vec
       list(curve = rbind(10 - 0.5 * x_vec, 12 - 0.5 * x_vec),
            control = c(10, 12), asymptote = 0)
     },
@@ -421,6 +459,7 @@ test_that("mean_curve NSEC reads a finite extrapolation limit", {
   )
   tested <- estimate(FALSE)
   extended <- estimate(5)
+  expect_identical(grids[[3]][match(grids[[1]], grids[[3]])], grids[[1]])
   expect_true(is.na(tested[2]))
   expect_true(is.finite(extended[2]))
   expect_gt(extended[2], 3)

@@ -39,7 +39,8 @@
 #' @param extrapolate The bound beyond which the estimate is reported as
 #' censored. \code{FALSE}, the default, censors at the ends of the prediction
 #' grid. A single number is an upper limit, and a pair of numbers is a lower
-#' and an upper limit, in that order; the grid is extended to reach them.
+#' and an upper limit, in that order; points are appended while the original
+#' grid points and their spacing are retained.
 #' \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
 #' See the \emph{Extrapolation} section of \code{\link{nsec}}.
 #' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"},
@@ -206,9 +207,12 @@
 #' reference, so reading one means evaluating that curve on a grid, and no grid
 #' reaches infinity. Name a finite limit instead.
 #'
-#' A finite limit extends the grid the curve is searched on and then censors
-#' there, so \code{extrapolate} does through a checked argument what
-#' \code{x_range} does through an unchecked one: a limit inside the current
+#' A finite limit appends points to the grid the curve is searched on, at the
+#' grid's own spacing, and then censors there. The points of the unextended
+#' grid are kept, so an estimate inside the data is read off the same points
+#' as without \code{extrapolate}. Widening \code{x_range} to the same limit
+#' instead spreads \code{resolution} points over the wider range, so its grid
+#' is coarser and its estimates can differ slightly. A limit inside the current
 #' range is an error rather than a silent tightening, because it would report
 #' an estimate as censored at a value the fit had no trouble identifying. Use
 #' \code{x_range} to narrow the range.
@@ -223,13 +227,14 @@
 #' so both have to be cleared. \code{\link{nec}} measures against that stored
 #' grid alone, having no \code{x_range} of its own, so the two agree on a fit
 #' whose grid reaches beyond the data and can differ on one whose grid stops
-#' short of it.
+#' short of it. For each observed level of a group term the range is that
+#' level's own, from its control to its highest concentration.
 #'
-#' A lower limit extends the grid but not the search. The reference is a
-#' quantile of the control posterior, so the control is where the search
+#' A lower limit below the control does not extend the search. The reference
+#' is a quantile of the control posterior, so the control is where the search
 #' begins, and a draw already past the reference there has no identifiable
 #' crossing at any lower concentration. Such a limit is accepted, and a message
-#' states that the estimate stays censored at the control.
+#' states that the search begins at the control.
 #'
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
@@ -310,19 +315,14 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
       ))
     }
   }
-  # extrapolate becomes x_range, since an NSEC is read off the curve on the
-  # grid. It adds two refusals a bare x_range lacks: of a limit that narrows
-  # the range, and of an infinite limit.
-  lims <- extrapolate_limits(extrapolate,
-                             searched_or_stored_bounds(object, x_range),
-                             "NSEC")
-  if (!is.null(lims)) {
-    report_curve_read_lower_limit(object, lims)
-    x_range <- c(lims$lower, lims$upper)
-  }
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "NSEC")
   control_reading <- resolve_x_control(object, x_control, x_range)
-  newdata_list <- newdata_eval(
-    object, resolution = resolution, x_range = control_reading$x_range
+  report_curve_read_lower_limit(extrapolate, lims, control_reading$value,
+                                curve_start_label(object, x_control))
+  newdata_list <- extended_newdata_eval(
+    object, resolution = resolution, x_range = control_reading$x_range,
+    lims = lims
   )
   # dpar selects one block of a two-block fit, as in ecx(). NULL gives the
   # positive-part mean times (1 - hu) for a two-block family, and the mean
@@ -457,15 +457,9 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
       posterior, prob_vals
     )))
   }
-  # Resolve the limits once for the set, so that every component is searched
-  # over one grid rather than against its own range.
-  lims <- extrapolate_limits(extrapolate,
-                             searched_or_stored_bounds(object, x_range),
-                             "NSEC")
-  if (!is.null(lims)) {
-    report_curve_read_lower_limit(object, lims)
-    x_range <- c(lims$lower, lims$upper)
-  }
+  # Refuse a bad limit once for the set. Each equation reads the limit as
+  # given, and once_level_note() below prints its lower-limit message once.
+  curve_extrapolate_limits(extrapolate, object, x_range, x_control, "NSEC")
   sample_size <- object$sample_size
   # Use the weighted draw index the rest of the object uses, not a fresh
   # sample(): the estimate is then the same on every call, and each NSEC and
@@ -478,6 +472,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
     target <- pull_equation(object, mod)
     out <- nsec(target, sig_val = sig_val, resolution = resolution,
                 x_range = x_range, xform = xform, prob_vals = prob_vals,
+                extrapolate = extrapolate,
                 posterior = TRUE, dpar = dpar, pool = pool,
                 x_control = x_control)
     idx <- draw_index[[mod]]
