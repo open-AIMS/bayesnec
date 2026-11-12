@@ -58,6 +58,13 @@ test_that("an inline sub-model that the term splitter tears apart is reported", 
     ),
     "cannot currently be written inline"
   )
+  # The term is quoted as written, not as the fragment the split left.
+  expect_error(
+    bayesnec:::parse_disp_term(
+      bnf(y ~ crf(x, "nec3param") + disp(~s(x) + tank))
+    ),
+    "disp(~s(x) + tank)", fixed = TRUE
+  )
 })
 
 test_that("disp_pars reports the parameters each route introduces", {

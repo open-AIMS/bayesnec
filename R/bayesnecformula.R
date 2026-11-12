@@ -166,9 +166,11 @@
 #' parameter vary, and takes one of two forms.
 #'
 #' 1) \code{disp(~x)} models dispersion as a function of the \bold{predictor} —
-#' an ordinary \pkg{brms} distributional formula, so anything \pkg{brms}
-#' understands is allowed, e.g. \code{disp(~log(x))} or \code{disp(~s(x))}. It
-#' is descriptive: it says noise is larger at one end of the dose axis.
+#' an ordinary \pkg{brms} distributional formula, e.g. \code{disp(~log(x))} or
+#' \code{disp(~s(x))}. Inside \code{disp()} a function call may not be
+#' followed by another term: write \code{disp(~z + s(x))} rather than
+#' \code{disp(~s(x) + z)}, or compute the term as a column of the data. Form
+#' 1) is descriptive: it says noise is larger at one end of the dose axis.
 #'
 #' 2) \code{disp("power")} models dispersion as a function of the \bold{mean
 #' curve} — a variance function in the GLM sense, and a statement about the
@@ -223,7 +225,7 @@
 #' variance function as well. Reading the fitted mean after an \code{ogl()}
 #' deviation can produce a second posterior mode at a very low mean when
 #' \code{"power"} on a \code{Gamma} response has \code{c1 > 1}. This occurred
-#' in the zinc fit reported in #468.
+#' in a fit to the zinc bioluminescence data of \code{vignette("example8")}.
 #'
 #' A dispersion sub-model requires a family with a free dispersion parameter.
 #' For \code{poisson}, \code{bernoulli} and \code{binomial} the variance is a
