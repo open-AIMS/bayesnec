@@ -216,6 +216,20 @@ test_that("sub_x_transformation keeps arithmetic inside the crf() call", {
 })
 
 
+test_that("zero_crossings finds the roots of the interpolated series", {
+  zero_crossings <- bayesnec:::zero_crossings
+  # A root at a sampled position is found exactly.
+  expect_identical(zero_crossings(seq(1, -1, length.out = 101)), 51)
+  expect_equal(zero_crossings(c(1, -1)), 1.5, tolerance = 1e-4)
+  expect_equal(zero_crossings(seq(2, -1, length.out = 500)),
+               1 + 499 * 2 / 3, tolerance = 1e-4)
+  # Every root, in order of the search.
+  expect_equal(zero_crossings(c(1, -1, 1)), c(1.5, 2.5), tolerance = 1e-4)
+  expect_identical(zero_crossings(c(1, 2, 3)), NA)
+  # Missing values are interpolated over.
+  expect_equal(zero_crossings(c(1, NA, -1)), 2, tolerance = 1e-4)
+})
+
 test_that("crossing_x interpolates, and returns NA where there is no crossing", {
   x <- seq(0, 10, length.out = 11)
   y <- 10 - x                       # crosses 5.5 at x = 4.5 exactly
@@ -234,9 +248,9 @@ test_that("crossing_x interpolates, and returns NA where there is no crossing", 
   expect_equal(crossing_x(y, 10, x, x_start = x[1]), x[1])
   expect_equal(crossing_x(y, 12, x, x_start = x[1]), x[1])
   expect_equal(crossing_x(y, 12, x, x_start = -1), -1)
-  # A single grid point has no interval for a sign change to fall in, and
-  # zero_crossings() stops rather than returning nothing. Reachable where
-  # x_range leaves one point at or above the control. Two points are enough.
+  # A single grid point has no interval for a sign change to fall in.
+  # Reachable where x_range leaves one point at or above the control. Two
+  # points are enough.
   expect_true(is.na(crossing_x(y[1], 5.5, x[1])))
   expect_true(is.na(crossing_x(y[1], 5.5, x[1], x_start = x[1])))
   expect_equal(crossing_x(y[1], 10, x[1], x_start = x[1]), x[1])

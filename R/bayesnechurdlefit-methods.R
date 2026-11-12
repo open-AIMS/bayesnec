@@ -282,7 +282,12 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
                                    pool = NULL, x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
-  chk_logical(posterior)
+  check_nsec_no_type(list(...))
+  check_unused_dots(list(...), "nsec")
+  check_sig_val(sig_val)
+  check_resolution(resolution)
+  chk_flag(posterior)
+  if (!is.null(pool)) validate_pool(pool, "nsec")
   which <- hurdle_check_which(which)
   check_xform(xform)
   if (is.null(object$observed_group)) {
@@ -1197,8 +1202,10 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
         suppressMessages(nec(x, which = w, xform = ne_map))
       )
       abline(v = ne, col = "red", lty = c(1, 3, 3))
+      ne_tag <- attr(ne, "toxicity_estimate")
+      ne_tag <- if (is.null(ne_tag)) "N(S)EC" else toupper(ne_tag)
       legend("topright", bty = "n", lty = 1, col = "red",
-             legend = paste0("N(S)EC: ", bound_prefix(ne, 1),
+             legend = paste0(ne_tag, ": ", bound_prefix(ne, 1),
                              signif(ne[[1]], 2), " (", bound_prefix(ne, 2),
                              signif(ne[[2]], 2), "-", bound_prefix(ne, 3),
                              signif(ne[[3]], 2), ")"))
@@ -1207,11 +1214,42 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
   invisible(x)
 }
 
+#' Refuse an argument a hurdle plot would ignore
+#'
+#' The hurdle plot methods take every argument they use as a formal after
+#' \code{...}, so what reaches \code{...} is unused. \code{dpar} is left to
+#' \code{check_plot_dpar()}, whose message names the remedy.
+#'
+#' @param dots The calling method's \code{list(...)}.
+#' @param what The function name, as \code{"autoplot"}.
+#'
+#' @return \code{NULL}, invisibly, or an error.
+#' @noRd
+hurdle_check_plot_dots <- function(dots, what) {
+  nms <- names(dots)
+  if (is.null(nms)) {
+    nms <- rep("", length(dots))
+  }
+  unused <- unique(nms[nzchar(nms) & nms != "dpar"])
+  if (length(unused) > 0) {
+    stop(what, "() on a bayesnechurdlefit does not use ",
+         paste0("`", unused, "`", collapse = ", "), ". See ?", what,
+         ".bayesnechurdlefit for the arguments it takes.", call. = FALSE)
+  }
+  if (any(!nzchar(nms))) {
+    stop(what, "() on a bayesnechurdlefit takes every argument after the",
+         " fit by name, as in `which = \"all\"`.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' Data underlying a \code{\link{bayesnechurdlefit}} plot
 #'
 #' @param x An object of class \code{\link{bayesnechurdlefit}}.
-#' @param add_nec Unused; retained for consistency with the generic.
-#' @param add_ecx Unused; retained for consistency with the generic.
+#' @param add_nec,add_ecx \code{FALSE}, the default. The data hold no
+#' estimates, so \code{TRUE} is refused: read the estimates with
+#' \code{\link{nec}} or \code{\link{ecx}} and \code{which}, or draw them
+#' with \code{autoplot()}.
 #' @param xform \code{NULL}, the default, or a function to apply to the
 #' predictor where \code{crf()} does not transform it inline. Where it does,
 #' the predictor is returned on the recorded scale, the scale the prediction
@@ -1220,7 +1258,8 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' The fitted option returns the predictor on the scale transformed inside
 #' \code{crf()}, with breaks in attribute \code{"x_axis"} labelled in
 #' recorded units.
-#' @param ... Unused. \code{dpar} is refused: select a curve with \code{which}.
+#' @param ... Not used. \code{dpar} is refused, so select a curve with
+#' \code{which}, and any other argument is refused as well.
 #' @param which Which curve(s) to return. See \code{\link{plot}}.
 #' @param resolution The number of unique predictor values.
 #' @param x_range A range of predictor values.
@@ -1231,14 +1270,24 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' @method ggbnec_data bayesnechurdlefit
 #'
 #' @export
-ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                          xform = NULL, ...,
+ggbnec_data.bayesnechurdlefit <- function(x, add_nec = FALSE,
+                                          add_ecx = FALSE, xform = NULL, ...,
                                           which = "combined", resolution = 1000,
                                           x_range = NA,
                                           x_scale = c("recorded", "fitted")) {
   which <- hurdle_check_plot_which(which)
+  chk_lgl(add_nec)
+  chk_lgl(add_ecx)
+  if (add_nec || add_ecx) {
+    stop("ggbnec_data() on a bayesnechurdlefit returns the curves and the",
+         " observations only, so it cannot add the estimates `add_nec` and",
+         " `add_ecx` ask for. Read them with nec() or ecx() and `which`, or",
+         " draw them with autoplot(x, nec = TRUE, ecx = TRUE).",
+         call. = FALSE)
+  }
   check_xform(xform)
   check_plot_dpar(list(...), x)
+  hurdle_check_plot_dots(list(...), "ggbnec_data")
   x_scale <- plot_x_scale(x, x_scale, xform)
   panels <- if (which == "all") {
     c("combined", "growth", "survival")
@@ -1367,6 +1416,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
                                        nec = TRUE, ecx = FALSE, ecx_val = 10) {
   which <- hurdle_check_plot_which(which)
   check_plot_dpar(list(...), object)
+  hurdle_check_plot_dots(list(...), "autoplot")
   chk_lgl(CI)
   check_point_alpha(point_alpha)
   chk_lgl(nec)
@@ -1461,11 +1511,9 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' \code{xform} is applied to \code{nsec}, and the curve is read at the
 #' result on the recorded predictor scale, as in \code{\link{ecnsec}} on a
 #' \code{\link{bayesnecfit}}. \code{NULL}, the default, reads \code{nsec} as
-#' given, the scale \code{\link{nsec}} returns by default. In earlier
-#' versions this method applied \code{xform} to the percentage it returned. A
-#' call that supplies an \code{xform} other than \code{identity} is warned of
-#' the change in this release. To transform the percentage, apply the function
-#' to the value returned.
+#' given, the scale \code{\link{nsec}} returns by default. The percentage
+#' returned is not transformed; to transform it, apply the function to the
+#' value returned.
 #'
 #' Without \code{x_range}, every curve is read over the whole concentration
 #' series, as in \code{\link{ecx.bayesnechurdlefit}}. The range sets the
@@ -1496,6 +1544,10 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
                                      extrapolate = FALSE) {
   which <- hurdle_check_which(which)
   check_removed_args(list(...))
+  check_unused_dots(list(...), "ecnsec")
+  check_resolution(resolution)
+  chk_flag(posterior)
+  if (!is.null(pool)) validate_pool(pool, "ecnsec")
   # One value: the curve is interpolated at one point.
   chk_number(nsec)
   type <- validate_ecx_type(type, match.call())
@@ -1513,20 +1565,6 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
   check_xform(xform)
   if (is.null(xform)) {
     xform <- identity
-  }
-  if (!identical(xform, identity)) {
-    # Warn for one release that xform now applies to nsec rather than to the
-    # percentage returned, then remove this warning. It is a classed
-    # warning() because lifecycle is not in Imports.
-    warning(structure(
-      class = c("bayesnec_ecnsec_xform_changed", "warning", "condition"),
-      list(message = paste0(
-        "xform in ecnsec() on a hurdle pair is now applied to nsec before ",
-        "the curve is read, as it is on every other class. In earlier ",
-        "versions it was applied to the percentage returned. To transform the ",
-        "percentage, apply the function to the value ecnsec() returns."
-      ), call = NULL)
-    ))
   }
   if (is.null(object$observed_group)) {
     spec <- observed_level_spec(object)

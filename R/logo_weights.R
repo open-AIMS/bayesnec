@@ -295,11 +295,17 @@ weight_criteria <- function(object, x, leave_out = "group", refit = FALSE) {
             " because ",
             by_group$reason, ". Leaving out each group whole is supported",
             " for one grouping whose levels are each observed at a single",
-            " concentration, with one normal intercept per level. See ?bnec,",
-            " argument loo_controls.", call. = FALSE)
+            " concentration, with one normal intercept per level.",
+            if (isTRUE(refit)) " loo_controls$refit = TRUE has no effect.",
+            " See ?bnec, argument loo_controls.", call. = FALSE)
   }
   group <- by_group$group
   if (is.null(group)) {
+    if (isTRUE(refit) && is.null(by_group$reason)) {
+      message("No grouping has its levels each observed at a single",
+              " concentration, so the models are scored by leaving out each",
+              " observation and loo_controls$refit = TRUE has no effect.")
+    }
     return(pointwise)
   }
   has_group <- vapply(object, function(o) group %in% o$fit$ranef$group,
@@ -349,9 +355,15 @@ logo_reloo <- function(o, logo, level, model) {
   elpd <- stats::setNames(rep(NA_real_, length(todo)), todo)
   rhat_max <- elpd
   base <- o$fit
+  first_error <- NULL
   for (g in todo) {
     out <- tryCatch(logo_refit_level(base, o, group, level, g),
-                    error = function(e) NULL)
+                    error = function(e) {
+                      if (is.null(first_error)) {
+                        first_error <<- trimws(conditionMessage(e))
+                      }
+                      NULL
+                    })
     if (is.null(out)) {
       next
     }
@@ -381,7 +393,10 @@ logo_reloo <- function(o, logo, level, model) {
             if (sum(!ok) > 1) "s", " of ", group, " (",
             paste0(todo[!ok], collapse = ", "), "), so ",
             if (sum(!ok) > 1) "their scores remain" else "its score remains",
-            " approximate.", call. = FALSE)
+            " approximate.",
+            if (!is.null(first_error)) {
+              paste0(" The first error was: ", first_error)
+            }, call. = FALSE)
   }
   slow <- todo[ok][rhat_max[ok] > 1.01]
   if (length(slow) > 0) {
@@ -410,10 +425,10 @@ logo_reloo <- function(o, logo, level, model) {
 #' integrated out as in \code{logo_criterion()}, starting from the fit's draws
 #' of it.
 #'
-#' @return \code{NULL} where the refit failed, and otherwise a
-#' \code{\link[base]{list}} of \code{elpd}, the level's log predictive
-#' density, \code{rhat}, the refit's largest Rhat, and \code{fit}, the
-#' refit.
+#' @return A \code{\link[base]{list}} of \code{elpd}, the level's log
+#' predictive density, \code{rhat}, the refit's largest Rhat, and \code{fit},
+#' the refit. A refit that fails, or returns no draws, is an error, which
+#' \code{logo_reloo()} reports.
 #'
 #' @importFrom stats update
 #'
@@ -428,10 +443,9 @@ logo_refit_level <- function(base, o, group, level, g) {
   if (!is.null(o$call_args$seed)) {
     args$seed <- o$call_args$seed
   }
-  refit <- try(suppressWarnings(suppressMessages(do.call(update, args))),
-               silent = TRUE)
-  if (inherits(refit, "try-error") || ndraws(refit) == 0) {
-    return(NULL)
+  refit <- suppressWarnings(suppressMessages(do.call(update, args)))
+  if (ndraws(refit) == 0) {
+    stop("the refit returned no draws.", call. = FALSE)
   }
   prep <- prepare_predictions(refit, newdata = test, allow_new_levels = TRUE,
                               sample_new_levels = "gaussian")

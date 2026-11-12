@@ -68,6 +68,55 @@ group_lapply <- function(object, fun, ...) {
   out
 }
 
+#' Label the messages and warnings raised on one level with that level
+#'
+#' @param level The level, a \code{\link[base]{character}} string.
+#' @param expr An expression evaluated on the fit of that level.
+#'
+#' @details A prior-bound note carries its own label, and the stale no-effect
+#' warning is raised once for the whole object, so both pass unchanged.
+#'
+#' @return The value of \code{expr}.
+#'
+#' @noRd
+with_level_label <- function(level, expr) {
+  skip <- c("bayesnec_level_labelled", "bayesnec_prior_bound_note",
+            "bayesnec_stale_ne")
+  label <- function(cond) {
+    cond$message <- paste0("Level ", level, ": ", conditionMessage(cond))
+    class(cond) <- c("bayesnec_level_labelled", class(cond))
+    cond
+  }
+  withCallingHandlers(
+    expr,
+    message = function(m) {
+      if (inherits(m, skip)) return()
+      message(label(m))
+      invokeRestart("muffleMessage")
+    },
+    warning = function(w) {
+      if (inherits(w, skip)) return()
+      warning(label(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+}
+
+#' Apply a per-fit function to each level, labelling what each level raises
+#'
+#' @inheritParams group_lapply
+#'
+#' @return A named \code{\link[base]{list}}.
+#'
+#' @noRd
+group_lapply_labelled <- function(object, fun, ...) {
+  out <- lapply(seq_along(object$fits), function(i) {
+    with_level_label(object$levels[i], fun(object$fits[[i]], ...))
+  })
+  names(out) <- object$levels
+  out
+}
+
 #' Per-level toxicity estimates from a bayesnecgroupfit
 #'
 #' @param object An object of class \code{\link{bayesnecgroupfit}}.
@@ -99,8 +148,10 @@ group_estimate_table <- function(object, what, fun, ..., pool = "none",
   }
   if (identical(pool, "none")) {
     est <- lapply(seq_along(object$fits), function(i) {
-      with_prior_bound_label(paste("Level", object$levels[i]),
-                             do.call(fun, c(list(object$fits[[i]]), dots)))
+      with_level_label(object$levels[i], with_prior_bound_label(
+        paste("Level", object$levels[i]),
+        do.call(fun, c(list(object$fits[[i]]), dots))
+      ))
     })
     names(est) <- object$levels
     if (posterior) return(finish(est))
@@ -112,7 +163,10 @@ group_estimate_table <- function(object, what, fun, ..., pool = "none",
     return(finish(out))
   }
   dots$posterior <- TRUE
-  draws <- lapply(object$fits, function(f) do.call(fun, c(list(f), dots)))
+  draws <- lapply(seq_along(object$fits), function(i) {
+    with_level_label(object$levels[i],
+                     do.call(fun, c(list(object$fits[[i]]), dots)))
+  })
   names(draws) <- object$levels
   pooled <- pool_estimate_draws(draws, object$n, pool,
                                 seed = if (is.null(object$level_seeds)) 216 else
@@ -377,6 +431,7 @@ ecx.bayesnecgroupfit <- function(object, ...) {
 #' @method nsec bayesnecgroupfit
 #' @export
 nsec.bayesnecgroupfit <- function(object, ...) {
+  check_nsec_no_type(list(...))
   group_estimate_table(object, "nsec", function(f, ...) nsec(f, ...), ...)
 }
 
@@ -395,7 +450,7 @@ ecnsec.bayesnecgroupfit <- function(object, nsec, ...) {
 #' @method summary bayesnecgroupfit
 #' @export
 summary.bayesnecgroupfit <- function(object, ...) {
-  once_stale_ne_warning(object, group_lapply(object, summary, ...))
+  once_stale_ne_warning(object, group_lapply_labelled(object, summary, ...))
 }
 
 #' @noRd
@@ -427,7 +482,8 @@ plot.bayesnecgroupfit <- function(x, ...) {
 #' Amends the fit of every level of a bayesnecgroupfit
 #'
 #' Each level is a complete fit, so \code{\link{amend}} is applied to each in
-#' turn with the same arguments. An error names the level that raised it.
+#' turn with the same arguments. An error, and each message and warning, names
+#' the level that raised it.
 #'
 #' @inheritParams amend
 #' @param object An object of class \code{\link{bayesnecgroupfit}}.
@@ -452,7 +508,8 @@ amend.bayesnecgroupfit <- function(object, drop, add, loo_controls,
   if (!missing(priors)) args$priors <- priors
   for (i in seq_along(object$fits)) {
     object$fits[[i]] <- tryCatch(
-      do.call(amend, c(list(object$fits[[i]]), args)),
+      with_level_label(object$levels[i],
+                       do.call(amend, c(list(object$fits[[i]]), args))),
       error = function(e) {
         stop("Could not amend level ", object$levels[i], ": ",
              conditionMessage(e), call. = FALSE)

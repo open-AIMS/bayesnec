@@ -184,6 +184,20 @@ test_that("weight_criteria leaves out observations where asked or unsupported", 
   expect_identical(out$leave_out, "observation")
 })
 
+test_that("refit = TRUE with no grouping to leave out says it has no effect", {
+  d <- lum_like()
+  # A grouping that spans the concentrations is not left out.
+  set <- fake_set(ranef_row("plate"), d)
+  expect_message(out <- bayesnec:::weight_criteria(set, d$conc, refit = TRUE),
+                 "loo_controls\\$refit = TRUE has no effect")
+  expect_identical(out$leave_out, "observation")
+  expect_no_message(bayesnec:::weight_criteria(set, d$conc))
+  # Where a grouping qualifies but cannot be left out, the warning says so.
+  set <- fake_set(rbind(ranef_row("cell", "top"), ranef_row("cell", "ec50")), d)
+  expect_warning(bayesnec:::weight_criteria(set, d$conc, refit = TRUE),
+                 "loo_controls\\$refit = TRUE has no effect")
+})
+
 test_that("selected criteria report high k in contributing equations", {
   l <- function(k) structure(list(pointwise = matrix(0, 4, 1),
                                   diagnostics = list(pareto_k = k)),
@@ -465,6 +479,13 @@ test_that("logo_reloo keeps the approximate score when scoring a refit fails", {
       list(fit = NULL), logo, level, "ecxlin"
     )),
     "failed without 1 level of cell \\(b\\)"
+  )
+  # The warning names the cause.
+  expect_warning(
+    suppressMessages(bayesnec:::logo_reloo(
+      list(fit = NULL), logo, level, "ecxlin"
+    )),
+    "The first error was: failed to prepare held-out data", fixed = TRUE
   )
   expect_identical(out$pointwise, logo$pointwise)
   expect_identical(attr(out, "refit_failed"), "b")

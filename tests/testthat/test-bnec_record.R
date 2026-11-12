@@ -298,9 +298,9 @@ test_that("recorded_expand_args() takes each argument supplied, then recorded", 
   )
   # A weights list that names no method keeps the set's.
   expect_identical(
-    args(list(x), loo_controls = list(weights = list(BB = FALSE)),
+    args(list(x), loo_controls = list(weights = list(optim_method = "BFGS")),
          method = "stacking")$loo_controls$weights,
-    list(BB = FALSE, method = "stacking")
+    list(optim_method = "BFGS", method = "stacking")
   )
   # A recorded weights list is used only where it names the set's method. A
   # bayesnecfit holds no weights, so its set takes the default.

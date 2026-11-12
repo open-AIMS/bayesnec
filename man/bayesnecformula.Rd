@@ -175,12 +175,14 @@ By default a fit holds the family's dispersion parameter constant across the
 whole concentration-response curve. The special term \code{disp} lets that
 parameter vary, and takes one of two forms.
 \enumerate{
-\item \code{disp(~x)} models dispersion as a function of the \bold{predictor} —
-an ordinary \pkg{brms} distributional formula, so anything \pkg{brms}
-understands is allowed, e.g. \code{disp(~log(x))} or \code{disp(~s(x))}. It
-is descriptive: it says noise is larger at one end of the dose axis.
+\item \code{disp(~x)} models dispersion as a function of the \bold{predictor} ---
+an ordinary \pkg{brms} distributional formula, e.g. \code{disp(~log(x))} or
+\code{disp(~s(x))}. Inside \code{disp()} a function call may not be
+followed by another term: write \code{disp(~z + s(x))} rather than
+\code{disp(~s(x) + z)}, or compute the term as a column of the data. Form
+\item is descriptive: it says noise is larger at one end of the dose axis.
 \item \code{disp("power")} models dispersion as a function of the \bold{mean
-curve} — a variance function in the GLM sense, and a statement about the
+curve} --- a variance function in the GLM sense, and a statement about the
 measurement process rather than about the dose axis. The functions available,
 on the log link every eligible family gives its dispersion parameter, with
 \code{m} a fixed reference value computed from the response before fitting,
@@ -233,7 +235,7 @@ by the shape. A deviation on a parameter, as in \code{(bot | group)} or
 variance function as well. Reading the fitted mean after an \code{ogl()}
 deviation can produce a second posterior mode at a very low mean when
 \code{"power"} on a \code{Gamma} response has \code{c1 > 1}. This occurred
-in the zinc fit reported in #468.
+in a fit to the zinc bioluminescence data of \code{vignette("example8")}.
 
 A dispersion sub-model requires a family with a free dispersion parameter.
 For \code{poisson}, \code{bernoulli} and \code{binomial} the variance is a
@@ -310,12 +312,12 @@ replicates show rather than on zero; see \code{\link{bnec}}.
 
 Both \code{"power"} and \code{"twosided"} take \code{log(mu)}, so a fitted
 mean that reaches zero is undefined. This rules them out for a response on
-the real line — a specific growth rate, yield or increment can be negative —
+the real line --- a specific growth rate, yield or increment can be negative ---
 and \code{\link{bnec}} refuses the combination rather than failing at
 initialisation, pointing at \code{"loglinear"} or \code{disp(~x)} instead.
 
-Worked guidance — how to decide whether a dispersion sub-model is warranted,
-why the covariate is centred, and how the forms differ in practice — is given
+Worked guidance --- how to decide whether a dispersion sub-model is warranted,
+why the covariate is centred, and how the forms differ in practice --- is given
 in \code{vignette("example1")}.
 
 \bold{Further brms terms (largely untested)}

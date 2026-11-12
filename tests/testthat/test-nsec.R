@@ -123,6 +123,43 @@ test_that("hormesis_def is refused by name on nsec", {
                "hormesis_def has been removed")
 })
 
+test_that("nsec refuses arguments it cannot use", {
+  expect_error(nsec(nec4param, sig_val = 2), "strictly between 0 and 1")
+  expect_error(nsec(nec4param, sig_val = 0), "strictly between 0 and 1")
+  expect_error(nsec(manec_example, sig_val = c(0.01, 0.05)),
+               "strictly between 0 and 1")
+  expect_error(nsec(nec4param, resolution = 0), "at least 2")
+  expect_error(nsec(nec4param, resolution = 20.5), "whole number")
+  expect_error(nsec(manec_example, posterior = "yes"), "posterior")
+  expect_error(nsec(nec4param, pool = "bogus"), "`pool` must be one of")
+  expect_error(nsec(nec4param, foo = 1), "nsec() does not use `foo`",
+               fixed = TRUE)
+})
+
+test_that("a numeric x_control that moves the range start is reported once", {
+  skip_on_cran()
+  msgs <- character()
+  withCallingHandlers(
+    invisible(suppressWarnings(nsec(manec_example, x_control = 0.5,
+                                    x_range = c(0.8, 3), resolution = 50))),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_equal(sum(grepl("replaces the lower end of `x_range`", msgs)), 1)
+  expect_no_message(suppressWarnings(nsec(nec4param, x_control = 0.5,
+                                          x_range = c(0.5, 3),
+                                          resolution = 50)))
+})
+
+test_that("nsec refuses the type argument of ecx", {
+  expect_error(nsec(nec4param, type = "relative"), "no `type` argument")
+  expect_error(nsec(manec_example, type = "absolute"), "no `type` argument")
+  joint <- joint_split()
+  expect_error(nsec(joint, type = "relative"), "no `type` argument")
+})
+
 test_that("ecnsec is the absolute percent effect at the nsec", {
   # ECNSEC uses the same control-to-zero percentage reference as default ECx:
   # (control - reference) / control * 100.
@@ -214,10 +251,8 @@ test_that("a range with no concentration above the control is refused", {
     nsec(ecx4param, resolution = 5, x_range = c(0, 0.02)),
     "holds no concentration above"
   )
-  # The other way to the same grid. resolution = 1 stays a valid request of
-  # bnec_newdata(), which test-bayesmanec_methods.R uses to pin a prediction
-  # shape, so it is refused here rather than there.
-  expect_error(nsec(ecx4param, resolution = 1), "holds no concentration above")
+  # A one-point grid is refused before any grid is built.
+  expect_error(nsec(ecx4param, resolution = 1), "at least 2")
   # A range that does reach past the control is estimated over what it covers:
   # here only the draws at the control are identified, and the rest are reported
   # as never reaching the reference, which over this range they do not.

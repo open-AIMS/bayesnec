@@ -13,14 +13,6 @@
 #' @docType data
 NULL
 
-#' Custom beta-binomial family
-#'
-#' @format An object of class \code{\link[brms]{customfamily}}
-#'
-#' @name "beta_binomial"
-#' @docType data
-NULL
-
 #' Example bayesmanecfit object
 #'
 #' @format An object of class \code{\link{bayesmanecfit}}, created to reduce
@@ -58,7 +50,7 @@ NULL
 #'
 #' \describe{ 
 #'\item{herbicide}{The herbicide (chr).}
-#'\item{concentration}{The treatment concentration in µg / L (dbl).}
+#'\item{concentration}{The treatment concentration in \eqn{\mu}{u}g / L (dbl).}
 #'\item{fvfm}{Maximum effective quantum yield (dbl).}
 #' }
 #'

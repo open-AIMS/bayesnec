@@ -61,10 +61,13 @@ below a level's observations.
 
 Factor levels partition the data disjointly and share no parameters, so the
 log likelihood is a sum over levels and the expected log predictive density
-is additive. Under pseudo-BMA --- the package default --- the crossed model
-weights are then exactly the outer product of the per-level weight vectors,
-which is the same identity \code{\link{crossed_weights}} rests on for the two
-blocks of a hurdle fit. See \code{\link{crossed_group_weights}}.
+is additive. For pseudo-BMA weights computed without the Bayesian bootstrap,
+the crossed model weights are then exactly the outer product of the
+per-level weight vectors, the identity \code{\link{crossed_weights}} rests
+on for the two blocks of a hurdle fit. The default pseudo-BMA weights use
+the bootstrap, which each level applies to its own observations, so for them
+the outer product approximates the weight of a combination scored on all
+levels together. See \code{\link{crossed_group_weights}}.
 
 \bold{The family is chosen once}
 
@@ -81,13 +84,9 @@ That is a feature, not an oversight: a shared dispersion parameter would
 break the factorisation the crossed weights depend on. A model with structure
 spanning levels --- shared dispersion, a group-level effect crossing levels,
 an explicit contrast --- is a different model, and is not what this function
-fits.
-
-\bold{What this does not do}
-
-It does not refit the favoured combination jointly. That is stage 2 of #33
-and lands in the post-processing that the \code{toxval} migration moves, so
-it is deliberately out of scope here.
+fits. The favoured combination is not refitted jointly here;
+\code{\link{bnec_joint}} composes the equation each level favours into one
+model and fits it.
 
 \bold{Fitting the levels in parallel}
 
@@ -97,7 +96,7 @@ and the models within a level. One plan drives one of them, because
 list, so \code{bnec_group()} decides which and says which.
 
 The two arrangements are counted in rounds of one fit and the smaller is
-taken, a tie going to the models, which is what earlier versions did. Writing
+taken, a tie going to the models. Writing
 \emph{L} for the levels, \emph{M} for the equations the formula asks for and
 \emph{W} for the workers, the levels take \code{ceiling(L / W) * M} rounds
 and the models \code{L * ceiling(M / W)}. Seven levels of eleven equations
@@ -130,12 +129,8 @@ one per level in the order of \code{levels}. A regenerated seed cannot be
 trusted to be the same one years later --- \code{sample.int()}'s algorithm
 changed once already, in R 3.6.0 --- and these objects are archived and
 reopened, so the realisation is stored rather than described.
-
-The estimates a grouped call reports are not those earlier versions reported,
-because the levels are now seeded rather than drawing from the session's
-stream as each is reached. They are another realisation of the same
-weighting. \code{\link{bnec}} describes the rest of what a plan does to a
-fit, and none of that changes here.
+\code{\link{bnec}} describes the rest of what a plan does to a fit, and none
+of that changes here.
 }
 \examples{
 \dontrun{

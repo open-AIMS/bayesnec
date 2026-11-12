@@ -12,8 +12,7 @@
 #' which model or suite of models to pull out.
 #' @param x_range,resolution,sig_val As for \code{\link{bnec}}. Each is taken
 #' from \code{manec} unless supplied.
-#' @param ... Additional arguments to \code{\link{expand_nec}} or
-#' \code{\link{expand_manec}}.
+#' @param ... Not used. An argument supplied here is refused.
 #'
 #' @details Nothing is refitted, so the records of the set are kept. Each
 #' equation keeps its \code{\link{bnec_version}} record, the
@@ -27,6 +26,11 @@
 #' they are supplied. The \code{\link{bnec}} defaults are used where
 #' \code{manec} records none, as an object fitted by an earlier version of
 #' \pkg{bayesnec} does not.
+#'
+#' Of \code{loo_controls}, only "fitting" and "report_k" are used. The models
+#' kept are scored and weighted as they were in \code{manec}, so "weights",
+#' "leave_out" and "refit" are ignored, with a message; use
+#' \code{\link{amend}} to change them.
 #'
 #' @return If \code{model} is a string representing a single model, an object
 #' of class \code{\link{bayesnecfit}}; If \code{model} is instead a string
@@ -48,12 +52,29 @@
 #' @export
 pull_out <- function(manec, model, loo_controls, x_range = NULL,
                       resolution = NULL, sig_val = NULL, ...) {
+  if (...length() > 0) {
+    supplied <- ...names()
+    supplied <- supplied[!is.na(supplied) & nzchar(supplied)]
+    stop("pull_out() takes no further arguments",
+         if (length(supplied) > 0) {
+           paste0(", so ", paste0("`", supplied, "`", collapse = ", "),
+                  " cannot be passed here")
+         },
+         ". See ?pull_out for the arguments it accepts.", call. = FALSE)
+  }
+  if (inherits(manec, "bayesnecjointfit")) {
+    refuse_joint_method(manec, "pull_out()", paste(
+      "Choose the equation before the refit, with the model argument of",
+      "bnec_joint()."
+    ))
+  }
+  check_expand_args(x_range, resolution, sig_val)
   # Not an S3 generic, so a hurdle fit has to be handled here; registering a
   # pull_out.bayesnechurdlefit method would be inert. Reduces both components
   # to the requested model so the pair stays in step.
   if (is_bayesnechurdlefit(manec)) {
     args <- list(model = model, x_range = x_range, resolution = resolution,
-                  sig_val = sig_val, ...)
+                  sig_val = sig_val)
     if (!missing(loo_controls)) args$loo_controls <- loo_controls
     manec$growth <- do.call(pull_out, c(list(manec$growth), args))
     manec$survival <- do.call(pull_out, c(list(manec$survival), args))
@@ -67,23 +88,28 @@ pull_out <- function(manec, model, loo_controls, x_range = NULL,
   fits <- recover_prebayesnecfit(manec)
   fam_tag <- fits[[1]]$fit$family$family
   if (!missing(loo_controls)) {
-    if (length(validate_loo_controls(loo_controls, fam_tag)$weights) > 0) {
-      message("You have specified a list of arguments in loo_control$weights; ",
-              "this is ignored in pull_out. Use function ?amend first if your",
-              "intention is to modify the model averaging specs.")
+    validate_loo_controls(loo_controls, fam_tag)
+    kept <- c("weights", "leave_out", "refit")
+    ignored <- names(Filter(length, loo_controls[intersect(names(loo_controls),
+                                                           kept)]))
+    if (length(ignored) > 0) {
+      message("pull_out() keeps the scores and model weights of the set, so ",
+              paste0("loo_controls$", ignored, collapse = ", "),
+              if (length(ignored) > 1) " are" else " is",
+              " ignored here. Use ?amend first to change how the models are",
+              " scored or weighted.")
     }
     # The set keeps its own weighting, but reporting can be chosen again.
     supplied_loo <- loo_controls[intersect(names(loo_controls),
                                             c("fitting", "report_k"))]
   }
-  dots <- list(...)
   expand_args <- recorded_expand_args(
     list(manec), x_range = x_range,
     resolution = resolution, sig_val = sig_val,
     loo_controls = supplied_loo, method = old_method, fam_tag = fam_tag
   )
-  expand_call <- c(expand_args[c("x_range", "resolution", "sig_val",
-                                 "loo_controls")], dots)
+  expand_call <- expand_args[c("x_range", "resolution", "sig_val",
+                               "loo_controls")]
   existing <- names(fits)
   msets <- names(mod_groups)
   if (any(model %in% msets)) {
@@ -109,7 +135,7 @@ pull_out <- function(manec, model, loo_controls, x_range = NULL,
             " modelled response distribution. If needed, add desired model(s)",
             " via function amend (see ?amend).")
   }
-  if (all(existing %in% to_go) && length(dots) == 0 &&
+  if (all(existing %in% to_go) &&
         identical(expand_args, recorded_expand_args(
           list(manec), method = old_method, fam_tag = fam_tag
         ))) {

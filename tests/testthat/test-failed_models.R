@@ -97,6 +97,40 @@ test_that("failed_models splits the two components of a hurdle fit", {
   expect_length(out$survival, 0)
 })
 
+test_that("failed_models reports the failures of each level of a grouped fit", {
+  failing <- bayesnec:::attach_failed_models(
+    manec_example,
+    list(ecxlin = bayesnec:::failure_record(
+           "ecxlin", simpleError("Initialization failed.")))
+  )
+  obj <- structure(
+    list(fits = list(a = manec_example, b = failing), levels = c("a", "b")),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  out <- failed_models(obj)
+  expect_named(out, c("a", "b"))
+  expect_s3_class(out$b, "bnecfailures")
+  expect_length(out$a, 0)
+  expect_named(out$b, "ecxlin")
+  # The example call reaches the record through the level.
+  printed <- capture.output(print(out$b))
+  expect_true(any(grepl("failed_models(fit)[[\"b\"]]$ecxlin$prior", printed,
+                        fixed = TRUE)))
+  expect_output(print(out$a), "No models failed to fit")
+})
+
+test_that("the hurdle example call names the component", {
+  obj <- structure(
+    list(growth = bayesnec:::attach_failed_models(
+           manec_example,
+           list(ecxlin = bayesnec:::failure_record("ecxlin", NULL))),
+         survival = manec_example),
+    class = c("bayesnechurdlefit", "bnecfit")
+  )
+  expect_output(print(failed_models(obj)$growth),
+                "failed_models(fit)$growth$ecxlin$prior", fixed = TRUE)
+})
+
 test_that("the hurdle summary names the component a model failed on", {
   # Built from the pieces print.hurdlesummary reads, as in
   # test-bayesnechurdlefit-methods.R: the summary itself needs two real fits.

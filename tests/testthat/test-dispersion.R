@@ -312,3 +312,18 @@ test_that("dispersion still repeats itself under the same seed", {
   b <- dispersion(fit)
   expect_equal(a, b)
 })
+
+test_that("dispersion refuses a grouped fit and any other class", {
+  grouped <- structure(
+    list(fits = list(a = manec_example, b = manec_example),
+         levels = c("a", "b")),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  expect_error(dispersion(grouped), "lapply(fit$fits, dispersion)",
+               fixed = TRUE)
+  joint <- structure(list(), class = c("bayesnecjointfit", "bnecfit"))
+  expect_error(dispersion(joint),
+               "not an object of class \"bayesnecjointfit\"", fixed = TRUE)
+  expect_error(dispersion(list()), "not an object of class \"list\"",
+               fixed = TRUE)
+})

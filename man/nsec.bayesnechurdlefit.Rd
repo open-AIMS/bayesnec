@@ -51,7 +51,8 @@ grid points and their spacing are retained.
 \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
 See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
-\item{...}{Further arguments to pass to class specific methods.}
+\item{...}{Further arguments to pass to class specific methods. A method
+refuses any argument it does not use.}
 
 \item{posterior}{Should the full posterior be returned instead of a summary?}
 

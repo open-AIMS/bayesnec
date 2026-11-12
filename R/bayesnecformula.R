@@ -165,13 +165,15 @@
 #' whole concentration-response curve. The special term \code{disp} lets that
 #' parameter vary, and takes one of two forms.
 #'
-#' 1) \code{disp(~x)} models dispersion as a function of the \bold{predictor} —
-#' an ordinary \pkg{brms} distributional formula, so anything \pkg{brms}
-#' understands is allowed, e.g. \code{disp(~log(x))} or \code{disp(~s(x))}. It
-#' is descriptive: it says noise is larger at one end of the dose axis.
+#' 1) \code{disp(~x)} models dispersion as a function of the \bold{predictor} ---
+#' an ordinary \pkg{brms} distributional formula, e.g. \code{disp(~log(x))} or
+#' \code{disp(~s(x))}. Inside \code{disp()} a function call may not be
+#' followed by another term: write \code{disp(~z + s(x))} rather than
+#' \code{disp(~s(x) + z)}, or compute the term as a column of the data. Form
+#' 1) is descriptive: it says noise is larger at one end of the dose axis.
 #'
 #' 2) \code{disp("power")} models dispersion as a function of the \bold{mean
-#' curve} — a variance function in the GLM sense, and a statement about the
+#' curve} --- a variance function in the GLM sense, and a statement about the
 #' measurement process rather than about the dose axis. The functions available,
 #' on the log link every eligible family gives its dispersion parameter, with
 #' \code{m} a fixed reference value computed from the response before fitting,
@@ -223,7 +225,7 @@
 #' variance function as well. Reading the fitted mean after an \code{ogl()}
 #' deviation can produce a second posterior mode at a very low mean when
 #' \code{"power"} on a \code{Gamma} response has \code{c1 > 1}. This occurred
-#' in the zinc fit reported in #468.
+#' in a fit to the zinc bioluminescence data of \code{vignette("example8")}.
 #'
 #' A dispersion sub-model requires a family with a free dispersion parameter.
 #' For \code{poisson}, \code{bernoulli} and \code{binomial} the variance is a
@@ -300,12 +302,12 @@
 #'
 #' Both \code{"power"} and \code{"twosided"} take \code{log(mu)}, so a fitted
 #' mean that reaches zero is undefined. This rules them out for a response on
-#' the real line — a specific growth rate, yield or increment can be negative —
+#' the real line --- a specific growth rate, yield or increment can be negative ---
 #' and \code{\link{bnec}} refuses the combination rather than failing at
 #' initialisation, pointing at \code{"loglinear"} or \code{disp(~x)} instead.
 #'
-#' Worked guidance — how to decide whether a dispersion sub-model is warranted,
-#' why the covariate is centred, and how the forms differ in practice — is given
+#' Worked guidance --- how to decide whether a dispersion sub-model is warranted,
+#' why the covariate is centred, and how the forms differ in practice --- is given
 #' in \code{vignette("example1")}.
 #'
 #' \bold{Further brms terms (largely untested)}
@@ -579,6 +581,7 @@ check_formula.bayesnecformula <- function(formula, data,
     stop("You must specify which non-linear function to use with crf.",
          " See ?bayesnecformula")
   }
+  check_crf_term(x_str)
   crf_vars <- all.vars(str2lang(eval(parse(text = x_str))))
   if (length(crf_vars) != 1) {
     stop("The `crf` term in your formula can only have one variable; you",
@@ -1921,6 +1924,7 @@ get_model_from_formula <- function(formula) {
   if (length(x_str) == 0) {
     stop("You must specify which non-linear function to use with crf")
   }
+  check_crf_term(x_str)
   x_str <- paste0(substr(x_str, 1, nchar(x_str) - 1), ", \"model\")")
   # Evaluate in a frame that binds crf() and inherits from the formula's own
   # environment. crf() is not exported, so environment(formula) alone cannot
@@ -1944,7 +1948,39 @@ get_model_from_formula <- function(formula) {
          " class \"", class(model)[1], "\" and length ", length(model),
          ". See ?models.", call. = FALSE)
   }
-  expand_model_set(model)
+  model <- expand_model_set(model)
+  # Refuse a misspelt name here, before anything calls get("bf_<name>").
+  check_equation_names(model)
+  model
+}
+
+#' Refuse more than one crf() term, or one that names no equation
+#'
+#' @param x_str The \code{crf()} terms of the formula, as text.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_crf_term <- function(x_str) {
+  if (length(x_str) > 1) {
+    stop("The formula has ", length(x_str), " crf() terms, and one is",
+         " allowed: ", paste(x_str, collapse = ", "), ". A single crf() term",
+         " names the predictor and every equation fitted to it, as in",
+         " crf(x, c(\"nec3param\", \"ecx4param\")).", call. = FALSE)
+  }
+  term <- str2lang(x_str)
+  # A term may be written in parentheses, as in y ~ (crf(x, "nec3param")).
+  while (is.call(term) && identical(term[[1]], as.name("("))) {
+    term <- term[[2]]
+  }
+  term <- match.call(crf, term)
+  if (is.null(term$model)) {
+    stop("crf() needs the equations to fit as its second argument, as in",
+         " crf(", deparse1(term$x), ", \"nec3param\"); ", x_str,
+         " names none. See ?models for the equations and groups.",
+         call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' @noRd

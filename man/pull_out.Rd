@@ -63,8 +63,7 @@ see \code{\link{c.bnecfit}} for how they decide the method. See
 \item{x_range, resolution, sig_val}{As for \code{\link{bnec}}. Each is taken
 from \code{manec} unless supplied.}
 
-\item{...}{Additional arguments to \code{\link{expand_nec}} or
-\code{\link{expand_manec}}.}
+\item{...}{Not used. An argument supplied here is refused.}
 }
 \value{
 If \code{model} is a string representing a single model, an object
@@ -87,6 +86,11 @@ The estimates of the models kept are computed again with the
 they are supplied. The \code{\link{bnec}} defaults are used where
 \code{manec} records none, as an object fitted by an earlier version of
 \pkg{bayesnec} does not.
+
+Of \code{loo_controls}, only "fitting" and "report_k" are used. The models
+kept are scored and weighted as they were in \code{manec}, so "weights",
+"leave_out" and "refit" are ignored, with a message; use
+\code{\link{amend}} to change them.
 }
 \examples{
 \dontrun{

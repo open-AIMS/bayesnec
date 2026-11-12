@@ -29,13 +29,20 @@ that table which answer different questions.
 \details{
 Levels partition the data disjointly and share no parameters, so
 \code{elpd} is additive across them:
-\code{elpd(m_1, ..., m_G) = sum_g elpd_g(m_g)}. Under pseudo-BMA the crossed
-weight of a combination is proportional to the product of its per-level
-weights, so the whole table follows from the per-level vectors and never has
-to be materialised --- which matters, because with the 24 equations of the
+\code{elpd(m_1, ..., m_G) = sum_g elpd_g(m_g)}. For pseudo-BMA weights
+computed without the Bayesian bootstrap, the crossed weight of a combination
+is therefore exactly proportional to the product of its per-level weights,
+so the whole table follows from the per-level vectors and never has to be
+materialised --- which matters, because with the 24 equations of the
 default set and \emph{G} levels it has \code{24^G} cells.
 
-\bold{This identity is specific to pseudo-BMA}, the package default, and
+The default pseudo-BMA weights use the Bayesian bootstrap, which each level
+applies to its own observations. A combination scored on all levels together
+would resample them jointly, so for the default weights the product of the
+per-level weights that \code{crossed_group_weights()} returns approximates
+that combination's weight rather than equalling it.
+
+The identity is specific to pseudo-BMA, and
 \code{crossed_group_weights()} enforces it rather than assuming it: a fit
 built with any other weighting method is refused, because there is no
 correct crossed table to return for one.
@@ -98,6 +105,10 @@ the weighted sum of the components'.
 \examples{
 \dontrun{
 library(bayesnec)
+data(nec_data)
+nec_data$site <- rep(c("a", "b"), length.out = nrow(nec_data))
+fit <- bnec_group(y ~ crf(x, c("nec3param", "ecx4param")), data = nec_data,
+                  group_var = "site")
 crossed_group_weights(fit)
 }
 

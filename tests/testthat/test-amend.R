@@ -1024,3 +1024,32 @@ test_that("update records only settings brms reuses after backend or algorithm c
   updated <- stats::update(legacy, recompile = TRUE)
   expect_identical(updated$call_args, obj$call_args)
 })
+
+test_that("amend() refuses a sig_val outside (0, 1) before recomputing", {
+  expect_error(amend(manec_example, sig_val = 2),
+               "`sig_val` must be one number strictly between 0 and 1",
+               fixed = TRUE)
+  expect_error(amend(manec_example, sig_val = c(0.01, 0.02)),
+               "`sig_val` must be one number strictly between 0 and 1",
+               fixed = TRUE)
+})
+
+test_that("amend() refuses a name in drop or add that is no equation", {
+  msg <- "\"necfoo\" is not an equation that bayesnec fits"
+  expect_error(amend(manec_example, drop = "necfoo"), msg, fixed = TRUE)
+  expect_error(amend(manec_example, add = c("necfoo", "ecxlin")), msg,
+               fixed = TRUE)
+  # A bayesnecfit names the remedy without the removed model argument.
+  single <- suppressMessages(pull_out(manec_example, model = "nec4param"))
+  err <- expect_error(amend(single, drop = "nec4param"),
+                      "naming the equation in crf()", fixed = TRUE)
+  expect_no_match(conditionMessage(err), "model = ")
+})
+
+test_that("amend() refuses a reversed, partial or over-long x_range", {
+  for (bad in list(c(10, 0), c(0, 1, 2), c(0, NA))) {
+    expect_error(amend(manec_example, x_range = bad),
+                 "`x_range` must be NA, or two finite numbers in",
+                 fixed = TRUE)
+  }
+})

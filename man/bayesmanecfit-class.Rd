@@ -57,8 +57,8 @@ from the likelihood, as they do for a single \code{\link[brms]{brmsfit}}.}
 
 \item{\code{w_draw_seed}}{The seed that realised \code{w_draw_index}. Used only
 where the stored index cannot apply: when a caller thins to a different
-number of draws, and for objects saved before version 2.1.3.7, which carry
-neither field and fall back to a fixed seed.}
+number of draws, and for an object saved by an earlier version that carries
+neither field, which falls back to a fixed seed.}
 
 \item{\code{w_ne_posterior}}{The model-weighted posterior estimate of the no-effect
 toxicity estimate.}
@@ -73,12 +73,9 @@ data.}
 \code{\link[base]{data.frame}} of summary model-weighted
 posterior predicted values over a grid set by \code{resolution} and
 \code{x_range}, and the \code{observed_levels} and \code{band} flags
-described for \code{pred_vals} in \code{\link{bayesnecfit}}. Up to and including
-version 2.1.3.6 it also held
-\code{posterior}, the full \code{sample_size x resolution} matrix of
-weighted draws those summaries came from. Once the per-model matrices were
-dropped that one matrix dominated what remained, so it is no longer stored.
-To obtain it directly, use \code{posterior_epred(x, newdata =
+described for \code{pred_vals} in \code{\link{bayesnecfit}}. It does not
+hold the matrix of weighted draws those summaries came from. To obtain it,
+use \code{posterior_epred(x, newdata =
 bnec_newdata(x, resolution = 1000), re_formula = NA)}, which draws from the
 component models in the same weighted proportions where no group term
 spans concentrations. A fit saved before observed-level curves were stored
@@ -103,7 +100,7 @@ Concentration-Response Modeling and Estimation of Toxicity Metrics
 doi:10.18637/jss.v110.i05.
 
 Fisher R, Fox DR (2023). Introducing the no significant effect concentration
-(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028.
 doi: 10.1002/etc.5610.
 
 Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -112,7 +109,7 @@ Environmental Assessment and Management. doi:10.1002/ieam.4809.
 
 Fox DR (2010). A Bayesian Approach for Determining the No Effect
 Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 }
 \seealso{
 \code{\link{bayesnec}},

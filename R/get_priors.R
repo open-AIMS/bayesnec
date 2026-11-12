@@ -4,12 +4,18 @@
 #' that has already been run or from a formula and data before anything is
 #' fitted.
 #'
-#' @param object An object of class \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}} as returned by
-#' \code{\link{bnec}}; or a \code{\link{bayesnecformula}}, a
-#' \code{\link[stats]{formula}} or a \code{\link[base]{character}} string that
-#' can be coerced to one.
-#' @param ... Unused.
+#' @param object An object of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or
+#' \code{\link{bayesnechurdlefit}} as returned by \code{\link{bnec_hurdle}};
+#' or a \code{\link{bayesnecformula}}, a \code{\link[stats]{formula}} or a
+#' \code{\link[base]{character}} string that can be coerced to one. A grouped
+#' fit from \code{\link{bnec_group}} is refused: call \code{get_priors} on
+#' one of its levels, \code{fit$fits[[level]]}. A joint fit from
+#' \code{\link{bnec_joint}} is refused as well; its priors can be read with
+#' \code{\link[brms]{prior_summary}} on \code{fit$fit}.
+#' @param ... Not used. Any argument passed here is refused: a fitted object
+#' takes no further argument, and a formula takes only the arguments named
+#' below.
 #'
 #' @details Two entry points, answering two different questions.
 #'
@@ -39,13 +45,17 @@
 #' put a flat prior on each, which is a different model. See
 #' \code{\link{bayesnecformula}}.
 #'
-#' What is left to \pkg{brms} and its defaults, and so is not returned, is the
-#' family's own dispersion parameter (\code{sigma}, \code{shape}, \code{phi})
-#' where dispersion is held constant, and the linear predictor of a
-#' \code{disp(~x)} sub-model. Neither can be supplied through
-#' \code{bnec(prior = )} in any case, because the initial-value search matches
-#' prior names against the model's own parameters and rejects any prior naming
-#' one outside that set.
+#' What is left to \pkg{brms} and its defaults, and so is not returned from a
+#' formula, is the family's own dispersion parameter (\code{sigma},
+#' \code{shape}, \code{phi}) where dispersion is held constant, and the
+#' linear predictor of a \code{disp(~x)} sub-model. A prior on \code{sigma},
+#' \code{shape} or \code{phi} can be added to the set passed to
+#' \code{bnec(prior = )}. It reaches \pkg{brms} in place of the default, the
+#' initial value of that parameter is left to Stan, and \code{get_priors} on
+#' the fit returns it with the curve's priors. A prior on a slope of a
+#' \code{disp(~x)} sub-model, of class \code{"b"} with \code{dpar} set, is
+#' refused, because the initial-value search reads it as a curve parameter
+#' that the equation does not have.
 #'
 #' This is why \code{get_priors} is not \code{\link{pull_prior}}, which returns
 #' the whole \code{brmsprior} a fit carries -- \pkg{brms} defaults, duplicated
@@ -99,6 +109,17 @@ get_priors <- function(object, ...) {
 #' @noRd
 #' @export
 get_priors.default <- function(object, ...) {
+  if (inherits(object, "bayesnecgroupfit")) {
+    stop("get_priors() has no method for a grouped fit, which holds one fit",
+         " per level of \"", object$group_var, "\". Call it on one level,",
+         " for example get_priors(", deparse1(substitute(object)),
+         "$fits[[\"", names(object$fits)[1], "\"]]).", call. = FALSE)
+  }
+  if (inherits(object, "bayesnecjointfit")) {
+    stop("get_priors() has no method for a joint fit from bnec_joint(). Read",
+         " the priors it used with brms::prior_summary(",
+         deparse1(substitute(object)), "$fit).", call. = FALSE)
+  }
   stop("get_priors() takes an object fitted by bnec, or a formula and data.",
        " You supplied an object of class \"", class(object)[1], "\".",
        call. = FALSE)
@@ -107,18 +128,21 @@ get_priors.default <- function(object, ...) {
 #' @noRd
 #' @export
 get_priors.bayesnecfit <- function(object, ...) {
+  refuse_fit_dots(...)
   usable_prior(object$fit$prior)
 }
 
 #' @noRd
 #' @export
 get_priors.bayesmanecfit <- function(object, ...) {
+  refuse_fit_dots(...)
   lapply(object$mod_fits, function(x) usable_prior(x$fit$prior))
 }
 
 #' @noRd
 #' @export
 get_priors.bayesnechurdlefit <- function(object, ...) {
+  refuse_fit_dots(...)
   # Two separate fits with two separate model sets, so two sets of priors; there
   # is no single prior object that would reproduce the pair.
   list(growth = get_priors(object$growth),
@@ -170,6 +194,7 @@ get_priors.formula <- function(object, data, family = NULL,
   # A bayesnecformula has class c("formula", "bayesnecformula"), so dispatch
   # reaches this method for both. The bayesnecformula method forwards here;
   # forwarding the other way would recurse.
+  refuse_formula_dots(...)
   object <- bayesnecformula(object, env = parent.frame())
   if (missing(data)) {
     stop("Argument `data` is required when get_priors() is given a formula:",
@@ -280,6 +305,52 @@ get_priors.bayesnecformula <- function(object, data, ...) {
 get_priors.character <- function(object, data, ...) {
   get_priors.formula(bayesnecformula(object, env = parent.frame()),
                      data = data, ...)
+}
+
+#' Refuse arguments that get_priors() would not use
+#'
+#' \code{refuse_fit_dots()} serves the methods for a fitted object, which
+#' return the stored priors; \code{refuse_formula_dots()} serves the formula
+#' method.
+#'
+#' @param ... The \code{...} of the calling method.
+#'
+#' @return \code{NULL}, invisibly.
+#'
+#' @noRd
+refuse_fit_dots <- function(...) {
+  if (...length() > 0) {
+    stop("get_priors() on a fitted object returns the priors that fit used",
+         " and takes no further argument, but this call supplied ",
+         dots_label(...), ". To build priors from a formula and data, pass",
+         " those instead.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' @noRd
+refuse_formula_dots <- function(...) {
+  if (...length() > 0) {
+    stop("get_priors() does not use ", dots_label(...), ". With a formula it",
+         " takes data, family, prior_type, asymptote_observed,",
+         " model_survival, predictor_scale and x_control.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Name the arguments in a \code{...} for a message, without evaluating them
+#'
+#' @param ... The arguments.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+dots_label <- function(...) {
+  given <- names(substitute(list(...)))[-1]
+  if (is.null(given)) given <- rep("", ...length())
+  given <- ifelse(nzchar(given), paste0("`", given, "`"),
+                  "an unnamed argument")
+  paste(given, collapse = ", ")
 }
 
 #' Reduce a fitted brmsprior to the rows bnec() will accept back

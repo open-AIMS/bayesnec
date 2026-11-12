@@ -26,7 +26,7 @@ The columns are as follows:
 
 \describe{
 \item{herbicide}{The herbicide (chr).}
-\item{concentration}{The treatment concentration in µg / L (dbl).}
+\item{concentration}{The treatment concentration in \eqn{\mu}{u}g / L (dbl).}
 \item{fvfm}{Maximum effective quantum yield (dbl).}
 }
 }

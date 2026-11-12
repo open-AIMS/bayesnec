@@ -72,7 +72,7 @@
 #' 
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
-#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028. 
 #' doi: 10.1002/etc.5610.
 #'
 #' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -81,7 +81,7 @@
 #' 
 #' Fox DR (2010). A Bayesian Approach for Determining the No Effect
 #' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-#' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+#' and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 #'
 #' @examples
 #' \donttest{
@@ -96,7 +96,8 @@ NULL
 #' @order 2
 #'
 #' @param ecx Should summary ECx values be calculated? Defaults to FALSE.
-#' @param ecx_vals ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
+#' @param ecx_vals ECx targets, as percentages greater than 0, as for
+#' \code{ecx_val} in \code{\link{ecx}}. Only relevant if ecx = TRUE.
 #' If no value is specified by the user, returns calculations for EC10, EC50,
 #' and EC90.
 #' @param divergence_cutoff A \code{\link[base]{numeric}} vector of length 1.
@@ -275,18 +276,11 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
 #'
 #' @noRd
 summary_ecx_rows <- function(..., .fit, .ecx_vals, .stored_range) {
-  # The helper's own arguments follow ... and are dotted, because a formal
-  # before ... is matched by partial name: an ecx_val meant for ecx() would be
-  # taken as ecx_vals and shift every positional argument. After ..., a
-  # duplicate ecx_val stops with "matched by multiple actual arguments".
+  # Keep these formals after ... and dotted: before ..., an ecx_val meant for
+  # ecx() would partially match ecx_vals.
   #
-  # ecx_row()'s own x_range formal takes a caller's x_range in place of the
-  # default, so ecx() receives it once; forwarded in ... beside the default it
-  # would stop with "matched by multiple actual arguments". The hurdle summary
-  # applies the same rule. The formal follows ..., so it takes no positional
-  # argument and matches only the full name: an abbreviation such as x_ran
-  # reaches ecx() through ... and is ignored. NULL leaves ecx() to build its
-  # own grid from the data.
+  # ecx_row() takes a caller's x_range in place of the default, so that ecx()
+  # receives it once. NULL leaves ecx() to build its own grid from the data.
   ecx_row <- function(..., .v, x_range = .stored_range) {
     if (is.null(x_range)) {
       ecx(.fit, ecx_val = .v, ...)

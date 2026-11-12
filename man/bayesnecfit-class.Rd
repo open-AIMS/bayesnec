@@ -42,14 +42,11 @@ a grid set by \code{resolution} and \code{x_range}. Where a group term
 spans concentrations, the summaries describe the population curve, and the
 flags \code{observed_levels} and \code{band = "population"} record that
 the no-effect summaries read the observed levels and the band does not.
-Up to and including version 2.1.3.6 it also held \code{posterior}, the full
-\code{n_draws x resolution} matrix those summaries came from. That matrix
-dominated the size of a fitted object and is no longer stored; it is
-recomputed from \code{fit} where it is needed. To obtain it directly, use
+It does not hold the matrix of draws those summaries came from, which is
+recomputed from \code{fit} where it is needed. To obtain it, use
 \code{posterior_epred(x, newdata = bnec_newdata(x, resolution = 1000),
-re_formula = NA)}. A fit saved by an earlier development version without
-both flags retains its earlier values and gives a warning when they are
-displayed.}
+re_formula = NA)}. A fit saved by an earlier version without both flags
+retains its earlier values and gives a warning when they are displayed.}
 
 \item{\code{top}}{The estimate for parameter "top" in the fitted model.}
 
@@ -97,7 +94,7 @@ Concentration-Response Modeling and Estimation of Toxicity Metrics
 doi:10.18637/jss.v110.i05.
 
 Fisher R, Fox DR (2023). Introducing the no significant effect concentration
-(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028.
 doi: 10.1002/etc.5610.
 
 Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -106,7 +103,7 @@ Environmental Assessment and Management. doi:10.1002/ieam.4809.
 
 Fox DR (2010). A Bayesian Approach for Determining the No Effect
 Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 }
 \seealso{
 \code{\link{bayesnec}},

@@ -58,6 +58,7 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot",
   }
   priors <- as.data.frame(priors) |>
     filter(class == "b")
+  priors <- blank_bounds_to_na(priors)
   priors <- priors[priors$prior != "", ]
   par_names <- character(length = nrow(priors))
   for (j in seq_along(par_names)) {
@@ -86,15 +87,15 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot",
         n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
         if (n_bounds == 2) {
           bounds <- as.numeric(priors[j, c("lb", "ub")])
-          out[[j]] <- sample(out[[j]][which(out[[j]] >= min(bounds) &
-                                            out[[j]] <= max(bounds))],
-                             n_samples, replace = TRUE)
+          out[[j]] <- resample_kept(out[[j]][which(out[[j]] >= min(bounds) &
+                                                   out[[j]] <= max(bounds))],
+                                    n_samples, priors[j, ])
         } else if (n_bounds == 1) {
           direction <- c("lb", "ub")[!is.na(priors[j, c("lb", "ub")])]
           bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
           bounds <- as.numeric(priors[j, direction])
-          out[[j]] <- sample(out[[j]][!bound_fct(out[[j]], bounds)],
-                             n_samples, replace = TRUE)
+          out[[j]] <- resample_kept(out[[j]][!bound_fct(out[[j]], bounds)],
+                                    n_samples, priors[j, ])
         }
       }
     }
@@ -121,4 +122,29 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot",
         facet_wrap(~.data$param, scales = "free_x") +
         theme_bw()
   }
+}
+
+#' Resample the prior draws that fell inside a parameter's bounds
+#'
+#' @param kept A \code{\link[base]{numeric}} vector of the draws kept.
+#' @param n_samples The number of draws to return.
+#' @param prior_row The one-row \code{\link[base]{data.frame}} of the prior,
+#' read for the message.
+#'
+#' @details Index the draws rather than calling \code{sample(kept)}: with one
+#' draw of 1 or more, \code{sample()} would draw from \code{1:kept} instead.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length \code{n_samples}.
+#'
+#' @noRd
+resample_kept <- function(kept, n_samples, prior_row) {
+  if (length(kept) == 0) {
+    bound <- function(b) if (is.na(b)) "none" else b
+    stop("None of the ", n_samples, " draws from the prior on ",
+         prior_row$nlpar, ", ", prior_row$prior, ", fell inside its bounds",
+         " (lb = ", bound(prior_row$lb), ", ub = ", bound(prior_row$ub),
+         "). Increase n_samples, or check the bounds against the prior.",
+         call. = FALSE)
+  }
+  kept[sample.int(length(kept), n_samples, replace = TRUE)]
 }

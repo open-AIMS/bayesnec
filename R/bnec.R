@@ -33,8 +33,9 @@
 #' predictor is treated as a concentration (see \code{predictor_scale}). If
 #' \code{x_range} is supplied, its lower end must equal the control.
 #' A control below the observed range extrapolates the curve. With
-#' \code{prior_type = "regularizing"}, an unobserved control requires a
-#' supplied \code{top} prior.
+#' \code{prior_type = "regularizing"}, the mean for the \code{top} prior is
+#' taken over the lowest concentrations tested from the control upwards, and
+#' an unobserved control requires a supplied \code{top} prior.
 #' @param loo_controls A named \code{\link[base]{list}} of up to five
 #' elements. "fitting" and "weights" are each a named \code{\link[base]{list}}
 #' containing the desired arguments to be passed on to \code{\link[brms]{loo}}
@@ -348,22 +349,20 @@
 #' 
 #' \bold{No-effect toxicity estimates}
 #' 
-#' Regardless of the model(s) fitted, the resulting object will contain a 
-#' no-effect toxicity estimate. Where the fitted model(s) are NEC models (threshold 
-#' models, containing a step function - all models with "nec" as a
-#' prefix) the no-effect estimate is a true  
-#' no-effect-concentration (NEC, see Fox 2010). Where the fitted model(s) are 
-#' smooth ECx models with no step function (all models with "ecx" as a
-#' prefix), the no-effect estimate is a no-significant-effect-concentration 
-#' (NSEC, see Fisher and Fox 2023). 
-#' In the case of a \code{\link{bayesmanecfit}} that contains a mixture of both 
-#' NEC and ECx models, the no-effect estimate is a model averaged combination of 
-#' the NEC and NSEC estimates, and is reported as the N(S)EC
-#' (see Fisher et al. 2023).
-#' The constant equation "ecxflat" has no step and no "nec" parameter, so its
-#' no-effect estimate is an NSEC. Whether an estimate is a NEC or an NSEC is
-#' decided by whether the fitted equation has a "nec" parameter, and not by the
-#' prefix of its name.
+#' Regardless of the model(s) fitted, the resulting object will contain a
+#' no-effect toxicity estimate. For the four monotone threshold equations,
+#' \code{nec3param}, \code{nec4param}, \code{neclin} and \code{necsigm}, it
+#' is the sampled \code{nec} parameter, a no-effect concentration (NEC, see
+#' Fox 2010). For the smooth equations, which have no \code{nec} parameter,
+#' and for the six hormesis threshold equations, whose \code{nec} parameter
+#' marks where the decline term starts and can lie on a rising limb, it is the
+#' no-significant-effect concentration read off the fitted curve (NSEC, see
+#' Fisher and Fox 2023). The constant equation "ecxflat" has no "nec"
+#' parameter, so its no-effect estimate is an NSEC. In the case of a
+#' \code{\link{bayesmanecfit}} that combines equations of both kinds, the
+#' no-effect estimate is a model averaged combination of the NEC and NSEC
+#' estimates, and is reported as the N(S)EC (see Fisher et al. 2023). See
+#' \code{\link{nec}}.
 #'
 #' \bold{A response that does not vary}
 #'
@@ -473,14 +472,10 @@
 #' zero cannot produce the negative values those link scales require --- see
 #' \code{\link{models}}.
 #'
-#' \strong{This changed in version 2.1.3.25.} Before it, the link depended on
-#' how the family was written and the difference was silent:
-#' \code{family = "Beta"} gave identity, while \code{family = Beta} and
-#' \code{family = Beta()} gave \strong{logit} and \code{family = Gamma()} gave
-#' \strong{inverse}. In those cases the curve was fitted to a transform of the
-#' mean while \code{top}, \code{bot} and \code{nec} were reported as though
-#' they were on the response scale. If you have code passing a constructed
-#' family and relying on its default link, add the link explicitly.
+#' Code written for versions before 3.0.0 that passes a constructed family
+#' such as \code{Beta()} or \code{Gamma()} and relies on that family's own
+#' default link (logit and inverse) now fits the identity link. Name the link
+#' explicitly to keep the earlier model.
 #'
 #' @details
 #'
@@ -881,12 +876,9 @@
 #' rows held one and which they were, by row name; the error for a non-finite
 #' value names the column.
 #'
-#' \code{\link[stats]{model.frame}} drops incomplete cases before
-#' \pkg{bayesnec} is given the data, so until version 2.2.0 an \code{NA} left
-#' the fit running on fewer rows than were supplied with nothing said, while an
-#' \code{Inf} was refused. Both are now refused, so that the sample the
-#' estimates are derived from is the user's decision and is visible in the
-#' script.
+#' Both are refused, rather than dropped as \code{\link[stats]{model.frame}}
+#' drops incomplete cases, so that the sample the estimates are derived from
+#' is the user's decision and is visible in the script.
 #'
 #' Apply \code{\link[stats]{na.omit}} to the data frame before calling
 #' \code{bnec} where those rows are to be discarded. The frame that results is
@@ -910,7 +902,7 @@
 #' doi:10.18637/jss.v110.i05.
 #'
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
-#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028. 
 #' doi: 10.1002/etc.5610.
 #'
 #' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -924,7 +916,7 @@
 #' 
 #' Fox DR (2010). A Bayesian Approach for Determining the No Effect
 #' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-#' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+#' and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 #'
 #' @examples
 #' \dontrun{
@@ -954,23 +946,26 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # equation's no-effect estimate off the grid, it would arrive only after
   # every model had compiled and sampled.
   check_resolution(resolution)
-  chk_number(sig_val)
+  check_sig_val(sig_val)
+  check_x_range(x_range)
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   chk_flag(asymptote_observed)
   predictor_scale <- validate_predictor_scale(predictor_scale)
-  chk_number(timeout)
-  if (timeout <= 0) {
-    stop("Argument `timeout` must be a positive number (or Inf).")
-  }
+  check_timeout(timeout)
   check_prior_input(prior)
 
+  # Refuse rather than ignore: a `model` that differs from the formula's
+  # equations would otherwise fit the formula's.
   mf <- match.call(expand.dots = FALSE)
-  m <- sapply(c("x_var", "y_var", "trials_var", "model", "random",
-                "random_vars"), function(x, l) is.null(l[[x]]), l = mf)
-  if (!all(m)) {
-    warning("Arguments x_var, y_var, trials_var, model, random and random_vars",
-            " are deprecated. Extracting relevant data and model information",
-            " from argument formula. See ?bnec")
+  removed <- c("x_var", "y_var", "trials_var", "model", "random",
+               "random_vars")
+  supplied <- removed[!vapply(removed, function(x) is.null(mf[[x]]),
+                              logical(1))]
+  if (length(supplied) > 0) {
+    stop("Argument(s) ", paste0("`", supplied, "`", collapse = ", "),
+         " of bnec() were removed in version 2.0. Name the variables, the",
+         " equations and any group-level terms in the formula instead, as in",
+         " y ~ crf(x, \"nec3param\"). See ?bayesnecformula.", call. = FALSE)
   }
   # parent.frame() resolves a character formula's symbols where the user called
   # bnec(). A formula object keeps its own environment and ignores `env`.
@@ -989,6 +984,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # Check missing values first, so that nothing below, the family choice
   # included, is decided from fewer rows than were supplied.
   check_complete_cases(bdat)
+  check_finite_cases(bdat)
+  check_concentration_count(bdat)
   validate_predictor_scale(
     predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
   )
@@ -1042,6 +1039,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # the family is known. constant_fallback() and the flatness report below
   # cannot read the response without the trials.
   check_trials_term(bdat, brm_args$family)
+  check_trials_values(bdat, brm_args$family)
   # A bounded response with every observation at one bound identifies no curve,
   # so ecxflat is fitted alone in place of the requested set.
   # constant_fallback() refuses a response ecxflat cannot fit either, beta or

@@ -60,6 +60,13 @@ test_that("an inline sub-model that the term splitter tears apart is reported", 
     ),
     "cannot currently be written inline"
   )
+  # The term is quoted as written, not as the fragment the split left.
+  expect_error(
+    bayesnec:::parse_disp_term(
+      bnf(y ~ crf(x, "nec3param") + disp(~s(x) + tank))
+    ),
+    "disp(~s(x) + tank)", fixed = TRUE
+  )
 })
 
 test_that("disp_pars reports the parameters each route introduces", {
@@ -1843,4 +1850,54 @@ test_that("a joint hurdle_negbinomial fit reads its shape at bot (#410)", {
   est <- suppressWarnings(ecx(fit, type = "relative", dpar = "mu",
                               ecx_val = 50))
   expect_true(all(is.finite(est)))
+})
+
+test_that("prior_in_force_bounds reads the bounds a prior declares", {
+  pr <- brms::set_prior("normal(0, 1)", nlpar = "c1", lb = -1, ub = 2) +
+    brms::set_prior("normal(0, 1)", nlpar = "c0")
+  expect_identical(bayesnec:::prior_in_force_bounds(pr, "c1", c(0, 1)),
+                   c(-1, 2))
+  # A row with no bounds is unbounded; a parameter with no row takes the
+  # default.
+  expect_identical(bayesnec:::prior_in_force_bounds(pr, "c0", c(0, 1)),
+                   c(NA_real_, NA_real_))
+  expect_identical(bayesnec:::prior_in_force_bounds(pr, "c2", c(0, 1)),
+                   c(0, 1))
+  expect_identical(bayesnec:::prior_in_force_bounds(NULL, "c1", c(0, 2)),
+                   c(0, 2))
+})
+
+test_that("disp_response divides by trials or rate and keeps positive values", {
+  d <- data.frame(x = c(1, 2, 3, 4), y = c(2L, 0L, 3L, 4L),
+                  n = c(4L, 4L, 6L, 8L))
+  trials <- model.frame(bnf(y | trials(n) ~ crf(x, "nec3param")), d)
+  expect_equal(bayesnec:::disp_response(trials, "beta_binomial"),
+               c(0.5, 0, 0.5, 0.5))
+  rate <- model.frame(bnf(y | rate(n) ~ crf(x, "nec3param")), d)
+  expect_equal(bayesnec:::disp_response(rate, "negbinomial"),
+               c(0.5, 0, 0.5, 0.5))
+  plain <- model.frame(bnf(y ~ crf(x, "nec3param")), d)
+  # A two-block family models the dispersion of its positive block only.
+  expect_equal(bayesnec:::disp_response(plain, "hurdle_gamma"), c(2, 3, 4))
+  expect_equal(bayesnec:::disp_response(plain, "Gamma"), c(2, 0, 3, 4))
+})
+
+test_that("add_disp_placeholders writes and marks only the missing columns", {
+  d <- data.frame(x = c(1, 2, 3, 4), y = c(4, 3, 2, 1),
+                  z = factor(c("b", "a", "b", "a"), levels = c("b", "a")))
+  grid <- data.frame(x = c(1, 2))
+  f <- bnf(y ~ crf(x, "nec3param") + disp(~z))
+  out <- bayesnec:::add_disp_placeholders(grid, d, f)
+  expect_identical(attr(out, "bnec_disp_placeholders"), "z")
+  expect_identical(as.character(out$z), c("b", "b"))
+  expect_identical(levels(out$z), c("b", "a"))
+  # A column the grid already holds is left alone and not marked.
+  held <- data.frame(x = 1, z = "a")
+  expect_identical(bayesnec:::add_disp_placeholders(held, d, f), held)
+  # A sub-model of the predictor alone adds nothing.
+  expect_identical(
+    bayesnec:::add_disp_placeholders(grid, d,
+                                     bnf(y ~ crf(x, "nec3param") + disp(~x))),
+    grid
+  )
 })

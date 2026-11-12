@@ -3,19 +3,14 @@
 #' Reports the candidate set as requested, the candidate set attempted, the
 #' equations excluded and why, and any substitution made in the response.
 #'
-#' @details \code{\link{bnec}} decides which of the requested equations it will
-#' not attempt, and \code{check_data()} substitutes values that a family cannot
-#' represent --- a zero under \code{Gamma} or \code{Beta}, a one under
-#' \code{Beta}. Both were reported by \code{\link[base]{message}} and then
-#' discarded, so neither could be recovered from the returned object: only from
-#' console output, which a knitted document or a call wrapped in
-#' \code{\link[base]{suppressMessages}} does not keep. The set as requested, the
-#' set attempted, the reason for the difference, and what was altered in the
-#' data are exactly what a methods section has to state.
-#'
-#' Two of the three substitutions were silent even on the console, so a user
-#' comparing \pkg{bayesnec} against another engine had no way to see that the
-#' data had been changed at all.
+#' @details \code{\link{bnec}} can decline to attempt some of the requested
+#' equations, and can substitute values that a family cannot represent --- a
+#' zero under \code{Gamma} or \code{Beta}, a one under \code{Beta}. Both are
+#' recorded on the returned object, so they can be recovered where the console
+#' output was not kept, as in a knitted document or a call wrapped in
+#' \code{\link[base]{suppressMessages}}. The set as requested, the set
+#' attempted, the reason for the difference, and what was altered in the data
+#' are what a methods section has to state.
 #'
 #' @param x An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
@@ -36,8 +31,7 @@
 #' \code{attempted} is the set \code{\link{bnec}} tried to fit, not the set
 #' that sampled: an equation that was attempted and failed appears here, and
 #' for \code{\link{bnec}} and \code{\link{amend}} also in
-#' \code{\link{failed_models}}. The name was chosen over \code{fitted} for
-#' that reason. \code{\link[stats]{update}} does not record failures, so an
+#' \code{\link{failed_models}}. \code{\link[stats]{update}} does not record failures, so an
 #' equation whose refit failed stays in \code{attempted} and is not reported
 #' by \code{\link{failed_models}}.
 #'
@@ -59,7 +53,7 @@
 #' \code{NULL} for an object fitted by a version that did not record it.
 #'
 #' @seealso \code{\link{bnec}}, \code{\link{models}},
-#' \code{\link{check_data}}, \code{\link{bnec_version}}
+#' \code{\link{bnec_version}}
 #'
 #' @examples
 #' \donttest{

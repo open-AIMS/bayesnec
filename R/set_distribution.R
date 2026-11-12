@@ -20,18 +20,19 @@ set_distribution <- function(x, support_integer = FALSE, trials = NULL,
                              silence_x_msgs = TRUE) {
   if (inherits(x, "numeric")) {
     if (!is.null(trials) && !silence_y_msgs) {
-      stop("You have supplied a \"trials\" argument, suggesting you ",
-           "wish to model a binomial. Please ensure \"y_var\" is an ",
-           "integer representing the number of successes.")
+      stop("The formula has a trials() term, which implies a binomial",
+           " response, but the response is not stored as an integer. Store",
+           " the number of successes as an integer, for example with",
+           " as.integer().")
     }
     if (min(x) >= 0) {
       if (max(x) > 1) {
         if (all(x %% 1 == 0) && !silence_y_msgs) {
-          message("The input \"y_var\" is made up of whole numbers only,",
-                  "\neven though the class is numeric. The data will be ",
-                  "\nmodelled with a Gamma distribution. Change \"y_var\"",
-                  "\nclass to integer if the intention is to use a Poisson or",
-                  "\nNegative binomial distribution.")
+          message("The response is made up of whole numbers only, but is",
+                  " stored as numeric, so it will be modelled with a Gamma",
+                  " distribution. Store it as an integer, for example with",
+                  " as.integer(), to model it with a Poisson or negative",
+                  " binomial distribution.")
         }
         "Gamma"
       } else {
@@ -43,7 +44,8 @@ set_distribution <- function(x, support_integer = FALSE, trials = NULL,
   } else if (inherits(x, "integer")) {
     if (!support_integer && !silence_x_msgs) {
       stop("bayesnec does not currently support integer concentration ",
-           "data. Please provide a numeric x_var")
+           "data. Store the predictor as numeric, for example with ",
+           "as.numeric().")
     } else {
       if (min(x) >= 0) {
         if (is.null(trials)) {

@@ -252,6 +252,27 @@ bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
                   x_control = recorded_x_control(x))$newdata
 }
 
+#' Refuse `which` on a joint refit
+#'
+#' Checked on the joint refit, so that the message names its class rather than
+#' the internal class of one level.
+#'
+#' @param dots The \code{...} of the calling method, as a list.
+#' @param object An object of class \code{\link{bayesnecjointfit}}.
+#'
+#' @return Invisibly \code{TRUE}, or an error.
+#'
+#' @noRd
+check_joint_which <- function(dots, object) {
+  if ("which" %in% names(dots)) {
+    stop("`which` selects a component of a bayesnechurdlefit, as returned by",
+         " bnec_hurdle(). A bayesnecjointfit has no components, and its",
+         " estimates are returned one row per level of \"", object$group_var,
+         "\".", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
 #' Per-level toxicity estimates from a bayesnecjointfit
 #'
 #' The \code{\link{bayesnecgroupfit}} analogue, sharing \code{estimate_table()}
@@ -269,6 +290,7 @@ bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
 #' @noRd
 joint_estimate_table <- function(object, what, fun, ..., pool = "none",
                                   nsec = NULL) {
+  check_joint_which(list(...), object)
   if (is.null(pool)) pool <- "none"
   pool <- validate_pool(pool, what)
   fits <- lapply(object$levels, function(lev) joint_level_fit(object, lev))
@@ -335,6 +357,7 @@ joint_estimate_table <- function(object, what, fun, ..., pool = "none",
 #'
 #' @noRd
 joint_ne_table <- function(object, no_effect, ..., pool = "none") {
+  check_joint_which(list(...), object)
   if (is.null(pool)) pool <- "none"
   pool <- validate_pool(pool, "nec")
   dots <- list(...)
@@ -434,6 +457,7 @@ ecx.bayesnecjointfit <- function(object, ...) {
 #' @method nsec bayesnecjointfit
 #' @export
 nsec.bayesnecjointfit <- function(object, ...) {
+  check_nsec_no_type(list(...))
   joint_estimate_table(object, "nsec", function(f, ...) nsec(f, ...), ...)
 }
 
@@ -699,4 +723,188 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
          group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
          point_alpha = point_alpha, x_axis = x_axis, xlab = xlab,
          ylab = plot_ylab(ylab, object))
+}
+
+#' @noRd
+#' @method pull_brmsfit bayesnecjointfit
+#' @export
+pull_brmsfit.bayesnecjointfit <- function(object, ...) {
+  object$fit
+}
+
+#' Refuse a method that a joint refit does not define
+#'
+#' Stops with a message naming what to use instead.
+#'
+#' @param x An object of class \code{\link{bayesnecjointfit}}.
+#' @param what The call refused, as \code{"summary()"}.
+#' @param remedy A sentence naming what to use instead.
+#'
+#' @return Nothing; always an error.
+#'
+#' @noRd
+refuse_joint_method <- function(x, what, remedy) {
+  levels_of <- if (is.null(x$group_var)) "" else
+    paste0(" of \"", x$group_var, "\"")
+  stop(what, " is not defined for a bayesnecjointfit, which fits every level",
+       levels_of, " in one posterior. ", remedy, call. = FALSE)
+}
+
+joint_brms_remedy <- function(fun) {
+  paste0("Call ", fun, " on the brmsfit that pull_brmsfit(x) returns.")
+}
+
+joint_newdata_remedy <- function(fun) {
+  paste0(joint_brms_remedy(fun), " A newdata grid must name the level of",
+         " each row, as the grid from bnec_newdata(x) does.")
+}
+
+#' @noRd
+#' @method summary bayesnecjointfit
+#' @export
+summary.bayesnecjointfit <- function(object, ...) {
+  refuse_joint_method(object, "summary()", paste(
+    "Use print() for the equations and model weights, and ecx(), nsec(),",
+    "nec(), ecnsec() or exceedance() for estimates, which return one row",
+    "per level."
+  ))
+}
+
+#' @noRd
+#' @method plot bayesnecjointfit
+#' @export
+plot.bayesnecjointfit <- function(x, y, ...) {
+  refuse_joint_method(x, "plot()",
+                      "Use autoplot(), which draws one panel per level.")
+}
+
+#' @noRd
+#' @method fitted bayesnecjointfit
+#' @export
+fitted.bayesnecjointfit <- function(object, ...) {
+  refuse_joint_method(object, "fitted()", joint_newdata_remedy("fitted()"))
+}
+
+#' @noRd
+#' @method predict bayesnecjointfit
+#' @export
+predict.bayesnecjointfit <- function(object, ...) {
+  refuse_joint_method(object, "predict()", joint_newdata_remedy("predict()"))
+}
+
+#' @noRd
+#' @method posterior_epred bayesnecjointfit
+#' @export
+posterior_epred.bayesnecjointfit <- function(object, ...) {
+  refuse_joint_method(object, "posterior_epred()",
+                      joint_newdata_remedy("posterior_epred()"))
+}
+
+#' @noRd
+#' @method posterior_predict bayesnecjointfit
+#' @export
+posterior_predict.bayesnecjointfit <- function(object, ...) {
+  refuse_joint_method(object, "posterior_predict()",
+                      joint_newdata_remedy("posterior_predict()"))
+}
+
+#' @noRd
+#' @method pp_check bayesnecjointfit
+#' @export
+pp_check.bayesnecjointfit <- function(object, ...) {
+  refuse_joint_method(object, "pp_check()", joint_brms_remedy("pp_check()"))
+}
+
+#' @noRd
+#' @method rhat bayesnecjointfit
+#' @export
+rhat.bayesnecjointfit <- function(x, ...) {
+  refuse_joint_method(x, "rhat()", joint_brms_remedy("rhat()"))
+}
+
+#' @noRd
+#' @method check_chains bayesnecjointfit
+#' @export
+check_chains.bayesnecjointfit <- function(x, ...) {
+  refuse_joint_method(x, "check_chains()", paste(
+    "Draw the chains with plot() on the brmsfit that pull_brmsfit(x)",
+    "returns."
+  ))
+}
+
+#' @noRd
+#' @method check_priors bayesnecjointfit
+#' @export
+check_priors.bayesnecjointfit <- function(object, filename = NA,
+                                          ask = TRUE) {
+  refuse_joint_method(object, "check_priors()", paste(
+    "List the priors with brms::prior_summary() on the brmsfit that",
+    "pull_brmsfit(x) returns."
+  ))
+}
+
+#' @noRd
+#' @method check_fit bayesnecjointfit
+#' @export
+check_fit.bayesnecjointfit <- function(x, group = NULL, ndraws = 1000,
+                                       seed = 10, ...) {
+  refuse_joint_method(x, "check_fit()", paste(
+    "Check the sampler with rhat() and the fit with pp_check(), each called",
+    "on the brmsfit that pull_brmsfit(x) returns."
+  ))
+}
+
+#' @noRd
+#' @method curve_params bayesnecjointfit
+#' @export
+curve_params.bayesnecjointfit <- function(object, summary = TRUE,
+                                          xform = NULL, ...) {
+  refuse_joint_method(object, "curve_params()", paste(
+    "Each level's curve parameters are coefficients of the brmsfit that",
+    "pull_brmsfit(x) returns, named as print(x) describes."
+  ))
+}
+
+#' @noRd
+#' @method model.frame bayesnecjointfit
+#' @export
+model.frame.bayesnecjointfit <- function(formula, ...) {
+  refuse_joint_method(formula, "model.frame()", paste(
+    "The data the model was fitted to are in the brmsfit that",
+    "pull_brmsfit(x) returns, as its `data` element."
+  ))
+}
+
+#' @noRd
+#' @method formula bayesnecjointfit
+#' @export
+formula.bayesnecjointfit <- function(x, ...) {
+  refuse_joint_method(x, "formula()", paste(
+    "The formula fitted is in the brmsfit that pull_brmsfit(x) returns, as",
+    "its `formula` element."
+  ))
+}
+
+#' @noRd
+#' @method update bayesnecjointfit
+#' @export
+update.bayesnecjointfit <- function(object, ...) {
+  refuse_joint_method(object, "update()", paste(
+    "To change the refit, call bnec_joint() again on the bnec_group() fit",
+    "with the arguments to change; for new data, fit bnec_group() first."
+  ))
+}
+
+#' @noRd
+#' @method amend bayesnecjointfit
+#' @export
+amend.bayesnecjointfit <- function(object, drop, add, loo_controls,
+                                   x_range = NULL, resolution = NULL,
+                                   sig_val = NULL, priors, prior_type = NULL,
+                                   asymptote_observed = NULL, timeout = Inf,
+                                   predictor_scale = NULL) {
+  refuse_joint_method(object, "amend()", paste(
+    "To change the equations, amend() the bnec_group() fit and refit it with",
+    "bnec_joint()."
+  ))
 }

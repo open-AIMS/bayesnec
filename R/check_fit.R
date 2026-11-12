@@ -10,12 +10,14 @@
 #' @order 1
 #'
 #' @param x An object of class \code{\link{bayesnecfit}} or
-#' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or a
-#' \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.
+#' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, a
+#' \code{\link{bayesnechurdlefit}} returned by \code{\link{bnec_hurdle}}, or
+#' a \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.
 #' @param group A numeric, character or factor vector of the same length as the
-#' data giving the group each row belongs to, or a single numeric value giving
+#' data giving the group each row belongs to, or a single whole number giving
 #' the number of bins to cut the predictor
-#' into. If \code{NULL} (the default) the distinct values of the predictor are
+#' into. A vector with a missing value is refused. If \code{NULL} (the
+#' default) the distinct values of the predictor are
 #' used where they are replicated, and the predictor is binned otherwise, with a
 #' warning.
 #' For a \code{bayesnecgroupfit}, an explicit vector has one value per row of
@@ -124,6 +126,10 @@
 #' Each table retains its attributes, including any stored Pareto diagnostics.
 #' \code{print()} labels and prints each level; \code{plot()} returns a named
 #' list of plots with one plot per fitted level.
+#' A \code{bayesnechurdlefit} returns a plain \code{\link[base]{list}} of
+#' such tables, named \code{growth}, \code{survival} and, unless
+#' \code{combined = FALSE}, \code{combined}. Plot each element separately, as
+#' in \code{plot(checks$growth)}.
 #'
 #' The separate \code{"pareto"} attribute is a
 #' data frame with one row per equation. It names the stored criterion used for
@@ -225,9 +231,23 @@ check_fit_weight_criterion <- function(x) {
 #' @noRd
 check_fit_groups <- function(predictor, group = NULL) {
   if (!is.null(group) && length(group) == length(predictor)) {
+    if (anyNA(group)) {
+      stop("`group` is missing for row(s) ",
+           paste(which(is.na(group)), collapse = ", "), ". Give every row a",
+           " group; check_fit() would otherwise leave those rows out of",
+           " every statistic.", call. = FALSE)
+    }
     return(factor(group))
   }
-  n_bins <- if (!is.null(group) && length(group) == 1) group else NULL
+  if (!is.null(group) &&
+      (length(group) != 1 || !is.numeric(group) || !is.finite(group) ||
+         group < 1 || group != round(group))) {
+    stop("`group` must hold one value per row of the data (",
+         length(predictor), " rows), or be a single whole number of bins",
+         if (length(group) != 1) paste0("; it has length ", length(group)),
+         ".", call. = FALSE)
+  }
+  n_bins <- if (!is.null(group)) group else NULL
   reps <- table(predictor)
   if (is.null(n_bins) && length(reps) > 0 && min(reps) > 1) {
     return(factor(predictor))
@@ -641,7 +661,7 @@ print.checkfit <- function(x, ...) {
   print(y)
   if (!any(y$control)) {
     cat("\nNo observed row is at the stated control concentration, so",
-        " no group is labelled as the control.\n")
+        "no group is labelled as the control.\n")
   }
   flagged <- y$ppp_mean < 0.05 | y$ppp_mean > 0.95 |
     y$ppp_sd < 0.05 | y$ppp_sd > 0.95
@@ -689,13 +709,13 @@ print.checkfit <- function(x, ...) {
       }
       if (length(shown) < nrow(p)) {
         cat(nrow(p) - length(shown), "lower-weight equations omitted from",
-            " print; see attr(x, \"pareto\") for all equations.\n")
+            "print; see attr(x, \"pareto\") for all equations.\n")
       }
       if (all(p$status == "available" & p$n_high_k == 0)) {
         cat("No held-out unit is at or above the Pareto cutoff.\n")
       }
       cat("High k concerns the leave-one-out approximation, not sampler",
-          " convergence or the posterior predictive check.\n")
+          "convergence or the posterior predictive check.\n")
     }
   }
   invisible(x)
@@ -995,19 +1015,14 @@ hurdle_observed_response <- function(x) {
 #' observation appears in the location panel only, because its residual
 #' standard deviation is undefined.
 #'
-#' Two panels rather than one: the location and the scale fail independently and
-#' for different reasons. A model can get the mean of every group right while
-#' simulating far too much spread, which is the case
-#' \code{\link{check_fit}} exists to catch and which a single combined panel
-#' would hide.
+#' Location and scale are drawn in separate panels, because a model can
+#' reproduce the mean of every group while simulating far more spread than the
+#' data show.
 #'
 #' The control is drawn differently because it is not just another group:
 #' \code{\link{nsec}} reads its reference from the control, so a discrepancy
 #' there moves a reported no-effect concentration in a way that a discrepancy at
 #' the top of the curve does not.
-#'
-#' Built directly in \pkg{ggplot2}, which is already in \code{Depends}. No
-#' \pkg{bayesplot} dependency -- see #148.
 #'
 #' @param x An object of class \code{checkfit}, from \code{\link{check_fit}}.
 #' @param ... Unused.
@@ -1028,8 +1043,6 @@ hurdle_observed_response <- function(x) {
 #' @export
 plot.checkfit <- function(x, ...) {
   d <- as.data.frame(x)
-  # Reshaped by rbind rather than a tidyr call: R/ is base R by convention, and
-  # two statistics do not justify a reshape dependency in package code.
   long <- rbind(
     data.frame(group = d$group, control = d$control,
                statistic = "location (mean)",

@@ -163,7 +163,7 @@ test_that("each estimate is read from its estimator's posterior", {
   expect_equal(out$n_draws, length(post))
   # nec() refuses a single smooth equation, and so does the default here.
   expect_error(exceedance(ecx4param, threshold = 1),
-               "nec is not a parameter in ecx model types")
+               "has no nec parameter")
 })
 
 test_that("a model set is compared through its model-averaged posterior", {

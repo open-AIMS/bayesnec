@@ -66,6 +66,8 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
   # Positron), and cores = 1 there would sample every chain of every model in
   # sequence. An unknown count is treated as more than one.
   one_worker <- isTRUE(workers == 1)
+  # A scheduler backend reports Inf workers, and a failed query NA.
+  counted <- !is.na(workers) && is.finite(workers)
   supplied_cores <- "cores" %in% names(brm_args)
   if (!supplied_cores && !one_worker) {
     brm_args$cores <- 1
@@ -81,12 +83,19 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
              " RStudio and Positron.")
     } else {
       paste0(
-        "Fitting ", n_models, " models in parallel over ", workers,
-        " workers, under the future plan already set.\n",
+        "Fitting ", n_models, " models in parallel over ",
+        if (counted) n_workers(workers) else "the plan's workers",
+        ", under the future plan already set.\n",
         if (supplied_cores) {
           paste0("Each model samples its chains over cores = ",
-                 brm_args$cores, ", as you supplied, so up to ", workers,
-                 " x ", brm_args$cores, " chains may sample at once.")
+                 brm_args$cores, ", as you supplied, so ",
+                 if (counted) {
+                   paste0("up to ", workers, " x ", brm_args$cores,
+                          " chains may sample at once.")
+                 } else {
+                   paste0("each worker may sample up to ", brm_args$cores,
+                          " chains at once.")
+                 })
         } else {
           paste0("Each model samples its chains in sequence (cores = 1);",
                  if (identical(caller, "amend")) {
@@ -350,8 +359,7 @@ plan_group_levels <- function(n_levels, n_models) {
     message(
       "The plan is a list whose first strategy is sequential, so the ",
       n_levels, " levels are fitted one at a time and each level's model set",
-      " uses the next strategy in the list. This is the arrangement earlier",
-      " versions took, asked for explicitly."
+      " uses the next strategy in the list."
     )
     return(list(dispatch = TRUE, concurrent = FALSE))
   }

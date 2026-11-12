@@ -587,6 +587,34 @@ test_that("bnec_group resolves a dot argument the way do.call will (#394)", {
                                   TRUE))
 })
 
+test_that("dots_arg does not read a formal as a longer formal it prefixes", {
+  # prior, model and random are formals of bnec() in their own right, so none
+  # abbreviates prior_type, model_survival or random_vars.
+  expect_null(bayesnec:::dots_arg(list(prior = "p"), "prior_type"))
+  expect_identical(bayesnec:::dots_arg(list(prior = "p"), "prior_type", "u"),
+                   "u")
+  expect_null(bayesnec:::dots_arg(list(model = "m"), "model_survival"))
+  expect_null(bayesnec:::dots_arg(list(random = "r"), "random_vars"))
+  expect_identical(bayesnec:::dots_arg(list(prior = "p"), "prior"), "p")
+  # An abbreviation of two formals matches neither, as in R's own matching.
+  expect_null(bayesnec:::dots_arg(list(x_ = 1), "x_control"))
+})
+
+test_that("bnec_group passes a prior with x_control to the level fits", {
+  set.seed(1)
+  d <- data.frame(x = rep(c(0.1, 0.5, 1, 2, 4, 8), 4),
+                  site = rep(c("a", "b"), each = 12))
+  d$y <- exp(1 - 0.3 * d$x + stats::rnorm(24, 0, 0.2))
+  f <- y ~ crf(x, "nec3param")
+  pr <- suppressMessages(get_priors(f, data = d[d$site == "a", ],
+                                    family = Gamma(link = "identity")))
+  local_mocked_bindings(bnec = function(...) stop("reached the level fit"))
+  expect_error(suppressMessages(bnec_group(
+    f, d, "site", family = Gamma(link = "identity"), prior = pr,
+    x_control = 0.5
+  )), "reached the level fit")
+})
+
 test_that("a level at a bound is fitted with ecxflat, the others as asked (#419)", {
   # A level at one bound throughout gets ecxflat; other levels keep their set.
   # Report each substitution once, before fitting; level calls do not repeat it.
@@ -932,4 +960,140 @@ test_that("the pooled comparison requires the same held-out levels", {
   expect_warning(res <- crossed_group_weights(gf, pooled = pooled)$pooled,
                  "do not cover the same levels")
   expect_identical(res$criterion, "waic")
+})
+
+test_that("bnec_group() refuses a sig_val outside (0, 1) before any level", {
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("level fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(
+    bnec_group(y ~ crf(x, "nec3param"), d, group_var = "site", sig = 2)
+  ), "`sig_val` must be one number strictly between 0 and 1", fixed = TRUE)
+  expect_identical(calls, 0L)
+})
+
+test_that("amend() drops an equation from every level and labels each level", {
+  gf <- fake_group_fit()
+  msgs <- character(0)
+  out <- withCallingHandlers(
+    suppressWarnings(amend(gf, drop = "ecx4param")),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_s3_class(out, "bayesnecgroupfit")
+  expect_s3_class(out$fits$a, "bayesnecfit")
+  expect_s3_class(out$fits$b, "bayesnecfit")
+  expect_identical(out$fits$a$model, "nec4param")
+  expect_true(length(msgs) > 0)
+  expect_true(all(grepl("^Level (a|b): ", msgs)))
+  expect_true(any(grepl("^Level b: ", msgs)))
+})
+
+test_that("amend() names the level that cannot be amended", {
+  single <- suppressMessages(pull_out(manec_example, model = "nec4param"))
+  gf <- fake_group_fit(list(a = manec_example, b = single))
+  expect_error(suppressWarnings(suppressMessages(
+    amend(gf, drop = "ecx4param")
+  )), "Could not amend level b: Cannot drop models from a bayesnecfit")
+})
+
+test_that("messages from the estimators and summary name their level", {
+  gf <- fake_group_fit()
+  capture <- function(expr) {
+    msgs <- character(0)
+    withCallingHandlers(suppressWarnings(expr), message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    })
+    msgs
+  }
+  ne <- capture(nec(gf))
+  expect_true(any(grepl("^Level a: This bayesmanecfit", ne)))
+  expect_true(any(grepl("^Level b: This bayesmanecfit", ne)))
+  sm <- capture(summary(gf))
+  expect_true(length(sm) > 0)
+  expect_true(all(grepl("^Level (a|b): ", sm)))
+})
+
+test_that("degenerate data are refused before any level", {
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("level fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  run <- function(d, f = y ~ crf(x, "nec3param"), ...) {
+    msgs <- capture.output(
+      msg <- tryCatch(suppressWarnings(
+        bnec_group(f, d, group_var = "site", ...)
+      ), error = conditionMessage),
+      type = "message"
+    )
+    expect_false(any(grepl("Fitting level", msgs)))
+    msg
+  }
+  inf_x <- d
+  inf_x$x[3] <- Inf
+  expect_match(run(inf_x), "not finite, in x at row(s) 3", fixed = TRUE)
+  one <- d
+  one$x[one$site == "b"] <- 1
+  expect_match(run(one),
+               "Level(s) \"b\" of \"site\" have observations at a single concentration",
+               fixed = TRUE)
+  low <- d
+  low$trials[2] <- low$count[2] - 1L
+  expect_match(run(low, count | trials(trials) ~ crf(x, "nec3param"),
+                   family = "binomial"),
+               "exceeds the trials column", fixed = TRUE)
+  expect_identical(calls, 0L)
+})
+
+test_that("a level at two concentrations is warned of before any level", {
+  local_mocked_bindings(
+    bnec = function(...) stop("level fit should not start"),
+    .package = "bayesnec"
+  )
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  d$x[d$site == "b"] <- rep(c(0.5, 2), length.out = sum(d$site == "b"))
+  expect_warning(
+    expect_error(suppressMessages(
+      bnec_group(y ~ crf(x, "nec3param"), d, group_var = "site")
+    ), "level fit should not start"),
+    "Level(s) \"b\" of \"site\" have observations at only two concentrations",
+    fixed = TRUE
+  )
+})
+
+test_that("bnec_group() refuses an x_range with one end missing before any level", {
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  local_mocked_bindings(
+    bnec = function(...) stop("level fit should not start"),
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(
+    bnec_group(y ~ crf(x, "nec3param"), d, group_var = "site",
+               x_range = c(0.1, NA))
+  ), "`x_range` must be NA, or two finite numbers in", fixed = TRUE)
+})
+
+test_that("a pool value that is not one of the four is refused on a grouped fit", {
+  gf <- fake_group_fit()
+  msg <- "`pool` must be one of 'none', 'mixture', 'mean_estimate', 'mean_curve'."
+  expect_error(ecx(gf, pool = "foo"), msg, fixed = TRUE)
+  expect_error(nsec(gf, pool = c("none", "mixture")), msg, fixed = TRUE)
 })

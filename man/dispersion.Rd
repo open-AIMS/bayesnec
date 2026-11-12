@@ -7,9 +7,12 @@
 dispersion(model, summary = FALSE, seed = 10)
 }
 \arguments{
-\item{model}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}} whose distribution family is either
-\code{\link[stats]{poisson}} or \code{\link[stats]{binomial}}.}
+\item{model}{An object of class \code{\link{bayesnecfit}},
+\code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}}. The
+statistic is defined for the \code{\link[stats]{poisson}} and
+\code{\link[stats]{binomial}} families. A \code{\link{bayesnecgroupfit}}
+is refused: call \code{dispersion()} on the fit of each level, as in
+\code{lapply(fit$fits, dispersion)}.}
 
 \item{summary}{Logical. Should summary stats be returned instead of full
 vector? Defaults to FALSE.}
@@ -30,9 +33,14 @@ zero fitted variance whose response is not the fitted value, and \code{NA}
 for a draw in which no observation contributes a residual; both cases are
 described under Details and reported when they arise. If \code{summary} is
 TRUE, the vector contains the median, 95\% credible interval, and posterior
-probability of over-dispersion. For a \code{\link{bayesmanecfit}},
+probability of over-dispersion. For a family other than
+\code{\link[stats]{poisson}} or \code{\link[stats]{binomial}} the vector
+is empty, \code{numeric()}. For a \code{\link{bayesmanecfit}},
 \code{summary = FALSE} returns a named list of these vectors and
-\code{summary = TRUE} returns a data frame with one row per equation.
+\code{summary = TRUE} returns a data frame with one row per equation, with
+\code{NA} for an equation whose family is not supported. For a
+\code{\link{bayesnechurdlefit}}, a \code{\link[base]{list}} with elements
+\code{growth} and \code{survival}, each the result for that component.
 }
 \description{
 Calculates a posterior dispersion metric.

@@ -6,7 +6,7 @@
 \usage{
 \method{ggbnec_data}{bayesnechurdlefit}(
   x,
-  add_nec = TRUE,
+  add_nec = FALSE,
   add_ecx = FALSE,
   xform = NULL,
   ...,
@@ -19,16 +19,18 @@
 \arguments{
 \item{x}{An object of class \code{\link{bayesnechurdlefit}}.}
 
-\item{add_nec}{Unused; retained for consistency with the generic.}
-
-\item{add_ecx}{Unused; retained for consistency with the generic.}
+\item{add_nec, add_ecx}{\code{FALSE}, the default. The data hold no
+estimates, so \code{TRUE} is refused: read the estimates with
+\code{\link{nec}} or \code{\link{ecx}} and \code{which}, or draw them
+with \code{autoplot()}.}
 
 \item{xform}{\code{NULL}, the default, or a function to apply to the
 predictor where \code{crf()} does not transform it inline. Where it does,
 the predictor is returned on the recorded scale, the scale the prediction
 grid is built on, and \code{xform} is not applied.}
 
-\item{...}{Unused. \code{dpar} is refused: select a curve with \code{which}.}
+\item{...}{Not used. \code{dpar} is refused, so select a curve with
+\code{which}, and any other argument is refused as well.}
 
 \item{which}{Which curve(s) to return. See \code{\link{plot}}.}
 

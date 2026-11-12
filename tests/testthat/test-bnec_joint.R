@@ -477,6 +477,28 @@ test_that("a hurdle joint refit builds its priors as the hurdle fit did (#516)",
   expect_identical(seen$dots$prior_type, "regularizing")
 })
 
+test_that("each bnec_joint() method refuses the other's argument", {
+  # Passed on to brm(), either argument fails only after sampling.
+  o <- mock_disp_crossed(y ~ crf(x, c("nec3param", "ecx4param")), "Gamma")
+  captured <- capture_joint_call()
+  expect_error(bnec_joint(o, disp_by_level = FALSE),
+               paste0("`disp_by_level` applies to bnec_joint() on a",
+                      " bayesnecgroupfit, and this is a bayesnechurdlefit."),
+               fixed = TRUE)
+  expect_null(captured$formula)
+  suppressMessages(bnec_joint(o))
+  expect_false(is.null(captured$formula))
+  g <- spread_group_fit()
+  g$data$y <- c(0.9, 0.8, 0.5, 0.3)
+  reached <- capture_joint_fit()
+  expect_error(bnec_joint(g, model_survival = "nec3param"),
+               paste0("`model_survival` applies to bnec_joint() on a",
+                      " bayesnechurdlefit, and this is a bayesnecgroupfit."),
+               fixed = TRUE)
+  expect_null(reached$brm_args)
+  expect_error(suppressMessages(bnec_joint(g)), "fit reached")
+})
+
 test_that("fit_bayesnec() records the arguments that build the priors (#516)", {
   local_mocked_bindings(
     brm = function(...) structure(list(), class = "brmsfit"),
@@ -1514,4 +1536,107 @@ test_that("a joint level's grid and control value are its own", {
   bnec_newdata(whole, resolution = 10)
   expect_true(all(is.na(captured)))
   expect_equal(control_x(whole), min(nec4param$fit$data$x))
+})
+
+# Methods a joint refit defines and refuses. joint_split() needs no sampling.
+
+test_that("every inherited generic has a joint method", {
+  # Without one, the bnecfit or default method runs on a list that is not a
+  # fit and fails without naming the cause.
+  s3 <- c("print", "summary", "plot", "autoplot", "ggbnec_data", "predict",
+          "fitted", "posterior_epred", "posterior_predict", "pp_check",
+          "nsec", "nec", "ecx", "ecnsec", "exceedance", "compare_posterior",
+          "rhat", "check_chains", "check_priors", "check_fit",
+          "curve_params", "model.frame", "formula", "pull_brmsfit",
+          "bnec_newdata", "update", "amend")
+  for (g in s3) {
+    expect_true(!is.null(getS3method(g, "bayesnecjointfit", optional = TRUE)),
+                label = paste0(g, ".bayesnecjointfit"))
+  }
+})
+
+test_that("a joint refit refuses the methods it does not define", {
+  j <- joint_split()
+  calls <- list(
+    summary = function() summary(j),
+    plot = function() plot(j),
+    fitted = function() fitted(j),
+    predict = function() predict(j),
+    posterior_epred = function() posterior_epred(j),
+    posterior_predict = function() posterior_predict(j),
+    pp_check = function() pp_check(j),
+    rhat = function() rhat(j),
+    check_chains = function() check_chains(j),
+    check_priors = function() check_priors(j),
+    check_fit = function() check_fit(j),
+    curve_params = function() curve_params(j),
+    model.frame = function() model.frame(j),
+    formula = function() formula(j),
+    update = function() update(j),
+    amend = function() amend(j, add = "nec3param")
+  )
+  for (g in names(calls)) {
+    expect_error(calls[[g]](),
+                 paste0(g, "() is not defined for a bayesnecjointfit, which",
+                        " fits every level of \"site\" in one posterior."),
+                 fixed = TRUE, label = g)
+  }
+  # Each names what to use instead.
+  expect_error(summary(j), "ecx(), nsec(),", fixed = TRUE)
+  expect_error(plot(j), "Use autoplot()", fixed = TRUE)
+  expect_error(posterior_epred(j), "as the grid from bnec_newdata(x) does",
+               fixed = TRUE)
+  expect_error(rhat(j), "the brmsfit that pull_brmsfit(x) returns",
+               fixed = TRUE)
+  expect_error(update(j), "call bnec_joint() again", fixed = TRUE)
+  expect_error(amend(j, add = "nec3param"), "amend() the bnec_group() fit",
+               fixed = TRUE)
+  # The remedy the refusals name returns the fit itself.
+  expect_identical(pull_brmsfit(j), j$fit)
+})
+
+test_that("`which` on a joint refit is refused by the joint class", {
+  # Refused before any level is read, so that the message names the joint
+  # class rather than the internal class of one level.
+  j <- joint_split()
+  msg <- "A bayesnecjointfit has no components"
+  expect_error(nec(j, which = "growth"), msg)
+  expect_error(ecx(j, which = "growth"), msg)
+  expect_error(nsec(j, which = "survival"), msg)
+  expect_error(ecnsec(j, nsec = 1, which = "combined"), msg)
+  expect_error(nec(j, which = "growth"), "one row per level of \"site\"",
+               fixed = TRUE)
+  expect_no_match(tryCatch(nec(j, which = "growth"),
+                           error = conditionMessage),
+                  "bayesnecjointlevel")
+})
+
+test_that("print() on a joint refit reports its equations and weights", {
+  j <- joint_split()
+  j$models <- c(low = "nec4param", high = "nec4param")
+  j$family <- j$fit$family
+  j$disp_by_level <- FALSE
+  j$model_weight_share <- 0.9
+  j$level_weights <- c(low = 1, high = 0.8)
+  out <- paste(capture.output(print(j)), collapse = "\n")
+  expect_match(out, "equation          : nec4param", fixed = TRUE)
+  expect_match(out, "grouping variable : site", fixed = TRUE)
+  expect_match(out, "levels            : low, high", fixed = TRUE)
+  expect_match(out, "dispersion        : shared", fixed = TRUE)
+  expect_match(out, "summed weight     : 0.9 of the available weight",
+               fixed = TRUE)
+  expect_match(out, "weight at level   : low 1, high 0.8", fixed = TRUE)
+  expect_match(out, "b_<parameter>_site<level>", fixed = TRUE)
+  # Levels fitted different equations name each one and its tag, and no
+  # summed-weight share is reported, since no equation was imposed.
+  j$models <- c(low = "nec4param", high = "ecx4param")
+  j$level_spec$tags <- list(low = "lowLv2", high = "highLv1")
+  j$model_weight_share <- NA_real_
+  j$disp_by_level <- TRUE
+  out <- paste(capture.output(print(j)), collapse = "\n")
+  expect_match(out, "equations         : low = nec4param, high = ecx4param",
+               fixed = TRUE)
+  expect_match(out, "dispersion        : per level", fixed = TRUE)
+  expect_match(out, "low = lowLv2, high = highLv1", fixed = TRUE)
+  expect_no_match(out, "summed weight", fixed = TRUE)
 })

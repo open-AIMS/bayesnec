@@ -22,10 +22,12 @@ equation_names <- function() {
 #'
 #' @noRd
 check_equation_names <- function(model) {
-  if (!all(model %in% equation_names())) {
-    to_flag <- paste0(model[!model %in% equation_names()], collapse = "; ")
-    stop("The model(s): ", to_flag, "; is not a valid",
-         " model entry. Please check ?bnec for valid model calls.")
+  bad <- model[!model %in% equation_names()]
+  if (length(bad) > 0) {
+    stop(paste0("\"", bad, "\"", collapse = ", "),
+         if (length(bad) > 1) " are not equations" else " is not an equation",
+         " that bayesnec fits. See ?models for the equations and groups that",
+         " can be named, as in crf(x, \"nec3param\").", call. = FALSE)
   }
   invisible(NULL)
 }
@@ -180,25 +182,37 @@ check_models <- function(model, family, data, record = FALSE) {
       model <- use_model
     }
   }
-  if (link_tag == "identity" & is_hurdle_family(fam_tag)) {
+  if (is_hurdle_family(fam_tag)) {
     # A two-block fit must satisfy both blocks' restrictions. The
-    # zero-probability block is 0-1 bounded, so the linear-decay models always
-    # go. A count or Gamma mu block also rules out nechormepwr01; a
-    # zero_inflated_beta mu block does not, since nechormepwr01 is built for
-    # that range.
-    drop_always <- bounded_linear_drops()
+    # zero-probability block is 1 - curve on the identity link whatever the
+    # mean link, so it is 0-1 bounded and the linear-decay models always go.
+    # Under an identity mean link, a count or Gamma mu block also rules out
+    # nechormepwr01; a zero_inflated_beta mu block does not, since
+    # nechormepwr01 is built for that range.
     mu_fam <- unname(hurdle_mu_fams[[fam_tag]])
-    if (mu_fam %in% c("Gamma", "poisson", "negbinomial")) {
-      drop_always <- c(drop_always, "nechormepwr01")
+    if (link_tag == "identity" &&
+          mu_fam %in% c("Gamma", "poisson", "negbinomial")) {
+      use_model <- setdiff(model, "nechormepwr01")
+      drop_model <- setdiff(model, use_model)
+      if (length(drop_model) > 0) {
+        note_drop(drop_model, paste("not valid for the first block of a",
+                                    fam_tag, "fit with an identity link"))
+        message(paste("Dropping the model(s)",
+                      paste0(drop_model, collapse = ", "),
+                      "as they are not valid in the case of a",
+                      fam_tag, "with identity link."))
+      }
+      model <- use_model
     }
-    use_model <- model[!model %in% drop_always]
+    use_model <- model[!model %in% bounded_linear_drops()]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
       note_drop(drop_model, paste("not valid for the second block of a", fam_tag, "fit"))
       message(paste("Dropping the model(s)",
                     paste0(drop_model, collapse = ", "),
                     "as they are not valid in the case of a",
-                    fam_tag, "with identity link."))
+                    fam_tag, "fit, whose zero-probability block is 0-1",
+                    "bounded on the identity link."))
     }
     model <- use_model
     # The zero-probability block is 0-1 bounded whatever the family, so the
@@ -211,7 +225,7 @@ check_models <- function(model, family, data, record = FALSE) {
     }
     if (length(use_model) == 0) {
       stop(paste("None of the model(s) specified are valid for a",
-                 fam_tag, "with identity link."))
+                 fam_tag, "fit."))
     } else {
       model <- use_model
     }

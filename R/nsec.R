@@ -56,7 +56,11 @@
 #' For the count hurdles, \code{"mu"} is converted to the positive-count mean
 #' \code{E[Y | Y > 0]} so it matches the growth component returned by
 #' \code{\link{bnec_hurdle}}.
-#' @param ... Further arguments to pass to class specific methods.
+#' @param ... Further arguments to pass to class specific methods. A method
+#' refuses any argument it does not use.
+#' @param posterior A \code{\link[base]{logical}} value indicating if the full
+#' posterior sample of calculated NSEC values should be returned instead of
+#' just the median and 95 credible intervals.
 #'
 #' @details NSEC is no-effect toxicity metric that estimates the concentration 
 #' at which the modeled mean response is statistically indistinguishable from 
@@ -84,10 +88,8 @@
 #' the control being the predicted mean at the control concentration: the
 #' \code{x_control} stated in \code{\link{bnec}}, or else the lowest
 #' concentration in the supplied predictor. That holds for every equation,
-#' hormetic ones included: the \code{hormesis_def} argument selected between
-#' the control and the maximum of the predicted curve and has been removed,
-#' because a target below the control is crossed exactly once whatever the
-#' curve does above it.
+#' hormetic ones included, because a target below the control is crossed
+#' exactly once whatever the curve does above it.
 #' For a hormesis threshold equation, \code{\link{nec}} uses this NSEC as its
 #' no-effect estimate. Its \code{nec} parameter, the concentration at which
 #' the decline term starts, remains available through
@@ -103,9 +105,7 @@
 #'
 #' The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 #' defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
-#' the decline from the control towards zero. Up to 2.1.3 it was measured
-#' against the fitted range and computed by three different formulas that
-#' agreed only for a monotonic curve.
+#' the decline from the control towards zero.
 #'
 #' The reference is a quantile of the control posterior, so some draws start
 #' at or below it. A draw with a later decreasing crossing takes that crossing.
@@ -163,7 +163,8 @@
 #' @seealso \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{ecx}}
 #'
 #' @return A vector containing the estimated NSEC value, including upper and
-#' lower 95% credible interval bounds.
+#' lower 95% credible interval bounds, or with \code{posterior = TRUE} the
+#' value for each posterior draw.
 #'
 #' @section Capping and dropping:
 #' A draw whose curve does not reach the target anywhere in the prediction
@@ -179,23 +180,16 @@
 #' at the other end and reported the same way.
 #'
 #' Which quantile estimator is used depends on whether anything is censored.
-#' A posterior with no beyond-range draw is summarised exactly as it was up to
-#' version 2.1.3, with \code{\link[stats]{quantile}}'s default type 7, which
-#' interpolates between two adjacent order statistics. Once any draw is
-#' censored every reported entry becomes an order statistic instead, because a
-#' value interpolated across a draw that has no value would be one the
-#' posterior does not support.
-#' Every entry therefore changes a little when the first draw is censored,
-#' including entries at the other end of the interval. Keeping the uncensored
-#' summary bit-identical to the release was preferred to making the two agree
-#' at the boundary, because every archived analysis is compared against it.
-#'
-#' Up to version 2.1.3 such a draw was deleted and the remaining draws were
-#' summarised as though nothing had been removed, which reported an estimate
-#' lower than the quantity it was labelled as, with an interval narrower than
-#' the posterior supports. See \code{\link{nec}} for the same treatment of a
-#' threshold parameter, where the draw does have a value and the operation is
-#' right-censoring in the ordinary sense.
+#' A posterior with no beyond-range draw is summarised with
+#' \code{\link[stats]{quantile}}'s default type 7, which interpolates between
+#' two adjacent order statistics. Once any draw is censored every reported
+#' entry becomes an order statistic instead, because a value interpolated
+#' across a draw that has no value would be one the posterior does not
+#' support. Every entry therefore changes a little when the first draw is
+#' censored, including entries at the other end of the interval. See
+#' \code{\link{nec}} for the same treatment of a threshold parameter, where
+#' the draw does have a value and the operation is right-censoring in the
+#' ordinary sense.
 #'
 #' @section Extrapolation:
 #' \code{extrapolate} chooses the bound the estimate is censored at, on the
@@ -238,7 +232,7 @@
 #'
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
-#' (NSEC). Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+#' (NSEC). Environmental Toxicology and Chemistry, 42(9), 2019--2028.
 #' doi: 10.1002/etc.5610.
 #'
 #' @examples
@@ -250,12 +244,13 @@
 #' }
 #'
 #' @export
-# dpar sits after `...` to match the methods and appear in \usage.
+# posterior and dpar follow `...` to match the methods and appear in \usage.
 nsec <- function(object, sig_val = 0.01, resolution = 500,
                  x_range = NA,
                  xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                  extrapolate = FALSE, ...,
-                 dpar = NULL, pool = NULL, x_control = "own") {
+                 posterior = FALSE, dpar = NULL, pool = NULL,
+                 x_control = "own") {
   UseMethod("nsec")
 }
 
@@ -271,7 +266,7 @@ nsec <- function(object, sig_val = 0.01, resolution = 500,
 #' 
 #' @importFrom stats quantile
 #' @importFrom brms as_draws_df posterior_epred
-#' @importFrom chk chk_logical chk_numeric
+#' @importFrom chk chk_flag
 #' 
 #' @noRd
 #'
@@ -284,18 +279,18 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
                              x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
-  chk_numeric(sig_val)
-  chk_numeric(resolution)
-  chk_logical(posterior)
-  if (length(sig_val)>1) {
-    stop("You may only pass one sig_val")  
-  }
+  check_nsec_no_type(list(...))
+  check_unused_dots(list(...), "nsec")
+  check_sig_val(sig_val)
+  check_resolution(resolution)
+  chk_flag(posterior)
   check_xform(xform)
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
+  if (!is.null(pool)) validate_pool(pool, "nsec")
   if (is.null(object$observed_group)) {
     level_spec <- observed_level_spec(object)
     if (!is.null(level_spec)) {
@@ -438,10 +433,13 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
                                x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
-  if (length(sig_val)>1) {
-    stop("You may only pass one sig_val")
-  }
+  check_nsec_no_type(list(...))
+  check_unused_dots(list(...), "nsec")
+  check_sig_val(sig_val)
+  check_resolution(resolution)
+  chk_flag(posterior)
   check_xform(xform)
+  if (!is.null(pool)) validate_pool(pool, "nsec")
   x_control <- model_set_control(object, x_control)
   first <- object$mod_fits[[1]]
   finish <- model_set_control_recorder(first, x_control)

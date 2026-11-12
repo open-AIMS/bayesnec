@@ -57,11 +57,9 @@ Details.}
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.}
 
-\item{resolution}{The number of unique x values over which to find ECx.
-The crossing is located by linear interpolation between the two grid values
-that bracket it, so precision saturates well below the grid spacing.
-The default is 500 grid values, matching \pkg{toxval}. A finer grid can
-change an interpolated crossing and increases prediction time.}
+\item{resolution}{The number of grid points each curve is read over.
+Defaults to 500 for the estimate comparisons, as in \code{\link{ecx}} and
+\code{\link{nsec}}, and to 50 for \code{comparison = "fitted"}.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -85,8 +83,9 @@ is not part of that state. With Box-Muller, the next normal draw can change
 after an odd number of preceding normal draws. Use R's default
 \code{normal.kind = "Inversion"} to preserve subsequent normal draws.}
 
-\item{...}{Further arguments that control posterior predictions via
-\code{\link[brms]{posterior_epred}}.}
+\item{...}{For \code{comparison = "fitted"} only, further arguments that
+control posterior predictions via \code{\link[brms]{posterior_epred}}. The
+other comparisons refuse any argument supplied here.}
 }
 \value{
 A named \code{\link[base]{list}} containing posterior differences,
@@ -120,7 +119,8 @@ level's estimate is computed over its own prediction range, as
 \code{\link{compare_estimates}} computes every fit over one range common
 to them all. The draws in \code{posterior_list} are those that
 \code{\link{ecx}}, \code{\link{nsec}} or \code{\link{nec}} return for the
-refit with \code{posterior = TRUE}.
+refit with \code{posterior = TRUE}. \code{seed} has no effect on these
+estimate comparisons, whose draws are paired by position.
 
 Where a group term spans concentrations, each level is read at its own
 observed group levels, as \code{\link{ecx}} reads it: each posterior draw
@@ -149,9 +149,6 @@ taken through \code{...}, and \code{make_newdata = FALSE} requires
 \code{newdata}. \code{seed} changes the result only where \code{ndraws}
 selects the draws.
 
-The estimate comparisons take no further arguments through \code{...}, and
-refuse any that are supplied.
-
 \code{comparison = "nec"} requires a \code{nec} parameter at every level.
 Where a level fits a smooth equation, \code{"n(s)ec"} compares the
 no-effect estimate each level's equation supports.
@@ -162,7 +159,7 @@ concentration in the supplied predictor, per posterior draw. "absolute" (the
 default) measures to 0, "relative" to the equation's theoretical asymptote,
 "range" to the lowest response the curve predicts, and "direct" takes a
 response value rather than a percentage. See \code{\link{ecx}} for the full
-definitions and for what changed at 2.2.0.
+definitions.
 
 The argument \code{make_newdata} is only used if
 \code{comparison = "fitted"}. It is relevant to those who want the package

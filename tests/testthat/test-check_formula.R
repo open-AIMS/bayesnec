@@ -592,3 +592,50 @@ test_that("a fit holding an operator is refused where its frame is rebuilt (#479
   expect_false(any(grepl("transforms its predictor inline", msgs)))
   expect_equal(value, nec(nec4param))
 })
+
+test_that("a second crf() term and a crf() with no equation are refused", {
+  d <- minus_data
+  d$z <- d$x
+  two <- bnf(y ~ crf(x, "nec3param") + crf(z, "nec4param"))
+  expect_error(check_formula(two, d),
+               "The formula has 2 crf() terms, and one is allowed",
+               fixed = TRUE)
+  expect_error(make_brmsformula(y ~ crf(x, "nec3param") +
+                                  crf(z, "nec4param"), data = d),
+               "2 crf() terms", fixed = TRUE)
+  expect_error(check_formula(bnf(y ~ crf(x)), d),
+               "crf() needs the equations to fit as its second argument, as in crf(x, \"nec3param\")",
+               fixed = TRUE)
+  expect_error(make_brmsformula(y ~ crf(log(x)), data = d),
+               "as in crf(log(x), \"nec3param\")", fixed = TRUE)
+})
+
+test_that("a misspelt equation is refused by name before any fit", {
+  fits <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      fits <<- fits + 1L
+      stop("a model fit was started")
+    },
+    bnec = function(...) {
+      fits <<- fits + 1L
+      stop("a level fit was started")
+    },
+    .package = "bayesnec"
+  )
+  msg <- "\"nec3parm\" is not an equation that bayesnec fits"
+  f <- y ~ crf(x, c("nec3parm", "ecx4param"))
+  expect_error(check_formula(bnf(f), minus_data), msg, fixed = TRUE)
+  expect_error(make_brmsformula(f, data = minus_data), msg, fixed = TRUE)
+  expect_error(get_priors(f, data = minus_data), msg, fixed = TRUE)
+  expect_error(bnec_group(f, data = minus_data, group_var = "grp"), msg,
+               fixed = TRUE)
+  expect_error(
+    check_formula(bnf(y ~ crf(x, c("nec3parm", "ecxfoo"))), minus_data),
+    "\"nec3parm\", \"ecxfoo\" are not equations", fixed = TRUE
+  )
+  # A group name is accepted.
+  expect_s3_class(check_formula(bnf(y ~ crf(x, "ecx")), minus_data),
+                  "bayesnecformula")
+  expect_equal(fits, 0L)
+})

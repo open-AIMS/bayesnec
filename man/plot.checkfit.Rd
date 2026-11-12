@@ -24,19 +24,14 @@ observation appears in the location panel only, because its residual
 standard deviation is undefined.
 }
 \details{
-Two panels rather than one: the location and the scale fail independently and
-for different reasons. A model can get the mean of every group right while
-simulating far too much spread, which is the case
-\code{\link{check_fit}} exists to catch and which a single combined panel
-would hide.
+Location and scale are drawn in separate panels, because a model can
+reproduce the mean of every group while simulating far more spread than the
+data show.
 
 The control is drawn differently because it is not just another group:
 \code{\link{nsec}} reads its reference from the control, so a discrepancy
 there moves a reported no-effect concentration in a way that a discrepancy at
 the top of the curve does not.
-
-Built directly in \pkg{ggplot2}, which is already in \code{Depends}. No
-\pkg{bayesplot} dependency -- see #148.
 }
 \examples{
 \dontrun{

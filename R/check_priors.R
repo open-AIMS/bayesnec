@@ -12,7 +12,10 @@
 #'
 #' @seealso \code{\link{bnec}}
 #'
-#' @return A plot of the prior and posterior parameter probability densities.
+#' @return For a \code{\link{bayesnecfit}}, a \code{\link[ggplot2]{ggplot}} of
+#' the prior and posterior probability densities of each parameter. For a
+#' \code{\link{bayesmanecfit}}, one such plot per equation is printed, or
+#' written to \code{filename}, and \code{NULL} is returned invisibly.
 #'
 #' @examples
 #' \dontrun{

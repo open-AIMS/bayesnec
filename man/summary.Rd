@@ -36,7 +36,8 @@ with or without \code{ecx = TRUE}. See Details.}
 
 \item{ecx}{Should summary ECx values be calculated? Defaults to FALSE.}
 
-\item{ecx_vals}{ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
+\item{ecx_vals}{ECx targets, as percentages greater than 0, as for
+\code{ecx_val} in \code{\link{ecx}}. Only relevant if ecx = TRUE.
 If no value is specified by the user, returns calculations for EC10, EC50,
 and EC90.}
 
@@ -135,7 +136,7 @@ summary(nec4param)
 }
 \references{
 Fisher R, Fox DR (2023). Introducing the no significant effect concentration
-(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028.
 doi: 10.1002/etc.5610.
 
 Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -144,5 +145,5 @@ Environmental Assessment and Management. doi:10.1002/ieam.4809.
 
 Fox DR (2010). A Bayesian Approach for Determining the No Effect
 Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 }

@@ -57,7 +57,8 @@ return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 \item{which}{Which component to return: \code{"combined"} (the default),
 \code{"growth"} or \code{"survival"}.}
 
-\item{...}{Additional arguments passed to methods.}
+\item{...}{Additional arguments passed to methods. A method refuses any
+argument it does not use.}
 
 \item{pool}{How observed group levels are combined. \code{"none"} returns
 per-level estimates. \code{"mixture"} gives each posterior draw to one level, in

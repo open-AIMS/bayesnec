@@ -47,6 +47,37 @@ test_that("ecx_val warnings behave as expected", {
                "greater than 0")
 })
 
+test_that("ecx refuses arguments it cannot use", {
+  expect_error(ecx(nec4param, resolution = 1), "at least 2")
+  expect_error(ecx(nec4param, resolution = 0), "at least 2")
+  expect_error(ecx(nec4param, resolution = 10.5), "whole number")
+  expect_error(ecx(nec4param, ecx_val = NA_real_), "ecx_val")
+  expect_error(ecx(nec4param, ecx_val = c(10, 50)), "ecx_val")
+  expect_error(ecx(nec4param, posterior = "yes"), "posterior")
+  expect_error(ecx(manec_example, posterior = NA), "posterior")
+  expect_error(ecx(nec4param, pool = "bogus"), "`pool` must be one of")
+  expect_error(ecx(nec4param, foo = 1), "ecx() does not use `foo`",
+               fixed = TRUE)
+  expect_error(ecx(manec_example, foo = 1), "does not use `foo`")
+})
+
+test_that("the relative rename warns once for a call over several levels", {
+  skip_on_cran()
+  # The joint_split() fit is gaussian with nec4param, which has no asymptote
+  # for type = "relative"; measure towards 0 so that both levels are read.
+  local_mocked_bindings(ecx_asymptote = function(object, type, dpar = NULL) 0)
+  n <- 0
+  withCallingHandlers(
+    invisible(ecx(joint_split(), type = "relative", resolution = 20)),
+    warning = function(w) {
+      if (grepl("now measures", conditionMessage(w))) n <<- n + 1
+      invokeRestart("muffleWarning")
+    },
+    message = function(m) invokeRestart("muffleMessage")
+  )
+  expect_equal(n, 1)
+})
+
 test_that("ecx returns expected object types and arguments pass correctly", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
@@ -185,9 +216,12 @@ test_that("relative is refused where the bound is infinite", {
   fake$fit$family <- stats::gaussian()
   expect_error(ecx_asymptote(fake, "relative"), "no bot parameter")
   expect_error(ecx_asymptote(fake, "relative"), "not bounded below")
-  # Bounded below: the asymptote is 0 and the request is answered.
-  fake$fit$family <- stats::Gamma()
+  # Bounded below: the asymptote is 0 on the link scale and the request is
+  # answered, on the scale of the mean.
+  fake$fit$family <- stats::Gamma(link = "identity")
   expect_equal(ecx_asymptote(fake, "relative"), 0)
+  fake$fit$family <- stats::Gamma(link = "log")
+  expect_equal(ecx_asymptote(fake, "relative"), 1)
   # Any other type never asks for an asymptote.
   expect_true(is.na(ecx_asymptote(fake, "absolute")))
 })
@@ -403,4 +437,48 @@ test_that("one level of a joint refit reads the zero block's bot (#491)", {
   # a level's own term is read where the refit has one
   level_draws <- c(0.3, 0.4)
   expect_equal(bayesnec:::ecx_asymptote(obj, "relative", "hu"), c(0.3, 0.4))
+})
+
+test_that("mean_scale puts bot on the response scale", {
+  mean_scale <- bayesnec:::mean_scale
+  as_fit <- function(family) list(fit = list(family = family))
+  expect_equal(mean_scale(as_fit(brms::brmsfamily("Gamma", link = "log")),
+                          log(c(2, 5))), c(2, 5))
+  expect_equal(mean_scale(as_fit(brms::brmsfamily("Beta", link = "logit")),
+                          0), 0.5)
+  expect_identical(mean_scale(as_fit(brms::brmsfamily("gaussian")), -3), -3)
+})
+
+test_that("a relative ECx under a log link measures towards exp(bot)", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  # Simulated from nec4param on the log scale, so the fit mixes well.
+  set.seed(578)
+  x <- rep(c(0.1, 0.5, 1, 2, 4, 8, 16, 32), each = 8)
+  eta <- log(2) + (log(20) - log(2)) * exp(-0.3 * pmax(x - 2, 0))
+  y <- stats::rgamma(length(x), shape = 50, rate = 50 / exp(eta))
+  fit <- suppressWarnings(suppressMessages(bnec(
+    y ~ crf(x, "nec4param"), data = data.frame(x = x, y = y),
+    family = Gamma(link = "log"), chains = 2, iter = 2000, seed = 578,
+    refresh = 0
+  )))
+  expect_lt(max(brms::rhat(fit$fit), na.rm = TRUE), 1.05)
+  bot <- as.numeric(brms::as_draws_df(fit$fit)[["b_bot_Intercept"]])
+  expect_equal(bayesnec:::ecx_asymptote(fit, "relative"), exp(bot))
+  est <- suppressWarnings(ecx(fit, ecx_val = 50, type = "relative",
+                              resolution = 100, posterior = TRUE))
+  # Each draw's curve on ecx()'s grid, measured from its control towards
+  # exp(bot) and interpolated linearly between the bracketing grid points.
+  grid <- bnec_newdata(fit, resolution = 100)
+  pe <- posterior_epred(fit, newdata = grid, re_formula = NA)
+  target <- pe[, 1] - (pe[, 1] - exp(bot)) * 0.5
+  by_hand <- vapply(seq_len(nrow(pe)), function(i) {
+    k <- which(pe[i, ] <= target[i])[1]
+    if (is.na(k) || k == 1) return(NA_real_)
+    x0 <- grid$x[k - 1]
+    x0 + (target[i] - pe[i, k - 1]) / (pe[i, k] - pe[i, k - 1]) *
+      (grid$x[k] - x0)
+  }, numeric(1))
+  expect_false(anyNA(by_hand))
+  expect_equal(as.numeric(est), by_hand, tolerance = 1e-3)
 })

@@ -1262,6 +1262,7 @@ define_loo_controls <- function(loo_controls, family_str) {
     stop("Element \"refit\" of loo_controls applies only where \"leave_out\"",
          " is \"group\". See ?bnec")
   }
+  check_weight_controls(loo_controls$weights)
   loo_controls[c("fitting", "weights", "leave_out", "refit", "report_k")]
 }
 
@@ -1990,7 +1991,12 @@ retain_shared_data <- function(object, fits) {
 #' @noRd
 #' @importFrom chk chk_numeric
 check_args_newdata <- function(resolution, x_range) {
-  chk_numeric(resolution)
+  if (!is.numeric(resolution) || length(resolution) != 1 ||
+      !is.finite(resolution) || resolution < 1 ||
+      resolution != round(resolution)) {
+    stop("Argument `resolution` must be a single whole number of at least 1,",
+         " the number of predictor values in the grid.", call. = FALSE)
+  }
   # The documented "not supplied" value, and the only NA accepted.
   if (length(x_range) == 1 && is.na(x_range)) {
     return(invisible(NULL))
@@ -2132,6 +2138,10 @@ newdata_eval_fitted <- function(
 #' @return A \code{\link[base]{numeric}} vector.
 #' @details This function is currently exported to allow for non-linear
 #' formula evaluation in brms.
+#'
+#' @examples
+#' library(bayesnec)
+#' step(c(-1, 0, 2))
 #'
 #' @export
 step <- function(x) {
@@ -2354,7 +2364,6 @@ sub_x_transformation <- function(value, formula) {
 #' the control concentration, which is the estimate for such a draw.
 #' @return A \code{\link[base]{numeric}} value, or \code{NA}.
 #'
-#' @importFrom modelbased zero_crossings
 #' @noRd
 crossing_x <- function(y, target, x_vec, x_start = NA_real_) {
   if (all(is.na(y)) || is.na(target)) {
@@ -2366,8 +2375,8 @@ crossing_x <- function(y, target, x_vec, x_start = NA_real_) {
   if (!is.na(y[1]) && y[1] <= target) {
     return(x_start)
   }
-  # zero_crossings() stops on a single value instead of returning nothing.
-  # nsec_from_posterior() can pass one where x_range leaves one grid point.
+  # nsec_from_posterior() can pass a single value where x_range leaves one
+  # grid point, which has no interval to search.
   if (length(y) < 2) {
     return(NA_real_)
   }
@@ -2378,6 +2387,36 @@ crossing_x <- function(y, target, x_vec, x_start = NA_real_) {
   floor_x <- x_vec[floor(val)]
   ceiling_x <- x_vec[ceiling(val)]
   floor_x + (val - floor(val)) * (ceiling_x - floor_x)
+}
+
+#' The positions at which a series crosses zero
+#'
+#' Finds the roots of the linear interpolant of \code{v} over its index. The
+#' interpolant is evaluated at 101 equally spaced positions, a root is sought
+#' with \code{\link[stats]{uniroot}} between each pair that change sign, and
+#' a position at which it is exactly zero is a root too.
+#'
+#' @param v A \code{\link[base]{numeric}} vector of length 2 or more.
+#'
+#' @return A \code{\link[base]{numeric}} vector of positions on the index
+#' scale of \code{v}, or \code{NA} where there is none.
+#' @noRd
+zero_crossings <- function(v) {
+  # Keep this identical to modelbased::zero_crossings(), which it replaces:
+  # any change to the search moves every ECx and NSEC.
+  f <- stats::approxfun(seq_along(v), v)
+  positions <- seq(1, length(v), length.out = 101)
+  values <- f(positions)
+  roots <- positions[which(values == 0)]
+  sign_change <- which(values[1:100] * values[2:101] < 0)
+  for (i in sign_change) {
+    roots <- c(roots, stats::uniroot(f, lower = positions[i],
+                                     upper = positions[i + 1])$root)
+  }
+  if (length(roots) == 0) {
+    return(NA)
+  }
+  roots
 }
 
 #' Refuse a resolution that defines no interval
@@ -2393,6 +2432,11 @@ crossing_x <- function(y, target, x_vec, x_start = NA_real_) {
 #' @return \code{NULL}, invisibly.
 #' @noRd
 check_resolution <- function(resolution) {
+  if (!is.numeric(resolution) || length(resolution) != 1L ||
+      !is.finite(resolution) || resolution != round(resolution)) {
+    stop("Argument `resolution` must be one whole number, the number of ",
+         "grid points.", call. = FALSE)
+  }
   if (resolution < 2) {
     stop("Argument `resolution` must be at least 2; a single grid point ",
          "defines no interval to read an estimate from.", call. = FALSE)
@@ -2611,6 +2655,13 @@ resolve_x_control <- function(object, x_control, x_range) {
             " observed concentration, ", signif(low, 3),
             "; the curve from the control to the data is extrapolated.",
             call. = FALSE)
+  }
+  if (!is.na(x_range[1]) &&
+      !isTRUE(all.equal(min(x_range), as.numeric(x_control))) &&
+      first_in_call("x_control_range")) {
+    message("The prediction range starts at `x_control` = ",
+            signif(x_control, 3), ", which replaces the lower end of ",
+            "`x_range`, ", signif(min(x_range), 3), ".")
   }
   list(value = as.numeric(x_control), x_range = c(x_control, high))
 }
@@ -3048,6 +3099,110 @@ check_removed_args <- function(dots) {
          "concentration -- which is what hormesis_def = \"control\" selected. ",
          "There is no longer an option to measure from the maximum of the ",
          "predicted curve. Drop the argument.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Refuse a sig_val that is not a probability strictly between 0 and 1
+#'
+#' @param sig_val The quantile of the control posterior the NSEC reference is
+#' taken at.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_sig_val <- function(sig_val) {
+  if (!is.numeric(sig_val) || length(sig_val) != 1L || is.na(sig_val) ||
+      sig_val <= 0 || sig_val >= 1) {
+    stop("`sig_val` must be one number strictly between 0 and 1: the ",
+         "quantile of the control posterior that the NSEC reference is ",
+         "taken at.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Refuse arguments an estimator does not use
+#'
+#' The estimators take \code{...}, so a misspelt argument would otherwise be
+#' accepted and ignored. Call this after the checks that refuse a named
+#' argument with a message of its own.
+#'
+#' @param dots \code{list(...)} from the calling method.
+#' @param fun The name of the estimator, for the message.
+#' @param allowed Names the method reads from \code{...}.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_unused_dots <- function(dots, fun, allowed = character()) {
+  if (!length(dots)) {
+    return(invisible(NULL))
+  }
+  given <- names(dots)
+  if (is.null(given)) given <- rep("", length(dots))
+  bad <- !nzchar(given) | !given %in% allowed
+  if (any(bad)) {
+    named <- ifelse(nzchar(given[bad]), paste0("`", given[bad], "`"),
+                    "an unnamed argument")
+    stop(fun, "() does not use ", paste(unique(named), collapse = ", "),
+         ". See ?", fun, " for its arguments.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Whether a report is the first of its kind in the current estimator call
+#'
+#' The estimators call one another for each equation and observed level. A
+#' report keyed here is made once for the outermost estimator call on the
+#' stack, and again in the next call the user makes.
+#'
+#' @param what A \code{\link[base]{character}} key naming the report.
+#'
+#' @return \code{TRUE} the first time in the call, \code{FALSE} after.
+#' @noRd
+first_in_call <- function(what) {
+  heads <- vapply(sys.calls(), function(cl) {
+    head <- cl[[1]]
+    if (is.call(head) && length(head) == 3 &&
+        as.character(head[[1]]) %in% c("::", ":::")) {
+      head <- head[[3]]
+    }
+    if (is.name(head)) as.character(head) else ""
+  }, character(1))
+  outer <- match(TRUE, heads %in% c("nec", "nsec", "ecx", "ecnsec",
+                                    "exceedance"))
+  if (is.na(outer)) {
+    return(TRUE)
+  }
+  # Mark the outermost frame with an id rather than keep the frame, which
+  # would hold the fitted object in memory after the call returns.
+  frame <- sys.frame(outer)
+  id <- get0(".bnec_call_id", envir = frame, inherits = FALSE)
+  if (is.null(id)) {
+    id <- (if (is.null(bnec_state$call_id)) 0 else bnec_state$call_id) + 1
+    bnec_state$call_id <- id
+    assign(".bnec_call_id", id, envir = frame)
+  }
+  key <- paste(what, id)
+  if (key %in% bnec_state$reported) {
+    return(FALSE)
+  }
+  bnec_state$reported <- c(utils::tail(bnec_state$reported, 49), key)
+  TRUE
+}
+
+#' Refuse the type argument of ecx() in a call to nsec()
+#'
+#' \code{nsec()} takes \code{...}, so a \code{type} copied from an
+#' \code{ecx()} call would otherwise be accepted and ignored.
+#'
+#' @param dots \code{list(...)} from the calling method.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_nsec_no_type <- function(dots) {
+  if ("type" %in% names(dots)) {
+    stop("nsec() has no `type` argument. An NSEC is the concentration at ",
+         "which the fitted curve falls below the sig_val quantile of the ",
+         "control. Use ecx() for an effect of a given type.", call. = FALSE)
   }
   invisible(NULL)
 }

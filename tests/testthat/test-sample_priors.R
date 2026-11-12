@@ -80,3 +80,37 @@ test_that("an unsupported prior distribution is named in the error", {
   expect_error(sample_priors(ps, n_samples = 10, plot = NA),
                "gamma, normal, beta, uniform, lognormal")
 })
+
+# brms stores an absent bound as "" in a fitted object's prior.
+
+test_that("a blank bound in a stored prior is read as absent", {
+  stored <- data.frame(
+    prior = "lognormal(0, 1)", class = "b", coef = "", group = "", resp = "",
+    dpar = "", nlpar = "nec", lb = "0.5", ub = "", stringsAsFactors = FALSE
+  )
+  out <- sample_priors(stored, n_samples = 200, plot = NA)
+  expect_length(out$b_nec, 200)
+  expect_true(all(out$b_nec > 0.5))
+})
+
+test_that("a prior with no draw inside its bounds is named in the error", {
+  ps <- data.frame(
+    prior = "normal(0, 1)", class = "b", coef = "", group = "", resp = "",
+    dpar = "", nlpar = "top", lb = "10", ub = "11", stringsAsFactors = FALSE
+  )
+  expect_error(sample_priors(ps, n_samples = 100, plot = NA),
+               "prior on top, normal\\(0, 1\\), fell inside its bounds")
+})
+
+test_that("a single draw inside the bounds is returned as drawn", {
+  # One kept draw of 1 or more must not be read as sample(1:x).
+  ps <- data.frame(
+    prior = "normal(5, 1)", class = "b", coef = "", group = "", resp = "",
+    dpar = "", nlpar = "top", lb = c("0", NA), ub = NA_character_,
+    stringsAsFactors = FALSE
+  )
+  bounded <- sample_priors(ps[1, ], n_samples = 1, plot = NA)
+  unbounded <- sample_priors(ps[2, ], n_samples = 1, plot = NA)
+  expect_equal(bounded$b_top, unbounded$b_top)
+  expect_gt(bounded$b_top, 1)
+})

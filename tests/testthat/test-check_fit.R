@@ -76,6 +76,22 @@ test_that("an explicit group vector is used as given", {
   expect_equal(as.character(g[1]), "a")
 })
 
+test_that("a group vector with a missing value or the wrong length is refused", {
+  # A row with no group would drop out of every statistic without a message.
+  x <- seq_len(12)
+  g <- rep(c("a", "b", "c"), each = 4)
+  g[c(2, 7)] <- NA
+  expect_error(bayesnec:::check_fit_groups(x, g),
+               "`group` is missing for row(s) 2, 7", fixed = TRUE)
+  expect_error(bayesnec:::check_fit_groups(x, rep("a", 5)),
+               "12 rows), or be a single whole number of bins; it has length 5",
+               fixed = TRUE)
+  expect_error(bayesnec:::check_fit_groups(x, NA_real_), "whole number of bins")
+  expect_error(bayesnec:::check_fit_groups(x, 2.5), "whole number of bins")
+  expect_error(bayesnec:::check_fit_groups(x, 0), "whole number of bins")
+  expect_equal(nlevels(suppressWarnings(bayesnec:::check_fit_groups(x, 3))), 3)
+})
+
 test_that("a singleton group retains its mean statistics", {
   x <- c(0, 0, 0.03, 0.03, 0.09, 0.29, 0.29)
   y <- c(0.95, 1.38, 1.18, 1.40, 0.81, 0.94, 0.96)

@@ -1,8 +1,17 @@
 test_that("input errors work as intended", {
   expect_error(compare_posterior(list(ecx4param, nec4param)),
                "Argument x must be a named list.")
-  expect_error(compare_posterior(ecx4param, nec4param),
-               "Argument comparison must be a character vector.")
+  expect_error(compare_posterior(ecx4param), "named list of fits")
+  expect_error(compare_posterior(list(a = ecx4param)), "at least two fits")
+  fits <- list(a = ecx4param, b = nec4param)
+  expect_error(compare_posterior(fits, comparison = nec4param),
+               "comparison must be one of")
+  expect_error(compare_posterior(fits, comparison = c("nec", "ecx")),
+               "comparison must be one of")
+  expect_error(compare_posterior(fits, comparison = NA_character_),
+               "comparison must be one of")
+  expect_error(compare_posterior(fits, comparison = "nec"),
+               "\"a\" fit\\(s\\) a smooth equation.*n\\(s\\)ec")
   # message now names all three accepted classes, hurdle fits included
   m_0 <- "Not all objects in x are of class bayesnecfit, bayesmanecfit or"
   expect_error(compare_posterior(list(g = ecx4param, h = 12)), m_0)
@@ -134,4 +143,38 @@ test_that("a joint fitted comparison asks for the rows it predicts", {
   expect_error(compare_posterior(joint, comparison = "fitted",
                                  re_formula = NULL),
                "`re_formula`")
+})
+
+test_that("an estimate comparison of separate fits refuses unused arguments", {
+  fits <- list(a = ecx4param, b = nec4param)
+  expect_error(compare_posterior(fits, comparison = "nsec", foo = 1),
+               "`foo`")
+  expect_error(compare_posterior(fits, comparison = "nsec",
+                                 hormesis_def = "max"),
+               "hormesis_def has been removed")
+  expect_error(compare_posterior(fits, comparison = "fitted",
+                                 hormesis_def = "max"),
+               "hormesis_def has been removed")
+})
+
+test_that("a joint comparison refuses hormesis_def by name", {
+  joint <- joint_split()
+  expect_error(compare_posterior(joint, comparison = "ecx",
+                                 hormesis_def = "max"),
+               "hormesis_def has been removed")
+})
+
+test_that("a fitted comparison checks the draws it is asked for", {
+  fits <- list(a = ecx4param, b = nec4param)
+  expect_error(compare_posterior(fits, comparison = "fitted", ndraws = 1e6),
+               "`ndraws` must be one whole number from 1 to")
+  expect_error(compare_posterior(fits, comparison = "fitted",
+                                 draw_ids = c(0, 1)),
+               "`draw_ids` must be whole numbers")
+  one <- compare_posterior(fits, comparison = "fitted", resolution = 5,
+                           ndraws = 1)
+  expect_equal(dim(one$diff_list[["a-b"]]), c(1L, 5L))
+  joint <- joint_split()
+  expect_error(compare_posterior(joint, comparison = "fitted", ndraws = 1e6),
+               "`ndraws` must be one whole number from 1 to")
 })
