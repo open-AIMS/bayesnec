@@ -837,3 +837,26 @@ test_that("an x_range that is not NA or an increasing pair is refused before any
   }
   expect_identical(calls, 0L)
 })
+
+test_that("a timeout without R.utils is refused once, before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    has_r_utils = function() FALSE,
+    .package = "bayesnec"
+  )
+  msg <- tryCatch(suppressMessages(
+    bnec(y ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
+         timeout = 60)
+  ), error = conditionMessage)
+  expect_match(msg, "Package \"R.utils\" is required to use the `timeout`",
+               fixed = TRUE)
+  expect_identical(calls, 0L)
+  # amend() refuses it before fitting an added model.
+  expect_error(amend(manec_example, add = "ecxlin", timeout = 60),
+               "R.utils", fixed = TRUE)
+  expect_identical(calls, 0L)
+})

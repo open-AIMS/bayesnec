@@ -148,10 +148,7 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls,
                                 predictor_scale = NULL) {
   prior_args <- recorded_prior_args(object, prior_type, asymptote_observed,
                                     predictor_scale)
-  chk_number(timeout)
-  if (timeout <= 0) {
-    stop("Argument `timeout` must be a positive number (or Inf).")
-  }
+  check_timeout(timeout)
 
   if (missing(drop) && missing(add) && missing(loo_controls) &&
         is.null(x_range) && is.null(resolution) && is.null(sig_val) &&
@@ -211,10 +208,7 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls,
                               predictor_scale = NULL) {
   prior_args <- recorded_prior_args(object, prior_type, asymptote_observed,
                                     predictor_scale)
-  chk_number(timeout)
-  if (timeout <= 0) {
-    stop("Argument `timeout` must be a positive number (or Inf).")
-  }
+  check_timeout(timeout)
   if (!missing(drop)) {
     chk_character(drop)
     # Refuse rather than ignore `drop`: a bayesnecfit holds one model, so
@@ -268,6 +262,37 @@ check_expand_args <- function(x_range = NULL, resolution = NULL,
     check_sig_val(sig_val)
   }
   invisible(NULL)
+}
+
+#' Refuse a timeout that is not positive, or that cannot be applied
+#'
+#' A finite \code{timeout} needs \pkg{R.utils}, which is in Suggests. Check
+#' it here, before any model is fitted, so that a model set does not record
+#' every equation as failed for want of the package.
+#'
+#' @param timeout The value supplied.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @importFrom chk chk_number
+#'
+#' @noRd
+check_timeout <- function(timeout) {
+  chk_number(timeout)
+  if (timeout <= 0) {
+    stop("Argument `timeout` must be a positive number (or Inf).",
+         call. = FALSE)
+  }
+  if (is.finite(timeout) && !has_r_utils()) {
+    stop("Package \"R.utils\" is required to use the `timeout` argument.",
+         " Install it, or leave `timeout` at Inf.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' @noRd
+has_r_utils <- function() {
+  requireNamespace("R.utils", quietly = TRUE)
 }
 
 #' Refuse an x_range that is not NA or two increasing finite numbers

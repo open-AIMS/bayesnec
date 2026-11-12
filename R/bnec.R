@@ -951,10 +951,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   chk_flag(asymptote_observed)
   predictor_scale <- validate_predictor_scale(predictor_scale)
-  chk_number(timeout)
-  if (timeout <= 0) {
-    stop("Argument `timeout` must be a positive number (or Inf).")
-  }
+  check_timeout(timeout)
   check_prior_input(prior)
 
   mf <- match.call(expand.dots = FALSE)
