@@ -11,7 +11,7 @@ bibliography: bayesnec.bib
 
 
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
+[e1]: example1.html
 
 `bayesnec` fits its models with `brms` [@Burkner2017; @Burkner2018], which
 passes them to Stan (<https://mc-stan.org/>). Stan does not interpret a model;

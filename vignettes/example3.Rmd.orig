@@ -30,11 +30,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
-[e7]: https://open-aims.github.io/bayesnec/articles/example7.html
-[e8]: https://open-aims.github.io/bayesnec/articles/example8.html
-[e9]: https://open-aims.github.io/bayesnec/articles/example9.html
+[e1]: example1.html
+[e2b]: example2b.html
+[e7]: example7.html
+[e8]: example8.html
+[e9]: example9.html
 
 ## Overview
 

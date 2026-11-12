@@ -89,7 +89,7 @@ in the order in which they occur:
 6. Assess the influence of the priors, and report.
 
 The construction of the default priors, and `check_priors()`, are described in
-the [*Priors*](https://open-aims.github.io/bayesnec/articles/example3.html)
+the [*Priors*](example3.html)
 vignette.
 
 ## The assumptions the diagnostics test
@@ -112,7 +112,7 @@ is placed higher and a lower concentration is returned. The direction of the
 error is not known in advance, and no convergence diagnostic reveals it (this
 point is also made, for the choice between constant and non-constant dispersion,
 in [*Single model
-usage*](https://open-aims.github.io/bayesnec/articles/example1.html)). The ECx
+usage*](example1.html)). The ECx
 depends on this assumption less. Although it is also measured from the control
 mean, it is measured at a fixed fraction of that mean and not at a quantile of
 its posterior, so an error in the variance widens or narrows the ECx interval
@@ -129,7 +129,7 @@ check is made within concentration groups, which is what `check_fit()` does.
 ## The effect of exclusion
 
 [*Multi model
-usage*](https://open-aims.github.io/bayesnec/articles/example2.html) notes that
+usage*](example2.html) notes that
 a poorly shaped model with a low predictive weight may contribute little to a
 model average. A model that has not sampled adequately, however, contributes on
 the basis of a posterior the sampler has not explored reliably. Because its
@@ -149,14 +149,14 @@ appropriate response to each is different.
 
 The analysis uses one plate of the zinc series of the `lum31` bioluminescence
 assay, read at 15 minutes. [*Grouping and factor
-covariates*](https://open-aims.github.io/bayesnec/articles/example8.html) fits
+covariates*](example8.html) fits
 the same plate to compare group-level terms, and here we take it through a
 complete analysis. It ends with a draft of the methods and results text a paper
 might give for it, in which steps 1 to 6 are presented as the supplementary
 material. The threshold estimates themselves (*NEC*, *NSEC*, ECx, and the
 model-averaged *N(S)EC* reported when a set mixes both kinds) are defined,
 together with the candidate equations, in [*Model
-details*](https://open-aims.github.io/bayesnec/articles/example2b.html).
+details*](example2b.html).
 
 ```{r libraries}
 library(bayesnec)
@@ -247,7 +247,7 @@ one cell can vary together. Each fit below therefore includes `ogl(conc_group)`,
 a deviation for each cell, so that the cell (and not the well) is the
 observation at each concentration. *Grouping within a concentration* in
 [*Grouping and factor
-covariates*](https://open-aims.github.io/bayesnec/articles/example8.html)
+covariates*](example8.html)
 compares fits of this plate with and without the term, and describes how the
 model weights are computed under it. The dispersion parameter then describes the
 spread of the wells within a cell.
@@ -267,7 +267,7 @@ reading is below the floor of the instrument and is not an absence of light, so
 it is left-censored: `rlu_cens | cens(censoring)` replaces it by the smallest
 positive reading on the plate and declares that the true value is below that
 bound (`?lum31`, and *Censoring* in [*Single model
-usage*](https://open-aims.github.io/bayesnec/articles/example1.html)).
+usage*](example1.html)).
 `r floor_text`
 
 A `Gamma` family with one `shape` parameter assumes a constant coefficient of
@@ -296,9 +296,9 @@ it is `r paste(sprintf("%.2f", cv_high), collapse = " and ")`, as the response f
 towards zero. One `shape` cannot describe both, so each fit below includes
 `disp("power")`, which lets the dispersion parameter change with the fitted mean
 (see *Non-constant dispersion* in [*Single model
-usage*](https://open-aims.github.io/bayesnec/articles/example1.html)).
+usage*](example1.html)).
 [*Grouping and factor
-covariates*](https://open-aims.github.io/bayesnec/articles/example8.html) fits
+covariates*](example8.html) fits
 the zinc plates of this assay with the same term, and step 5 compares it with
 constant dispersion.
 
@@ -322,7 +322,7 @@ which a `Gamma` family cannot take, or one that raises a negative logged
 concentration to a fractional power. `bnec_record()` lists those excluded, with
 the reasons, after the fit below. `get_priors()` returns entries only for the
 equations that remain valid ([*Model
-details*](https://open-aims.github.io/bayesnec/articles/example2b.html) gives
+details*](example2b.html) gives
 their equations, and `?models` the model groups).
 
 ```{r zinc-priors}
@@ -358,7 +358,7 @@ on log concentration, bounded below by the logged control and (because
 `asymptote_observed = TRUE`, the default) above by the logged highest
 concentration. `f`, the exponent that sets the asymmetry of `ecxll5`, is
 `r entries_default$prior[entries_default$nlpar == "f"]`.
-[*Priors*](https://open-aims.github.io/bayesnec/articles/example3.html) explains
+[*Priors*](example3.html) explains
 how the entries are constructed and how to compare them with the posterior.
 
 ## Fitting the full set
@@ -1056,7 +1056,7 @@ the dispersion parameter becomes a function of the fitted mean instead of a
 constant. The variance functions available, the families to which each applies,
 and what the estimated exponent implies for a given family are described in
 [*Single model
-usage*](https://open-aims.github.io/bayesnec/articles/example1.html).
+usage*](example1.html).
 
 ```{r disp-slope}
 brms::fixef(pull_brmsfit(best_final))[c("c0_Intercept", "c1_Intercept"), ]

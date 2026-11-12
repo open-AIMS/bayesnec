@@ -36,13 +36,13 @@ clauses <- function(x) {
 }
 ```
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2]: https://open-aims.github.io/bayesnec/articles/example2.html
-[e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
-[e3]: https://open-aims.github.io/bayesnec/articles/example3.html
-[e4]: https://open-aims.github.io/bayesnec/articles/example4.html
-[e6]: https://open-aims.github.io/bayesnec/articles/example6.html
-[e8]: https://open-aims.github.io/bayesnec/articles/example8.html
+[e1]: example1.html
+[e2]: example2.html
+[e2b]: example2b.html
+[e3]: example3.html
+[e4]: example4.html
+[e6]: example6.html
+[e8]: example8.html
 
 # Overview
 
