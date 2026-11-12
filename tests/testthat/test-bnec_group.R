@@ -976,3 +976,48 @@ test_that("bnec_group() refuses a sig_val outside (0, 1) before any level", {
   ), "`sig_val` must be one number strictly between 0 and 1", fixed = TRUE)
   expect_identical(calls, 0L)
 })
+
+test_that("amend() drops an equation from every level and labels each level", {
+  gf <- fake_group_fit()
+  msgs <- character(0)
+  out <- withCallingHandlers(
+    suppressWarnings(amend(gf, drop = "ecx4param")),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_s3_class(out, "bayesnecgroupfit")
+  expect_s3_class(out$fits$a, "bayesnecfit")
+  expect_s3_class(out$fits$b, "bayesnecfit")
+  expect_identical(out$fits$a$model, "nec4param")
+  expect_true(length(msgs) > 0)
+  expect_true(all(grepl("^Level (a|b): ", msgs)))
+  expect_true(any(grepl("^Level b: ", msgs)))
+})
+
+test_that("amend() names the level that cannot be amended", {
+  single <- suppressMessages(pull_out(manec_example, model = "nec4param"))
+  gf <- fake_group_fit(list(a = manec_example, b = single))
+  expect_error(suppressWarnings(suppressMessages(
+    amend(gf, drop = "ecx4param")
+  )), "Could not amend level b: Cannot drop models from a bayesnecfit")
+})
+
+test_that("messages from the estimators and summary name their level", {
+  gf <- fake_group_fit()
+  capture <- function(expr) {
+    msgs <- character(0)
+    withCallingHandlers(suppressWarnings(expr), message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    })
+    msgs
+  }
+  ne <- capture(nec(gf))
+  expect_true(any(grepl("^Level a: This bayesmanecfit", ne)))
+  expect_true(any(grepl("^Level b: This bayesmanecfit", ne)))
+  sm <- capture(summary(gf))
+  expect_true(length(sm) > 0)
+  expect_true(all(grepl("^Level (a|b): ", sm)))
+})

@@ -22,7 +22,8 @@ amend(
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesmanecfit}} or
-\code{\link{bayesnecfit}}, as returned by \code{\link{bnec}}.}
+\code{\link{bayesnecfit}}, as returned by \code{\link{bnec}}, or of class
+\code{\link{bayesnecgroupfit}}, as returned by \code{\link{bnec_group}}.}
 
 \item{drop}{A \code{\link[base]{character}} vector containing the names of
 model types you which to exclude for the modified fit. A
@@ -87,11 +88,14 @@ records none.}
 }
 \value{
 All successfully fitted model fits. A \code{\link{bayesmanecfit}} if
-more than one model remains, otherwise a \code{\link{bayesnecfit}}.
+more than one model remains, otherwise a \code{\link{bayesnecfit}}. For a
+\code{\link{bayesnecgroupfit}}, an object of the same class holding the
+amended fit of each level.
 }
 \description{
 Amends an existing \code{\link{bayesmanecfit}} or \code{\link{bayesnecfit}}
-object, for example, by adding or removing fitted models.
+object, for example, by adding or removing fitted models. A
+\code{\link{bayesnecgroupfit}} is amended level by level.
 }
 \details{
 A model added through \code{add} is fitted with the arguments of
@@ -146,7 +150,8 @@ became its NSEC stores that equation's \code{nec} parameter instead, and
 the stored fits without refitting any model.
 
 A \code{\link{bayesnecgroupfit}} is amended level by level, with the same
-arguments applied to the fit of each level.
+arguments applied to the fit of each level. Each message, warning and error
+raised for a level names that level, and an error stops the call.
 }
 \examples{
 library(bayesnec)
