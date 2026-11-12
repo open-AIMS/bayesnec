@@ -383,20 +383,19 @@ the same call returns.
   `zero_inflated_beta`, `hurdle_poisson` and `hurdle_negbinomial`, and the
   single-block families `zero_inflated_poisson` and
   `zero_inflated_negbinomial`. A two-block family fits one curve to the
-  positive response, on the untruncated mean for a count hurdle, and a
-  second, the zero block, to the probability of a non-zero response, while a
-  single-block family holds that probability constant. Each
-  family must be named in `family`; `bnec()` never chooses one. The new
-  `model_survival` argument names the equation for the zero block. The zero
-  block is fitted on the identity link, and another link for it is refused.
-  On the identity mean link, the default, `neclin`, `neclinhorme`, `ecxlin`,
-  `nechormepwr` and `nechorme4pwr` are excluded for every two-block family,
-  and `nechormepwr01` as well where the positive block is a `Gamma` or count
-  response. For a two-block family
-  `posterior_epred()` returns the mean of the positive block multiplied by
-  the probability of a non-zero response. A `zero_inflated_beta` response at
-  one bound in every observation is treated as a `Beta` response is (#104,
-  #173, #209, #249).
+  positive response, on the untruncated mean for a count hurdle, and a second,
+  the zero block, to the probability of a non-zero response, while a
+  single-block family holds that probability constant. Each family must be
+  named in `family`; `bnec()` never chooses one. The new `model_survival`
+  argument names the equation for the zero block. The zero block is fitted on
+  the identity link, and another link for it is refused. On the identity mean
+  link, the default, `neclin`, `neclinhorme`, `ecxlin`, `nechormepwr` and
+  `nechorme4pwr` are excluded for every two-block family, and `nechormepwr01`
+  as well where the positive block is a `Gamma` or count response. For a
+  two-block family `posterior_epred()` returns the mean of the positive block
+  multiplied by the probability of a non-zero response. A `zero_inflated_beta`
+  response at one bound in every observation is treated as a `Beta` response
+  is (#104, #173, #209, #249).
 
 - `ecx()` and `nsec()` gain `dpar`, which reports one block of a joint
   two-block fit. Under `dpar = "mu"` a count hurdle reports the mean of the
@@ -427,8 +426,8 @@ the same call returns.
 - `bnec_hurdle()` fits count survivors, with a `poisson` or `negbinomial`
   growth family, by a zero-truncated likelihood, which needs brms 2.23.2 or
   later. With an earlier brms it stops before fitting and names the joint
-  count hurdle, `bnec(family = "hurdle_poisson")` or
-  `bnec(family = "hurdle_negbinomial")`, which brms 2.23.0 fits (#249).
+  count hurdle, `bnec(family = "hurdle_poisson")` or `bnec(family =
+  "hurdle_negbinomial")`, which brms 2.23.0 fits (#249).
 
 ## Joint refits
 
@@ -440,12 +439,11 @@ the same call returns.
   `ecx()`, `ecnsec()`, `exceedance()`, `compare_posterior()`, `autoplot()`,
   `ggbnec_data()` and `print()` methods. With `disp_by_level = TRUE`, the
   default, the dispersion parameter also takes a value per level. Each level
-  is read over its own concentrations, from the control recorded at fitting
-  or given as `bnec_joint(x_control = )`, or else from its lowest
-  concentration. `prior_type`,
-  `asymptote_observed` and `predictor_scale` are taken from the fit unless
-  supplied. See `?bnec_joint` and `vignette("example8")` (#382, #388, #448,
-  #500, #516, #557).
+  is read over its own concentrations, from the control recorded at fitting or
+  given as `bnec_joint(x_control = )`, or else from its lowest concentration.
+  `prior_type`, `asymptote_observed` and `predictor_scale` are taken from the
+  fit unless supplied. See `?bnec_joint` and `vignette("example8")` (#382,
+  #388, #448, #500, #516, #557).
 
 - Where a factorised `Gamma` growth fit includes a left-censored survivor,
   `bnec_joint()` fits that row as an interval from zero to the recorded
@@ -490,13 +488,14 @@ the same call returns.
   posterior predictive p-value for each comparison, counting ties as one half.
   Predictor values without replicates are binned, with a warning. Where the
   observed statistic and the median simulated one are both zero their ratio is
-  1. A group with one observation gets the mean statistics only. In a group
-  with readings censored through `cens()`, the observed and simulated values
-  beyond the bound are set to it, and `n_cens` gives the number censored. It
-  accepts a `bayesnecfit`, `bayesmanecfit`, `bayesnecgroupfit` or
-  `bayesnechurdlefit`, prints the Pareto *k* summary of the stored LOO
-  criterion separately, and returns it in the `"pareto"` attribute. It has
-  `print()` and `plot()` methods (#56, #148, #542, #558, #566, #568).
+  reported as 1. A group with one observation gets the mean statistics only.
+  In a group with readings censored through `cens()`, the observed and
+  simulated values beyond the bound are set to it, and `n_cens` gives the
+  number censored. It accepts a `bayesnecfit`, `bayesmanecfit`,
+  `bayesnecgroupfit` or `bayesnechurdlefit`, prints the Pareto *k* summary of
+  the stored LOO criterion separately, and returns it in the `"pareto"`
+  attribute. It has `print()` and `plot()` methods (#56, #148, #542, #558,
+  #566, #568).
 
 - `pp_check()` has methods for `bayesnecfit`, `bayesmanecfit` and
   `bayesnechurdlefit` objects. A model set returns one plot per equation
@@ -507,9 +506,8 @@ the same call returns.
   `screen_models()` drops the equations that fail and reports why (#148).
 
 - `summary()` of a single fit or a model set reports the number of divergent
-  transitions of each equation,
-  and its printed output warns where one exceeds the new `divergence_cutoff`,
-  10 by default (#447).
+  transitions of each equation, and its printed output warns where one exceeds
+  the new `divergence_cutoff`, 10 by default (#447).
 
 - `bnec()` reports an equation that does not reproduce the mean or spread of
   the control. `summary()` of a model set does the same by default, which
@@ -592,10 +590,9 @@ the same call returns.
   mean. It is refused for a family with no free dispersion parameter and for
   `hurdle_poisson` and the zero-inflated count families, and a function of the
   mean is refused under a link other than the identity, as is a `disp(~x)`
-  term whose values are not finite. On `hurdle_gamma`,
-  `zero_inflated_beta` and `hurdle_negbinomial` it models the positive block.
-  See `?bnec` and `vignette("example9")` (#191, #397, #410, #443, #468,
-  #472).
+  term whose values are not finite. On `hurdle_gamma`, `zero_inflated_beta`
+  and `hurdle_negbinomial` it models the positive block. See `?bnec` and
+  `vignette("example9")` (#191, #397, #410, #443, #468, #472).
 
 - `dispersion()` accepts a model set, returning a named list of draws, or
   with `summary = TRUE` one row per equation, and a `bayesnechurdlefit`, for
@@ -633,8 +630,8 @@ the same call returns.
   names equations to show alongside or instead of the model average, and
   `average`. `predict()` then returns a list. `all_models` is deprecated and
   gives a warning whenever it is supplied; `all_models = TRUE` still works in
-  `plot()` and `autoplot()`, and is written
-  `model = fit$success_models, average = FALSE` (#120).
+  `plot()` and `autoplot()`, and is written `model = fit$success_models,
+  average = FALSE` (#120).
 
 - `bnec()` gains `x_control`, a stated control concentration, given on the
   scale the predictor was recorded on. It sets the concentration at which
@@ -838,9 +835,11 @@ the same call returns.
   `model = "all"` with `ogl(conc_group)` and `disp("power")` (#219, #367).
 
 - `vignette("example10")`, "Hormesis and the no-significant-effect
-  concentration", is new. It reads the lettuce series of van Ewijk and
-  Hoekstra (1993), distributed with bayesnec as
-  `inst/extdata/hormesis_lettuce_1993.csv` (#573).
+  concentration", is new. It sets out the candidate no-effect estimates of a
+  hormetic curve and fits the hormesis equations to published data,
+  including the lettuce series of van Ewijk and Hoekstra (1993), which
+  bayesnec now distributes as `inst/extdata/hormesis_lettuce_1993.csv`
+  (#570, #573).
 
 - `vignette("example3")`, "Priors", is rewritten. It covers the default
   priors, the choice between `prior_type` sets, fixing a parameter, and
