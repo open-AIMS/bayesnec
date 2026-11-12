@@ -51,7 +51,7 @@ test_that("a bayesmanecfit yields its best-weighted model as a bayesnecfit", {
   expect_s3_class(best, "bayesnecfit")
   expect_equal(best$model, "nec4param")
   # Identical to naming the model by hand, which is the block this replaces.
-  expect_equal(best, nec4param)
+  expect_equal(best, suppressMessages(pull_out(manec_example, "nec4param")))
 })
 
 test_that("a bayesnecfit is returned unchanged, naming the model it holds", {

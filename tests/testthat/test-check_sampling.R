@@ -3,6 +3,9 @@ skip_unless_full_suite()
 # Sampler diagnostics must report absolute and relative efficiency,
 # exclude unscreenable parameters and distinguish partial from total failure.
 
+# The packaged fit passes the screen, and these tests need one that fails it.
+manec_example <- unconverged_manec(manec_example)
+
 test_that("check_sampling returns one row per candidate with all columns", {
   skip_on_cran()
   tab <- check_sampling(manec_example)

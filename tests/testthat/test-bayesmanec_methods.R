@@ -140,7 +140,8 @@ test_that("summary behaves as expected", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  summary.p <- suppressWarnings(summary(manec_example))
+  bad <- unconverged_manec()
+  summary.p <- suppressWarnings(summary(bad))
   expect_equal(class(summary.p), "manecsummary")
   # Store both diagnostic verdicts and their actual thresholds so printing
   # can describe the sampler and control-fit checks consistently.
@@ -153,12 +154,12 @@ test_that("summary behaves as expected", {
                                    "failed_models", "bnec_version"))
   expect_equal(summary.p$rhat_cutoff, 1.01)
   # and it is honoured rather than decorative
-  expect_equal(suppressWarnings(summary(manec_example,
+  expect_equal(suppressWarnings(summary(bad,
                                         rhat_cutoff = 1.5))$rhat_cutoff, 1.5)
   # Recompute the verdict from the requested cutoff; stored warning text
   # cannot detect a changed cutoff.
   expect_true(all(unlist(summary.p$rhat_issues)))
-  loose <- suppressWarnings(summary(manec_example, rhat_cutoff = 1.5))
+  loose <- suppressWarnings(summary(bad, rhat_cutoff = 1.5))
   expect_false(any(unlist(loose$rhat_issues)))
 })
 
@@ -177,7 +178,7 @@ test_that("print.manecsummary falls back to 1.05 for an object with no cutoff", 
   # A summary without rhat_cutoff predates the recorded threshold and was
   # assessed against 1.05. Printing 1.01 would misstate that assessment.
   skip_on_cran()
-  s <- suppressWarnings(summary(manec_example))
+  s <- suppressWarnings(summary(unconverged_manec()))
   s$rhat_cutoff <- NULL
   msg <- tryCatch(print(s), warning = function(w) conditionMessage(w))
   expect_match(msg, "Rhat > 1.05")
@@ -185,7 +186,7 @@ test_that("print.manecsummary falls back to 1.05 for an object with no cutoff", 
 
 test_that("the summary warning points at screen_models", {
   skip_on_cran()
-  s <- suppressWarnings(summary(manec_example))
+  s <- suppressWarnings(summary(unconverged_manec()))
   msg <- tryCatch(print(s), warning = function(w) conditionMessage(w))
   expect_match(msg, "screen_models", fixed = TRUE)
 })

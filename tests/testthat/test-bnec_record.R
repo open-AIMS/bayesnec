@@ -156,7 +156,7 @@ test_that("pull_out() keeps the record of the equations it keeps", {
   expect_partitioned(rec)
   # An object with no record still has none.
   expect_null(bnec_record(suppressMessages(
-    pull_out(manec_example, model = "nec4param")
+    pull_out(legacy_fit(manec_example), model = "nec4param")
   )))
 })
 
@@ -182,7 +182,8 @@ test_that("c() and + join the records of the objects they combine", {
 
 test_that("c() returns no record where an object combined has none", {
   a <- suppressMessages(pull_out(recorded_manec(), model = "nec4param"))
-  b <- suppressMessages(pull_out(manec_example, model = "ecx4param"))
+  b <- suppressMessages(pull_out(legacy_fit(manec_example),
+                                 model = "ecx4param"))
   expect_null(bnec_record(suppressWarnings(suppressMessages(c(a, b)))))
   expect_null(bnec_record(suppressWarnings(suppressMessages(c(b, a)))))
 })

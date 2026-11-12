@@ -835,7 +835,7 @@ test_that("amend() computes the estimates with the arguments the set records", {
                    expand_record(sig_val = 0.01))
   # An object that records none takes the bnec() defaults, and records them.
   # A model set that records no leave_out was scored by observation.
-  out <- q(amend(manec_example, drop = "nec4param"))
+  out <- q(amend(legacy_fit(manec_example), drop = "nec4param"))
   expect_equal(out$ne_posterior, defaults$ne_posterior)
   expect_identical(attr(out, "bnec_expand_args"),
                    default_expand_record(leave_out = "observation"))
@@ -911,7 +911,7 @@ test_that("update recovers a legacy set's shared survival equation", {
   )
   d <- hurdle_data()
   fam <- validate_family("hurdle_gamma")
-  obj <- manec_example
+  obj <- legacy_fit(manec_example)
   for (model in names(obj$mod_fits)) {
     fit <- obj$mod_fits[[model]]
     fit$fit$data <- d
@@ -946,7 +946,7 @@ test_that("amend preserves a legacy survival equation after dropping models", {
   )
   d <- hurdle_data()
   fam <- validate_family("hurdle_gamma")
-  obj <- manec_example
+  obj <- legacy_fit(manec_example)
   for (model in names(obj$mod_fits)) {
     fit <- obj$mod_fits[[model]]
     fit$fit$data <- d
@@ -1019,7 +1019,7 @@ test_that("update records only settings brms reuses after backend or algorithm c
   }
   legacy <- obj
   legacy$fit$backend <- NULL
-  legacy$fit$version$brms <- package_version("2.13.1")
+  legacy$fit$version$brms <- package_version("2.21.0")
   legacy$fit$version$restructure <- NULL
   updated <- stats::update(legacy, recompile = TRUE)
   expect_identical(updated$call_args, obj$call_args)

@@ -133,7 +133,8 @@ test_that("xform is applied to the draws rather than to the summary", {
   expect_equal(sq$Q97.5[sq$parameter == "nec"], wanted)
   plain <- curve_params(nec4param)
   expect_false(isTRUE(all.equal(wanted,
-                                plain$Q97.5[plain$parameter == "nec"]^2)))
+                                plain$Q97.5[plain$parameter == "nec"]^2,
+                                tolerance = 1e-12)))
   # A non-monotone xform: the median of |nec - 1.45| is not |median - 1.45|.
   fold <- curve_params(nec4param, xform = function(x) abs(x - 1.45))
   raw <- curve_params(nec4param, summary = FALSE)$nec4param[, "nec"]

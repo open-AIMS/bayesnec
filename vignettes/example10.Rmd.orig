@@ -14,7 +14,7 @@ stopifnot(require(knitr))
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", warning = FALSE,
                       message = FALSE, fig.path = "vignette-fig-",
                       fig.asp = 0.7, out.width = "75%", fig.align = "center",
-                      dev = "png", dpi = 150)
+                      dev = "png", dpi = 100)
 ```
 
 # Introduction

@@ -92,7 +92,7 @@ test_that("posterior passes correctly", {
     skip_on_cran()
   }
   nsec3 <- nsec(ecx4param, posterior = TRUE, resolution = 10)
-  expect_equal(length(nsec3), 100)
+  expect_equal(length(nsec3), brms::ndraws(ecx4param$fit))
 })
 
 test_that("prob_vals passes correctly", {

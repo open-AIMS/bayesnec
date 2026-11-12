@@ -62,7 +62,7 @@ test_that("xform passes correctly", {
 
 test_that("posterior passes correctly", {
   nec3 <- nec(nec4param, posterior = TRUE)
-  expect_equal(length(nec3), 100)
+  expect_equal(length(nec3), brms::ndraws(nec4param$fit))
 })
 
 test_that("prob_vals passes correctly", {
@@ -96,11 +96,18 @@ test_that("nec says how many draws are censored, on either class", {
   censored$ne_posterior[c(3, 17)] <- NA_real_
   # An unexplained NA is a computation failure, not evidence beyond a
   # bound. Report it separately and exclude it from censoring fractions.
-  expect_warning(nec(censored), "could not be computed for 2 of 100 draws")
+  expect_warning(
+    nec(censored),
+    paste0("could not be computed for 2 of ", length(censored$ne_posterior),
+           " draws")
+  )
   censored_manec <- manec_example
   censored_manec$w_ne_posterior[1] <- NA_real_
-  expect_warning(suppressMessages(nec(censored_manec)),
-                 "not identified for 1 of 100 draws")
+  expect_warning(
+    suppressMessages(nec(censored_manec)),
+    paste0("not identified for 1 of ", length(censored_manec$w_ne_posterior),
+           " draws")
+  )
 })
 
 test_that("an uncensored posterior is silent", {

@@ -497,7 +497,7 @@ test_that("print reports both axes in one block, with different advice", {
   # Report sampler failure and control misfit together but give different
   # advice: a converged model's control discrepancy is a modelling result.
   skip_on_cran()
-  s <- suppressWarnings(summary(manec_example))
+  s <- suppressWarnings(summary(unconverged_manec()))
   msg <- tryCatch({ print(s); "" }, warning = function(w) conditionMessage(w))
   expect_match(msg, "Rhat > 1.01")
   expect_match(msg, "control observed/simulated ratio beyond 1.15")

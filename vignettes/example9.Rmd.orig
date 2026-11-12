@@ -29,7 +29,7 @@ knitr::opts_chunk$set(
   out.width = "60%",
   fig.align = "center",
   dev = "png",
-  dpi = 150,
+  dpi = 100,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 # In a chunk with drop_progress = TRUE, leave out every message line from the

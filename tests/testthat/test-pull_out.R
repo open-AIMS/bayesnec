@@ -40,7 +40,7 @@ test_that("pull_out() computes the estimates with the arguments the set records"
                    expand_record(sig_val = 0.01))
   # An object that records none takes the bnec() defaults, and records them.
   # A model set that records no leave_out was scored by observation.
-  out <- q(pull_out(manec_example, "ecx4param"))
+  out <- q(pull_out(legacy_fit(manec_example), "ecx4param"))
   expect_equal(out$ne_posterior, defaults$ne_posterior)
   expect_identical(attr(out, "bnec_expand_args"),
                    default_expand_record(leave_out = "observation"))

@@ -459,13 +459,13 @@ test_that("update() reports a shift without naming priors (#486)", {
   nd <- nec_data
   nd$y[which.max(nd$y)] <- 1
   msgs <- messages_before_refit(
-    stats::update(manec_example, newdata = nd,
+    stats::update(legacy_fit(manec_example), newdata = nd,
                   family = Beta(link = "identity"), force_fit = TRUE)
   )
   shift <- grep("shifted to", msgs, value = TRUE)
   expect_length(shift, 1)
   expect_match(shift, "1 value(s) at 1", fixed = TRUE)
-  # manec_example holds no bnec_record(), so the message cannot point to it.
+  # A fit without a bnec_record() gives the message nothing to point to.
   expect_no_match(shift, "prior|bnec_record")
   # A fit that holds a record is pointed to it.
   with_record <- manec_example
@@ -703,7 +703,7 @@ test_that("update() computes the estimates with the arguments the set records", 
   expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
   # A set that records none takes the bnec() defaults, except that it was
   # scored by observation.
-  out <- q(update(manec_example, recompile = FALSE))
+  out <- q(update(legacy_fit(manec_example), recompile = FALSE))
   expect_identical(attr(out, "bnec_expand_args"),
                    default_expand_record(leave_out = "observation"))
   expect_equal(range(out$w_pred_vals$data$x),

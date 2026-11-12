@@ -311,6 +311,18 @@ is_new <- !(names(after) %in% names(before))
 changed <- names(after)[is_new |
                           (!is_new & after != before[names(after)])]
 if (length(changed)) {
+  # The package is built from these PNGs and embeds each one again in its html,
+  # so palette quantisation here is what keeps the built package small.
+  # magick is a maintainer dependency only; it is not in DESCRIPTION.
+  if (!requireNamespace("magick", quietly = TRUE)) {
+    stop("The magick package is needed to reduce the figure files. Install it ",
+         "and re-run.", call. = FALSE)
+  }
+  for (f in changed) {
+    img <- magick::image_quantize(magick::image_read(f), max = 256,
+                                  dither = FALSE)
+    magick::image_write(img, f, format = "png8")
+  }
   success <- file.copy(from = changed, to = file.path("vignettes", changed),
                        overwrite = TRUE)
   # Clean up if successful ------------------------------------------------

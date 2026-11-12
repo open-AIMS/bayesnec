@@ -1401,8 +1401,9 @@ test_that("nec() keeps the censoring direction of a crf(I(-x)) pair", {
   h <- hurdle_pair(relabelled_component(g), relabelled_component(s))
   expect_warning(
     combined <- nec(h, posterior = TRUE),
-    paste0("not identified for 10 of 100 draws, which lie at or above ",
-           signif(max(x), 3), ", the upper bound"),
+    paste0("not identified for 10 of ", length(g),
+           " draws, which lie at or above ", signif(max(x), 3),
+           ", the upper bound"),
     fixed = TRUE
   )
   cens <- attr(combined, "censored")

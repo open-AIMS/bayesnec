@@ -106,25 +106,28 @@ test_that("a draw the record does not account for is left out", {
 })
 
 test_that("a posterior without a record is compared by its values", {
-  # The packaged manec_example was built before the record existed, so its
-  # no-effect posterior carries none and every draw is compared by value.
+  # The no-effect posterior of manec_example has no beyond-range draw, so it
+  # carries no record and every draw is compared by value.
   post <- suppressMessages(nec(manec_example, posterior = TRUE))
   expect_null(attr(post, "censored"))
   out <- quiet_exceedance(manec_example, threshold = 1.5)
   expect_equal(out$prob, mean(as.numeric(post) > 1.5))
-  expect_equal(c(out$n_above, out$n_below, out$n_draws), c(0, 0, 100))
+  expect_equal(c(out$n_above, out$n_below, out$n_draws),
+               c(0, 0, length(post)))
 })
 
 test_that("the EC50 of nec4param on a capped range counts its censored draws", {
   skip_on_cran()
   # With the range capped at 1.67, draws censored above it still exceed 1.65.
   # The probability must match the uncensored calculation on the full range.
+  # The fractions are those of the release's fit, reproduced within Monte
+  # Carlo error by the refitted one.
   x_min <- min(nec4param$fit$data$x)
   capped <- quiet_exceedance(nec4param, threshold = 1.65, estimate = "ecx",
                              ecx_val = 50, x_range = c(x_min, 1.67))
-  expect_equal(capped$prob, 0.83)
+  expect_equal(capped$prob, 0.83, tolerance = 0.05)
   expect_equal(capped$prob_lower, capped$prob_upper)
-  expect_equal(capped$n_above, 57)
+  expect_equal(capped$n_above / capped$n_draws, 0.57, tolerance = 0.1)
   full <- quiet_exceedance(nec4param, threshold = 1.65, estimate = "ecx",
                            ecx_val = 50)
   expect_equal(full$n_above, 0)
@@ -133,16 +136,18 @@ test_that("the EC50 of nec4param on a capped range counts its censored draws", {
   beyond <- quiet_exceedance(nec4param, threshold = 1.7, estimate = "ecx",
                              ecx_val = 50, x_range = c(x_min, 1.67))
   expect_true(is.na(beyond$prob))
-  expect_equal(c(beyond$prob_lower, beyond$prob_upper), c(0, 0.57))
+  expect_equal(c(beyond$prob_lower, beyond$prob_upper), c(0, 0.57),
+               tolerance = 0.1)
 })
 
 test_that("the estimator's own report is raised, not muffled", {
   skip_on_cran()
   x_min <- min(nec4param$fit$data$x)
+  n <- length(nec4param$ne_posterior)
   expect_warning(
     exceedance(nec4param, threshold = 1.65, estimate = "ecx", ecx_val = 50,
                x_range = c(x_min, 1.67)),
-    "57 of 100 draws"
+    paste0("[0-9]+ of ", n, " draws")
   )
 })
 

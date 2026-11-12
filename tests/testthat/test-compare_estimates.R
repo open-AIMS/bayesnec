@@ -171,9 +171,11 @@ test_that("a comparison with nothing censored returns what it returned before", 
 
 test_that("one component censored and one not gives one probability", {
   # The censored draws are above every partner, so their signs are known.
-  # Count all 100 pairs, not only the 70 with numerical differences.
+  # Count all pairs, not only the 70% with numerical differences.
   skip_on_cran()
-  a <- censor_nec_draws(nec4param, 1:30)
+  n <- length(nec4param$ne_posterior)
+  n_cens <- round(0.3 * n)
+  a <- censor_nec_draws(nec4param, seq_len(n_cens))
   ce <- suppressWarnings(suppressMessages(
     compare_estimates(list(a = a, b = nec4param), comparison = "nec")
   ))
@@ -184,8 +186,8 @@ test_that("one component censored and one not gives one probability", {
   expect_equal(pd$censored_first, 0.3)
   expect_equal(pd$censored_second, 0)
   dd <- ce$diff_data
-  expect_identical(nrow(dd), 100L)
-  expect_identical(sum(is.na(dd$diff)), 30L)
+  expect_identical(nrow(dd), n)
+  expect_identical(sum(is.na(dd$diff)), as.integer(n_cens))
   expect_true(all(dd$positive[is.na(dd$diff)]))
   expect_false(any(dd$indeterminate))
   expect_equal(pd$prob, mean(dd$positive))
@@ -196,8 +198,10 @@ test_that("a sampled nec beyond the range is compared as nec() reports it", {
   # sampled values differ. Keep and mark those pairs when constructing the
   # probability interval.
   skip_on_cran()
-  a <- censor_nec_draws(nec4param, 1:40, beyond = 1)
-  b <- censor_nec_draws(nec4param, 1:40, beyond = 2)
+  n <- length(nec4param$ne_posterior)
+  n_cens <- round(0.4 * n)
+  a <- censor_nec_draws(nec4param, seq_len(n_cens), beyond = 1)
+  b <- censor_nec_draws(nec4param, seq_len(n_cens), beyond = 2)
   ce <- suppressWarnings(suppressMessages(
     compare_estimates(list(a = a, b = b), comparison = "nec")
   ))
@@ -205,10 +209,10 @@ test_that("a sampled nec beyond the range is compared as nec() reports it", {
   dd <- ce$diff_data
   n_indeterminate <- sum(dd$indeterminate)
   expect_gt(n_indeterminate, 0)
-  expect_identical(nrow(dd), 100L)
+  expect_identical(nrow(dd), n)
   expect_true(is.na(pd$prob))
-  expect_equal(pd$prob_upper - pd$prob_lower, n_indeterminate / 100)
-  expect_equal(pd$prob_lower, sum(dd$positive, na.rm = TRUE) / 100)
+  expect_equal(pd$prob_upper - pd$prob_lower, n_indeterminate / n)
+  expect_equal(pd$prob_lower, sum(dd$positive, na.rm = TRUE) / n)
   expect_equal(c(pd$censored_first, pd$censored_second), c(0.4, 0.4))
   # No difference is taken from a censored draw's value. The identified draws
   # lie within 0.25 of one another; a censored one would differ by 1 or more.
@@ -227,11 +231,15 @@ test_that("the ECx comparison of #404 reports an interval, not the survivors", {
                       x_range = c(0.03, 1.66))
   )
   pd <- ce$prob_diff
-  expect_equal(c(pd$censored_first, pd$censored_second), c(0.74, 0.59))
+  # The fractions are those of the release's fit, reproduced within Monte
+  # Carlo error by the refitted one.
+  expect_equal(c(pd$censored_first, pd$censored_second), c(0.74, 0.59),
+               tolerance = 0.1)
   expect_true(is.na(pd$prob))
-  expect_equal(c(pd$prob_lower, pd$prob_upper), c(0.37, 0.80))
-  expect_identical(sum(ce$diff_data$indeterminate), 43L)
-  expect_identical(nrow(ce$diff_data), 100L)
+  expect_equal(c(pd$prob_lower, pd$prob_upper), c(0.37, 0.80),
+               tolerance = 0.1)
+  expect_equal(mean(ce$diff_data$indeterminate), 0.43, tolerance = 0.1)
+  expect_identical(nrow(ce$diff_data), length(nec4param$ne_posterior))
 })
 
 test_that("an NSEC censored in one component only is still one probability", {

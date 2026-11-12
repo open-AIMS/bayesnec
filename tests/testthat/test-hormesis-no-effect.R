@@ -28,6 +28,8 @@ saved_hormesis_set <- function() {
   names(out$mod_fits)[names(out$mod_fits) == "nec4param"] <- "nechorme"
   out$mod_fits$nechorme$model <- "nechorme"
   out$success_models[out$success_models == "nec4param"] <- "nechorme"
+  out$ne_type <- NULL
+  for (m in names(out$mod_fits)) out$mod_fits[[m]]$ne_type <- NULL
   out
 }
 

@@ -115,7 +115,7 @@ test_that("posterior passes correctly", {
     skip_on_cran()
   }
   ecx3 <- ecx(ecx4param, posterior = TRUE, resolution = 10)
-  expect_equal(length(ecx3), 100)
+  expect_equal(length(ecx3), brms::ndraws(ecx4param$fit))
 })
 
 test_that("prob_vals passes correctly", {

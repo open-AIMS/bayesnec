@@ -132,8 +132,15 @@ test_that("the running installation is read from its own DESCRIPTION", {
   expect_false(is.na(r$source))
 })
 
-test_that("a fit made before the record existed reports unknown", {
+test_that("the packaged fit records the installation that made it", {
   v <- bnec_version(manec_example)
+  expect_equal(v$model, c("nec4param", "ecx4param"))
+  expect_false(anyNA(v$bayesnec))
+  expect_false(any(v$source == "unknown"))
+})
+
+test_that("a fit made before the record existed reports unknown", {
+  v <- bnec_version(legacy_fit(manec_example))
   expect_named(v, c("model", "bayesnec", "source", "commit", "ref", "repo",
                     "R", "brms", "backend"))
   expect_equal(v$model, c("nec4param", "ecx4param"))
