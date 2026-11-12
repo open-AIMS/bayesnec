@@ -100,6 +100,41 @@ capture_joint_call <- function(env = parent.frame()) {
   captured
 }
 
+test_that("a factorised censored survivor is marked for a joint likelihood", {
+  o <- mock_disp_crossed(
+    'y | cens(censor) ~ crf(x, c("nec3param", "ecx4param"))', "Gamma"
+  )
+  o$data$censor <- rep("none", nrow(o$data))
+  survivor <- which(o$data$y > 0)[1]
+  o$data$censor[survivor] <- "left"
+  captured <- capture_joint_call()
+  suppressMessages(bnec_joint(o))
+  expect_true(is.list(attr(captured$formula,
+                           "bayesnec_survivor_cens")))
+  expect_identical(captured$data, o$data)
+  suppressMessages(bnec_joint(
+    o, formula = y ~ crf(x, "nec3param")
+  ))
+  expect_null(attr(captured$formula, "bayesnec_survivor_cens"))
+})
+
+test_that("a Beta joint refit with a censored survivor stops before fitting", {
+  o <- mock_disp_crossed(
+    'y | cens(censor) ~ crf(x, c("nec3param", "ecx4param"))', "Beta"
+  )
+  o$data$censor <- rep("none", nrow(o$data))
+  survivor <- which(o$data$y > 0)[1]
+  o$data$censor[survivor] <- "left"
+  captured <- capture_joint_call()
+  expect_error(bnec_joint(o), "beta_lccdf\\(0\\)")
+  expect_null(captured$formula)
+  suppressMessages(bnec_joint(o, formula = y ~ crf(x, "nec3param")))
+  expect_null(attr(captured$formula, "bayesnec_survivor_cens"))
+  o$data$censor[survivor] <- "right"
+  suppressMessages(bnec_joint(o))
+  expect_null(attr(captured$formula, "bayesnec_survivor_cens"))
+})
+
 test_that("bnec_joint includes the growth component's disp() term (#410)", {
   cases <- list(
     list(family = "Gamma", scale = 10, joint = "hurdle_gamma", dpar = "shape",
@@ -330,7 +365,7 @@ prior_record <- function(prior_type = "regularizing", asymptote_observed = FALSE
                          predictor_scale = "concentration") {
   list(model_survival = NULL, control = NULL, seed = NULL,
        prior_type = prior_type, asymptote_observed = asymptote_observed,
-       predictor_scale = predictor_scale, prior = NULL)
+       predictor_scale = predictor_scale, x_control = NULL, prior = NULL)
 }
 
 # Replaces fit_bayesnec() inside bnec_joint() and records what it was given.
@@ -386,6 +421,29 @@ test_that("a grouped joint refit builds its priors as the grouped fit did (#516)
   g <- spread_group_fit()
   expect_error(bnec_joint(g, asymptote_observed = NA), "asymptote_observed")
   expect_error(bnec_joint(g, predictor_scale = "linear"), "should be one of")
+})
+
+test_that("a grouped joint refit checks a missing control despite partial priors", {
+  g <- mock_group_fit(list(a = c(nec3param = 0.8, nec4param = 0.2),
+                           b = c(nec3param = 0.8, nec4param = 0.2)))
+  g$data$y <- c(0.9, 0.8, 0.5, 0.3)
+  for (i in seq_along(g$fits)) {
+    rec <- prior_record(asymptote_observed = TRUE)
+    rec$x_control <- 1
+    g$fits[[i]]$mod_fits[[1]] <- list(call_args = rec)
+  }
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(bnec_joint(
+    g, model = "nec3param",
+    prior = brms::prior(normal(0, 1), nlpar = "bot")
+  )), "Supply a prior for `top`")
+  expect_error(suppressMessages(bnec_joint(
+    g, model = "nec3param",
+    prior = brms::prior(normal(0, 1), nlpar = "top")
+  )), "fit reached")
 })
 
 test_that("a hurdle joint refit builds its priors as the hurdle fit did (#516)", {
@@ -900,6 +958,47 @@ test_that("the estimators report one row per level of a joint refit", {
   expect_equal(length(ep$a), brms::ndraws(f$joint$fit))
 })
 
+test_that("joint posterior comparisons use the levels' matching draws", {
+  skip_on_cran()
+  f <- joint_gate_fixture()
+  for (what in c("nec", "n(s)ec", "nsec", "ecx")) {
+    result <- suppressWarnings(suppressMessages(compare_posterior(
+      f$joint, comparison = what, resolution = 30
+    )))
+    direct <- suppressWarnings(suppressMessages(switch(what,
+      "nec" = nec(f$joint, posterior = TRUE),
+      "n(s)ec" = nec(f$joint, no_effect = TRUE, posterior = TRUE,
+                     resolution = 30),
+      "nsec" = nsec(f$joint, posterior = TRUE, resolution = 30),
+      "ecx" = ecx(f$joint, posterior = TRUE, resolution = 30)
+    )))
+    expect_equal(result$posterior_list, direct, label = what)
+    known <- !is.na(direct$a) & !is.na(direct$b)
+    ca <- attr(direct$a, "censored")
+    cb <- attr(direct$b, "censored")
+    if (!is.null(ca)) known <- known & !ca$above & !ca$below
+    if (!is.null(cb)) known <- known & !cb$above & !cb$below
+    expect_true(any(known), label = what)
+    expect_equal(result$diff_list[["a-b"]][known],
+                 as.numeric(direct$a[known] - direct$b[known]), label = what)
+  }
+  fitted <- compare_posterior(f$joint, comparison = "fitted", resolution = 6)
+  expect_equal(fitted$diff_list[["a-b"]],
+               fitted$posterior_list$a - fitted$posterior_list$b)
+  expect_equal(ncol(fitted$posterior_list$a), 6L)
+  fixed <- compare_posterior(f$joint, comparison = "fitted", resolution = 6,
+                             draw_ids = 1:20)
+  for (lev in f$joint$levels) {
+    level_fit <- joint_level_fit(f$joint, lev)
+    grid <- bnec_newdata(level_fit, resolution = 6,
+                         x_range = range(f$data$x))
+    expected <- brms::posterior_epred(level_fit, newdata = grid,
+                                      re_formula = NA, draw_ids = 1:20)
+    expect_equal(fixed$posterior_list[[lev]], expected, label = lev)
+  }
+  expect_true(any(fixed$diff_list[["a-b"]] != 0))
+})
+
 test_that("per-level ecx from a joint refit agrees with bnec_group", {
   # Compare estimator output after the parameter-level checks. A discrepancy
   # confined to this comparison warrants checking the grid and extraction.
@@ -1395,7 +1494,7 @@ test_that("a joint level's grid and control value are its own", {
   captured <- NULL
   local_mocked_bindings(
     prediction_grid = function(fit, formula, x_range, resolution,
-                               level_spec) {
+                               level_spec, x_control = NULL) {
       captured <<- x_range
       list(newdata = data.frame(x = x_range))
     },

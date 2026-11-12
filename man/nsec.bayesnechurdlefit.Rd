@@ -7,14 +7,16 @@
 \method{nsec}{bayesnechurdlefit}(
   object,
   sig_val = 0.01,
-  resolution = 200,
+  resolution = 500,
   x_range = NA,
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
   ...,
   posterior = FALSE,
-  which = "combined"
+  which = "combined",
+  pool = NULL,
+  x_control = "own"
 )
 }
 \arguments{
@@ -26,9 +28,8 @@ significance of the predicted posterior values.}
 \item{resolution}{The number of unique x values over which to find NSEC.
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+change an interpolated crossing and increases prediction time.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
@@ -45,7 +46,8 @@ return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 \item{extrapolate}{The bound beyond which the estimate is reported as
 censored. \code{FALSE}, the default, censors at the ends of the prediction
 grid. A single number is an upper limit, and a pair of numbers is a lower
-and an upper limit, in that order; the grid is extended to reach them.
+and an upper limit, in that order; points are appended while the original
+grid points and their spacing are retained.
 \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
 See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
@@ -55,6 +57,25 @@ See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
 \item{which}{Which curve to use: \code{"combined"} (the default),
 \code{"growth"} or \code{"survival"}.}
+
+\item{pool}{How observed group levels are combined. \code{"none"} returns
+per-level estimates. \code{"mixture"} gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw \emph{i} of the mixture comes from posterior iteration
+\emph{i}. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. \code{"mean_estimate"} averages the levels'
+estimates at each draw, and \code{"mean_curve"} estimates from their weighted
+mean curve. A joint fit defaults to \code{"none"}; other fits with spanning group
+terms default to \code{"mixture"}.}
+
+\item{x_control}{\code{"own"} reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+\code{x_control}. \code{"shared"} reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
 }
 \value{
 A vector containing the estimated NSEC value and credible bounds.
@@ -68,4 +89,8 @@ for over the whole concentration series, the survival component's range, and
 is reported as censored at its top where the curve has not reached the
 reference by the highest concentration tested. \code{extrapolate} extends
 that range. See \code{\link{ecx.bayesnechurdlefit}} for the reasoning.
+For a group term spanning concentrations, each observed level pairs its
+growth and survival predictions before the endpoint is read. A level
+observed at one concentration is excluded. \code{pool} and
+\code{x_control} use the same rules as for a single fit.
 }

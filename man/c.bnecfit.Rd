@@ -40,6 +40,10 @@ different values of an argument, the \code{\link{bnec}} default is used and a
 message names the argument. An object fitted by an earlier version of
 \pkg{bayesnec} records none of them.
 
+Component models may retain different numbers of posterior draws. The
+model average draws from each fit in proportion to its model weight, with
+its total draw count set by the fit with the fewest draws.
+
 Each equation keeps the record of the installation of \pkg{bayesnec} that
 fitted it, and a message reports a combined set whose equations were fitted
 by different installations. See \code{\link{bnec_version}}.

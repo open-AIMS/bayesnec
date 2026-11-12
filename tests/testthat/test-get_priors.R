@@ -56,6 +56,38 @@ test_that("get_priors builds priors from a formula and data without fitting", {
                   "brmsprior")
 })
 
+test_that("get_priors exposes the regularizing d and f entries", {
+  dat <- data.frame(x = as.numeric(rep(0:5, each = 4)),
+                    y = rep(seq(0.9, 0.2, length.out = 6), each = 4))
+  for (model in c("necsigm", "ecxsigm", "ecxll5")) {
+    formula <- stats::as.formula(paste0('y ~ crf(x, "', model, '")'))
+    par <- if (model == "ecxll5") "f" else "d"
+    regularizing <- get_priors(formula, data = dat,
+                               family = Beta(link = "identity"),
+                               prior_type = "regularizing")
+    uninformative <- get_priors(formula, data = dat,
+                                family = Beta(link = "identity"))
+    expect_identical(regularizing$prior[regularizing$nlpar == par],
+                     "normal(0, 1)", info = model)
+    expect_identical(uninformative$prior[uninformative$nlpar == par],
+                     "normal(0, 5)", info = model)
+  }
+})
+
+test_that("both blocks of a joint fit receive the same f rule", {
+  dat <- data.frame(x = as.numeric(rep(0:5, each = 5)),
+                    y = rep(seq(0.9, 0.2, length.out = 6), each = 5))
+  dat$y[seq(1, nrow(dat), by = 5)] <- 0
+  for (family in c("hurdle_gamma", "zero_inflated_beta")) {
+    prefix <- if (family == "hurdle_gamma") "hu" else "zi"
+    pr <- get_priors(y ~ crf(x, "ecxll5"), data = dat, family = family,
+                     prior_type = "regularizing")
+    expect_identical(unname(pr$prior[pr$nlpar == "f"]), "normal(0, 1)")
+    expect_identical(unname(pr$prior[pr$nlpar == paste0(prefix, "f")]),
+                     "normal(0, 1)")
+  }
+})
+
 test_that("get_priors keeps a hurdle growth formula's whole tested range", {
   dat <- data.frame(x = rep(c(0.1, 1, 10, 100), each = 5),
                     y = rep(c(0, 3, 1, 0), each = 5))

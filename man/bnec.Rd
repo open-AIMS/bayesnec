@@ -23,6 +23,7 @@ bnec(
   timeout = Inf,
   model_survival = NULL,
   predictor_scale = "auto",
+  x_control = NULL,
   ...
 )
 }
@@ -48,17 +49,39 @@ predictions, and over which to extract ECx values. Large values will be
 slower but more precise.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values against the lowest observed
-concentration (assumed to be the control), to estimate NEC as an
+significance of the predicted posterior values against the control
+concentration, to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} of two elements
-("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
+\item{loo_controls}{A named \code{\link[base]{list}} of up to five
+elements. "fitting" and "weights" are each a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
 If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 \code{method} argument of \code{\link[loo]{loo_model_weights}} to
-"pseudobma", whichever function assembles the model set.
+"pseudobma", whichever function assembles the model set. "leave_out" is
+"group" (the default) or "observation", and sets what is left out when the
+score behind the weights is computed. Under "group", where each level of a
+group-level term is observed at a single concentration, each level is left
+out whole; otherwise, and always under "observation", each observation is
+left out. "refit" is \code{FALSE} (the default) or \code{TRUE}, and applies
+under "group" only: where \code{TRUE}, each equation is refitted without
+each level whose Pareto k is at or above 0.7. The "fitting" arguments
+apply to the score computed by leaving out each observation.
+"report_k" is \code{TRUE} (the default) or \code{FALSE}. For a model set,
+it reports Pareto k at or above 0.7 for equations with at least 0.01 model
+weight, using the LOO scores selected for weighting. Set it to \code{FALSE}
+after assessing the diagnostic to silence the message. This does not change
+the scores or weights. With fewer than about 2200 posterior draws, values
+below 0.7 can exceed the draw-dependent reliability threshold used by
+\pkg{loo}; these are reported separately and are not selected for refitting
+by \code{refit = TRUE}. Every equation's observation-wise LOO criterion is
+retained in
+\code{fit$mod_fits[[model]]$fit$criteria$loo}; where groups were left out,
+the selected criterion, including its Pareto k values, is in
+\code{fit$mod_fits[[model]]$fit$criteria$logo}, even for equations with less
+than 0.01 weight.
+See Details, under model averaging.
 \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
 existing set. They keep the "fitting" arguments it was built with unless
 the caller names "fitting", and the method it was weighted by unless the
@@ -97,7 +120,8 @@ formula.}
 
 \item{prior}{An optional \code{\link[brms]{brmsprior}} object (or, when
 multiple models are fitted, a named \code{\link[base]{list}} of such objects)
-specifying the priors to use, passed to \code{\link[brms]{brm}}. When omitted,
+specifying the priors to use, passed to \code{\link[brms]{brm}}. Each model
+name can occur only once in the list. When omitted,
 \code{\link{bnec}} builds default priors according to \code{prior_type}. This
 is an explicit argument (rather than being passed through \code{...}) so that
 it is matched exactly and not confused with \code{prior_type}.}
@@ -117,19 +141,28 @@ which is a coverage width at the 95\% level where concentrations are supplied
 as recorded and the constant \code{10 sd(x)} where the predictor is supplied
 already logged, so how much narrower the regularizing entry is depends on
 which of the two the data are on. See \code{vignette("example3")} for why the
-two rules differ. Ignored when priors are supplied directly via the
-\code{prior} argument. Both default sets assume that the tested
-concentrations reach the lower asymptote of the curve. Where the mean
+two rules differ. The curve-shape parameters \code{d} and \code{f} use
+\code{normal(0, 1)} under \code{"regularizing"} and \code{normal(0, 5)} under
+\code{"uninformative"}. The \code{beta} and \code{slope} parameters keep
+\code{normal(0, 5)} in both sets. Each named parameter receives the same
+entry across equations. Applies only to the entries \code{bnec} builds: a
+prior supplied through \code{prior} is used as written, and any parameter
+or equation it omits takes its default from the selected set. Both default
+sets assume that the tested concentrations reach the lower asymptote of
+the curve. Where the mean
 response at the highest concentration is below the mean at the second
 highest by more than the contrast's standard error admits, tested one-sided
 at the 5\% level under the mean-variance relationship of the fitted family,
-\code{\link{bnec}} reports that before fitting: an equation that estimates
-\code{bot} then has a prior describing the observed endpoint rather than the
-asymptote, and the \code{nec} and \code{ec50} priors, which are bounded to
-the tested range, exclude a threshold above that range. Inspect the
-generated entries with \code{\link{get_priors}} and pass a scientifically
-justified prior through \code{prior} where information beyond the design is
-available.
+\code{\link{bnec}} reports the contrast before fitting, with the highest
+mean relative to the control mean. With \code{asymptote_observed = TRUE},
+where it advises that the lower asymptote may be unobserved, an equation
+estimating \code{bot} can have a default prior describing the observed
+endpoint rather than the asymptote, and the default \code{nec} and \code{ec50}
+priors exclude a threshold above the tested range.
+Inspect the generated entries with \code{\link{get_priors}} and pass a
+scientifically justified prior through \code{prior} where information
+beyond the design is available. The \code{asymptote_observed} section gives
+the control-relative rule for that advice.
 Neither value of \code{prior_type} corrects a design that stopped before the
 asymptote; \code{asymptote_observed} is the argument for that. With a
 \code{disp("power")} term on a \code{Gamma}, \code{gaussian} or
@@ -155,8 +188,10 @@ variation between groups.}
 highest predictor level reached the lower asymptote of the curve. The default
 \code{TRUE} is the assumption both default prior sets are built on. Under it
 the \code{nec} and \code{ec50} priors are bounded to the tested range, from
-the lowest predictor value to the highest, because on a design that reached
-the asymptote the decline begins, and passes its midpoint, inside that range.
+the control concentration (the lowest predictor value unless
+\code{x_control} states another) to the highest, because on a design that
+reached the asymptote the decline begins, and passes its midpoint, inside
+that range.
 \code{FALSE} states that the series stopped short of the asymptote, which
 changes the \code{bot} prior, removes the upper bound of the \code{nec} and
 \code{ec50} priors, and widens the initial-value search. The \code{bot}
@@ -175,7 +210,7 @@ fit then falls back to \pkg{Stan}'s own initialisation.
 
 Without the upper bound, a threshold above the highest concentration lies in
 the tail of the \code{nec} or \code{ec50} prior rather than outside its
-support. The lower bound stays at the lowest value tested. How far into the
+support. The lower bound stays at the control concentration. How far into the
 tail is a property of the branch and of \code{prior_type} together rather
 than of either alone. Three of the four combinations set the spread by a
 coverage rule that reaches the farthest concentration tested, at the 95\%
@@ -206,10 +241,17 @@ censored there; see the \code{extrapolate} argument of \code{\link{nec}}.
 
 The declaration is the user's because the data cannot make it: a flat
 response at the top of the series is what a complete design and a truncated
-one both look like. \code{\link{bnec}} reports a response still declining at
-the top of the series before it fits anything, which is evidence that the
-design is incomplete, and it cannot supply evidence that a flat one is
-complete.
+one both look like. \code{\link{bnec}} reports a significant decline between
+the two highest predictor levels before fitting. For each declining response
+block it states the highest mean as a percentage of the mean at the stated
+control, or at the lowest predictor level when no control is stated. When
+no control response was observed, that percentage is unavailable. Under
+\code{TRUE}, the report advises considering
+an unobserved asymptote when the absolute ratio to a finite, positive
+control mean exceeds 5\%, or when that ratio cannot be calculated. A smaller
+mean near zero can still decline significantly, so the contrast is reported
+without that advice. The 5\% threshold governs the message; it does not
+establish whether the lower asymptote was observed.
 
 A gaussian response spanning negative values, and any response fitted on a
 link other than the identity, has no floor that can be derived from the data,
@@ -266,6 +308,19 @@ concentrations. Values alone cannot identify a logged predictor whose minimum
 is non-negative, so use \code{"log"} whenever the predictor has already been
 logged. The argument affects only defaults generated by \pkg{bayesnec}; a
 complete prior supplied through \code{prior} is unchanged.}
+
+\item{x_control}{\code{NULL} uses the lowest observed predictor value as
+the control. One finite number states the control concentration on the
+recorded predictor scale. It sets the lower bound of the default
+\code{nec} and \code{ec50} priors, the prediction grid, the stored
+no-effect estimate, and the defaults of \code{ecx()}, \code{nsec()}
+and \code{ecnsec()}. It must lie below the highest observed value, and
+cannot be negative, after any \code{crf()} transformation, where the
+predictor is treated as a concentration (see \code{predictor_scale}). If
+\code{x_range} is supplied, its lower end must equal the control.
+A control below the observed range extrapolates the curve. With
+\code{prior_type = "regularizing"}, an unobserved control requires a
+supplied \code{top} prior.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}}.}
 }
@@ -457,6 +512,11 @@ proportion on (0, 1). The distinction between "hurdle" and "zero-inflated"
 is nominal here: zero-inflation differs from a hurdle only when the base
 distribution can itself produce zeros, which neither the Gamma nor the Beta
 can, so the two are the same model and \pkg{bayesnec} treats them alike.
+Under either family, a left-censored row on the total response includes the
+possibility that an observation is a structural zero. Where the
+individual is known to have survived, use \code{\link{bnec_hurdle}};
+\code{\link{bnec_joint}} preserves that known survival on a Gamma joint
+refit and refuses the zero-inflated Beta joint refit.
 
 Use "hurdle_poisson" or "hurdle_negbinomial" where the non-zero response is
 a count and the zeros are observed to be structural. The joint families and
@@ -649,12 +709,52 @@ addition to the posterior distributions. Among others, these samples can be
 used to calculate Bayes factors for point hypotheses via
 \code{\link[brms]{hypothesis}}.
 
-Model averaging is achieved through a weighted sample of each fitted models
-posterior predictions, with weights derived using functions
-\code{\link[brms]{loo}} and \code{\link[brms]{loo_model_weights}} from
-\pkg{brms}. Argument to both these functions can be passed via the
-\code{loo_controls} argument. Individual model fits can be pulled out
-for examination using function \code{\link{pull_out}}.
+Model averaging is achieved through a weighted sample of each fitted
+model's posterior predictions. The weights are computed by
+\code{\link[loo]{loo_model_weights}} from each model's expected log
+predictive density (elpd), estimated by Pareto-smoothed importance sampling
+and stored in column \code{elpd} of \code{mod_stats}. Arguments to
+\code{\link[brms]{loo}} and \code{\link[loo]{loo_model_weights}} can be
+passed via the \code{loo_controls} argument. Individual model fits can be
+pulled out for examination using function \code{\link{pull_out}}.
+
+The elpd is estimated by leaving out one observation at a time, except
+where each level of a group-level term is observed at a single
+concentration, such as \code{ogl(chamber)} with several fragments in each
+chamber. Leaving
+out one observation of such a group leaves the group's deviation to be
+estimated from its other observations. The estimated deviation then
+includes any misfit of the curve at that concentration, and the score of a
+curve of the wrong shape is reduced only slightly. For such a term each level
+is instead left out whole. For each posterior draw, the level's deviation is integrated
+out of the joint likelihood of its observations by Gauss--Legendre
+quadrature on each side of its mode, with the other group-level deviations
+held at their drawn values, so that the curve has to predict the level. This
+is supported for one such grouping, whose deviation appears in each equation
+as a single normal intercept per level, as in an \code{ogl()} term or one
+\code{(par | group)} term. For any other structure, such as \code{pgl()} on
+the grouping, each observation is left out, with a warning. The score of a
+level whose Pareto k is at or above 0.7 is approximate, and a message lists the
+equations given at least 0.01 of the weight that have such levels. Where many
+levels have such a k, the approximate scores of equations that fit about
+equally well may be ordered wrongly. With
+\code{loo_controls = list(refit = TRUE)}, each equation is refitted without
+each such level, under the same priors, sampler settings and seed, and the
+level is scored from the refit with its deviation integrated out in the same
+way. Its k is then set to 0. Every such level of every equation needs its own
+refit, so the refits can take many times as long as the set did to fit.
+Equations whose \code{elpd} in \code{mod_stats} is far below the best can be
+removed first with \code{\link{amend}}. Their weight is a poorer guide,
+because it is close to zero at a difference in elpd of a few units.
+\code{amend(x, loo_controls = list(refit = TRUE))} refits an existing set.
+The refits themselves are not kept. The score is computed once for each
+equation and stored with it, with the scores of any refitted levels, so
+\code{\link{amend}}, \code{\link{pull_out}} and \code{\link[base]{c}}
+reuse it. A model set built before this score was introduced has no record
+of \code{leave_out}, so it is taken to have been scored by leaving out each
+observation, and is scored that way again when rebuilt;
+\code{amend(x, loo_controls = list(leave_out = "group"))} recomputes its
+weights.
 
 \bold{Reproducing a fit}
 
@@ -749,10 +849,11 @@ earlier versions.
 
 A zero concentration does still restrict what may be written inside
 \code{crf()} and \code{disp()}, because both are evaluated from the recorded
-column. \code{crf(log(x))} reaches \pkg{bayesnec}'s own data check as
-\code{-Inf} and stops there, naming the predictor. \code{disp(~log(x))} is
-evaluated by \code{brm()} instead, which \pkg{bayesnec} does not check, so
-the \code{-Inf} reaches Stan. Add the offset of your choice to the data and
+column. With \code{crf(log(x))}, the data check is given \code{-Inf} and
+stops with an error naming the predictor. A \code{disp(~log(x))} formula is
+passed to \code{brm()} unchanged, although \code{bnec()} first evaluates each
+of its terms on the data and stops with an error naming the term
+\code{log(x)}. In both cases, add the offset of your choice to the data and
 name that column in the formula.
 
 \bold{Missing values}

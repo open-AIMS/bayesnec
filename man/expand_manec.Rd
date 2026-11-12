@@ -32,17 +32,39 @@ predictions, and over which to extract ECx values. Large values will be
 slower but more precise.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values against the lowest observed
-concentration (assumed to be the control), to estimate NEC as an
+significance of the predicted posterior values against the control
+concentration, to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} of two elements
-("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
+\item{loo_controls}{A named \code{\link[base]{list}} of up to five
+elements. "fitting" and "weights" are each a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
 If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 \code{method} argument of \code{\link[loo]{loo_model_weights}} to
-"pseudobma", whichever function assembles the model set.
+"pseudobma", whichever function assembles the model set. "leave_out" is
+"group" (the default) or "observation", and sets what is left out when the
+score behind the weights is computed. Under "group", where each level of a
+group-level term is observed at a single concentration, each level is left
+out whole; otherwise, and always under "observation", each observation is
+left out. "refit" is \code{FALSE} (the default) or \code{TRUE}, and applies
+under "group" only: where \code{TRUE}, each equation is refitted without
+each level whose Pareto k is at or above 0.7. The "fitting" arguments
+apply to the score computed by leaving out each observation.
+"report_k" is \code{TRUE} (the default) or \code{FALSE}. For a model set,
+it reports Pareto k at or above 0.7 for equations with at least 0.01 model
+weight, using the LOO scores selected for weighting. Set it to \code{FALSE}
+after assessing the diagnostic to silence the message. This does not change
+the scores or weights. With fewer than about 2200 posterior draws, values
+below 0.7 can exceed the draw-dependent reliability threshold used by
+\pkg{loo}; these are reported separately and are not selected for refitting
+by \code{refit = TRUE}. Every equation's observation-wise LOO criterion is
+retained in
+\code{fit$mod_fits[[model]]$fit$criteria$loo}; where groups were left out,
+the selected criterion, including its Pareto k values, is in
+\code{fit$mod_fits[[model]]$fit$criteria$logo}, even for equations with less
+than 0.01 weight.
+See Details, under model averaging.
 \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
 existing set. They keep the "fitting" arguments it was built with unless
 the caller names "fitting", and the method it was weighted by unless the

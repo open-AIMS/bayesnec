@@ -205,7 +205,10 @@ test_that("a transformation with no closed form is inverted on the grid", {
   # inverse, supplied by hand for comparison.
   tf <- logged_x_fit(nec4param, "nec4param", "asinh(x)")
   expect_equal(nec(tf), nec(tf, xform = sinh), tolerance = 1e-5)
-  expect_equal(curve_params(tf), curve_params(tf, xform = sinh),
+  # The relabelled prior bound lies beyond the grid, so only sinh() can place
+  # it on the recorded scale.
+  expect_equal(without_record(curve_params(tf)),
+               without_record(curve_params(tf, xform = sinh)),
                tolerance = 1e-5)
   tm <- logged_x_set(manec_example, "asinh(x)")
   expect_equal(q(nec(tm)), q(nec(tm, xform = sinh)), tolerance = 1e-5)

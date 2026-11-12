@@ -15,6 +15,7 @@ get_priors(object, ...)
   asymptote_observed = TRUE,
   model_survival = NULL,
   predictor_scale = "auto",
+  x_control = NULL,
   ...
 )
 }
@@ -53,6 +54,11 @@ the equation for the second block of a joint hurdle or zero-inflated fit. See
 whether the predictor is supplied as \code{"concentration"}, already
 \code{"log"} transformed, or should use the existing \code{"auto"} rule.
 See \code{\link{bnec}}.}
+
+\item{x_control}{The control concentration on the recorded predictor scale,
+as in \code{\link{bnec}}. It sets the lower bound of the default
+\code{nec} and \code{ec50} priors. A regularising \code{top} prior needs an
+observed response at this concentration.}
 }
 \value{
 For a single model, an object of class

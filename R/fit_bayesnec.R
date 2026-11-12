@@ -24,7 +24,8 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          skip_check = FALSE, prior_type = "uninformative",
                          asymptote_observed = TRUE,
                          timeout = Inf, model_survival = NULL,
-                         predictor_scale = "auto", level_spec = NULL) {
+                         predictor_scale = "auto", level_spec = NULL,
+                         x_control = NULL) {
   formula <- single_model_formula(formula, model)
   # Read control and prior before add_brm_defaults() raises adapt_delta and
   # fills in the default priors, so that amend() decides both again for each
@@ -34,6 +35,7 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                     prior_type = prior_type,
                     asymptote_observed = asymptote_observed,
                     predictor_scale = predictor_scale,
+                    x_control = x_control,
                     prior = brm_args$prior)
   # A backstop: bnec(), bnec_group() and amend() exclude such an equation
   # before their loops, but bnec_joint() fits through here directly.
@@ -82,12 +84,18 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   brms_bf <- wrangle_model_formula(model, formula, bdat, family,
                                    model_survival = model_survival,
                                    level_spec = level_spec)
+  joint_cens <- prepare_joint_survivor_cens(formula, data, brms_bf)
+  data <- joint_cens$data
+  brms_bf <- joint_cens$formula
   group_spec <- parse_group_terms(formula, model)
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name,
                                prior_type = prior_type,
                                asymptote_observed = asymptote_observed,
                                predictor_scale = predictor_scale,
+                               x_control = x_control,
+                               x_control_fitted = if (is.null(x_control)) NULL
+                                 else sub_x_transformation(x_control, formula),
                                model_survival = model_survival,
                                disp_spec = parse_disp_term(formula),
                                group_spec = group_spec,
@@ -152,6 +160,7 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   } else {
     fit <- tryCatch(do.call(brm, all_args), error = fit_failed)
   }
+  fit <- restore_joint_survivor_data(fit, data, formula)
   pass <- are_chains_correct(fit, all_args$chains)
   if (!pass) {
     stop(fit_failure_condition(model,

@@ -33,12 +33,13 @@ can be dropped from it and \code{drop} is an error in that case.}
 model types you which to include to the modified fit. Adding models to a
 \code{\link{bayesnecfit}} promotes it to a \code{\link{bayesmanecfit}}.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} of two elements,
-"fitting" and "weights", as for \code{\link{bnec}}. An element not named
+\item{loo_controls}{A named \code{\link[base]{list}} as for
+\code{\link{bnec}}. An element not named
 is taken from \code{object}: "fitting" holds the arguments \code{object}
 was built with, and "weights" holds them where they name the method its
 model weights were computed by. A "weights" list that names no method keeps
-that method.}
+that method. The \code{report_k} element controls diagnostic messages when
+the amended set is assembled; it does not change the scores or weights.}
 
 \item{x_range, resolution, sig_val}{As for \code{\link{bnec}}. Each is taken
 from \code{object} unless supplied, and is the \code{\link{bnec}} default
@@ -49,8 +50,8 @@ refitting any model.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which
 specifies user-desired prior distributions of model parameters. It can also
-be specified as a named \code{\link[base]{list}} where each name needs to
-correspond to the same string as \code{model}. Where it is not supplied, the
+be specified as a named \code{\link[base]{list}} where each name identifies
+a model and occurs only once. Where it is not supplied, the
 \code{prior} of the call that fitted \code{object} is used as described in
 Details, and the default priors are built for each parameter it does not
 cover.}
@@ -137,6 +138,15 @@ dropping models does not discard it.
 When an update changes the backend or algorithm, \pkg{brms} does not reuse
 the previous \code{control} or \code{seed}. Only settings supplied to that
 update are then recorded for subsequent additions.
+
+A fit saved before the no-effect estimate of a hormesis threshold equation
+became its NSEC stores that equation's \code{nec} parameter instead, and
+\code{\link{nec}}, \code{\link{summary}} and the plots warn about it.
+\code{amend(object)}, with no other argument, rebuilds the estimate from
+the stored fits without refitting any model.
+
+A \code{\link{bayesnecgroupfit}} is amended level by level, with the same
+arguments applied to the fit of each level.
 }
 \examples{
 library(bayesnec)

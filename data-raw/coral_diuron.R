@@ -3,8 +3,8 @@
 #
 # Two endpoints from one 14-day experiment, shipped as two objects because the
 # designs differ. Colour is scored once per fragment at the end of the exposure,
-# four fragments per chamber. PAM effective quantum yield is read repeatedly per
-# fragment, so its rows are not balanced.
+# up to four fragments per chamber. PAM effective quantum yield is read
+# repeatedly per fragment, so its rows are not balanced.
 #
 # Source files are in data-raw/coral_diuron/ and are not distributed with the
 # package.
@@ -15,15 +15,27 @@ library(usethis)
 RAW <- "data-raw/coral_diuron"
 
 # --- coral_colour -----------------------------------------------------------
-# `Chamber` is already unique across the experiment here (1 to 45), unlike in the
-# PAM file, so it needs no reconstruction.
-cc <- read.csv(file.path(RAW, "CoralColour.csv"))
+# `Chamber` is numbered across the experiment (1 to 54), unlike in the PAM file,
+# so it needs no reconstruction. The 29 ug/L chambers are absent: those corals
+# died before they were photographed.
+cc <- read.csv(file.path(RAW, "Colour.with10.csv"))
 
+cc$intensity <- (cc$T14.MeanPixel - min(cc$T0.MeanPixel, cc$T14.MeanPixel)) /
+  diff(range(cc$T0.MeanPixel, cc$T14.MeanPixel))
+rows <- with(cc, table(Climate, Diuron))
 stopifnot(
   length(unique(cc$Chamber)) == 45,
-  all(table(cc$Chamber) == 4),
-  # `Proportion` is the complement of `Intensity`, exactly
-  max(abs(cc$Proportion + cc$Intensity - 1)) < 1e-9
+  all(table(cc$Chamber) <= 4),
+  !any(cc$Diuron == 29),
+  all(rows[, colnames(rows) != "9.6"] == 12),
+  all(rows[, "9.6"] == c(12, 10, 5)),
+  # `converted` is `T14.MeanPixel` rescaled by the range of both pixel columns,
+  # as a percentage
+  max(abs(cc$converted / 100 - cc$intensity)) < 1e-8,
+  # `Proportion` is its complement, except that the file records the one 0 as
+  # 1e-05. The 0 is shipped.
+  sum(abs(cc$Proportion - (1 - cc$intensity)) > 1e-8) == 1,
+  max(abs(cc$Proportion - (1 - cc$intensity))) < 2e-5
 )
 
 # `Diuron.` substitutes 0.1 for the zero control so that a log predictor can be
@@ -41,8 +53,8 @@ coral_colour <- cc |>
     fragment = as.integer(Fragment),
     t0_pixel = as.numeric(T0.MeanPixel),
     t14_pixel = as.numeric(T14.MeanPixel),
-    intensity = as.numeric(Intensity),
-    proportion = as.numeric(Proportion)
+    intensity = as.numeric(intensity),
+    proportion = 1 - intensity
   ) |>
   dplyr::arrange(climate, diuron, chamber, fragment) |>
   as.data.frame()

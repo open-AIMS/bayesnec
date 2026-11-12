@@ -112,6 +112,20 @@
 #' \code{(1 | a) + (1 | b)}, the same as \code{ogl(a) + ogl(b)}.
 #' \code{ogl(a*b)} also includes \code{(1 | a:b)}.
 #'
+#' The grouping inside \code{ogl()} and \code{pgl()} may also be a
+#' \code{\link[brms]{gr}} call. \code{pgl(gr(plate, by = toxicant))} fits a
+#' separate standard deviation of the plate deviations for each level of
+#' \code{toxicant}, which suits a grouping whose levels each belong to one
+#' level of \code{toxicant}. A \code{gr()} call on the right of the bar in a
+#' \code{(par | group)} term is not supported; use \code{pgl()} or
+#' \code{ogl()}.
+#'
+#' A grouping whose levels are each observed at a single concentration, such
+#' as the replicate vessels at each concentration, changes how the model
+#' weights are computed: each level is left out whole, rather than each
+#' observation. See the \code{loo_controls} argument and Details of
+#' \code{\link{bnec}}.
+#'
 #' \bold{The scale a group-level deviation is applied on}
 #'
 #' \pkg{brms} declares a group-level deviation unconstrained, and under the
@@ -332,9 +346,9 @@
 #' Because \code{\link{bnec}} fits on \code{link = "identity"}, which it
 #' assigns unless a link argument is written, \pkg{brms}
 #' writes the denominator multiplicatively on the response scale rather than as
-#' a log offset on the linear predictor, so the mean \emph{is} the rate and
-#' "top", "bot" and "nec" stay directly interpretable as counts per unit
-#' exposure. The prediction grid holds the denominator at 1, so a fitted curve,
+#' a log offset on the linear predictor, so the mean \emph{is} the rate,
+#' "top" and "bot" stay directly interpretable as counts per unit exposure, and
+#' "nec" stays a concentration. The prediction grid holds the denominator at 1, so a fitted curve,
 #' an \code{\link{ecx}} and an \code{\link{nsec}} are all read on the rate
 #' scale; plots put the observations on that same scale by dividing through.
 #' \code{offset} is deliberately not offered as an alternative --- under an
@@ -381,6 +395,11 @@
 #' declared censored at a value the family excludes --- left-censored at 0 under
 #' Gamma or Beta, right-censored at 1 under Beta --- is an error rather than a
 #' shift, because the censored likelihood is degenerate there.
+#' In a direct two-block \code{\link{bnec}} fit, left censoring of the total
+#' response includes the zero outcome. For a survivor known to have a positive
+#' response below the bound, \code{\link{bnec_hurdle}} records survival
+#' separately. \code{\link{bnec_joint}} keeps that distinction for a Gamma
+#' refit and refuses a zero-inflated Beta refit with left-censored survivors.
 #'
 #' **NB:** \code{aterms} other than \code{trials()}, \code{weights()} and
 #' \code{cens()} are currently omitted from \code{\link{model.frame}} output. If
@@ -589,6 +608,16 @@ check_formula.bayesnecformula <- function(formula, data,
   }
   if (any(grepl("|", split_random_call, fixed = TRUE))) {
     str_calls <- grep("|", split_random_call, fixed = TRUE, value = TRUE)
+    # clean_bar_glef() strips every parenthesis, so a gr() call on the right
+    # of the bar would be read as one variable with a garbled name.
+    has_gr <- grepl("\\|\\s*gr\\(", str_calls)
+    if (any(has_gr)) {
+      stop("A gr() grouping is not supported on the right of the bar in a ",
+           "(par | group) term: ", paste(str_calls[has_gr], collapse = "; "),
+           ". Write it inside pgl() or ogl(), for example ",
+           "pgl(gr(plate, by = toxicant)). See ?bayesnecformula.",
+           call. = FALSE)
+    }
     split_str_calls <- lapply(str_calls, clean_bar_glef)
     tmp_list <- list()
     for (i in seq_along(split_str_calls)) {
@@ -1203,6 +1232,7 @@ single_model_formula <- function(formula, model) {
   # update() drops attributes, so carry the internal ones across by hand.
   internal_truncation <- attr(formula, "bayesnec_internal_truncation")
   tested_range <- attr(formula, "bayesnec_tested_range")
+  survivor_cens <- attr(formula, "bayesnec_survivor_cens")
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
   x_term <- eval(parse(text = x_str))
   new_crf <- paste0("crf(", x_term, ", model = \"", model, "\")")
@@ -1210,6 +1240,7 @@ single_model_formula <- function(formula, model) {
   formula <- eval(parse(text = to_eval))
   attr(formula, "bayesnec_internal_truncation") <- internal_truncation
   attr(formula, "bayesnec_tested_range") <- tested_range
+  attr(formula, "bayesnec_survivor_cens") <- survivor_cens
   bayesnecformula(formula)
 }
 

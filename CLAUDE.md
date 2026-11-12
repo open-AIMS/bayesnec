@@ -22,9 +22,11 @@ CRAN release. `R-CMD-check.yaml` runs on push only for those two branches, and
 every other branch is checked through its pull request instead, so a push to a
 branch with no pull request open is not checked.
 
-A fix that has to be propagated through a stack of branches queues two workflow
-runs per branch on a repository that runs one job at a time. Merge it down the
-whole stack first, then push once. Never call `gh pr merge --delete-branch` on
+Each push to a branch with an open pull request starts an `R-CMD-check` run and
+cancels any run still in progress on that pull request. Changing the pull
+request's base does the same, so retarget a stacked pull request only after its
+check has finished. Runs on different pull requests proceed in parallel. Merge a
+fix down the whole stack of branches first, then push once. Never call `gh pr merge --delete-branch` on
 the base of a stacked pull request: deleting the base closes the dependent pull
 request, and it cannot be reopened until the branch is restored.
 
@@ -54,6 +56,15 @@ at the next precompile.
 A precompiled vignette embeds whatever the render printed. A home directory, a
 library path or compiler output reaches CRAN in the built vignette, so check the
 rendered `.Rmd` for them before committing it.
+
+A vignette describes the version it ships with. It names no version or issue
+number and does not say what changed. Changes since the last CRAN release go in
+`NEWS.md`, and development history stays on the pull request or issue. A figure
+computed outside the build names the commit it ran on. Only a CRAN release
+number means anything to a user: the development numbers in `DESCRIPTION` were
+never released. Where a vignette follows a published paper that the package has
+since departed from, it says so once, citing the paper, without a version
+number.
 
 ### Reading a rendered vignette
 
@@ -143,6 +154,30 @@ or `nechorme`. `ecxflat`, the constant equation, is an ECx-type equation in the
 Distinguish the equations whose names begin `nec`, the `nec` parameter they
 estimate, and `mod_groups$nec`, the group of equations. The same care applies
 to `ecx`.
+
+## Agreement with `toxval`
+
+`toxval` has its own `ecx()` and `nsec()`, with methods for `bayesnec` fits, and
+`bayesnec` keeps its own (D46 in `notes/implementation/03_decisions.md`). RF
+develops both and keeps their results in agreement.
+
+The comparison with `toxval` applies only to a change that edits `ecx()`,
+`nsec()`, `nec()` or `ecnsec()`, or an internal function they call, and that
+changes a value they return for the same fitted object. Compare such a change
+with `toxval` under matching options before it merges. Record the result, and
+whether `toxval` is to follow, on a `toxval` issue. `toxval` has no `nec()`
+yet, so a change confined to `nec()` needs the comparison only once `toxval`
+has one.
+
+No other change needs the comparison, and a session that has not edited those
+functions does not consider it. This includes changes to fitting, priors, model
+weights, `summary()`, `autoplot()` and documentation, even where they change
+the estimates. Such a change alters the fitted object, and `toxval` computes
+its estimates from that same object. A new message or refusal changes no
+returned value, so it needs no comparison either.
+
+Both packages export `ecx()` and `nsec()`, and the one attached last masks the
+other without a warning. With both attached, call each with its package prefix.
 `bayesnec` and `brms` are packages; `bnec()` and `brm()` are functions.
 
 ## Modelling gotchas

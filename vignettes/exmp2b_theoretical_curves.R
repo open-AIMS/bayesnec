@@ -16,6 +16,12 @@ make_plot_data <- function(model_name, args_, x) {
   if (model_name == "pred_ecxhormebc5") {
     my_args$b_slope <- 1
   }
+  # A top of 1 is the upper bound of nechormepwr01, and leaves no increase to
+  # draw. The steeper slope shows the increase levelling off below 1.
+  if (model_name == "pred_nechormepwr01") {
+    my_args$b_top <- 0.5
+    my_args$b_slope <- 2
+  }
   data.frame(x = x, y = do.call(fct, my_args))
 }
 
@@ -41,9 +47,9 @@ model_names <- names(all_args)
 names(model_names) <- model_names
 
 ecx_levels <- c(
-  "ecxlin", "excexp", "ecxexp", "ecxsigm", "ecx4param", "ecxwb1", "ecxwb1p3",
+  "ecxlin", "ecxexp", "ecxsigm", "ecx4param", "ecxwb1", "ecxwb1p3",
   "ecxwb2", "ecxwb2p3", "ecxll5", "ecxll4", "ecxll3", "ecxhormebc5",
-  "ecxhormebc4"
+  "ecxhormebc4", "ecxflat"
 )
 ecx_data <- purrr::map_dfr(
   grep("^pred_ecx", model_names, value = TRUE), make_plot_data,

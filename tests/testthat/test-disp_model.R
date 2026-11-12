@@ -1770,7 +1770,7 @@ test_that("a model set reads each equation's shape at its own bot (#410)", {
     },
     ndraws = function(x) nrow(nb_draws),
     pull_draw_index = function(...) draw_index,
-    pull_out = function(object, model) parts[[model]],
+    pull_out = function(object, model, ...) parts[[model]],
     ecx_asymptote = function(object, type) bot[[object$model]],
     .package = "bayesnec"
   )

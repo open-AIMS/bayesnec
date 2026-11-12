@@ -213,15 +213,18 @@ factorised_count_epred <- function(fit, formula, dpar = NULL, nlpar = NULL,
 #' @param newdata A prediction data frame.
 #' @param dpar The requested parameter block, or \code{NULL} for the combined
 #' endpoint.
+#' @param draw_ids Optional posterior draw positions.
 #'
 #' @return A numeric matrix of posterior draws.
 #'
 #' @importFrom brms posterior_epred
 #'
 #' @noRd
-joint_hurdle_epred <- function(object, newdata, dpar = NULL) {
+joint_hurdle_epred <- function(object, newdata, dpar = NULL,
+                               re_formula = NA, draw_ids = NULL) {
   if (is.null(dpar)) {
-    return(posterior_epred(object, newdata = newdata, re_formula = NA))
+    return(posterior_epred(object, newdata = newdata,
+                           re_formula = re_formula, draw_ids = draw_ids))
   }
   family <- object$fit$family
   if (!is_hurdle_family(family)) {
@@ -230,18 +233,53 @@ joint_hurdle_epred <- function(object, newdata, dpar = NULL) {
   }
   dpar <- match.arg(dpar, c("mu", hurdle_dpar(family)))
   out <- posterior_epred(
-    object, newdata = newdata, re_formula = NA, dpar = dpar
+    object, newdata = newdata, re_formula = re_formula, dpar = dpar,
+    draw_ids = draw_ids
   )
   if (dpar != "mu") {
     return(1 - out)
   }
   if (family$family == "hurdle_negbinomial") {
     shape <- posterior_epred(
-      object, newdata = newdata, re_formula = NA, dpar = "shape"
+      object, newdata = newdata, re_formula = re_formula, dpar = "shape",
+      draw_ids = draw_ids
     )
     return(hurdle_positive_mean(out, family$family, shape))
   }
   hurdle_positive_mean(out, family$family)
+}
+
+#' Posterior draws of a fit, or of one block of a joint hurdle fit, from its
+#' parts
+#'
+#' @param fit A \code{\link[brms]{brmsfit}}.
+#' @param formula Its \code{\link{bayesnecformula}}.
+#' @param newdata A prediction data frame.
+#' @param re_formula Passed to \code{\link[brms]{posterior_epred}}.
+#' @param dpar \code{NULL} for the expected response, or a block, as
+#' \code{joint_hurdle_epred()} takes it.
+#' @param draw_ids Optional posterior draw positions.
+#'
+#' @return A numeric matrix of posterior draws.
+#'
+#' @noRd
+block_epred <- function(fit, formula, newdata, re_formula = NA, dpar = NULL,
+                        draw_ids = NULL) {
+  # brms returns the draws of a draw_ids call in increasing order. Ask in that
+  # order, then put row k back at draw_ids[k].
+  ord <- if (!is.null(draw_ids)) order(draw_ids)
+  ids <- if (!is.null(ord)) draw_ids[ord]
+  out <- if (is.null(dpar)) {
+    factorised_count_epred(fit, formula, newdata = newdata,
+                           re_formula = re_formula, draw_ids = ids)
+  } else {
+    object <- allot_class(list(fit = fit, bayesnecformula = formula),
+                          c("bayesnecfit", "bnecfit"))
+    joint_hurdle_epred(object, newdata, dpar, re_formula = re_formula,
+                       draw_ids = ids)
+  }
+  if (!is.null(ord)) out[ord, ] <- out
+  out
 }
 
 #' Non-linear parameter names of the second block for a given model

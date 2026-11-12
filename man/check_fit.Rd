@@ -4,7 +4,10 @@
 \alias{check_fit}
 \alias{check_fit.bayesnecfit}
 \alias{check_fit.bayesmanecfit}
+\alias{check_fit.bayesnecgroupfit}
 \alias{check_fit.bayesnechurdlefit}
+\alias{print.checkfit_group}
+\alias{plot.checkfit_group}
 \title{Check a fit against the data it was fitted to}
 \usage{
 check_fit(x, group = NULL, ndraws = 1000, seed = 10, ...)
@@ -13,18 +16,31 @@ check_fit(x, group = NULL, ndraws = 1000, seed = 10, ...)
 
 \method{check_fit}{bayesmanecfit}(x, group = NULL, ndraws = 1000, seed = 10, ...)
 
+\method{check_fit}{bayesnecgroupfit}(x, group = NULL, ndraws = 1000, seed = 10, ...)
+
 \method{check_fit}{bayesnechurdlefit}(x, group = NULL, ndraws = 1000, seed = 10, combined = TRUE, ...)
+
+\method{print}{checkfit_group}(x, ...)
+
+\method{plot}{checkfit_group}(x, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.}
+\code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or a
+\code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.}
 
-\item{group}{A \code{\link[base]{numeric}} vector of the same length as the
-data giving the group each row belongs to, or a single
-\code{\link[base]{numeric}} giving the number of bins to cut the predictor
+\item{group}{A numeric, character or factor vector of the same length as the
+data giving the group each row belongs to, or a single numeric value giving
+the number of bins to cut the predictor
 into. If \code{NULL} (the default) the distinct values of the predictor are
 used where they are replicated, and the predictor is binned otherwise, with a
-warning.}
+warning.
+For a \code{bayesnecgroupfit}, an explicit vector has one value per row of
+the original data passed to \code{bnec_group()}, in its original order. It
+is split by fitted level before the checks. The fitted-level factor is not
+the predictor grouping used within each level.
+For a \code{bayesnechurdlefit}, an explicit vector has one value per exposed
+row; the growth check uses the values for surviving rows.}
 
 \item{ndraws}{A \code{\link[base]{numeric}} vector of length 1, the number of
 posterior draws to simulate from. Reduced silently to the number the fit
@@ -43,7 +59,13 @@ because \code{set.seed(NULL)} re-initialises the stream from the clock.}
 \code{TRUE} (the default) a third table is returned checking the two
 components against the response they jointly predict, which is what the user
 actually observed. The growth component is predicted onto the full exposed
-set rather than onto its own data, since it is fitted on survivors only.}
+set rather than onto its own data, since it is fitted on survivors only.
+Where either component is a model set, the third table has one block of rows
+per pair of growth and survival equations, named \code{"growth / survival"}
+in the column \code{model}. When one component has one equation, \code{wi}
+is the other component's model weight. With model sets in both components,
+\code{wi} is available under pseudo-BMA through
+\code{\link{crossed_weights}}; it is omitted for other weighting methods.}
 }
 \value{
 A \code{\link[base]{data.frame}} with one row per group (per model,
@@ -51,7 +73,32 @@ for a \code{\link{bayesmanecfit}}), carrying the group, the number of
 observations, the observed and simulated mean and standard deviation, their
 ratios, a posterior predictive p-value for each, and a logical flag marking
 the control group. For the mixture families it also carries the observed and
-simulated proportion of zeros.
+simulated proportion of zeros. A group with one observation has no standard
+deviation; its standard deviation statistics are \code{NA}, while its mean
+statistics remain available. Where the formula includes a \code{cens()}
+term, the column \code{n_cens} gives the number of censored readings in each
+group.
+A \code{bayesnecgroupfit} returns a \code{checkfit_group} object containing
+the original \code{checkfit} table for each fitted level in \code{$fits}.
+Each table retains its attributes, including any stored Pareto diagnostics.
+\code{print()} labels and prints each level; \code{plot()} returns a named
+list of plots with one plot per fitted level.
+
+The separate \code{"pareto"} attribute is a
+data frame with one row per equation. It names the stored criterion used for
+model weights, its Pareto cutoff, the count and IDs of held-out units at or
+above that cutoff, the largest k, and any successful or failed group refits.
+\code{flagged_ids}, \code{refitted_ids}, and \code{refit_failed_ids} are list
+columns of character vectors. A missing criterion has \code{status =
+"unavailable"} and missing counts, not a clean result. Single-equation fits
+have no model-weight comparison. For hurdle fits the growth and survival
+tables have their own attributes; the combined predictive table has no
+leave-one-out criterion.
+
+Pareto k assesses the approximation to a leave-one-out score. It does not
+assess sampler convergence or the posterior predictive discrepancies in the
+concentration-level table. Grouped scores use the package's 0.7 cutoff;
+observation-wise scores use the applicable \pkg{loo} cutoff.
 }
 \description{
 Reports, per group of the predictor, the observed location and scale of the
@@ -101,6 +148,40 @@ for the control. For a \code{\link{bayesmanecfit}} the per-model rows are
 therefore reported alongside the averaged rows, or the table could not say
 which model is doing the damage.
 
+Posterior predictive p-values give half weight to simulated statistics that
+tie the observed statistic. Ties are common for count families because their
+statistics take few distinct values.
+When both an observed statistic and the median simulated statistic are zero,
+their ratio is reported as 1 to denote agreement in the control check.
+
+\bold{Censored readings}
+
+Where the formula includes a \code{cens()} term, a censored reading is
+recorded at its bound, whereas the responses simulated from the fit are not
+censored. In each group that includes a censored reading, the observed and
+the simulated responses are therefore both held at one bound before the
+statistics are computed: values below the largest left-censoring bound in
+the group are raised to it, and values above the smallest right-censoring
+bound are lowered to it. An interval-censored reading is treated as
+left-censored at the upper end of its interval. A group whose lower holding
+bound exceeds its upper holding bound cannot be compared this way and is
+refused. The true value of every censored reading is known to be beyond the
+bound, so its held value is known exactly, and the observed and simulated
+statistics are computed from the same quantity. Where the observed statistic
+equals the median simulated one, as when every value is held, its ratio is 1. A
+structural zero of a hurdle or zero-inflated family stays at zero, unless a
+left-censored reading in the group could itself be a zero; the zeros are
+then held with the other values and the group's zero proportions are
+\code{NA}.
+
+Holding the values discards what the data show beyond the bound. The column
+\code{n_cens} gives the number of censored readings in each group, and where
+it approaches \code{n} the statistics of that group show little more than
+whether the fitted model predicts readings beyond the bound.
+\code{\link{pp_check}} instead leaves censored readings out, which in a
+partly censored group compares the uncensored readings, all on the measured
+side of the bound, with simulations that fall on either side.
+
 For a \code{\link{bayesnechurdlefit}} one table is returned per
 component, following the precedent \code{\link{dispersion}} sets. The two
 carry different response vectors --- growth is fitted on survivors only,
@@ -112,6 +193,12 @@ both.
 library(bayesnec)
 nec4param <- pull_out(manec_example, model = "nec4param")
 check_fit(nec4param)
+data(nec_data)
+nec_data$site <- rep(c("a", "b"), length.out = nrow(nec_data))
+grouped <- bnec_group(y ~ crf(x, "nec3param"), data = nec_data,
+                      group_var = "site")
+checks <- check_fit(grouped)
+plot(checks)
 }
 
 }

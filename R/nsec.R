@@ -8,22 +8,39 @@
 #' @param resolution The number of unique x values over which to find NSEC.
 #' The crossing is located by linear interpolation between the two grid values
 #' that bracket it, so precision saturates well below the grid spacing.
-#' Increasing the resolution beyond the default of 200 changed the estimate by
-#' less than 0.01 percent on the fits tested, and increases the run time
-#' roughly in proportion.
+#' The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+#' change an interpolated crossing and increases prediction time.
 #' @param xform \code{NULL}, the default, or a function. \code{NULL} returns
 #' the estimate on the scale the predictor was recorded on. A function is
 #' applied to the estimate on the scale the model was fitted on. The two
 #' differ only where \code{crf()} transforms the predictor inline; see
 #' Details.
 #' @param x_range A range of x values over which to consider extracting NSEC.
+#' @param pool How observed group levels are combined. `"none"` returns
+#' per-level estimates. `"mixture"` gives each posterior draw to one level, in
+#' proportion to the levels' observation counts, and keeps it at its position,
+#' so that draw \emph{i} of the mixture comes from posterior iteration
+#' \emph{i}. Separate fits with different numbers of draws are instead each
+#' sampled over their full posterior. `"mean_estimate"` averages the levels'
+#' estimates at each draw, and `"mean_curve"` estimates from their weighted
+#' mean curve. A joint fit defaults to `"none"`; other fits with spanning group
+#' terms default to `"mixture"`.
+#' @param x_control `"own"` reads each level's control recorded at fitting, or
+#' its lowest observed concentration for an older fit or one fitted without
+#' \code{x_control}. `"shared"` reads the lowest control across levels;
+#' a single finite number specifies
+#' the concentration directly. A control below a level's observations
+#' extrapolates its curve, and gives a warning unless it is the control
+#' recorded at fitting. Level controls are recorded in the result's
+#' \code{x_control} attribute.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
 #' @param extrapolate The bound beyond which the estimate is reported as
 #' censored. \code{FALSE}, the default, censors at the ends of the prediction
 #' grid. A single number is an upper limit, and a pair of numbers is a lower
-#' and an upper limit, in that order; the grid is extended to reach them.
+#' and an upper limit, in that order; points are appended while the original
+#' grid points and their spacing are retained.
 #' \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
 #' See the \emph{Extrapolation} section of \code{\link{nsec}}.
 #' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"},
@@ -45,13 +62,36 @@
 #' at which the modeled mean response is statistically indistinguishable from 
 #' the mean control response. See the detailed derivation in
 #' Fisher and Fox (2023).
+#'
+#' With a fitted group term whose levels span concentrations, the reference
+#' and curve are predicted for each observed level with its group deviations.
+#' Terms whose levels each occur at one concentration are set to zero. The
+#' level of a spanning term observed at only one concentration is excluded from
+#' the estimate, with a message naming it. The default estimate mixes the
+#' remaining observed levels by their observation counts;
+#' \code{pool = "none"} returns them separately. A grouped or joint fit already
+#' separates levels and defaults to \code{pool = "none"}.
+#'
+#' On a \code{\link{bayesnecjointfit}}, each level of the refit is mixed over
+#' its own observed group levels. A group term whose values occur in the data
+#' of more than one level, such as a batch in which two levels were both
+#' tested, is read at the same value for every level at each posterior draw,
+#' as often as their observation counts on that term allow. Terms they do not
+#' share are chosen for each level independently. The levels can therefore be
+#' contrasted draw by draw, as \code{\link{compare_posterior}} does.
 #' 
 #' The reference is the \code{sig_val} quantile of the control posterior,
-#' the control being the predicted mean at the lowest concentration in the
-#' supplied predictor. That holds for every equation, hormetic ones included:
-#' the \code{hormesis_def} argument selected between the control and the
-#' maximum of the predicted curve and has been removed, because a target
-#' below the control is crossed exactly once whatever the curve does above it.
+#' the control being the predicted mean at the control concentration: the
+#' \code{x_control} stated in \code{\link{bnec}}, or else the lowest
+#' concentration in the supplied predictor. That holds for every equation,
+#' hormetic ones included: the \code{hormesis_def} argument selected between
+#' the control and the maximum of the predicted curve and has been removed,
+#' because a target below the control is crossed exactly once whatever the
+#' curve does above it.
+#' For a hormesis threshold equation, \code{\link{nec}} uses this NSEC as its
+#' no-effect estimate. Its \code{nec} parameter, the concentration at which
+#' the decline term starts, remains available through
+#' \code{\link{curve_params}}.
 #'
 #' The curve is searched on a grid of recorded concentrations. Where
 #' \code{crf()} transforms the predictor inline, as in
@@ -67,20 +107,19 @@
 #' against the fitted range and computed by three different formulas that
 #' agreed only for a monotonic curve.
 #'
-#' Two consequences follow from the reference being a quantile of the control
-#' posterior. A \code{sig_val} share of the draws have a control at or below the
-#' reference, and each of those reaches it at the control itself, so the control
-#' concentration is that draw's NSEC. Fisher and Fox (2023) report the same
-#' behaviour: the lower credible bound of the NSEC is the lowest concentration
-#' whenever \code{sig_val} is above the quantile the bound is read at, 0.025
-#' under the default \code{prob_vals}. And the crossing is sought at or above the
-#' control, so extending \code{x_range} below the data does not place an estimate
-#' at a concentration lower than any tested.
+#' The reference is a quantile of the control posterior, so some draws start
+#' at or below it. A draw with a later decreasing crossing takes that crossing.
+#' Without one, it takes the control concentration unless its response first
+#' changes away from the effect and later rises above the reference. Such a
+#' draw shows no decreasing effect in the searched range and is censored there.
+#' The crossing is sought at or above the control, so extending \code{x_range}
+#' below the data does not place an estimate below any tested concentration.
 #'
-#' Two limits on that. The value is the lowest \emph{observed} concentration,
-#' where Fisher and Fox (2023) report zero concentration, which they reach by
-#' extrapolating the fitted curve below the data. The two agree where the control
-#' of the design is a true zero and the predictor is untransformed; otherwise the
+#' Two limits on that. The value is the control concentration, which is the
+#' lowest \emph{observed} concentration unless \code{\link{bnec}} was given
+#' \code{x_control}. Fisher and Fox (2023) report zero concentration, which
+#' they reach by extrapolating the fitted curve below the data. The two agree
+#' where the control is 0 and the predictor is untransformed; otherwise the
 #' bound reported here is the control rather than the 0 of their Table 3. And
 #' it applies where the prediction grid begins at the control. Where
 #' \code{x_range} begins at a higher concentration, a draw already at or below
@@ -168,9 +207,12 @@
 #' reference, so reading one means evaluating that curve on a grid, and no grid
 #' reaches infinity. Name a finite limit instead.
 #'
-#' A finite limit extends the grid the curve is searched on and then censors
-#' there, so \code{extrapolate} does through a checked argument what
-#' \code{x_range} does through an unchecked one: a limit inside the current
+#' A finite limit appends points to the grid the curve is searched on, at the
+#' grid's own spacing, and then censors there. The points of the unextended
+#' grid are kept, so an estimate inside the data is read off the same points
+#' as without \code{extrapolate}. Widening \code{x_range} to the same limit
+#' instead spreads \code{resolution} points over the wider range, so its grid
+#' is coarser and its estimates can differ slightly. A limit inside the current
 #' range is an error rather than a silent tightening, because it would report
 #' an estimate as censored at a value the fit had no trouble identifying. Use
 #' \code{x_range} to narrow the range.
@@ -185,13 +227,14 @@
 #' so both have to be cleared. \code{\link{nec}} measures against that stored
 #' grid alone, having no \code{x_range} of its own, so the two agree on a fit
 #' whose grid reaches beyond the data and can differ on one whose grid stops
-#' short of it.
+#' short of it. For each observed level of a group term the range is that
+#' level's own, from its control to its highest concentration.
 #'
-#' A lower limit extends the grid but not the search. The reference is a
-#' quantile of the control posterior, so the control is where the search
+#' A lower limit below the control does not extend the search. The reference
+#' is a quantile of the control posterior, so the control is where the search
 #' begins, and a draw already past the reference there has no identifiable
 #' crossing at any lower concentration. Such a limit is accepted, and a message
-#' states that the estimate stays censored at the control.
+#' states that the search begins at the control.
 #'
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
@@ -207,14 +250,12 @@
 #' }
 #'
 #' @export
-# dpar sits after `...` for the same reason as in ecx(): it matches the methods,
-# and naming it here is what puts it in \usage. Methods that have no use for it
-# (nsec.drc, nsec.brmsfit) absorb it through their own `...`.
-nsec <- function(object, sig_val = 0.01, resolution = 200,
+# dpar sits after `...` to match the methods and appear in \usage.
+nsec <- function(object, sig_val = 0.01, resolution = 500,
                  x_range = NA,
                  xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                  extrapolate = FALSE, ...,
-                 dpar = NULL) {
+                 dpar = NULL, pool = NULL, x_control = "own") {
   UseMethod("nsec")
 }
 
@@ -235,11 +276,12 @@ nsec <- function(object, sig_val = 0.01, resolution = 200,
 #' @noRd
 #'
 #' @export
-nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
+nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
                              x_range = NA,
                              xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                              extrapolate = FALSE, ...,
-                             posterior = FALSE, dpar = NULL) {
+                             posterior = FALSE, dpar = NULL, pool = NULL,
+                             x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_numeric(sig_val)
@@ -254,37 +296,56 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
-  # extrapolate becomes x_range, since an NSEC is read off the curve on the
-  # grid. It adds two refusals a bare x_range lacks: of a limit that narrows
-  # the range, and of an infinite limit.
-  lims <- extrapolate_limits(extrapolate,
-                             searched_or_stored_bounds(object, x_range),
-                             "NSEC")
-  if (!is.null(lims)) {
-    report_curve_read_lower_limit(object, lims)
-    x_range <- c(lims$lower, lims$upper)
+  if (is.null(object$observed_group)) {
+    level_spec <- observed_level_spec(object)
+    if (!is.null(level_spec)) {
+      return(estimate_observed_levels(
+        object, level_spec, "nsec",
+        function(level, control_value, range_override) {
+          nsec(level, sig_val = sig_val, resolution = resolution,
+               x_range = range_override, xform = xform,
+               prob_vals = prob_vals, extrapolate = extrapolate,
+               posterior = TRUE, dpar = dpar, pool = "none",
+               x_control = control_value)
+        },
+        pool, posterior, prob_vals, x_control, x_range,
+        curve_args = list(sig_val = sig_val, resolution = resolution,
+                          xform = xform, prob_vals = prob_vals,
+                          dpar = dpar, extrapolate = extrapolate)
+      ))
+    }
   }
-  newdata_list <- newdata_eval(
-    object, resolution = resolution, x_range = x_range
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "NSEC")
+  control_reading <- resolve_x_control(object, x_control, x_range)
+  report_curve_read_lower_limit(extrapolate, lims, control_reading$value,
+                                curve_start_label(object, x_control))
+  newdata_list <- extended_newdata_eval(
+    object, resolution = resolution, x_range = control_reading$x_range,
+    lims = lims
   )
   # dpar selects one block of a two-block fit, as in ecx(). NULL gives the
   # positive-part mean times (1 - hu) for a two-block family, and the mean
   # curve otherwise. The zero-probability block is inverted to survival first,
   # so that the NSEC is read off a declining curve.
-  epred_fun <- function(nd) joint_hurdle_epred(object, nd, dpar)
+  epred_fun <- function(nd) joint_hurdle_epred(
+    object, nd, dpar,
+    re_formula = if (is.null(object$re_formula)) NA else object$re_formula
+  )
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
-  # Read the control at the lowest observed concentration, not the first grid
-  # column, so that x_range does not change the reference.
-  control <- control_posterior(object, newdata_list$newdata, epred_fun)
+  # Read the control at the control concentration, not the first grid column,
+  # so that x_range does not change the reference.
+  control <- control_posterior(object, newdata_list$newdata, epred_fun,
+                               x_at = control_reading$value)
   reference <- quantile(control, sig_val)
   # ecnsec is the percent effect at the NSEC, defined as ecx() defines it: the
   # decline from the control towards zero, not across the fitted range.
   ecnsecP <- as.numeric((control - reference) / control * 100)
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
   # The control is the reference whether or not the curve shows hormesis.
-  x_control <- control_x(object)
-  nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, x_control,
+  nsec_out <- nsec_from_posterior(p_samples, reference, x_vec,
+                                  control_reading$value,
                                   control)
   # Draws above and below the range return NA for opposite reasons, so each
   # class has its own warning. Count them before the transformations below,
@@ -369,26 +430,36 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
 #' @noRd
 #'
 #' @export
-nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
+nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
                                x_range = NA,
                                xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
                                extrapolate = FALSE, ...,
-                               posterior = FALSE, dpar = NULL) {
+                               posterior = FALSE, dpar = NULL, pool = NULL,
+                               x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")
   }
   check_xform(xform)
-  # Resolve the limits once for the set, so that every component is searched
-  # over one grid rather than against its own range.
-  lims <- extrapolate_limits(extrapolate,
-                             searched_or_stored_bounds(object, x_range),
-                             "NSEC")
-  if (!is.null(lims)) {
-    report_curve_read_lower_limit(object, lims)
-    x_range <- c(lims$lower, lims$upper)
+  x_control <- model_set_control(object, x_control)
+  first <- object$mod_fits[[1]]
+  finish <- model_set_control_recorder(first, x_control)
+  if (identical(pool, "none") &&
+      !is.null(observed_level_spec(first))) {
+    return(finish(model_set_level_estimates(
+      object, "nsec",
+      function(f) nsec(f, sig_val = sig_val, resolution = resolution,
+                       x_range = x_range, xform = xform,
+                       prob_vals = prob_vals, extrapolate = extrapolate,
+                       posterior = TRUE, dpar = dpar, pool = "none",
+                       x_control = x_control),
+      posterior, prob_vals
+    )))
   }
+  # Refuse a bad limit once for the set. Each equation reads the limit as
+  # given, and once_level_note() below prints its lower-limit message once.
+  curve_extrapolate_limits(extrapolate, object, x_range, x_control, "NSEC")
   sample_size <- object$sample_size
   # Use the weighted draw index the rest of the object uses, not a fresh
   # sample(): the estimate is then the same on every call, and each NSEC and
@@ -398,10 +469,12 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
   # sapply() would drop any argument it did not list, dpar included.
   sample_nsec <- function(x) {
     mod <- names(object$mod_fits)[x]
-    target <- suppressMessages(pull_out(object, model = mod))
+    target <- pull_equation(object, mod)
     out <- nsec(target, sig_val = sig_val, resolution = resolution,
                 x_range = x_range, xform = xform, prob_vals = prob_vals,
-                posterior = TRUE, dpar = dpar)
+                extrapolate = extrapolate,
+                posterior = TRUE, dpar = dpar, pool = pool,
+                x_control = x_control)
     idx <- draw_index[[mod]]
     sample_out <- out[idx]
     attr(sample_out, "ecnsec_relativeP") <-
@@ -412,13 +485,14 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
       subset_censoring(attr(out, "censored"), idx)
     sample_out
   }
-  to_iter <- seq_len(length(object$success_models))
-  nsec_out <- lapply(to_iter, sample_nsec)
+  to_iter <- unname(which(lengths(draw_index[names(object$mod_fits)]) > 0L))
+  nsec_out <- once_level_note(lapply(to_iter, sample_nsec))
   ecnsecP <- unlist(lapply(nsec_out, 
                     FUN = function(p){attributes(p)$ecnsec_relativeP}))
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
   cens <- concat_censoring(lapply(nsec_out, attr, "censored"),
-                           vapply(nsec_out, length, integer(1)))
+                           vapply(nsec_out, length, integer(1)),
+                           unlist(lapply(nsec_out, as.numeric)))
   nsec_out <- unlist(lapply(nsec_out, as.numeric))
   attr(nsec_out, "censored") <- cens
   nsec_estimate <- summarise_censored(nsec_out, prob_vals, cens)
@@ -432,280 +506,8 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 200,
   attr(nsec_estimate, "ecnsec_relativeP") <- ecnsec
   attr(nsec_out, "ecnsec_relativeP") <-  ecnsecP
   if (!posterior) {
-    nsec_estimate
+    finish(nsec_estimate)
   } else {
-    nsec_out
+    finish(nsec_out)
   }
-}
-
-#' @inheritParams nsec
-#'
-#' @param object An object of class \code{\link{brmsfit}} returned by
-#' \code{\link{brms}}.
-#' @param posterior A \code{\link[base]{logical}} value indicating if the full
-#' posterior sample of calculated NSEC values should be returned instead of
-#' just the median and 95 credible intervals.
-#' @param x_var A character indicating the name of the predictor (x) data in object
-#' @param group_var A character indicating the name of the grouping variable in object
-#' @param by_group A logical indicating if nsec values should be returned for 
-#' each level in group_var, or marginalised across all groups.
-#' @param horme Logical indicating if hormesis is evident.
-#' 
-#' @importFrom stats quantile
-#' @importFrom dplyr bind_cols
-#' @importFrom brms as_draws_df posterior_epred
-#' @importFrom chk chk_logical chk_numeric
-#' 
-#' @noRd
-#'
-#' @export
-nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,    
-                         x_range = NA,
-                         xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
-                         extrapolate = FALSE, ..., 
-                         posterior = FALSE,
-                         x_var, 
-                         group_var = NA, 
-                         by_group = FALSE,
-                         horme = FALSE){
-  chk_numeric(sig_val)
-  chk_numeric(resolution)
-  chk_logical(posterior)
-  if (length(sig_val)>1) {
-    stop("You may only pass one sig_val")  
-  }
-  check_xform(xform)
-  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
-      prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
-    stop("prob_vals must include central, lower and upper quantiles,",
-         " in that order.")
-  }
-  if (missing(x_var)) {
-    stop("x_var must be supplied for a brmsfit object.")    
-  }  
-  check_no_extrapolate(extrapolate, "brmsfit")
-  if (by_group & is.na(group_var)){
-    stop("You must specify a group_by variable if you want values returned by groups.")
-  }
-  
-  col_names <- colnames(object$data)
-  if(max(grepl(x_var, col_names))==0) {
-    stop("Your suplied x_var is not contained in the object data.frame")
-  }
-  if(!is.na(group_var)){
-    if(max(grepl(group_var, col_names))==0) {
-      stop("Your suplied group_var is not contained in the object data.frame")
-    }     
-  }
- 
-  if(is.na(x_range)){
-    x_range = range(object$data[x_var])
-  }
-  x_vec <- seq(min(x_range), max(x_range), length=resolution)
-
-  if(is.na(group_var)){
-    pred_dat <- data.frame(x_vec)
-    names(pred_dat) <- x_var
-    
-    p_samples <- try(posterior_epred(object, newdata = pred_dat, re_formula = NA),
-                     silent = TRUE)
-    if (class(p_samples)[1] == "try-error"){
-      stop(paste(attributes(p_samples)$condition, "Do you need to specify a group_var variable?", sep=""))
-    }
-    control <- p_samples[, 1]
-    reference <- quantile(control, sig_val)
-    ecnsecP <- as.numeric((control - reference) / control * 100)
-    ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-    nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, min(x_vec),
-                                    control)
-
-  } else {
-    groups <-  unlist(unique(object$data[group_var]))
-    out_vals <- lapply(groups, FUN = function(g){
-      dat_list <- list(x_vec, g) 
-      names(dat_list) <- c(x_var, group_var)
-      pred_dat <- expand.grid(dat_list)
-      
-      p_samples <- posterior_epred(object, newdata = pred_dat, re_formula = NA)
-      control <- p_samples[, 1]
-      reference <- quantile(control, sig_val)
-      ecnsecP <- as.numeric((control - reference) / control * 100)
-      ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-      nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, min(x_vec),
-                                      control)
-      nsec_out <- unlist(nsec_out)
-      attr(nsec_out, "ecnsec_relativeP") <- ecnsec
-      nsec_out
-    })
-    ecnsec <- lapply(out_vals, 
-                     FUN = function(p){attributes(p)$ecnsec_relativeP})
-    names(ecnsec) <- groups
-  }
-  
-  if(by_group & posterior & !is.na(group_var)){
-    names(out_vals) <- groups
-    out_vals <- out_vals |> bind_cols() |> 
-      pivot_longer(everything(), names_to = group_var, values_to = "NSEC")
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
-  }
-  
-  if(by_group & !posterior & !is.na(group_var)){   
-    names(out_vals) <- groups
-    out_vals <- lapply(out_vals, quantile, probs = prob_vals) |> 
-      bind_rows(.id = group_var)
-    names(out_vals) <- clean_names(out_vals)
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
-  }
-  
-  if(!by_group & posterior & !is.na(group_var)){
-    out_vals <- as.numeric((unlist(out_vals)))
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
-  }
-  
-  if(!by_group & !posterior & !is.na(group_var)){   
-    out_vals <- quantile(unlist(out_vals), probs = prob_vals)
-    names(out_vals) <- clean_names(out_vals)
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
-  }
-  
-  if(posterior & is.na(group_var)){ 
-    out_vals <- unlist(nsec_out)
-    # Drop below_range, which feeds a censoring record this method cannot
-    # build without a bayesnecformula. Keep n_below_range and x_searched_from,
-    # which it has always returned. quantile() runs without na.rm, so a draw
-    # beyond the range is an error here rather than a silent deletion.
-    attr(out_vals, "below_range") <- NULL
-    attr(out_vals, "ecnsec_relativeP") <- ecnsecP
-  }
-  
-  if(!posterior & is.na(group_var)){   
-    
-    out_vals <- quantile(unlist(nsec_out), probs = prob_vals)
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
-    names(out_vals) <- clean_names(out_vals)
-  }
-  
-  attr(out_vals, "resolution") <- resolution
-  attr(out_vals, "sig_val") <- sig_val
-  attr(out_vals, "toxicity_estimate") <- "nsec"
-
-  return(out_vals)
-}
-
-#' @inheritParams nsec
-#'
-#' @param object An object of class \code{\link{drc}} returned by
-#' \code{\link{drc}}.
-#' @param x_var A character indicating the name of the predictor (x) data in object
-#' each level in group_var, or marginalised across all groups.
-#' @param horme Logical indicating if hormesis is evident. Not currently implemented.
-#' @param curveid A character indicating the name of the grouping variable in object
-#' 
-#' @importFrom chk chk_logical chk_numeric
-#' 
-#' @noRd
-#'
-#' @export
-nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
-                     x_range = NA,
-                     xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
-                     extrapolate = FALSE, ...,
-                     x_var,
-                     horme = FALSE,
-                     curveid = NA) {
-  # The test suite does not exercise this method against drc fits.
-  check_no_extrapolate(extrapolate, "drc")
-  chk_numeric(sig_val)
-  chk_numeric(resolution)
-  
-  if (length(sig_val)>1) {
-    stop("You may only pass one sig_val")  
-  }
-  check_xform(xform)
-  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
-      prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
-    stop("prob_vals must include central, lower and upper quantiles,",
-         " in that order.")
-  }
-
-  if(is.na(x_range)){
-    x_range = range(object$data[x_var])
-  }
-  x_vec <- seq(min(x_range), max(x_range), length=resolution)
-  
-  if(is.na(curveid)){
-    pred_dat <- data.frame(x_vec)
-    names(pred_dat) <- x_var
-  
-    p_samples <- suppressWarnings(predict(object, newdata = pred_dat,
-                      interval = "confidence", level = prob_vals[3]-prob_vals[2]))
-    # check curve goes down
-    if (p_samples[1, "Prediction"]<p_samples[2, "Prediction"]){
-      stop("nsec can currently only be estimated for curves that represent an overall decreasing function")
-    }
-      
-    # calculate the reference level
-    ref_dat <- data.frame(min(x_vec))
-    colnames(ref_dat) <- colnames(x_vec)
-    reference <- suppressWarnings(predict(object, newdata = ref_dat,
-                         interval = "confidence" , 
-                         level = 1-(sig_val*2))["Lower"])
-    control <- p_samples[1, "Prediction"]
-    ecnsec <- as.numeric((control - reference) / control * 100)
-    # p_samples holds fitted means and confidence limits, not draws.
-    # With default prob_vals and sig_val >= 0.025, x_start makes the lower
-    # crossing the control; Fisher and Fox (2023) use the fitted mean alone.
-    nsec_out <- apply(p_samples, 2, function(col) {
-      crossing_x(col, reference, x_vec, x_start = min(x_vec))
-    })
-    if (inherits(xform, "function")) {
-      xform(nsec_out)
-    } 
-    out_vals <- as.numeric(unlist(nsec_out))
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
-  } else {
-    groups <-  unlist(unique(object$data[, 4]))
-    out_vals <- lapply(groups, FUN = function(g){
-      dat_list <- list(x_vec, g) 
-      names(dat_list) <- c(x_var, curveid)
-      pred_dat <- expand.grid(dat_list)
-
-      p_samples <- suppressWarnings(predict(object, newdata = pred_dat,
-                                            interval = "confidence", level = prob_vals[3]-prob_vals[2]))
-      # check curve goes down
-      if (p_samples[1, "Prediction"]<p_samples[2, "Prediction"]){
-        stop("nsec can currently only be estimated for curves that represent an overall decreasing function")
-      }
-      
-      # calculate the reference level
-      ref_dat <- data.frame(min(x_vec))
-      colnames(ref_dat) <- colnames(x_vec)
-      reference <- suppressWarnings(predict(object, newdata = ref_dat,
-                                            interval = "confidence" , 
-                                            level = 1-(sig_val*2))["Lower"])
-      control <- p_samples[1, "Prediction"]
-      ecnsec <- as.numeric((control - reference) / control * 100)
-      # x_start as in the branch above, for the same reason.
-      nsec_out <- apply(p_samples, 2, function(col) {
-        crossing_x(col, reference, x_vec, x_start = min(x_vec))
-      })
-
-      if (inherits(xform, "function")) {
-        nsec_out <- xform(nsec_out)
-      }
-      attr(nsec_out, "ecnsec_relativeP") <- ecnsec
-      nsec_out
-    })  
-    names(out_vals) <- groups
-    ecnsec <- do.call("rbind", lapply(out_vals, FUN = function(x){attributes(x)$ecnsec_relativeP}))
-    out_vals <- do.call("rbind", out_vals) 
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
-  }
-
-  nsec_estimate <- out_vals
-  attr(nsec_estimate, "resolution") <- resolution
-  attr(nsec_estimate, "sig_val") <- sig_val
-  attr(nsec_estimate, "toxicity_estimate") <- "nsec"
-  nsec_estimate
-  
 }

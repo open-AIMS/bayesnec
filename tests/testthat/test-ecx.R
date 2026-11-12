@@ -84,6 +84,14 @@ test_that("works for bayesnecfit", {
   expect_equal(names(ecx1), c("Q50", "Q2.5", "Q97.5"))
 })
 
+test_that("endpoint extraction defaults to a 500-point grid", {
+  expect_identical(formals(ecx)$resolution, 500)
+  expect_identical(formals(nsec)$resolution, 500)
+  expect_identical(formals(ecnsec)$resolution, 500)
+  expect_identical(formals(ecx.bayesnecfit)$resolution, 500)
+  expect_identical(formals(nsec.bayesnecfit)$resolution, 500)
+})
+
 test_that("works for bayesmanecfit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
@@ -297,7 +305,7 @@ test_that("a relative ECx of a joint fit's combined curve is refused (#491)", {
                    class = c("bayesmanecfit", "bnecfit"))
   local_mocked_bindings(
     pull_draw_index = function(...) list(a = 1:10),
-    pull_out = function(object, model) object$mod_fits[[model]],
+    pull_out = function(object, model, ...) object$mod_fits[[model]],
     .package = "bayesnec"
   )
   expect_error(suppressWarnings(ecx(set, type = "relative")),
@@ -338,7 +346,9 @@ test_that("a relative ECx of the zero block is measured towards its own bot (#49
     newdata_eval = function(...) {
       list(newdata = data.frame(x = grid), x_vec = grid)
     },
-    joint_hurdle_epred = function(object, newdata, dpar = NULL) curve,
+    control_x = function(...) grid[1],
+    joint_hurdle_epred = function(object, newdata, dpar = NULL,
+                                  re_formula = NA) curve,
     control_posterior = function(...) ctrl,
     as_draws_df = function(x, ...) draws,
     .package = "bayesnec"

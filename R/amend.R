@@ -15,12 +15,13 @@
 #' @param add A \code{\link[base]{character}} vector containing the names of
 #' model types you which to include to the modified fit. Adding models to a
 #' \code{\link{bayesnecfit}} promotes it to a \code{\link{bayesmanecfit}}.
-#' @param loo_controls A named \code{\link[base]{list}} of two elements,
-#' "fitting" and "weights", as for \code{\link{bnec}}. An element not named
+#' @param loo_controls A named \code{\link[base]{list}} as for
+#' \code{\link{bnec}}. An element not named
 #' is taken from \code{object}: "fitting" holds the arguments \code{object}
 #' was built with, and "weights" holds them where they name the method its
 #' model weights were computed by. A "weights" list that names no method keeps
-#' that method.
+#' that method. The \code{report_k} element controls diagnostic messages when
+#' the amended set is assembled; it does not change the scores or weights.
 #' @param x_range,resolution,sig_val As for \code{\link{bnec}}. Each is taken
 #' from \code{object} unless supplied, and is the \code{\link{bnec}} default
 #' where \code{object} records none. The estimates of every model in the
@@ -29,8 +30,8 @@
 #' refitting any model.
 #' @param priors An object of class \code{\link[brms]{brmsprior}} which
 #' specifies user-desired prior distributions of model parameters. It can also
-#' be specified as a named \code{\link[base]{list}} where each name needs to
-#' correspond to the same string as \code{model}. Where it is not supplied, the
+#' be specified as a named \code{\link[base]{list}} where each name identifies
+#' a model and occurs only once. Where it is not supplied, the
 #' \code{prior} of the call that fitted \code{object} is used as described in
 #' Details, and the default priors are built for each parameter it does not
 #' cover.
@@ -96,6 +97,15 @@
 #' the previous \code{control} or \code{seed}. Only settings supplied to that
 #' update are then recorded for subsequent additions.
 #'
+#' A fit saved before the no-effect estimate of a hormesis threshold equation
+#' became its NSEC stores that equation's \code{nec} parameter instead, and
+#' \code{\link{nec}}, \code{\link{summary}} and the plots warn about it.
+#' \code{amend(object)}, with no other argument, rebuilds the estimate from
+#' the stored fits without refitting any model.
+#'
+#' A \code{\link{bayesnecgroupfit}} is amended level by level, with the same
+#' arguments applied to the fit of each level.
+#'
 #' @return All successfully fitted model fits. A \code{\link{bayesmanecfit}} if
 #' more than one model remains, otherwise a \code{\link{bayesnecfit}}.
 #'
@@ -139,7 +149,8 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls,
   }
 
   if (missing(drop) && missing(add) && missing(loo_controls) &&
-        is.null(x_range) && is.null(resolution) && is.null(sig_val)) {
+        is.null(x_range) && is.null(resolution) && is.null(sig_val) &&
+        !needs_ne_rebuild(object)) {
     message(amend_general_error())
     return(object)
   }
@@ -208,7 +219,8 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls,
          " which model is fitted.", call. = FALSE)
   }
   if (missing(add) && missing(loo_controls) &&
-        is.null(x_range) && is.null(resolution) && is.null(sig_val)) {
+        is.null(x_range) && is.null(resolution) && is.null(sig_val) &&
+        !needs_ne_rebuild(object)) {
     message(amend_general_error())
     return(object)
   }
@@ -294,6 +306,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
                             prior_type = "uninformative",
                             asymptote_observed = TRUE,
                             predictor_scale = "auto", timeout = Inf) {
+  check_prior_input(priors, "priors")
   general_error <- amend_general_error()
   fam_tag <- mod_fits[[1]]$fit$family$family
   expand_args <- recorded_expand_args(
@@ -329,8 +342,11 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       model_set <- candidate
     }
   }
+  # A saved fit can need its observed-level display or its hormesis no-effect
+  # estimate rebuilt with the same resolution and arguments it recorded.
   if (identical(model_set, names(mod_fits)) &&
-        identical(expand_args, inherited)) {
+        identical(expand_args, inherited) &&
+        !needs_observed_rebuild(object) && !needs_ne_rebuild(object)) {
     message("Nothing to amend, please specify a model to ",
             "either add or drop that differs from the original set.")
     message(general_error)
@@ -349,6 +365,10 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
   )
   call_args <- amend_call_args(mod_fits, bdat)
+  x_control <- call_args$x_control
+  check_fit_x_control(x_control, formula,
+                      retrieve_var(bdat, "x_var", error = TRUE),
+                      expand_args$x_range, predictor_scale, report = FALSE)
   model_set <- check_models(model_set, family, bdat, record = TRUE)
   # Strip the attribute once read: `model_set` is passed on, and the attribute
   # makes it compare unequal to a plain character vector.
@@ -401,6 +421,11 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
               " priors are built instead; pass `priors` to set them.")
     }
   }
+  if (any(needs_fit)) {
+    check_control_top_prior(bdat, family, model_set[needs_fit], fit_prior,
+                            prior_type, x_control, formula,
+                            model_survival = call_args$model_survival)
+  }
   # Carry existing fits over here, in the parent. Returned from a worker, each
   # would be sent out and back under a parallel plan.
   for (m in which(!needs_fit)) {
@@ -433,9 +458,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         set_plan$brm_args
       )
       brm_args$prior <- fit_prior
-      model_priors <- try(validate_priors(brm_args$prior, model),
-                          silent = TRUE)
-      if (inherits(model_priors, "try-error")) {
+      model_priors <- validate_priors(brm_args$prior, model)
+      if (is.null(model_priors)) {
         x <- retrieve_var(bdat, "x_var", error = TRUE)
         y <- retrieve_var(bdat, "y_var", error = TRUE)
         custom_name <- check_custom_name(family)
@@ -463,7 +487,10 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
           rate_response = !is.null(denom),
           truncated_response = isTRUE(attr(
             single_form, "bayesnec_internal_truncation")),
-          tested_range = attr(single_form, "bayesnec_tested_range")
+          tested_range = attr(single_form, "bayesnec_tested_range"),
+          x_control = x_control,
+          x_control_fitted = if (is.null(x_control)) NULL else
+            sub_x_transformation(x_control, formula)
         )
       } else {
         brm_args$prior <- model_priors
@@ -474,7 +501,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
           brm_args = brm_args, skip_check = TRUE, prior_type = prior_type,
           asymptote_observed = asymptote_observed,
           predictor_scale = predictor_scale,
-          timeout = timeout, model_survival = call_args$model_survival
+          timeout = timeout, model_survival = call_args$model_survival,
+          x_control = x_control
         ),
         silent = FALSE
       )
@@ -487,6 +515,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     },
     list(model_set = model_set, family = family, simdat = simdat,
          call_args = call_args, set_plan = set_plan, fit_prior = fit_prior,
+         x_control = x_control,
          bdat = bdat,
          formula = formula, data = data, prior_type = prior_type,
          asymptote_observed = asymptote_observed,
@@ -591,6 +620,7 @@ amend_call_args <- function(mod_fits, bdat) {
     model_survival <- NULL
   }
   list(model_survival = model_survival, prior = rec$prior,
+       x_control = recorded_x_control(first),
        brm_args = brm_args)
 }
 

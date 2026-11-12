@@ -36,6 +36,38 @@ test_that("weighted_draw_index is a pure function of its arguments", {
   expect_identical(n1, n2)
 })
 
+test_that("weighted_draw_index samples the full posterior of each model", {
+  stats <- data.frame(wi = c(0.75, 0.25), row.names = c("a", "b"))
+  counts <- c(a = 1000, b = 2000)
+  idx <- bayesnec:::weighted_draw_index(names(counts), 1000, stats,
+                                        seed = 583, draw_counts = counts)
+  expect_equal(lengths(idx), c(a = 750L, b = 250L))
+  expect_true(all(idx$a <= counts["a"]))
+  expect_true(all(idx$b <= counts["b"]))
+  expect_true(any(idx$b > 1000))
+})
+
+test_that("weighted_draw_index allocates exactly the stated draw count", {
+  stats <- data.frame(wi = rep(1 / 3, 3), row.names = c("a", "b", "c"))
+  for (n in c(1L, 26L, 28L)) {
+    idx <- bayesnec:::weighted_draw_index(rownames(stats), n, stats,
+                                          seed = 583)
+    expect_equal(sum(lengths(idx)), n)
+    expect_true(all(unlist(idx) <= n))
+  }
+})
+
+test_that("sets without a stored index retain the earlier allocation", {
+  stats <- data.frame(wi = rep(1 / 3, 3), row.names = c("a", "b", "c"))
+  models <- rownames(stats)
+  legacy <- list(sample_size = 26, mod_stats = stats, w_draw_seed = 583,
+                 w_draw_index = NULL)
+  old <- bayesnec:::weighted_draw_index(models, 26, stats, seed = 583,
+                                        exact_total = FALSE)
+  expect_equal(sum(lengths(old)), 27)
+  expect_identical(bayesnec:::pull_draw_index(legacy, models, 26), old)
+})
+
 test_that("weighted_draw_index leaves the caller's RNG stream alone", {
   stats <- data.frame(wi = c(0.5, 0.5),
                       row.names = c("nec4param", "ecx4param"))
@@ -485,7 +517,8 @@ test_that("define_loo_controls always names a weighting method", {
   # Always name the package's pseudo-BMA default; omitting it lets loo
   # choose stacking.
   expect_equal(bayesnec:::define_loo_controls(family_str = "gaussian"),
-               list(fitting = list(), weights = list(method = "pseudobma")))
+               list(fitting = list(), weights = list(method = "pseudobma"),
+                    leave_out = "group", refit = FALSE, report_k = TRUE))
   expect_equal(
     bayesnec:::define_loo_controls(list(), "gaussian")$weights$method,
     "pseudobma"

@@ -141,10 +141,8 @@ NULL
 #' those rows biases survival thresholds low, because the last dose the records
 #' do contain is one where some animals were still alive.
 #'
-#' \code{record} is retained so that the distinction stays visible and can be
-#' tested --- \code{vignette("example6")} refits contaminant B without the
-#' reinstated doses and shows which parts of the reconstruction change the
-#' answer and which do not.
+#' \code{record} is retained so that the distinction stays visible and a fit
+#' can be repeated without the reinstated rows.
 #'
 #' @name nassarius
 #' @docType data
@@ -327,7 +325,8 @@ NULL
 #'   numbered in ascending concentration within the plate. This is the
 #'   within-concentration grouping factor: every level sits at a single
 #'   concentration, so it cannot have a concentration-response curve of its
-#'   own.}
+#'   own. The model weights of a set fitted with a term on it leave out each
+#'   level whole; see the \code{loo_controls} argument of \code{\link{bnec}}.}
 #' \item{well}{Replicate well identifier, unique within plate (fct). Each level
 #'   appears twice, once per exposure time. Within one toxicant-by-exposure-time
 #'   subset a level has a single observation, so a group-level term on
@@ -371,10 +370,16 @@ NULL
 #'
 #' The design is three climate scenarios by five diuron concentrations by three
 #' chambers, with four coral fragments in each chamber: 45 chambers and 180
-#' fragments. A chamber sits at one concentration, so it spans no part of the
+#' fragments. 171 fragments have a colour score: all 12 at each combination of
+#' scenario and concentration, except at 9.6 \eqn{\mu}g/L, where 10 have one
+#' under 2050 and 5 under 2100. \code{\link{coral_pam}} has a sixth concentration, 29
+#' \eqn{\mu}g/L, at which the corals died before they could be photographed.
+#' A chamber sits at one concentration, so it spans no part of the
 #' concentration-response curve and admits only a displacement --- the
-#' within-concentration structure \code{vignette("example8")} demonstrates with
-#' \code{ogl(chamber)}.
+#' within-concentration structure \code{vignette("example8")} demonstrates.
+#' \code{vignette("example4")} fits it with \code{ogl(chamber)}. The model weights of a set fitted with that term leave
+#' out each chamber whole; see the \code{loo_controls} argument of
+#' \code{\link{bnec}}.
 #'
 #' Five concentrations is at the conventional minimum for a
 #' concentration-response design, and this dataset exists partly to show what
@@ -383,14 +388,12 @@ NULL
 #' appears as divergent transitions rather than as an error.
 #'
 #' Colour was scored from image pixel intensity before and after the exposure,
-#' reported here as \code{t0_pixel} and \code{t14_pixel}. \code{intensity} is a
-#' derived score on the unit interval and \code{proportion} is exactly its
-#' complement. How \code{intensity} was derived is not recorded, and it is not
-#' any of the obvious normalisations of the two pixel columns, so it is shipped
-#' as supplied rather than reconstructed. Exactly one fragment has an
-#' \code{intensity} of 1 and therefore a \code{proportion} of 0, which is the
-#' signature of a score normalised to the largest value in the dataset and is a
-#' boundary a \code{Beta} likelihood cannot represent. See
+#' reported here as \code{t0_pixel} and \code{t14_pixel}. \code{intensity} is
+#' \code{t14_pixel} rescaled to the unit interval by the smallest and largest
+#' values in the two pixel columns together, and \code{proportion} is exactly
+#' its complement. The fragment that sets the largest value therefore has an
+#' \code{intensity} of 1 and a \code{proportion} of 0, a boundary a
+#' \code{Beta} likelihood cannot represent. See
 #' \code{vignette("example6")} for what to do with a value on a boundary.
 #'
 #' The control concentration is reported as \code{0}. The source file also
@@ -405,9 +408,10 @@ NULL
 #' \item{climate}{Climate scenario (fct), \code{"2018"}, \code{"2050"} or
 #'   \code{"2100"}.}
 #' \item{diuron}{Diuron concentration in \eqn{\mu}g/L (dbl), one of 0, 0.29,
-#'   0.96, 2.9 and 29.}
+#'   0.96, 2.9 and 9.6.}
 #' \item{chamber}{Exposure chamber (fct), 45 levels, each at one climate
-#'   scenario and one concentration.}
+#'   scenario and one concentration, numbered as in the experiment. The
+#'   numbers of the nine 29 \eqn{\mu}g/L chambers are absent.}
 #' \item{fragment}{Coral fragment within chamber (int), 1 to 4.}
 #' \item{t0_pixel}{Mean image pixel intensity at the start of the exposure
 #'   (dbl).}
@@ -415,12 +419,12 @@ NULL
 #' \item{intensity}{Derived colour intensity on the unit interval (dbl).
 #'   Exactly one observation is 1.}
 #' \item{proportion}{\code{1 - intensity} (dbl), the response used in
-#'   \code{vignette("example8")}. Exactly one observation is 0.}
+#'   \code{vignette("example4")}. Exactly one observation is 0.}
 #' }
 #'
 #' @name coral_colour
 #' @docType data
-#' @format An object of class `data.frame` with 180 rows and 8 columns.
+#' @format An object of class `data.frame` with 171 rows and 8 columns.
 #' @keywords datasets
 #' @examples
 #' head(coral_colour)
@@ -447,17 +451,19 @@ NULL
 #' not balanced. As with \code{\link{coral_colour}} a chamber sits at one
 #' concentration and admits only a displacement, and 54 chambers of several
 #' readings is the better conditioned of the two for a
-#' \code{ogl(chamber)} term.
+#' \code{ogl(chamber)} term. The model weights leave out each chamber whole,
+#' as for \code{\link{coral_colour}}.
 #'
 #' Chamber was numbered 1 to 3 within each climate-by-concentration cell in the
 #' source records rather than across the experiment, so \code{chamber} here
 #' combines the three to give a unique identifier.
 #'
 #' Yield is a proportion and 63 of the 414 readings are exactly 0, all of them
-#' at the higher concentrations where photosynthesis had stopped. These are
-#' measurements at a boundary rather than substitutions, and a \code{Beta}
-#' likelihood cannot represent them; \code{vignette("example6")} covers the
-#' options.
+#' at 9.6 and 29 \eqn{\mu}g/L. They are readings at the floor of the
+#' fluorometer: no reading lies between 0 and the smallest positive value,
+#' 0.007, and a fragment read twice can give one 0 and one positive reading. A
+#' \code{Beta} likelihood cannot represent a 0, so \code{vignette("example4")}
+#' treats these readings as left-censored at the smallest positive value.
 #'
 #' The control concentration is reported as \code{0}, and the substitution the
 #' source file holds for it is not shipped, for the reason given under

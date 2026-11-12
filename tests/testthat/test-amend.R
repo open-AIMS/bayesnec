@@ -58,6 +58,14 @@ test_that("amend.bayesnecfit rejects drop and no-ops cleanly", {
                "must be a positive number")
 })
 
+test_that("amend refuses malformed priors before adding a model", {
+  expect_error(amend(manec_example, add = "nec3param", priors = "normal(0, 1)"),
+               "Argument `priors` must be")
+  expect_error(amend(nec4param, add = "ecx4param",
+                     priors = list(ecx4param = 1)),
+               "Argument `priors` must be")
+})
+
 test_that("amend.bayesnecfit adds models and promotes to bayesmanecfit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
@@ -482,10 +490,11 @@ hurdle_data <- function() {
 call_record <- function(model_survival = NULL, control = NULL, seed = NULL,
                         prior_type = "uninformative",
                         asymptote_observed = TRUE, predictor_scale = "auto",
-                        prior = NULL) {
+                        x_control = NULL, prior = NULL) {
   list(model_survival = model_survival, control = control, seed = seed,
        prior_type = prior_type, asymptote_observed = asymptote_observed,
-       predictor_scale = predictor_scale, prior = prior)
+       predictor_scale = predictor_scale, x_control = x_control,
+       prior = prior)
 }
 
 hu_rhs <- function(model) {
@@ -708,6 +717,20 @@ test_that("amend(add = ) builds priors with the arguments the set records", {
                          "unrecorded")
 })
 
+test_that("amend(add = ) uses the regularizing shape prior bnec() uses", {
+  d <- data.frame(x = as.numeric(rep(0:5, each = 4)),
+                  y = rep(seq(0.9, 0.2, length.out = 6), each = 4))
+  obj <- amend_fixture(validate_family("Beta"), data = d)
+  obj$call_args <- call_record(prior_type = "regularizing")
+  amended <- fit_inputs(amend(obj, add = "ecxsigm"))
+  fitted <- fit_inputs(bnec(y ~ crf(x, "ecxsigm"), data = d,
+                            family = Beta(link = "identity"), chains = 2,
+                            prior_type = "regularizing"))
+  expect_same_fit_inputs(amended, fitted, "regularizing d")
+  pr <- amended$calls[[1]]$prior
+  expect_identical(pr$prior[pr$nlpar == "d"], "normal(0, 1)")
+})
+
 test_that("amend(add = ) gives an added equation the prior the set records", {
   d <- data.frame(x = nec_data$x, y = nec_data$y * 10)
   obj <- amend_fixture(validate_family("gaussian"), data = d)
@@ -809,9 +832,11 @@ test_that("amend() computes the estimates with the arguments the set records", {
   expect_identical(attr(out, "bnec_expand_args"),
                    expand_record(sig_val = 0.01))
   # An object that records none takes the bnec() defaults, and records them.
+  # A model set that records no leave_out was scored by observation.
   out <- q(amend(manec_example, drop = "nec4param"))
   expect_equal(out$ne_posterior, defaults$ne_posterior)
-  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  expect_identical(attr(out, "bnec_expand_args"),
+                   default_expand_record(leave_out = "observation"))
 })
 
 test_that("amend() keeps the LOO fitting arguments the set records", {
@@ -821,7 +846,8 @@ test_that("amend() keeps the LOO fitting arguments the set records", {
   q <- function(expr) suppressWarnings(suppressMessages(expr))
   m <- with_expand_record(manec_example)
   stacked <- list(fitting = list(draw_ids = 1:50),
-                  weights = list(method = "stacking"))
+                  weights = list(method = "stacking"), leave_out = "group",
+                  refit = FALSE)
   reference <- q(expand_manec(
     manec_example$mod_fits,
     lapply(manec_example$mod_fits, extract_formula),
@@ -832,7 +858,8 @@ test_that("amend() keeps the LOO fitting arguments the set records", {
   # Naming "weights" alone leaves "fitting" to the record.
   out <- q(amend(m, loo_controls = list(weights = list(method = "stacking"))))
   expect_equal(out$mod_stats$waic, reference$mod_stats$waic)
-  expect_identical(attr(out, "bnec_expand_args")$loo_controls, stacked)
+  expect_identical(attr(out, "bnec_expand_args")$loo_controls,
+                   c(stacked, list(report_k = TRUE)))
   # Naming "fitting" replaces the record.
   out <- q(amend(m, loo_controls = list(fitting = list())))
   expect_equal(out$mod_stats$waic, manec_example$mod_stats$waic)

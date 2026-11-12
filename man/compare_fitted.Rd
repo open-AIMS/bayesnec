@@ -14,16 +14,14 @@ compare_fitted(
 )
 }
 \arguments{
-\item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
-\code{\link{bnec}}.}
+\item{x}{A named \code{\link[base]{list}} of
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} objects.}
 
 \item{resolution}{The number of unique x values over which to find ECx.
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+change an interpolated crossing and increases prediction time.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -51,7 +49,7 @@ after an odd number of preceding normal draws. Use R's default
 \code{\link[brms]{posterior_epred}}.}
 }
 \value{
-A named \code{\link[base]{list}} containing bootstrapped differences
+A named \code{\link[base]{list}} containing paired differences
 in posterior predictions of the \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
 }
@@ -74,10 +72,11 @@ on how to structure \code{newdata}, see for example
 }
 \section{Reproducibility}{
 
-The draws of each posterior are paired by a random permutation, so
-\code{prob_diff} and the difference intervals are a Monte Carlo
-approximation to the difference of two \bold{independent} posteriors, using
-\emph{n} of the \emph{n}^2 available pairs. The permutation is drawn under
+The draws of each posterior are put in a random order, a longer posterior
+being randomly subsampled to the length of the shortest, and are then paired
+by position. \code{prob_diff} and the difference intervals are therefore a
+Monte Carlo approximation that uses \emph{n} of the \emph{n}^2 available
+pairs. The permutation is drawn under
 \code{seed}, so two calls on the same fits return the same comparison and a
 \code{\link[base]{set.seed}} in the session has no effect on it. A different
 \code{seed} gives another realisation of the same approximation;
@@ -85,16 +84,37 @@ where the approximation matters, compare a few and report the spread. The
 caller's random number state is restored afterwards.
 }
 
-\section{The independence assumption}{
+\section{What the comparison estimates}{
 
-The pairing is valid only where the posteriors being compared come from
-\bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
-of each comes from the same sweep of the sampler --- and permuting them
-destroys that pairing, which discards the correlation between the levels and
-widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
-and a real difference is under-detected, which is the wrong direction to err
-in. A within-fit contrast needs draw-wise differencing and must not be routed
-through this function. See #218 and #33.
+Where the posteriors being compared are independent, the paired differences
+approximate the posterior of the difference between the estimates. Fits to
+separate data that share no parameter, such as the levels of a
+\code{\link{bayesnecgroupfit}}, have independent posteriors. For such
+posteriors, pairing the draws by their index would approximate the same
+distribution, so the random permutation is one Monte Carlo pairing and is
+not required.
+
+Whether two estimates are independent depends on their joint posterior, not
+on the number of calls that fitted them. Two quantities that are dependent in
+one posterior, for example two levels of one fit that share a group-level
+term or a dispersion parameter, are contrasted by subtracting aligned draws
+(draw \emph{i} of each), which keeps their covariance. Pairing their draws
+at random removes that covariance. Depending on its sign, the difference
+posterior can then be wider or narrower, and \code{prob_diff} can move
+towards or away from 0.5. Conversely, the levels of a
+\code{\link{bnec_joint}} refit that share no parameter, as under its
+defaults, have independent posteriors although they are estimated in one fit.
+
+Where the fits share data or fitted components, the comparison is of a
+different kind. Two equations pulled from one \code{\link{bayesmanecfit}}
+with \code{\link{pull_out}}, as in the examples, are fitted to the same
+observations, and a model-averaged fit includes the draws of its own
+equations. The comparison then contrasts two estimates of one quantity from
+one dataset, pairing their draws as if they were independent, and
+\code{prob_diff} describes how far the two posteriors overlap, i.e. how much
+the estimate depends on the equation fitted. How far it can be read as a
+posterior probability is uncertain, because no joint posterior of the two
+estimates is defined.
 }
 
 \examples{
@@ -103,7 +123,7 @@ library(bayesnec)
 data(manec_example)
 nec4param <- pull_out(manec_example, model = "nec4param")
 ecx4param <- pull_out(manec_example, model = "ecx4param")
-compare_fitted(list("nec" = ecx4param, "ecx" = nec4param))
+compare_fitted(list("nec4param" = nec4param, "ecx4param" = ecx4param))
 }
 
 }

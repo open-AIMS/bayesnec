@@ -19,6 +19,10 @@
 #' message names the argument. An object fitted by an earlier version of
 #' \pkg{bayesnec} records none of them.
 #'
+#' Component models may retain different numbers of posterior draws. The
+#' model average draws from each fit in proportion to its model weight, with
+#' its total draw count set by the fit with the fewest draws.
+#'
 #' Each equation keeps the record of the installation of \pkg{bayesnec} that
 #' fitted it, and a message reports a combined set whose equations were fitted
 #' by different installations. See \code{\link{bnec_version}}.
@@ -63,6 +67,11 @@ c.bnecfit <- function(x, ...) {
       mod_fits <- c(mod_fits, recover_prebayesnecfit(dots[[i]]))
     }
     check_data_equality(mod_fits)
+  }
+  controls <- vapply(mod_fits, control_x, numeric(1))
+  if (any(controls != controls[[1]])) {
+    stop("The objects use different control concentrations. Refit them with",
+         " the same `x_control` before combining them.", call. = FALSE)
   }
   mod_fits <- mod_fits[!duplicated(names(mod_fits))]
   # Preserve c()'s input-level compatibility rule even where duplicate model
@@ -342,10 +351,25 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
       newdata <- checked$data
     }
   }
+  stated_control <- recorded_x_control(object[[1]])
+  if (!is.null(stated_control) && !is.null(newdata)) {
+    frame <- model.frame(object[[1]]$bayesnecformula, data = newdata)
+    scale <- object[[1]]$call_args$predictor_scale
+    if (is.null(scale)) scale <- "auto"
+    check_fit_x_control(stated_control, object[[1]]$bayesnecformula,
+                        retrieve_var(frame, "x_var", error = TRUE),
+                        expand_args$x_range, scale, report = FALSE)
+  }
   # The marker validate_family() uses to stay idempotent is bayesnec's own and
   # the family is stored in the brmsfit, so it is dropped before brms sees it.
   if ("family" %in% names(dot_args)) {
     dot_args$family <- unmark_family(dot_args$family)
+  }
+  survivor_cens <- attr(object[[1]]$bayesnecformula,
+                        "bayesnec_survivor_cens")
+  if (!is.null(survivor_cens) && !is.null(newdata)) {
+    newdata <- joint_survivor_cens_data(object[[1]]$bayesnecformula,
+                                        newdata, survivor_cens)
   }
   if (any(vapply(object, function(fit) is.null(fit$call_args), logical(1)))) {
     # Recover the shared block before a refit can leave only one equation.
@@ -371,6 +395,10 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     if (inherits(object[[i]]$fit, "try-error")) {
       class(object[[i]]) <- "somethingwentwrong"
     } else {
+      source_data <- if (is.null(newdata)) fit_i$data else newdata
+      object[[i]]$fit <- restore_joint_survivor_data(
+        object[[i]]$fit, source_data, object[[i]]$bayesnecformula
+      )
       # brms can restore the original backend with recompile = FALSE after
       # discarding settings because the caller requested a different one.
       old_backend <- fit_i$backend

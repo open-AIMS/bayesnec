@@ -15,6 +15,10 @@ test_that("amend honours prediction settings without a model or LOO change", {
       out <- q(do.call(amend, args))
       expected <- record
       expected$loo_controls$fitting <- list()
+      # manec_example records no leave_out, so it was scored by observation.
+      if (inherits(fit, "bayesmanecfit")) {
+        expected$loo_controls$leave_out <- "observation"
+      }
       expect_identical(attr(out, "bnec_expand_args"), expected)
       grid <- if (inherits(out, "bayesnecfit")) {
         out$pred_vals$data
@@ -103,6 +107,50 @@ test_that("pull_out honours settings when the requested group keeps every model"
                    expand_record(resolution = 250, fitting = list()))
   expect_equal(nrow(out$w_pred_vals$data), 250)
   expect_equal(out$mod_stats$waic, manec_example$mod_stats$waic)
+  quiet <- q(pull_out(m, "all", resolution = 250,
+                      loo_controls = list(report_k = FALSE)))
+  expect_false(attr(quiet, "bnec_expand_args")$loo_controls$report_k)
+})
+
+test_that("pull_out reports selected high k unless reporting is disabled", {
+  set.seed(525)
+  original <- bayesnec:::weight_criteria
+  local_mocked_bindings(
+    weight_criteria = function(...) {
+      out <- original(...)
+      out$criteria[[1]]$diagnostics$pareto_k[1] <- 0.9
+      warning("Other criterion warning")
+      out
+    },
+    .package = "bayesnec"
+  )
+  m <- with_expand_record(manec_example)
+  messages <- function(expr) {
+    seen <- character()
+    withCallingHandlers(
+      expr,
+      message = function(m) {
+        seen <<- c(seen, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      },
+      warning = function(w) {
+        if (grepl("p_waic", conditionMessage(w))) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    )
+    seen
+  }
+  report <- character()
+  expect_warning(
+    report <- messages(pull_out(m, "all", resolution = 250)),
+    "Other criterion warning"
+  )
+  expect_true(any(grepl("Pareto k at or above 0.7", report)))
+  quiet <- suppressWarnings(messages(pull_out(
+    m, "all", resolution = 250, loo_controls = list(report_k = FALSE)
+  )))
+  expect_false(any(grepl("Pareto k at or above 0.7", quiet)))
 })
 
 test_that("pull_out keeps positional and abbreviated prediction arguments", {
@@ -116,7 +164,8 @@ test_that("pull_out keeps positional and abbreviated prediction arguments", {
   for (out in list(positional, abbreviated)) {
     expect_equal(out$pred_vals, reference$pred_vals)
     expect_equal(out$ne_posterior, reference$ne_posterior)
+    # manec_example records no leave_out, so it was scored by observation.
     expect_identical(attr(out, "bnec_expand_args"),
-                     expand_record(fitting = list()))
+                     expand_record(fitting = list(), leave_out = "observation"))
   }
 })

@@ -599,6 +599,24 @@ validate_predictor_scale <- function(predictor_scale, predictor = NULL) {
   predictor_scale
 }
 
+#' Whether the predictor is treated as already logged
+#'
+#' The values cannot show whether a non-negative column is already logged.
+#' \code{"auto"} keeps the sign rule, and a declaration replaces it.
+#'
+#' @param predictor The predictor on the fitted scale.
+#' @param predictor_scale A validated predictor-scale declaration.
+#' @return A \code{\link[base]{logical}} value.
+#' @noRd
+predictor_is_logged <- function(predictor, predictor_scale) {
+  switch(
+    predictor_scale,
+    auto = min(predictor) < 0,
+    concentration = FALSE,
+    log = TRUE
+  )
+}
+
 #' The default prior for the nec and ec50 parameters
 #'
 #' \code{nec} and \code{ec50} are in units of the predictor, so their prior
@@ -663,14 +681,7 @@ predictor_prior <- function(predictor, prior_type = "uninformative",
                             predictor_scale = "auto") {
   u <- unique(predictor)
   predictor_scale <- validate_predictor_scale(predictor_scale, u)
-  # The values cannot show whether a non-negative column is already logged.
-  # Keep the sign rule under "auto", and let a declaration replace it.
-  is_logged <- switch(
-    predictor_scale,
-    auto = min(u) < 0,
-    concentration = FALSE,
-    log = TRUE
-  )
+  is_logged <- predictor_is_logged(u, predictor_scale)
   z <- if (is_logged) u else log(u[u > 0])
   if (!length(z)) {
     stop("Cannot build a prior for \"nec\" or \"ec50\": the predictor",
@@ -731,6 +742,12 @@ predictor_prior <- function(predictor, prior_type = "uninformative",
 #' @param supplied_pars The curve parameters the caller's own prior sets, from
 #' \code{supplied_curve_pars()}. Where it holds \code{"bot"}, the declaration
 #' needs no floor, because the caller's entry replaces the one it would build.
+#' @param x_control The stated control on the recorded scale, or \code{NULL}.
+#' Used only in messages.
+#' @param x_control_fitted The stated control on the fitted scale of
+#' \code{predictor}. It sets the lower bound of the \code{nec} and
+#' \code{ec50} entries. Defaults to \code{x_control}, which is correct only
+#' for an untransformed predictor.
 #'
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #' @importFrom brms prior_string
@@ -745,9 +762,13 @@ define_prior <- function(model, family, predictor, response,
                          group_spec = NULL, prior_predictor = NULL,
                          predictor_scale = "auto", rate_response = FALSE,
                          truncated_response = FALSE, tested_range = NULL,
-                         supplied_pars = character(0)) {
+                         supplied_pars = character(0), x_control = NULL,
+                         x_control_fitted = NULL) {
   if (is.null(prior_predictor)) {
     prior_predictor <- predictor
+  }
+  if (is.null(x_control_fitted)) {
+    x_control_fitted <- x_control
   }
   # The scale an ogl deviation is applied on sets the width of its prior. It
   # depends on the model and the family, which define_group_prior() lacks.
@@ -768,7 +789,9 @@ define_prior <- function(model, family, predictor, response,
                                          prior_predictor = prior_predictor,
                                          predictor_scale = predictor_scale,
                                          tested_range = tested_range,
-                                         supplied_pars = supplied_pars)
+                                         supplied_pars = supplied_pars,
+                                         x_control = x_control,
+                                         x_control_fitted = x_control_fitted)
     # A group-level term reaches the mu block only, because add_formula_glef()
     # runs before the hu sub-formulas are attached. Build its priors from the
     # survivors, on the link scale of the mu family, which is the quantity the
@@ -827,6 +850,22 @@ define_prior <- function(model, family, predictor, response,
     }
   }
   response <- response_link_scale(response, family)
+  # `predictor` is on the fitted scale, so compare it with the transformed
+  # control; `x_control` is kept for the message.
+  if (prior_type == "regularizing" && !is.null(x_control_fitted) &&
+      !any(predictor == x_control_fitted) && !"top" %in% supplied_pars) {
+    stop("The regularizing prior for `top` needs an observed response at",
+         " `x_control = ", x_control, "`. Supply a `top` prior or include a",
+         " control observation.", call. = FALSE)
+  }
+  top_rows <- if (!is.null(x_control_fitted) &&
+                    any(predictor == x_control_fitted)) {
+    predictor >= x_control_fitted
+  } else {
+    rep(TRUE, length(predictor))
+  }
+  top_predictor <- predictor[top_rows]
+  top_response <- response[top_rows]
   # Called for its error alone: it refuses an integer predictor on the routes
   # that do not pass through check_data(). Its value is not used.
   set_distribution(predictor, silence_y_msgs = TRUE, silence_x_msgs = FALSE)
@@ -876,7 +915,7 @@ define_prior <- function(model, family, predictor, response,
     #   beta(5, 2)            sd is beta_sd(5, 2), and beta(2, 5) is the same
     u_t_g <- u_b_g <- NA_character_
     if (gamma_scaled) {
-      loc_t <- regularizing_location(predictor, response, "top",
+      loc_t <- regularizing_location(top_predictor, top_response, "top",
                                      zero_bounded = TRUE)
       u_t_g <- regularizing_entry(
         "gamma",
@@ -899,7 +938,7 @@ define_prior <- function(model, family, predictor, response,
     # outside the unit interval.
     u_t_b <- u_b_b <- NA_character_
     if (fam_tag %in% c("bernoulli", "binomial", "beta_binomial", "beta")) {
-      loc_t <- regularizing_location(predictor, response, "top")
+      loc_t <- regularizing_location(top_predictor, top_response, "top")
       loc_b <- regularizing_location(predictor, response, "bot")
       u_t_b <- regularizing_entry(
         "beta",
@@ -916,7 +955,8 @@ define_prior <- function(model, family, predictor, response,
                  poisson = u_t_g,
                  negbinomial = u_t_g,
                  gaussian = local({
-                   l <- regularizing_location(predictor, response, "top")
+                   l <- regularizing_location(top_predictor, top_response,
+                                              "top")
                    regularizing_entry("normal", location = l[["location"]],
                                       location_se = l[["se"]],
                                       uninformative_sd = sd(response) * 2.5)
@@ -983,7 +1023,8 @@ define_prior <- function(model, family, predictor, response,
     tested_range <- range(prior_predictor)
   }
   # A lognormal has no support below zero.
-  x_lb <- tested_range[1]
+  x_lb <- if (is.null(x_control_fitted)) tested_range[1] else
+    as.numeric(x_control_fitted)
   if (grepl("^lognormal", x_pr)) {
     x_lb <- max(x_lb, 0)
   }
@@ -995,11 +1036,20 @@ define_prior <- function(model, family, predictor, response,
   }
   pr_nec <- prior_string(x_pr, nlpar = "nec", lb = x_lb, ub = x_ub)
   pr_ec50 <- prior_string(x_pr, nlpar = "ec50", lb = x_lb, ub = x_ub)
-  # x- and y-independent priors
-  pr_d <- prior_string("normal(0, 5)", nlpar = "d")
-  pr_beta <- prior_string("normal(0, 5)", nlpar = "beta")
-  pr_f <- prior_string("normal(0, 5)", nlpar = "f")
-  pr_slope <- prior_string("normal(0, 5)", nlpar = "slope")
+  # d and f are log exponents. beta and slope also describe rates whose
+  # numerical values depend on predictor units, so keep their broad entries.
+  shape_scales <- if (prior_type == "regularizing") {
+    c(beta = 5, slope = 5, d = 1, f = 1)
+  } else {
+    c(beta = 5, slope = 5, d = 5, f = 5)
+  }
+  shape_prior <- function(par) {
+    prior_string(paste0("normal(0, ", shape_scales[[par]], ")"), nlpar = par)
+  }
+  pr_d <- shape_prior("d")
+  pr_beta <- shape_prior("beta")
+  pr_f <- shape_prior("f")
+  pr_slope <- shape_prior("slope")
   # assemble
   if (model == "ecxsigm") {
     priors <- pr_beta + pr_top + pr_d
@@ -1156,7 +1206,7 @@ define_disp_prior <- function(disp_spec, family, response, predictor = NULL,
 #'   \item \code{nec} and \code{ec50}: the predictor,
 #'     \code{diff(range(predictor)) / 10}.
 #'   \item \code{beta}, \code{slope}, \code{d} and \code{f}: 0.5, one tenth of
-#'     their own \code{normal(0, 5)}.
+#'     their \code{"uninformative"} \code{normal(0, 5)} entry.
 #' }
 #'
 #' The scale is taken from the data, not from the parameter's own prior, whose
@@ -1306,7 +1356,9 @@ define_hurdle_prior <- function(model, family, predictor, response,
                                 prior_predictor = NULL,
                                 predictor_scale = "auto",
                                 tested_range = NULL,
-                                supplied_pars = character(0)) {
+                                supplied_pars = character(0),
+                                x_control = NULL,
+                                x_control_fitted = NULL) {
   if (is.null(prior_predictor)) {
     prior_predictor <- predictor
   }
@@ -1328,7 +1380,9 @@ define_hurdle_prior <- function(model, family, predictor, response,
                             prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale,
                             tested_range = tested_range,
-                            supplied_pars = supplied_pars)
+                            supplied_pars = supplied_pars,
+                            x_control = x_control,
+                            x_control_fitted = x_control_fitted)
   # second block: reuse the bernoulli/identity defaults on the proportion
   # non-zero, then rename every non-linear parameter into its namespace.
   hu_priors <- define_prior(model_survival, bernoulli(link = "identity"),
@@ -1337,7 +1391,9 @@ define_hurdle_prior <- function(model, family, predictor, response,
                             prior_predictor = prior_predictor,
                             predictor_scale = predictor_scale,
                             tested_range = tested_range,
-                            supplied_pars = hu_supplied)
+                            supplied_pars = hu_supplied,
+                            x_control = x_control,
+                            x_control_fitted = x_control_fitted)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
                             paste0(dpar, hu_priors$nlpar), hu_priors$nlpar)
   # Both blocks predict across the full design. Use its predictor for nec and

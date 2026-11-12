@@ -250,6 +250,26 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   survival_models <- suppressMessages(check_models(
     get_model_from_formula(surv_formula), survival_family, survival_frame
   ))
+  fit_dots <- list(...)
+  stated_control <- dots_arg(fit_dots, "x_control")
+  for (part in list(
+    list(frame = growth_frame, formula = formula, family = family_growth,
+         models = growth_models),
+    list(frame = survival_frame, formula = surv_formula,
+         family = survival_family, models = survival_models)
+  )) {
+    check_fit_x_control(
+      stated_control, part$formula,
+      retrieve_var(part$frame, "x_var", error = TRUE),
+      dots_arg(fit_dots, "x_range", NA), predictor_scale, report = FALSE
+    )
+    check_control_top_prior(
+      part$frame, part$family, part$models,
+      dots_arg(fit_dots, "prior"),
+      dots_arg(fit_dots, "prior_type", "uninformative"), stated_control,
+      part$formula
+    )
+  }
   check_group_terms(growth_models, formula, report = FALSE)
   check_group_terms(survival_models, surv_formula, report = FALSE)
   # Check the disp() term against the growth family and the survivors'
@@ -285,6 +305,20 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     model = get_model_from_formula(formula),
     flat_remedy = hurdle_growth_flat_remedy()
   )
+  if (!is.null(stated_control)) {
+    at <- fitted_x_control(stated_control, formula)
+    below_growth <- at < min(retrieve_var(growth_frame, "x_var", error = TRUE))
+    below_survival <- at < min(retrieve_var(survival_frame, "x_var",
+                                            error = TRUE))
+    if (below_growth || below_survival) {
+      blocks <- c(if (below_growth) "growth", if (below_survival) "survival")
+      message("The control at ", signif(stated_control, 3), " is below the",
+              " lowest observed concentration in the ",
+              paste(blocks, collapse = " and "),
+              " component; the curve from the control to its data is",
+              " extrapolated.")
+    }
+  }
   message("Fitting the growth component (", sum(y > 0), " survivors of ",
           length(y), ") with a ", family_growth$family, " distribution.")
   # User aterms pass through unchanged: a survivor below the recording limit is
@@ -296,19 +330,25 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   if ("x_range" %in% ...names()) {
     growth_fit <- bnec(growth_formula, data = data[y > 0, , drop = FALSE],
                        family = family_growth,
-                       predictor_scale = predictor_scale, ...)
+                       predictor_scale = predictor_scale,
+                       .bayesnec_control_checked = !is.null(stated_control),
+                       ...)
   } else {
     series <- range(data[[attr(full_frame, "bnec_pop")[["x_var"]]]])
+    if (!is.null(stated_control)) series[1] <- stated_control
     growth_fit <- bnec(growth_formula, data = data[y > 0, , drop = FALSE],
                        family = family_growth,
                        predictor_scale = predictor_scale, x_range = series,
+                       .bayesnec_control_checked = !is.null(stated_control),
                        ...)
   }
   message("Fitting the survival component (", n_dead, " deaths of ",
           length(y), ").")
   survival_fit <- bnec(surv_formula, data = surv_data,
                        family = survival_family,
-                       predictor_scale = predictor_scale, ...)
+                       predictor_scale = predictor_scale,
+                       .bayesnec_control_checked = !is.null(stated_control),
+                       ...)
 
   out <- list(growth = growth_fit, survival = survival_fit,
               data = data, formula = formula, y_var = y_var,

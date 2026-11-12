@@ -121,15 +121,44 @@ test_that("per-level estimates come back as one row per level", {
 # Forwarded posterior and prob_vals arguments must not turn draws or
 # truncated quantile vectors into apparently valid estimate tables.
 
-test_that("posterior = TRUE is refused rather than tabulated", {
-  # nec(posterior = TRUE) returns the draws, not a summary, so a positional
-  # table reported draws 1, 2 and 3 as an estimate and its credible interval.
+test_that("posterior = TRUE returns each level with its censoring record", {
+  skip_if(Sys.getenv("NOT_CRAN") == "")
   gf <- fake_group_fit()
-  expect_error(nec(gf, posterior = TRUE), "one row per level")
-  expect_error(ecx(gf, posterior = TRUE), "one row per level")
-  expect_error(nsec(gf, posterior = TRUE), "one row per level")
-  # and the message points at the route that does work
-  expect_error(nec(gf, posterior = TRUE), "lapply\\(x\\$fits")
+  out <- nec(gf, posterior = TRUE)
+  expect_named(out, gf$levels)
+  expect_equal(out$a, nec(gf$fits$a, posterior = TRUE))
+  expect_identical(attr(out$a, "censored"),
+                   attr(nec(gf$fits$a, posterior = TRUE), "censored"))
+  ecx_draws <- ecx(gf, posterior = TRUE)
+  expect_named(ecx_draws, gf$levels)
+  expect_equal(attr(ecx_draws, "x_control"),
+               setNames(rep(bayesnec:::control_x(gf$fits$a), 2), gf$levels))
+  expect_named(nsec(gf, posterior = TRUE), gf$levels)
+  expect_named(ecnsec(gf, nsec = 1.5, posterior = TRUE), gf$levels)
+})
+
+test_that("shared controls find the upper grid bound of model-set levels", {
+  gf <- fake_group_fit()
+  controls <- bayesnec:::shared_level_control(
+    gf$fits, list(x_control = "shared")
+  )
+  expect_equal(controls$x_range,
+               range(manec_example$mod_fits[[1]]$fit$data$x))
+})
+
+test_that("mixture weighting and common bounds survive grouped pooling", {
+  a <- c(1, 2, NA_real_, 4)
+  b <- c(5, 6, 7, 8)
+  attr(a, "censored") <- bayesnec:::censoring_record(
+    3, 0, c(FALSE, FALSE, TRUE, FALSE), rep(FALSE, 4))
+  attr(b, "censored") <- bayesnec:::censoring_record(
+    8, 0, rep(FALSE, 4), rep(FALSE, 4))
+  out <- bayesnec:::pool_estimate_draws(list(a = a, b = b), c(1, 3),
+                                        "mixture", seed = 1)
+  expect_length(out, 4)
+  expect_equal(as.integer(table(attr(out, "level"))), c(1L, 3L))
+  expect_true(all(attr(out, "censored")$above[out > 3]))
+  expect_equal(attr(out, "censored")$upper, 3)
 })
 
 test_that("a non-default prob_vals is carried through, not truncated", {
@@ -611,7 +640,8 @@ test_that("a group name reaches each level, ecxflat included (#485)", {
   sets <- list()
   local_mocked_bindings(
     bnec = function(formula, data, ...) {
-      sets[[length(sets) + 1L]] <<- get_model_from_formula(formula)
+      sets[[length(sets) + 1L]] <<-
+        bayesnec:::get_model_from_formula(formula)
       manec_example
     },
     .package = "bayesnec"
@@ -626,7 +656,7 @@ test_that("a group name reaches each level, ecxflat included (#485)", {
     }
   )
   expect_length(sets, 2)
-  expect_identical(sets[[1]], mod_groups$decline)
+  expect_identical(sets[[1]], bayesnec:::mod_groups$decline)
   expect_true("ecxflat" %in% sets[[1]])
   # The group named more than ecxflat, so the level at a bound is reported.
   expect_length(grep("fitted with the constant equation ecxflat alone", msgs,
@@ -839,4 +869,65 @@ test_that("bnec_group() refuses a set excluded at every level (#470)", {
   expect_match(err, "At level \"a\" of \"site\"", fixed = TRUE)
   expect_match(err, "No equation requested can be fitted", fixed = TRUE)
   expect_identical(calls, 0L)
+})
+
+# A model set weighted by leaving out each level of `group`, holding one
+# equation whose score per level is `elpd`.
+fake_logo_set <- function(levels, elpd, group = "cell") {
+  ms <- data.frame(waic = 10, wi = 1, row.names = "m")
+  attr(ms$wi, "leave_out") <- group
+  logo <- structure(list(pointwise = cbind(elpd_loo = elpd)), group = group,
+                    levels = levels)
+  structure(list(mod_stats = ms,
+                 mod_fits = list(m = list(fit = list(criteria = list(
+                   logo = logo
+                 ))))),
+            class = c("bayesmanecfit", "bnecfit"))
+}
+
+test_that("the pooled comparison uses the left-out score where all fits hold it", {
+  d <- data.frame(site = rep(c("a", "b"), each = 4))
+  gf <- structure(
+    list(fits = list(a = fake_logo_set(c("a1", "a2"), c(-1, -2)),
+                     b = fake_logo_set(c("b1", "b2"), c(-3, -4))),
+         group_var = "site", levels = c("a", "b"), data = d,
+         n = c(4L, 4L), weights_method = "pseudobma"),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  # The pooled levels are in another order, so pairing must be by name.
+  pooled <- fake_logo_set(c("b1", "a1", "b2", "a2"),
+                          c(-3.5, -1.25, -4.5, -2.25))
+  res <- crossed_group_weights(gf, pooled = pooled)$pooled
+  expect_identical(res$criterion, "looic")
+  expect_identical(res$group, "cell")
+  expect_equal(res$looic_grouped, 20)
+  expect_equal(res$looic_pooled, 23)
+  expect_equal(res$diff, 3)
+  expect_equal(res$n_groups, 4L)
+  expect_equal(res$se_diff, sqrt(4) * sd(c(0.5, 0.5, 1, 1)))
+  # A pooled fit scored by observation leaves the comparison on WAIC.
+  expect_warning(res <- crossed_group_weights(gf, pooled = manec_example)$pooled,
+                 "compared on WAIC")
+  expect_identical(res$criterion, "waic")
+})
+
+test_that("the pooled comparison requires the same held-out levels", {
+  d <- data.frame(site = rep(c("a", "b"), each = 4))
+  gf <- structure(
+    list(fits = list(a = fake_logo_set(c("a1", "a2"), c(-1, -2)),
+                     b = fake_logo_set(c("b1", "b2"), c(-3, -4))),
+         group_var = "site", levels = c("a", "b"), data = d,
+         n = c(4L, 4L), weights_method = "pseudobma"),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  pooled <- fake_logo_set(c("a1", "a2", "b1", "other"),
+                          c(-1, -2, -3, -4))
+  expect_warning(res <- crossed_group_weights(gf, pooled = pooled)$pooled,
+                 "do not cover the same levels")
+  expect_identical(res$criterion, "waic")
+  gf$fits$b <- fake_logo_set(c("a1", "b2"), c(-3, -4))
+  pooled <- fake_logo_set(c("a1", "a2", "b2"), c(-1, -2, -4))
+  expect_warning(res <- crossed_group_weights(gf, pooled = pooled)$pooled,
+                 "do not cover the same levels")
+  expect_identical(res$criterion, "waic")
 })

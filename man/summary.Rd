@@ -84,14 +84,17 @@ Generates a summary for objects fitted by \code{\link{bnec}}.
 \details{
 The summary method for both \code{\link{bayesnecfit}} and
 \code{\link{bayesmanecfit}} also returns a no-effect toxicity
-estimate. Where the fitted model(s) are NEC models (threshold models,
-containing a step function) the no-effect estimate is a true
-no-effect-concentration (NEC, see Fox 2010). Where the fitted model(s) are
-smooth ECx models with no step function, the no-effect estimate is a
-no-significant-effect-concentration (NSEC, see Fisher and Fox 2023). In the
-case of a \code{\link{bayesmanecfit}} that contains a mixture of both NEC and
-ECx models, the no-effect estimate is a model averaged combination of the NEC
-and NSEC estimates, and is reported as the N(S)EC (see Fisher et al. 2023).
+estimate. For a monotone threshold equation (\code{nec3param},
+\code{nec4param}, \code{neclin} or \code{necsigm}) it is the sampled
+\code{nec} parameter, a no-effect-concentration (NEC, see Fox 2010). For a
+smooth ECx equation, and for a hormesis threshold equation
+(\code{nechorme}, \code{nechorme4}, \code{neclinhorme},
+\code{nechormepwr}, \code{nechorme4pwr} or \code{nechormepwr01}), it is
+a no-significant-effect-concentration read off the fitted curve (NSEC, see
+Fisher and Fox 2023); \code{\link{nec}} explains why. In the case of a
+\code{\link{bayesmanecfit}} that contains both kinds of equation, the
+no-effect estimate is a model averaged combination of the NEC and NSEC
+estimates, and is reported as the N(S)EC (see Fisher et al. 2023).
 
 With \code{ecx = TRUE}, each ECx row is computed by \code{\link{ecx}} over
 the prediction grid stored with the fit, which is the grid the no-effect
@@ -112,6 +115,11 @@ returned on the recorded scale as \code{\link{nec}} returns it. An
 \code{xform} supplied in \code{...} is applied to the stored draws and to
 the bound they are censored at instead, as \code{\link{nec}} applies it,
 so the no-effect row and the ECx rows are reported on one scale.
+Where more than 7.5\% of the draws of a sampled NEC lie within the outer 5\%
+of its prior range, the no-effect row has the \code{"prior_bound_summary"}
+attribute \code{\link{nec}} describes, on the scale of the row, and the
+printed summary gives the note \code{\link{nec}} gives. For a model set the
+7.5\% applies to the model-weighted share. The quantiles do not change.
 
 \code{posterior = TRUE} is refused. A summary reports each estimate as
 quantiles; the draws themselves are returned by \code{\link{nec}},

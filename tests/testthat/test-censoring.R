@@ -192,8 +192,9 @@ test_that("the estimators under xform = exp return what they did before #440", {
   logged <- nec4param
   logged$bayesnecformula <- bnf(y ~ crf(log(x), model = "nec4param"))
   q <- function(expr) suppressWarnings(suppressMessages(expr))
-  same <- function(got, value, bound = NULL, ends = NULL, counts = NULL) {
-    expect_equal(unname(as.numeric(got)), value, tolerance = 1e-8)
+  same <- function(got, value, bound = NULL, ends = NULL, counts = NULL,
+                   tolerance = 1e-8) {
+    expect_equal(unname(as.numeric(got)), value, tolerance = tolerance)
     cs <- attr(got, "censored_summary")
     if (is.null(bound)) {
       expect_null(cs)
@@ -203,21 +204,22 @@ test_that("the estimators under xform = exp return what they did before #440", {
     expect_equal(c(cs$upper, cs$lower), ends, tolerance = 1e-8)
     expect_identical(c(cs$n_above, cs$n_below), counts)
   }
-  same(q(ecx(logged, ecx_val = 50, xform = exp)),
+  same(q(ecx(logged, ecx_val = 50, xform = exp, resolution = 200)),
        c(1.6735243462, 1.6101967180, 1.7230802679))
-  same(q(ecx(nec4param, ecx_val = 50, xform = exp)),
+  same(q(ecx(nec4param, ecx_val = 50, xform = exp, resolution = 200)),
        c(5.3309227862, 5.0038420117, 5.6017580711))
   same(q(ecx(logged, ecx_val = 90, xform = exp, x_range = c(0.0324, 1.5))),
        rep(1.5, 3), rep(">=", 3), c(1.5, 0.0324), c(100L, 0L))
   same(q(ecx(logged, ecx_val = 10, xform = exp, x_range = c(1.6, 3.22))),
        rep(1.6, 3), rep("<=", 3), c(3.22, 1.6), c(0L, 100L))
-  same(q(nsec(logged, xform = exp)),
-       c(1.4847758014, 1.3936170593, 1.5506664636))
+  same(q(nsec(logged, xform = exp, resolution = 200)),
+       c(1.4847758014, 1.3936170593, 1.5506664636), tolerance = 1e-6)
   same(q(nsec(logged, xform = exp, x_range = c(1.6, 3.22))),
        rep(1.6, 3), rep("<=", 3), c(3.22, 1.6), c(0L, 99L))
-  same(q(nsec(manec_example, xform = exp, x_range = c(0.0324, 1.2))),
+  same(q(nsec(manec_example, xform = exp, x_range = c(0.0324, 1.2),
+              resolution = 200)),
        c(3.3201169227, 2.0703283968, 3.3201169227), c(">=", "", ">="),
-       c(3.3201169227, 1.0329305949), c(82L, 0L))
+       c(3.3201169227, 1.0329305949), c(82L, 1L), tolerance = 1e-6)
   same(q(nec(logged, xform = exp)),
        c(4.3104239685, 3.8995850141, 4.6079795245))
   # The per-draw records keep their ends and are not swapped.
@@ -262,6 +264,20 @@ test_that("concat_censoring reports the bound true of every component", {
   # a draw known only to be above 5.
   expect_equal(out$upper, 5)
   expect_equal(out$lower, 1)
+})
+
+test_that("a combined posterior censors values outside its common range", {
+  parts <- list(cens_record(c(FALSE, TRUE, FALSE), rep(FALSE, 3),
+                            upper = 5, lower = 1),
+                cens_record(rep(FALSE, 3), rep(FALSE, 3),
+                            upper = 8, lower = 0))
+  values <- c(2, NA_real_, 4, 3, 6, 7)
+  cens <- bayesnec:::concat_censoring(parts, c(3L, 3L), values)
+  expect_equal(cens$upper, 5)
+  expect_identical(cens$above, c(FALSE, TRUE, FALSE, FALSE, TRUE, TRUE))
+  result <- bayesnec:::summarise_censored(values, c(0.5, 0.75), cens)
+  expect_equal(as.numeric(result), c(4, 5))
+  expect_identical(attr(result, "censored_summary")$bound, c("", ">="))
 })
 
 test_that("subset_censoring takes a component's share of a record", {
@@ -1185,7 +1201,7 @@ test_that("a curve-derived NSEC with no stored value combines as censored", {
   expect_equal(as.numeric(post), c(NA, 5, 3, 8))
   expect_identical(attr(post, "censored")$above, c(TRUE, FALSE, FALSE, FALSE))
   msgs <- testthat::capture_messages(suppressWarnings(nec(obj)))
-  expect_true(any(grepl("mixture of NEC and NSEC draws", msgs)))
+  expect_true(any(grepl("combines sampled NEC and curve-read NSEC", msgs)))
 })
 
 test_that("the hurdle summary and a decreasing xform keep the bound", {

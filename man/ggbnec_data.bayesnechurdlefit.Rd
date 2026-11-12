@@ -12,7 +12,8 @@
   ...,
   which = "combined",
   resolution = 1000,
-  x_range = NA
+  x_range = NA,
+  x_scale = c("recorded", "fitted")
 )
 }
 \arguments{
@@ -27,13 +28,18 @@ predictor where \code{crf()} does not transform it inline. Where it does,
 the predictor is returned on the recorded scale, the scale the prediction
 grid is built on, and \code{xform} is not applied.}
 
-\item{...}{Unused.}
+\item{...}{Unused. \code{dpar} is refused: select a curve with \code{which}.}
 
 \item{which}{Which curve(s) to return. See \code{\link{plot}}.}
 
 \item{resolution}{The number of unique predictor values.}
 
 \item{x_range}{A range of predictor values.}
+
+\item{x_scale}{\code{"recorded"} (the default) or \code{"fitted"}.
+The fitted option returns the predictor on the scale transformed inside
+\code{crf()}, with breaks in attribute \code{"x_axis"} labelled in
+recorded units.}
 }
 \value{
 A \code{\link[base]{list}} of two \code{\link[base]{data.frame}}s,

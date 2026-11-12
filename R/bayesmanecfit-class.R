@@ -26,10 +26,14 @@
 #' by the fit.
 #' @slot success_models A \code{\link[base]{character}} vector indicating the
 #' name of the successfully fitted models.
-#' @slot mod_stats A \code{\link[base]{data.frame}} of model fit statistics.
-#' @slot sample_size The number of posterior draws each component model holds,
-#' from which model averaging draws. Where the models hold different numbers,
-#' it is the smallest.
+#' @slot mod_stats A \code{\link[base]{data.frame}} of model fit statistics,
+#' including \code{elpd}, the expected log predictive density the weights
+#' \code{wi} were computed from. Attribute \code{"leave_out"} of \code{wi}
+#' names the grouping each of whose levels that score left out, or is
+#' \code{"observation"}. See the \code{loo_controls} argument of
+#' \code{\link{bnec}}.
+#' @slot sample_size The number of draws in the model-averaged mixture, set to
+#' the smallest posterior draw count among the component models.
 #' @slot w_draw_index The realised model-averaging draw: a
 #' \code{\link[base]{list}} of the row indices kept for each component model.
 #' Model averaging keeps a weighted subset of each model's draws, and this
@@ -49,30 +53,29 @@
 #' data.
 #' @slot w_residuals Model-weighted residual values
 #' (i.e. observed - w_predicted_y).
-#' @slot w_pred_vals A \code{\link[base]{list}} with a single element
-#' \code{data}, a \code{\link[base]{data.frame}} of summary model-weighted
+#' @slot w_pred_vals A \code{\link[base]{list}} with \code{data}, a
+#' \code{\link[base]{data.frame}} of summary model-weighted
 #' posterior predicted values over a grid set by \code{resolution} and
-#' \code{x_range}. Up to and including version 2.1.3.6 it also held
+#' \code{x_range}, and the \code{observed_levels} and \code{band} flags
+#' described for \code{pred_vals} in \code{\link{bayesnecfit}}. Up to and including
+#' version 2.1.3.6 it also held
 #' \code{posterior}, the full \code{sample_size x resolution} matrix of
 #' weighted draws those summaries came from. Once the per-model matrices were
 #' dropped that one matrix dominated what remained, so it is no longer stored.
 #' To obtain it directly, use \code{posterior_epred(x, newdata =
 #' bnec_newdata(x, resolution = 1000), re_formula = NA)}, which draws from the
-#' component models in the same weighted proportions. Objects saved before the
-#' change still carry it and are unaffected.
+#' component models in the same weighted proportions where no group term
+#' spans concentrations. A fit saved before observed-level curves were stored
+#' retains its earlier values and gives a warning when they are displayed.
 #' @slot w_ne The summary stats (median and 95% credibility intervals) of
 #' w_ne_posterior.
 #' @slot ne_type A \code{\link[base]{character}} vector indicating the type of
-#' no-effect toxicity estimate. Where the fitted model(s) are NEC models
-#' (threshold models, containing a step function) the no-effect estimate is
-#' a true no-effect-concentration (\code{NEC}, see Fox 2010). Where the fitted
-#' model(s) are 
-#' smooth ECx models with no step function, the no-effect estimate is a 
+#' no-effect toxicity estimate. A monotone threshold equation contributes its
+#' sampled no-effect-concentration (\code{NEC}, see Fox 2010). A smooth or
+#' hormesis threshold equation contributes a curve-read
 #' no-significant-effect-concentration (\code{NSEC}, see Fisher and Fox 2023).
-#' In the 
-#' case of a \code{\link{bayesmanecfit}} that contains a mixture of both NEC and
-#' ECx models, the no-effect estimate is a model averaged combination of the NEC
-#' and NSEC estimates, and is reported as the \code{N(S)EC}
+#' A set containing both contributions reports their model-averaged mixture as
+#' the \code{N(S)EC}
 #' (see Fisher et al. 2023).
 #'
 #' @seealso

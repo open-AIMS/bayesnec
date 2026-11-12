@@ -29,8 +29,8 @@ predictions, and over which to extract ECx values. Large values will be
 slower but more precise.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values against the lowest observed
-concentration (assumed to be the control), to estimate NEC as an
+significance of the predicted posterior values against the control
+concentration, to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.}
 
 \item{loo_controls}{A named \code{\link[base]{list}} whose "fitting"
