@@ -288,7 +288,12 @@ exceedance_posterior <- function(object, estimate, ecx_val, xform, ...) {
     nsec = function(...) nsec(object, posterior = TRUE, ...),
     ecx = function(...) ecx(object, ecx_val = ecx_val, posterior = TRUE, ...)
   )
-  read_posterior(xform = xform, ...)
+  tryCatch(read_posterior(xform = xform, ...),
+           bayesnec_unused_args = function(e) {
+             stop("exceedance() does not use ",
+                  paste(e$args, collapse = ", "), ". See ?exceedance for ",
+                  "its arguments.", call. = FALSE)
+           })
 }
 
 #' The probability that posterior draws exceed a threshold, with the bounds the
