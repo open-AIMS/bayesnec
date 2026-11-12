@@ -954,13 +954,18 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   check_timeout(timeout)
   check_prior_input(prior)
 
+  # Refuse rather than ignore: a `model` that differs from the formula's
+  # equations would otherwise fit the formula's.
   mf <- match.call(expand.dots = FALSE)
-  m <- sapply(c("x_var", "y_var", "trials_var", "model", "random",
-                "random_vars"), function(x, l) is.null(l[[x]]), l = mf)
-  if (!all(m)) {
-    warning("Arguments x_var, y_var, trials_var, model, random and random_vars",
-            " are deprecated. Extracting relevant data and model information",
-            " from argument formula. See ?bnec")
+  removed <- c("x_var", "y_var", "trials_var", "model", "random",
+               "random_vars")
+  supplied <- removed[!vapply(removed, function(x) is.null(mf[[x]]),
+                              logical(1))]
+  if (length(supplied) > 0) {
+    stop("Argument(s) ", paste0("`", supplied, "`", collapse = ", "),
+         " of bnec() were removed in version 2.0. Name the variables, the",
+         " equations and any group-level terms in the formula instead, as in",
+         " y ~ crf(x, \"nec3param\"). See ?bayesnecformula.", call. = FALSE)
   }
   # parent.frame() resolves a character formula's symbols where the user called
   # bnec(). A formula object keeps its own environment and ignores `env`.

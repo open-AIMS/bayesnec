@@ -860,3 +860,23 @@ test_that("a timeout without R.utils is refused once, before any model", {
                "R.utils", fixed = TRUE)
   expect_identical(calls, 0L)
 })
+
+test_that("the arguments removed in version 2.0 are refused, not ignored", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    bnec(y ~ crf(x, "nec3param"), data = nec_data, model = "nec4param"),
+    "Argument(s) `model` of bnec() were removed in version 2.0", fixed = TRUE
+  )
+  expect_error(
+    bnec(y ~ crf(x, "nec3param"), data = nec_data, x_var = "x", y_var = "y"),
+    "`x_var`, `y_var`", fixed = TRUE
+  )
+  expect_identical(calls, 0L)
+})
