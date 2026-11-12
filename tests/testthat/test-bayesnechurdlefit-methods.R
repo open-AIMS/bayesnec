@@ -1458,13 +1458,13 @@ test_that("the hurdle legend reads low to high under a decreasing xform", {
   expect_lt(ne[[2]], ne[[3]])
   drawn <- hurdle_legend(obj, xform = negate)
   expect_identical(drawn$legend,
-                   paste0("N(S)EC: ", signif(ne[[1]], 2), " (",
+                   paste0("NEC: ", signif(ne[[1]], 2), " (",
                           signif(ne[[2]], 2), "-", signif(ne[[3]], 2), ")"))
   expect_equal(as.numeric(drawn$v[[1]]), as.numeric(ne))
   # An identity xform draws what nec() returns.
   plain <- nec(obj)
   expect_identical(hurdle_legend(obj)$legend,
-                   paste0("N(S)EC: ", signif(plain[[1]], 2), " (",
+                   paste0("NEC: ", signif(plain[[1]], 2), " (",
                           signif(plain[[2]], 2), "-", signif(plain[[3]], 2),
                           ")"))
 })
@@ -1485,7 +1485,7 @@ test_that("the hurdle legend marks a censored no-effect estimate", {
   expect_no_match(negated, ">=", fixed = TRUE)
   ne <- suppressWarnings(nec(obj, which = "survival", xform = function(z) -z))
   expect_identical(negated, paste0(
-    "N(S)EC: ", bayesnec:::bound_prefix(ne, 1), signif(ne[[1]], 2), " (",
+    "NEC: ", bayesnec:::bound_prefix(ne, 1), signif(ne[[1]], 2), " (",
     bayesnec:::bound_prefix(ne, 2), signif(ne[[2]], 2), "-",
     bayesnec:::bound_prefix(ne, 3), signif(ne[[3]], 2), ")"
   ))
@@ -1616,15 +1616,23 @@ test_that("plot() draws a component fitted to one smooth equation (#487)", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  for (h in list(hurdle_pair(ecx4param, ecx4param),
-                 hurdle_pair(growth = ecx4param),
-                 hurdle_pair(survival = ecx4param))) {
+  # Each panel's legend names the type of the estimate drawn there, in the
+  # panel order combined, growth, survival.
+  tags <- list(both = c("NSEC", "NSEC", "NSEC"),
+               growth = c("N(S)EC", "NSEC", "NEC"),
+               survival = c("N(S)EC", "NEC", "NSEC"))
+  pairs <- list(both = hurdle_pair(ecx4param, ecx4param),
+                growth = hurdle_pair(growth = ecx4param),
+                survival = hurdle_pair(survival = ecx4param))
+  for (nm in names(pairs)) {
+    h <- pairs[[nm]]
     drawn <- suppressMessages(hurdle_legend(h, which = "all",
                                             resolution = 50))
     expect_length(drawn$legend, 3)
     expect_length(drawn$v, 3)
     expect_equal(as.numeric(drawn$v[[2]]),
                  as.numeric(nec(h, which = "growth")))
+    expect_identical(sub(":.*$", "", drawn$legend), tags[[nm]], label = nm)
   }
 })
 
@@ -1770,7 +1778,7 @@ test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)
   expect_true(all(line > min(x) & line < max(x)))
   expect_false(isTRUE(all.equal(line, on_fitted)))
   expect_identical(drawn$legend,
-                   paste0("N(S)EC: ", signif(line[1], 2), " (",
+                   paste0("NEC: ", signif(line[1], 2), " (",
                           signif(line[2], 2), "-", signif(line[3], 2), ")"))
 })
 
@@ -1885,7 +1893,7 @@ test_that("the hurdle plot maps estimates over the stored prediction range", {
       actual <- as.numeric(drawn$v[[1]])
       expect_equal(actual, expected, tolerance = 1e-5)
       expect_identical(drawn$legend,
-                       paste0("N(S)EC: ", signif(expected[1], 2), " (",
+                       paste0("NEC: ", signif(expected[1], 2), " (",
                               signif(expected[2], 2), "-",
                               signif(expected[3], 2), ")"))
     }

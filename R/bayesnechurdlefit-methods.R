@@ -1198,8 +1198,10 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
         suppressMessages(nec(x, which = w, xform = ne_map))
       )
       abline(v = ne, col = "red", lty = c(1, 3, 3))
+      ne_tag <- attr(ne, "toxicity_estimate")
+      ne_tag <- if (is.null(ne_tag)) "N(S)EC" else toupper(ne_tag)
       legend("topright", bty = "n", lty = 1, col = "red",
-             legend = paste0("N(S)EC: ", bound_prefix(ne, 1),
+             legend = paste0(ne_tag, ": ", bound_prefix(ne, 1),
                              signif(ne[[1]], 2), " (", bound_prefix(ne, 2),
                              signif(ne[[2]], 2), "-", bound_prefix(ne, 3),
                              signif(ne[[3]], 2), ")"))
