@@ -820,6 +820,10 @@ compare_pooled_logo <- function(object, pooled, best, pooled_model) {
        n_groups = n_groups)
 }
 
+# Read when the package is built, so that a test that mocks bnec() does not
+# change which names abbreviate its formals.
+bnec_formal_names <- setdiff(names(formals(bnec)), "...")
+
 #' One argument of \code{bnec()}, read from a dot list passed on to it
 #'
 #' @details Matches \code{name} as \code{do.call(bnec, ...)} will. An exact
@@ -845,7 +849,7 @@ dots_arg <- function(dots, name, default = NULL) {
   if (length(exact) > 0) {
     return(dots[[exact[1]]])
   }
-  formal_names <- setdiff(names(formals(bnec)), "...")
+  formal_names <- bnec_formal_names
   open_formals <- setdiff(formal_names, supplied)
   abbreviates <- function(s) {
     nzchar(s) && !s %in% formal_names && startsWith(name, s) &&
