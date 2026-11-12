@@ -180,6 +180,24 @@ flatness_blocks <- function(x, y, trials, denominator, family) {
   list(response = block)
 }
 
+#' Mean response at one predictor value for a flatness block
+#'
+#' @param block One element of \code{\link{flatness_blocks}}.
+#' @param value The predictor value whose mean is needed.
+#' @return The observed mean, or \code{NA_real_} if the block has no row there.
+#' @noRd
+flatness_level_mean <- function(block, value) {
+  at <- is.finite(block$x) & block$x == value
+  if (!any(at)) return(NA_real_)
+  if (identical(block$spec$kind, "matrix")) {
+    sum(block$successes[at]) / sum(block$trials[at])
+  } else if (isTRUE(block$spec$offset) && !is.null(block$denominator)) {
+    sum(block$y[at]) / sum(block$denominator[at])
+  } else {
+    mean(block$y[at])
+  }
+}
+
 #' Test one block for a decline between its two highest predictor values
 #'
 #' Compares the two levels by analysis of deviance, not by the Wald statistic
@@ -348,19 +366,10 @@ flatness_contrast <- function(block, alpha = 0.05, pool_dispersion = TRUE) {
   # One-sided from the signed root of a one-degree-of-freedom statistic, so the
   # rule reports a decline and is silent on a rise.
   p_value <- if (coefs[index, 1] < 0) two_sided / 2 else 1 - two_sided / 2
-  level_mean <- function(value) {
-    at <- block$x == value
-    if (identical(spec$kind, "matrix")) {
-      sum(block$successes[at]) / sum(block$trials[at])
-    } else if (isTRUE(spec$offset) && !is.null(block$denominator)) {
-      sum(block$y[at]) / sum(block$denominator[at])
-    } else {
-      mean(block$y[at])
-    }
-  }
   list(status = "tested", declining = p_value < alpha, p_value = p_value,
        lower_x = lower, upper_x = upper,
-       lower_mean = level_mean(lower), upper_mean = level_mean(upper))
+       lower_mean = flatness_level_mean(block, lower),
+       upper_mean = flatness_level_mean(block, upper))
 }
 
 #' Name a block of a response in the flatness report
@@ -477,7 +486,8 @@ capitalise_first <- function(x) {
 #' @param asymptote_observed The \code{asymptote_observed} argument of
 #' \code{\link{bnec}}. \code{FALSE} drops the advice to set it, and changes
 #' the sentence on the \code{nec} and \code{ec50} priors to match the priors
-#' it builds.
+#' it builds. Advice is withheld where the magnitude of the highest-level mean
+#' is at most 5% of a finite, positive control mean at the lowest predictor value.
 #'
 #' @return \code{NULL}, invisibly. Called for its message.
 #'
@@ -505,13 +515,18 @@ check_response_flattened <- function(data, family, group = NULL,
   x_label <- pop_var_label(data, "x_var", "the predictor")
   y_label <- pop_var_label(data, "y_var", "response")
   declining <- character(0)
+  needs_advice <- character(0)
   untestable <- character(0)
   for (level in levels(group)) {
-    use <- group == level & is.finite(x) & is.finite(y)
+    use <- !is.na(group) & group == level & is.finite(x) & is.finite(y)
     level_blocks <- if (is.list(blocks)) blocks[[level]] else blocks
     if (is.null(level_blocks) || !isTRUE(any(use))) {
       next
     }
+    # The control is the lowest predictor value, finite or not: a -Inf control
+    # must not be replaced by the lowest finite level.
+    seen <- !is.na(group) & group == level & !is.na(x) & is.finite(y)
+    control_x <- min(x[seen])
     views <- flatness_blocks(x[use], y[use], trials[use], denominator[use],
                              family)
     views <- views[intersect(names(views), level_blocks)]
@@ -522,6 +537,29 @@ check_response_flattened <- function(data, family, group = NULL,
       if (identical(result$status, "failed")) {
         untestable <- c(untestable, label)
       } else if (isTRUE(result$declining)) {
+        control_mean <- if (is.finite(control_x)) {
+          flatness_level_mean(views[[name]], control_x)
+        } else NA_real_
+        relative <- if (is.finite(control_mean) && control_mean > 0) {
+          result$upper_mean / control_mean
+        } else NA_real_
+        if (!is.finite(relative) || abs(relative) > 0.05) {
+          needs_advice <- c(needs_advice, label)
+        }
+        relative_text <- if (!is.finite(control_x)) {
+          paste0(" A control-relative percentage is unavailable because the",
+                 " lowest value of ", x_label, " is not finite.")
+        } else if (is.finite(relative)) {
+          paste0(" The mean at ", x_label, " = ",
+                 signif(result$upper_x, 3), " is ",
+                 signif(100 * relative, 3),
+                 "% of the control mean at ", x_label, " = ",
+                 signif(control_x, 3), ".")
+        } else {
+          paste0(" A control-relative percentage is unavailable because the",
+                 " mean at ", x_label, " = ", signif(control_x, 3),
+                 " is absent or not positive.")
+        }
         declining <- c(
           declining,
           paste0(
@@ -531,35 +569,46 @@ check_response_flattened <- function(data, family, group = NULL,
             signif(result$lower_mean, 3), " to ",
             signif(result$upper_mean, 3), " as ", x_label, " rises from ",
             signif(result$lower_x, 3), " to ", signif(result$upper_x, 3),
-            " (p = ", signif(result$p_value, 2), ", one-sided)."
+            " (p = ", signif(result$p_value, 2), ", one-sided).",
+            relative_text
           )
         )
       }
     }
   }
   if (length(declining) > 0) {
-    # The declaration changes what the threshold priors admit, so the sentence
-    # about them follows it.
-    threshold_priors <- if (isTRUE(asymptote_observed)) {
-      paste0(" the default nec and ec50 priors are bounded to the tested",
-             " range, so they exclude a threshold above it.")
-    } else {
-      paste0(" the default nec and ec50 priors put a threshold above the",
-             " tested range in their tail, where how much of the prior lies",
-             " there depends on prior_type and on whether the predictor was",
-             " supplied as a concentration or already logged; ?bnec tabulates",
-             " the four under asymptote_observed.")
+    report <- paste(declining, collapse = "\n")
+    if (length(needs_advice) > 0 || !isTRUE(asymptote_observed)) {
+      # The declaration changes what the threshold priors admit, so the
+      # sentence about them follows it.
+      threshold_priors <- if (isTRUE(asymptote_observed)) {
+        paste0(" the default nec and ec50 priors are bounded to the tested",
+               " range, so they exclude a threshold above it.")
+      } else {
+        paste0(" the default nec and ec50 priors put a threshold above the",
+               " tested range in their tail, where how much of the prior lies",
+               " there depends on prior_type and on whether the predictor was",
+               " supplied as a concentration or already logged; ?bnec tabulates",
+               " the four under asymptote_observed.")
+      }
+      identification <- if (isTRUE(asymptote_observed)) {
+        paste0("The lower asymptote may not be identified for ",
+               paste(needs_advice, collapse = ", "), ": where an")
+      } else {
+        "The lower asymptote may not be identified by this design: where an"
+      }
+      report <- paste0(
+        report, "\n",
+        identification,
+        " equation estimates bot its default prior is derived from the observed",
+        " response, and", threshold_priors,
+        " Inspect the entries with get_priors() and",
+        " supply scientifically justified ones through the prior argument where",
+        " information beyond the design is available.",
+        declaration_advice(family, y, asymptote_observed)
+      )
     }
-    message(
-      paste(declining, collapse = "\n"), "\n",
-      "The lower asymptote may not be identified by this design: where an",
-      " equation estimates bot its default prior is derived from the observed",
-      " response, and", threshold_priors,
-      " Inspect the entries with get_priors() and",
-      " supply scientifically justified ones through the prior argument where",
-      " information beyond the design is available.",
-      declaration_advice(family, y, asymptote_observed)
-    )
+    message(report)
   }
   if (length(untestable) > 0) {
     message(
