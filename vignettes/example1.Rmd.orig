@@ -94,7 +94,7 @@ library(tidyr)
 
 Concentration—response experiments are usually designed as a dilution series, in which each concentration is a fixed multiple of the one below it. On a linear scale this design places the low concentrations close together and the high concentrations far apart. The model equation then uses its flexibility at the top of the range, where the response has often already levelled off, and has few distinct concentrations in the region where the response is changing.
 
-The scale on which the predictor is modelled is therefore an important decision, and one that is left to the user: `bnec` uses the concentration as supplied, without transformation. This decision is best made before any model is fitted, because it will generally have more influence on the results than the choice of model equation. For example, for one algal dataset, fitting `nec4param` to `log(dose)` instead of the raw dose reduced the maximum lack of fit in the mean from 0.2115 to 0.0676 (on a response spanning about 0.7), whereas five different equations fitted to `log(dose)` were all within 1.2 `elpd_loo` of one another.
+The scale on which the predictor is modelled is therefore an important decision, and one that is left to the user: `bnec` uses the concentration as supplied, without transformation. This decision is best made before any model is fitted, because it will generally have more influence on the results than the choice of model equation.
 
 The appropriate scale can be identified from the spacing of the concentrations in the design, not from the response. If the concentrations are close to evenly spaced after a log transformation, the series was designed on a log scale and is usually best modelled on that scale:
 
@@ -193,7 +193,7 @@ autoplot(exp_1, xform = exp) +
 
 There are many built in methods available for `brmsfit` objects and we encourage you to make use of these in full.
 
-This model fit does not look great. You can see that the error bounds around the fit are far too narrow for this data given the variability among the points, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). For models whose response data are Binomial- or Poisson-distributed, an estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_1$dispersion`. Values > 1 indicate overdispersion and values < 1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model does not properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.
+The error bounds around the fit are narrower than the variability among the points, which suggests overdispersion (the data are more variable than this model fit predicts). For models whose response data are Binomial- or Poisson-distributed, an estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_1$dispersion`. Values > 1 indicate overdispersion and values < 1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model does not properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.
 
 ```{r}
 exp_1$dispersion
@@ -321,7 +321,7 @@ count_data_od <- data.frame(
 )
 ```
 
-Fitting these data with a Poisson distribution gives credible bands that are far too narrow for the variability among the points and a dispersion estimate well above one, which indicates that a different distribution should be used.
+Fitting these data with a Poisson distribution gives credible bands that are narrower than the variability among the points and a dispersion estimate well above one, which indicates that a different distribution should be used.
 
 ```{r, warning = FALSE, results = "hide"}
 exp_3b <- bnec(y ~ crf(x, model = "nec4param"), data = count_data_od,

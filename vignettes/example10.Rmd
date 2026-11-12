@@ -47,7 +47,7 @@ The formal definitions, an exploratory design simulation and a fuller review of 
 
 # Case-study data
 
-The first dataset contains 65 individual specific growth rates of the marine dinoflagellate symbiont *Cladocopium goreaui*, with ten no-WAF controls and five replicates at each of 11 exposure concentrations, released with @negri2021condensate in a [public workbook](https://data.aims.gov.au/data-download/615e208d-f6c7-4b2f-b99e-d4fc50614e48/Negri_etal_2021_Experimental-data_Toxicity-thresholds-gas-condensate-oils.xlsx) [@aims2020condensatedata]. @fisher2023ieam excluded this series from their comparison of no-effect estimators because of its hormetic shape. The workbook codes the total aromatic hydrocarbon (TAH) concentration of the controls as 1 $\mu$g/L, so we subtracted 1 $\mu$g/L from each concentration to place the controls at zero and report estimates in mg/L TAH relative to this source-coded control. The data record labels the workbook [CC BY-NC 3.0 Australia](https://researchdata.edu.au/condensate-toxicity-testing/1702929), so its observations are not redistributed with this GPL-2 package. `data-raw/hormesis_negri.R` in the package source downloads the workbook and writes the observations locally, and the code below is therefore shown but not evaluated.
+The first dataset contains 65 individual specific growth rates of the marine dinoflagellate symbiont *Cladocopium goreaui*, with ten no-WAF controls and five replicates at each of 11 exposure concentrations, released with @negri2021condensate in a [public workbook](https://data.aims.gov.au/data-download/615e208d-f6c7-4b2f-b99e-d4fc50614e48/Negri_etal_2021_Experimental-data_Toxicity-thresholds-gas-condensate-oils.xlsx) [@aims2020condensatedata]. @fisher2023ieam excluded this series from their comparison of no-effect estimators because of its hormetic shape. The workbook codes the total aromatic hydrocarbon (TAH) concentration of the controls as 1 $\mu$g/L, so we subtracted 1 $\mu$g/L from each concentration to place the controls at zero and report estimates in mg/L TAH relative to this source-coded control. The data record labels the workbook [CC BY-NC 3.0 Australia](https://researchdata.edu.au/condensate-toxicity-testing/1702929), so its observations are not redistributed with this GPL-2 package. `data-raw/hormesis_negri.R` in the GitHub repository (`open-AIMS/bayesnec`) downloads the workbook and writes the observations locally, and the code below is therefore shown but not evaluated.
 
 The second dataset is the `lettuce` series distributed with `drc` [@Ritz2016; @vanewijk1993]: shoot biomass after 21 days of exposure to isobutyl alcohol, with two observations at each of seven concentrations from zero to 100 mg/L (Figure 2). It is distributed with `bayesnec` as `inst/extdata/hormesis_lettuce_1993.csv`. Its small sample and terrestrial endpoint make it a methods example and not an aquatic guideline input.
 
@@ -111,8 +111,7 @@ The code below shows these steps on whole sets. The estimates reported here come
 check_sampling(marine_set, divergence_cutoff = 0)
 check_sampling(lettuce_set, divergence_cutoff = 0)
 
-# thin = 2 keeps 4000 draws, as in the first fits, so that the model weights
-# compare leave-one-out scores from equal numbers of draws.
+# thin = 2 keeps 4000 draws, the number in the first fits.
 refit_longer <- function(set, model, adapt_delta) {
   update(pull_out(set, model = model), iter = 6000, warmup = 4000, thin = 2,
          seed = 570, refresh = 0,

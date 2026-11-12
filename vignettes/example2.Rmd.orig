@@ -103,11 +103,11 @@ summary(exp_5)
 The `bayesmanecfit` object also contains all of the individual `brms` model fits, which can be extracted using the `pull_out` function. For example, we can pull out and plot the model **ecx4param**.
 
 ```{r exmp2-ecx4param, fig.width = 5}
-exp_5_nec4param <- pull_out(exp_5, model = "ecx4param")
-autoplot(exp_5_nec4param)
+exp_5_ecx4param <- pull_out(exp_5, model = "ecx4param")
+autoplot(exp_5_ecx4param)
 ```
 
-This would extract the **nec4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This would be identical to fitting the **ecx4param** as a single model using `bnec`. Several models in the `bayesmanecfit` can be plotted together by naming them in the argument `model` (here we plot all of the models that fitted successfully), and setting `average = FALSE` omits the panel of model averaged predictions.
+This extracts the **ecx4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This is identical to fitting **ecx4param** as a single model using `bnec`. Several models in the `bayesmanecfit` can be plotted together by naming them in the argument `model` (here we plot all of the models that fitted successfully), and setting `average = FALSE` omits the panel of model averaged predictions.
 
 ```{r exmp2-allmods, fig.width = 7, fig.asp = 1.2}
 autoplot(exp_5, model = exp_5$success_models, average = FALSE)
@@ -204,7 +204,7 @@ exp_5_nec <- pull_out(exp_5, model = "nec")
 
 In this case, because we have already fitted `"decline"` models, we can ignore the message regarding the missing *NEC* models---these are all models that are not appropriate for the family and link `bnec` selected for these data, or allow hormesis, which we did not consider in this example.
 
-Now we have two model sets, an *NEC* set, and a mixed *NEC* and *ECx* set. Of course, before we use this model set for any inference, we would need to check the chain mixing and `acf` plot for each of the input models. For the "all" set, the model with the highest weight is **nec4param**. 
+Now we have two model sets, an *NEC* set, and a mixed *NEC* and *ECx* set. Of course, before we use this model set for any inference, we would need to check the chain mixing and `acf` plot for each of the input models. For the `"decline"` set, the equation with the highest weight is **nec4param**. 
 
 Now we can use the `ecx` function to get *EC~10~* and *EC~50~* values. We can do this using our all model set, because it is valid to use *NEC* models for estimating *ECx* (see more information in the [Model details][e2b] vignette).
 
@@ -226,7 +226,7 @@ Note that the new *NEC* estimates from the **nec**-containing model fits are sli
 
 ### Putting it all together
 
-Now we can make a combined plot of our output, showing the model averaged *NEC* model and the "all averaged model", along with the relevant thresholds.
+Now we can make a combined plot of our output, showing the model averaged *NEC* model and the model average of the full `"decline"` set, along with the relevant thresholds.
 
 ```{r exmp2-pretty, fig.width = 5}
 preds <- exp_5_nec$w_pred_vals$data

@@ -777,9 +777,8 @@ that is a ratio to a per-unit baseline is often better modelled with
 
 ### A simulated example
 
-No dataset shipped with `bayesnec` satisfies all four conditions, nor did any of
-the candidates considered while this vignette was written, and the mass-at-1
-condition is the one that failed, for the structural reasons given above. The
+No dataset shipped with `bayesnec` satisfies all four conditions: the
+mass-at-1 condition fails for each, for the structural reasons given above. The
 example below is therefore simulated, and constructed to meet all four conditions.
 It shows what the family does where it applies, and it is not evidence that any
 particular real dataset qualifies, so the conditions above should still be

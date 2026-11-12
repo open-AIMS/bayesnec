@@ -2172,8 +2172,7 @@ realisations used above, but do not report those results. A sub-model does not
 repair the conventions that impose the zero boundary through the response
 distribution, and adding one to a Gaussian family, whose variance model is
 already correct, gives its variance a gradient the data do not have. The code
-and the tables are in the compendium, and its `CLAUDE.md` records why they are
-not cited.
+and the tables are in the compendium.
 
 The priors are the defaults of `bnec()`, derived once per cell and convention
 from a reference realisation and then held fixed across the 100 realisations of
@@ -2187,14 +2186,6 @@ default `nec` prior is a lognormal on the log of the predictor, with a central
 places the true `nec` of 1.3 between the 23rd and the 63rd percentile, depending
 on the cell, and the true ErC50 between the 80th and the 95th, so both are
 comfortably inside it.
-
-This was not the case in the version of this study published before, in which
-the default `nec` and `ec50` prior was a gamma whose spread is tied to its
-shape. Its central 95% interval therefore covered a fraction of a
-logarithmically spaced series, however the series was designed, and it placed
-the true ErC50 above the 99th percentile in each cell. Anyone comparing both
-versions should therefore be aware that the equations parameterised by `ec50`
-are likely to behave differently between them for that reason alone.
 
 Each cell was simulated 100 times, and the Monte Carlo standard error of the
 reported bias has a median of
