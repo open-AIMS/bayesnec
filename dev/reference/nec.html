@@ -349,15 +349,16 @@ label it prints, so the two cannot disagree about what the set is.</p>
 <p>A finite limit applies to both classes, by a different route for each. The
 threshold components are compared against it, which requires no further
 computation because every draw of a sampled <code>nec</code> already has a value.
-The curve-read components are re-evaluated on a grid extended to it, through
-the <code>x_range</code> argument of <code><a href="nsec.html">nsec</a></code>. That recomputes from the
-stored fit and needs no refit, but it does evaluate the curve once for each
-such equation, at a run time proportional to <code>resolution</code>. The
-re-evaluation reuses the <code>sig_val</code> the fit was built with unless
-<code>sig_val</code> is given, and the number of grid points the fit stored
-unless <code>resolution</code> is given. Over a wider range the grid is
-therefore proportionally coarser, and its numbers can differ in the last
-digits from the stored summary.</p>
+The curve-read components are re-evaluated by <code><a href="nsec.html">nsec</a></code>, with its
+<code>extrapolate</code> argument, on the stored prediction range with points
+appended out to the limit. That recomputes from the stored fit and needs no
+refit, but it does evaluate the curve once for each such equation, at a run
+time proportional to the number of grid points. The re-evaluation reuses
+the <code>sig_val</code> the fit was built with unless <code>sig_val</code> is given,
+and the number of grid points the fit stored unless <code>resolution</code> is
+given. The appended points keep that grid's spacing, so a wider range adds
+points rather than coarsening the grid, and its numbers can differ in the
+last digits from the stored summary.</p>
 <p>Two requests re-evaluate nothing and return what <code>extrapolate = FALSE</code>
 returns: a limit equal to the current bounds, and any limit on a fit with no
 draw beyond either end, where every draw was identified inside the range the
@@ -382,9 +383,9 @@ default <code>asymptote_observed = TRUE</code> of <code><a href="bnec.html">bnec
 user prior that sets a wider one. The lower bound at the lowest value tested
 applies under both settings and is reported by the other arm of the same
 message. And a curve-read
-component is measured from the control, so a lower limit below the lowest
-observed concentration extends the grid without extending the search, and
-those components stay censored at the control.</p>
+component is measured from the control, so a lower limit below the control
+concentration does not extend its search, and a message states that the
+search begins at the control.</p>
     </div>
     <div id="references">
     <h2>References</h2>

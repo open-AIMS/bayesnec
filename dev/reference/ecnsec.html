@@ -111,7 +111,8 @@ object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 <span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  pool <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  x_control <span class="op">=</span> <span class="st">"own"</span></span>
+<span>  x_control <span class="op">=</span> <span class="st">"own"</span>,</span>
+<span>  extrapolate <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -185,6 +186,15 @@ extrapolates its curve, and gives a warning unless it is the control
 recorded at fitting. Level controls are recorded in the result's
 <code>x_control</code> attribute.</p></dd>
 
+
+<dt id="arg-extrapolate">extrapolate<a class="anchor" aria-label="anchor" href="#arg-extrapolate"></a></dt>
+<dd><p><code>FALSE</code>, the default, uses the prediction range.
+A single finite number extends the upper end; two finite numbers may
+extend both ends. The original grid points are retained. Limits are on
+the recorded predictor scale. <code>TRUE</code> and narrowing limits are refused.
+For <code>type = "range"</code> the lowest response is taken over the prediction
+range before it is extended.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
@@ -246,7 +256,8 @@ over: the observed range of the predictor, or <code>x_range</code> where one is
 supplied. An <code>nsec</code> outside that range once <code>xform</code> has been
 applied is refused with a message naming the range, rather than read off
 the curve extended past the data without a message. Supply an
-<code>x_range</code> that includes <code>nsec</code> to read the curve there. On a
+<code>x_range</code> or finite <code>extrapolate</code> that includes <code>nsec</code> to
+read the curve there. On a
 <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> each level is read over its own observed
 range, and the message names the level that refused <code>nsec</code>.</p>
     </div>
