@@ -16,9 +16,9 @@
   is what the default `hormesis_def = "control"` selected. `ecx()` and
   `nsec()` stop with an error that names the argument, and
   `compare_estimates()` with "unused argument"; remove it from the call.
-  Nothing replaces `hormesis_def = "max"`. The arguments after it in
-  `ecx()`, `nsec()` and `compare_estimates()` move up one place, so a call
-  that passes them by position must name them (#195).
+  Nothing replaces `hormesis_def = "max"`. Its removal changes the position
+  of the arguments after it in `ecx()`, `nsec()` and `compare_estimates()`,
+  so a call that passes them by position must name them (#195).
 
 ### Changed defaults
 
@@ -375,7 +375,7 @@ the same call returns.
 
 - The curve and credible band of `autoplot()` and `ggbnec_data()` remain the
   population curve, with the group deviations at zero, so the estimate lines
-  need not fall where that curve reaches the corresponding response (#576).
+  need not fall where that curve equals the corresponding response (#576).
 
 ## Hurdle and zero-inflated models
 
@@ -536,10 +536,11 @@ the same call returns.
   that level from the refit. `report_k = FALSE` silences the Pareto *k* report
   (#529, #531, #536).
 
-- A model set reports Pareto *k* at or above 0.7 for the scores behind its
-  weights, naming equations with at least 0.01 of the model weight, and
-  separately reports values below 0.7 that exceed the threshold `loo` sets
-  for the number of draws (#536, #553).
+- When a model set is built, a message gives the number of Pareto *k* values
+  at or above 0.7 among the scores behind its weights, for each equation with
+  at least 0.01 of the model weight. A second message gives the values below
+  0.7 that exceed the threshold `loo` sets for the number of draws (#536,
+  #553).
 
 - `mod_stats` gains `elpd`, the score the weights were computed from, and
   `summary()` prints what the score left out. A set fitted by 2.1.3.1 keeps
@@ -791,7 +792,7 @@ the same call returns.
 
 - A model set can combine equations with different numbers of posterior
   draws, where `c()` in 2.1.3.1 stopped with "subscript out of bounds". The
-  model average holds as many draws as the equation with the fewest, and each
+  model average contains as many draws as the equation with the fewest, and each
   equation's share is sampled from all of its draws (#548, #583).
 
 - `compare_estimates()` and `compare_posterior()` return the names of the
