@@ -40,10 +40,13 @@ was built on. \code{TRUE} removes the bound at both ends. A single number is
 an upper limit, and a pair of numbers is a lower and an upper limit, in that
 order. See the \emph{Extrapolation} section of \code{\link{nec}}.}
 
-\item{...}{Additional arguments passed to methods. \code{sig_val} and
-\code{resolution} are forwarded to \code{\link{nsec}} where a finite
-\code{extrapolate} limit requires a curve to be re-evaluated, and are
-otherwise unused.}
+\item{...}{Additional arguments passed to methods. \code{sig_val},
+\code{resolution} and \code{x_range} are forwarded to \code{\link{nsec}}
+where an observed group level is read off its curve, and \code{sig_val}
+and \code{resolution} where a finite \code{extrapolate} limit requires a
+curve to be re-evaluated. Otherwise \code{nec} returns the estimate stored
+when the model was fitted, and a message names those it did not use. Any
+other argument is refused.}
 
 \item{no_effect}{For a \code{\link{bayesnecjointfit}} only, a
 \code{\link[base]{logical}} value. \code{FALSE}, the default, returns
@@ -149,14 +152,15 @@ fitted model(s) support, following the convention set out in Fisher et al.
 \item For a \code{\link{bayesnecfit}} holding a monotone threshold
 equation, the \bold{NEC}: the \code{nec} parameter itself.
 \item For a \code{\link{bayesnecfit}} holding a hormesis threshold
-equation, the \bold{NSEC} read off the fitted curve as for a smooth
-equation, below. This too is computed when the model is fitted.
+equation, the \bold{NSEC} read off the fitted curve, as
+\code{\link{nsec}} reads it. It is computed when the model is fitted,
+with the \code{sig_val} passed to \code{\link{bnec}}.
 \item For a \code{\link{bayesnecfit}} holding a smooth (\code{ecx}-type)
-model, which has no threshold parameter, the \bold{NSEC} (Fisher and Fox
-2023) -- the concentration at which the fitted curve falls below a
-reference taken from the \code{sig_val} quantile of the control
-posterior. This is computed when the model is fitted, using the
-\code{sig_val} passed to \code{\link{bnec}}.
+equation, which has no \code{nec} parameter, \code{nec} stops with an
+error. Use \code{\link{nsec}} for its no-effect estimate, the
+\bold{NSEC} (Fisher and Fox 2023): the concentration at which the
+fitted curve falls below a reference taken from the \code{sig_val}
+quantile of the control posterior.
 \item For a \code{\link{bayesmanecfit}} whose model set contains both
 kinds, the weighted posterior mixes sampled NEC draws from monotone
 threshold equations with NSEC draws from smooth and hormesis threshold
@@ -176,11 +180,11 @@ smooth equation.
 The \code{ne_type} column is what a model-averaged N(S)EC cannot report.
 }
 
-\code{\link{summary}} labels the estimate NEC, NSEC or N(S)EC accordingly,
-and is the better choice where the type matters, because for every class but
-the joint refit \code{nec} returns an unlabelled vector. Use
-\code{\link{nsec}} where a NSEC is wanted from every model regardless of
-type.
+The result carries attribute \code{"toxicity_estimate"}, \code{"nec"},
+\code{"nsec"} or \code{"n(s)ec"}, which names the type of the estimate and
+is printed with it. \code{\link{summary}} labels the estimate NEC, NSEC or
+N(S)EC in the same way. Use \code{\link{nsec}} where an NSEC is wanted
+from every model regardless of type.
 
 Where \code{crf()} transforms the predictor inline, as in
 \code{crf(log(concentration))}, a sampled \code{nec} parameter is on the
@@ -208,16 +212,13 @@ the draw is not capped at the bound, it is recorded as lying beyond it. Both
 are reported the same way here, because neither claims a value for the draw.
 
 Which quantile estimator is used depends on whether anything is censored.
-A posterior with no beyond-range draw is summarised exactly as it was up to
-version 2.1.3, with \code{\link[stats]{quantile}}'s default type 7, which
-interpolates between two adjacent order statistics. Once any draw is
-censored every reported entry becomes an order statistic instead, because a
-value interpolated across a draw that has no value would be one the
-posterior does not support.
-Every entry therefore changes a little when the first draw is censored,
-including entries at the other end of the interval. Keeping the uncensored
-summary bit-identical to the release was preferred to making the two agree
-at the boundary, because every archived analysis is compared against it.
+A posterior with no beyond-range draw is summarised with
+\code{\link[stats]{quantile}}'s default type 7, which interpolates between
+two adjacent order statistics. Once any draw is censored every reported
+entry becomes an order statistic instead, because a value interpolated
+across a draw that has no value would be one the posterior does not
+support. Every entry therefore changes a little when the first draw is
+censored, including entries at the other end of the interval.
 }
 
 \section{Extrapolation}{
@@ -259,9 +260,9 @@ last digits from the stored summary.
 Two requests re-evaluate nothing and return what \code{extrapolate = FALSE}
 returns: a limit equal to the current bounds, and any limit on a fit with no
 draw beyond either end, where every draw was identified inside the range the
-fit used and a wider grid has none left to identify. An object fitted before
-version 2.2.0 records nothing about which of its draws lie beyond the range,
-so it takes the second of those whatever its draws are, and
+fit used and a wider grid has none left to identify. An object fitted by a
+version before 3.0.0 records nothing about which of its draws lie beyond the
+range, so it takes the second of those whatever its draws are, and
 \code{extrapolate} does nothing to it. Refit it, or rebuild the set with
 \code{\link{amend}}, to extrapolate from it.
 

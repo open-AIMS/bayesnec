@@ -43,7 +43,11 @@
 #' extrapolates its curve, and gives a warning unless it is the control
 #' recorded at fitting. Level controls are recorded in the result's
 #' \code{x_control} attribute.
-#' @param ... Further arguments to pass to class specific methods.
+#' @param ... Further arguments to pass to class specific methods. A method
+#' refuses any argument it does not use.
+#' @param posterior A \code{\link[base]{logical}} value indicating if the full
+#' posterior sample of calculated ECNSEC values should be returned instead of
+#' just the median and 95 credible intervals.
 #'
 #' @details NSEC is no-effect toxicity metric that estimates the concentration
 #' at which the modeled mean response is statistically indistinguishable from
@@ -89,9 +93,6 @@
 #' example, every draw returns 0 at an \code{nsec} below the \code{nec} of
 #' every draw, where every draw of the curve still equals its control.
 #'
-#' The \code{hormesis_def} argument has been removed; the control is now
-#' always the reference. See \code{\link{ecx}}.
-#'
 #' \code{nsec} is read on the recorded predictor scale once \code{xform} has
 #' been applied to it. \code{\link{nsec}} returns its estimate on that scale
 #' by default, so \code{ecnsec(fit, nsec = nsec(fit)[1])} reads the curve at
@@ -113,7 +114,8 @@
 #' @seealso \code{\link{bnec}}
 #'
 #' @return A vector containing the estimated ECNSEC value, including upper and
-#' lower 95% credible interval bounds.
+#' lower 95% credible interval bounds, or with \code{posterior = TRUE} the
+#' value for each posterior draw.
 #'
 #' @examples
 #' \donttest{
@@ -127,7 +129,8 @@
 ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
                    type = "absolute", xform = NULL,
                    prob_vals = c(0.5, 0.025, 0.975), ...,
-                   pool = NULL, x_control = "own", extrapolate = FALSE) {
+                   posterior = FALSE, pool = NULL, x_control = "own",
+                   extrapolate = FALSE) {
   UseMethod("ecnsec")
 }
 
@@ -143,7 +146,7 @@ ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
 #'
 #' @importFrom stats quantile
 #' @importFrom brms as_draws_df posterior_epred
-#' @importFrom chk chk_logical chk_number
+#' @importFrom chk chk_flag chk_number
 #'
 #' @noRd
 #'
@@ -155,8 +158,11 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
                              x_control = "own", extrapolate = FALSE) {
   # One value: the curve is read at one point.
   chk_number(nsec)
-  chk_logical(posterior)
+  chk_flag(posterior)
   check_removed_args(list(...))
+  check_unused_dots(list(...), "ecnsec")
+  check_resolution(resolution)
+  if (!is.null(pool)) validate_pool(pool, "ecnsec")
 
   type <- validate_ecx_type(type, match.call())
   if (identical(type, "direct")) {

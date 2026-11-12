@@ -2422,6 +2422,11 @@ zero_crossings <- function(v) {
 #' @return \code{NULL}, invisibly.
 #' @noRd
 check_resolution <- function(resolution) {
+  if (!is.numeric(resolution) || length(resolution) != 1L ||
+      !is.finite(resolution) || resolution != round(resolution)) {
+    stop("Argument `resolution` must be one whole number, the number of ",
+         "grid points.", call. = FALSE)
+  }
   if (resolution < 2) {
     stop("Argument `resolution` must be at least 2; a single grid point ",
          "defines no interval to read an estimate from.", call. = FALSE)
@@ -2640,6 +2645,13 @@ resolve_x_control <- function(object, x_control, x_range) {
             " observed concentration, ", signif(low, 3),
             "; the curve from the control to the data is extrapolated.",
             call. = FALSE)
+  }
+  if (!is.na(x_range[1]) &&
+      !isTRUE(all.equal(min(x_range), as.numeric(x_control))) &&
+      first_in_call("x_control_range")) {
+    message("The prediction range starts at `x_control` = ",
+            signif(x_control, 3), ", which replaces the lower end of ",
+            "`x_range`, ", signif(min(x_range), 3), ".")
   }
   list(value = as.numeric(x_control), x_range = c(x_control, high))
 }
@@ -3079,6 +3091,92 @@ check_removed_args <- function(dots) {
          "predicted curve. Drop the argument.", call. = FALSE)
   }
   invisible(NULL)
+}
+
+#' Refuse a sig_val that is not a probability strictly between 0 and 1
+#'
+#' @param sig_val The quantile of the control posterior the NSEC reference is
+#' taken at.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_sig_val <- function(sig_val) {
+  if (!is.numeric(sig_val) || length(sig_val) != 1L || is.na(sig_val) ||
+      sig_val <= 0 || sig_val >= 1) {
+    stop("`sig_val` must be one number strictly between 0 and 1: the ",
+         "quantile of the control posterior that the NSEC reference is ",
+         "taken at.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Refuse arguments an estimator does not use
+#'
+#' The estimators take \code{...}, so a misspelt argument would otherwise be
+#' accepted and ignored. Call this after the checks that refuse a named
+#' argument with a message of its own.
+#'
+#' @param dots \code{list(...)} from the calling method.
+#' @param fun The name of the estimator, for the message.
+#' @param allowed Names the method reads from \code{...}.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_unused_dots <- function(dots, fun, allowed = character()) {
+  if (!length(dots)) {
+    return(invisible(NULL))
+  }
+  given <- names(dots)
+  if (is.null(given)) given <- rep("", length(dots))
+  bad <- !nzchar(given) | !given %in% allowed
+  if (any(bad)) {
+    named <- ifelse(nzchar(given[bad]), paste0("`", given[bad], "`"),
+                    "an unnamed argument")
+    stop(fun, "() does not use ", paste(unique(named), collapse = ", "),
+         ". See ?", fun, " for its arguments.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Whether a report is the first of its kind in the current estimator call
+#'
+#' The estimators call one another for each equation and observed level. A
+#' report keyed here is made once for the outermost estimator call on the
+#' stack, and again in the next call the user makes.
+#'
+#' @param what A \code{\link[base]{character}} key naming the report.
+#'
+#' @return \code{TRUE} the first time in the call, \code{FALSE} after.
+#' @noRd
+first_in_call <- function(what) {
+  heads <- vapply(sys.calls(), function(cl) {
+    head <- cl[[1]]
+    if (is.call(head) && length(head) == 3 &&
+        as.character(head[[1]]) %in% c("::", ":::")) {
+      head <- head[[3]]
+    }
+    if (is.name(head)) as.character(head) else ""
+  }, character(1))
+  outer <- match(TRUE, heads %in% c("nec", "nsec", "ecx", "ecnsec",
+                                    "exceedance"))
+  if (is.na(outer)) {
+    return(TRUE)
+  }
+  # Mark the outermost frame with an id rather than keep the frame, which
+  # would hold the fitted object in memory after the call returns.
+  frame <- sys.frame(outer)
+  id <- get0(".bnec_call_id", envir = frame, inherits = FALSE)
+  if (is.null(id)) {
+    id <- (if (is.null(bnec_state$call_id)) 0 else bnec_state$call_id) + 1
+    bnec_state$call_id <- id
+    assign(".bnec_call_id", id, envir = frame)
+  }
+  key <- paste(what, id)
+  if (key %in% bnec_state$reported) {
+    return(FALSE)
+  }
+  bnec_state$reported <- c(utils::tail(bnec_state$reported, 49), key)
+  TRUE
 }
 
 #' Refuse the type argument of ecx() in a call to nsec()

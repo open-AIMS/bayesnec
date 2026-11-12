@@ -541,8 +541,9 @@ extends_range <- function(lims, bounds) {
 #' The resolution a re-evaluated curve is read on
 #'
 #' The number of points in the grid the fit stored, rather than
-#' \code{\link{nsec}}'s default of 200. The stored range is evaluated at this
-#' resolution, and an extension appends points at the same spacing.
+#' \code{\link{nsec}}'s default, or 200 where the fit stores no grid. The
+#' stored range is evaluated at this resolution, and an extension appends
+#' points at the same spacing.
 #'
 #' @noRd
 stored_resolution <- function(object) {

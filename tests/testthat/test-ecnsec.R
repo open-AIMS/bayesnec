@@ -42,6 +42,15 @@ test_that("ecnsec argument validation behaves as expected", {
   expect_error(ecnsec(manec_example, nsec = 1.5, xform = "notafunction"))
 })
 
+test_that("ecnsec refuses arguments it cannot use", {
+  expect_error(ecnsec(nec4param, nsec = 1, resolution = 1), "at least 2")
+  expect_error(ecnsec(nec4param, nsec = 1, foo = 1),
+               "ecnsec() does not use `foo`", fixed = TRUE)
+  expect_error(ecnsec(nec4param, nsec = 1, posterior = "yes"), "posterior")
+  expect_error(ecnsec(nec4param, nsec = 1, pool = "bogus"),
+               "`pool` must be one of")
+})
+
 
 test_that("ecnsec takes the ecx vocabulary and refuses direct", {
   # Use the percentage-reference types accepted by ecx(). The direct type

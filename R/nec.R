@@ -28,10 +28,13 @@
 #' was built on. \code{TRUE} removes the bound at both ends. A single number is
 #' an upper limit, and a pair of numbers is a lower and an upper limit, in that
 #' order. See the \emph{Extrapolation} section of \code{\link{nec}}.
-#' @param ... Additional arguments passed to methods. \code{sig_val} and
-#' \code{resolution} are forwarded to \code{\link{nsec}} where a finite
-#' \code{extrapolate} limit requires a curve to be re-evaluated, and are
-#' otherwise unused.
+#' @param ... Additional arguments passed to methods. \code{sig_val},
+#' \code{resolution} and \code{x_range} are forwarded to \code{\link{nsec}}
+#' where an observed group level is read off its curve, and \code{sig_val}
+#' and \code{resolution} where a finite \code{extrapolate} limit requires a
+#' curve to be re-evaluated. Otherwise \code{nec} returns the estimate stored
+#' when the model was fitted, and a message names those it did not use. Any
+#' other argument is refused.
 #' @param no_effect For a \code{\link{bayesnecjointfit}} only, a
 #' \code{\link[base]{logical}} value. \code{FALSE}, the default, returns
 #' \code{NA} for a smooth equation with no \code{nec} parameter. A monotone
@@ -86,14 +89,15 @@
 #'   \item For a \code{\link{bayesnecfit}} holding a monotone threshold
 #'     equation, the \bold{NEC}: the \code{nec} parameter itself.
 #'   \item For a \code{\link{bayesnecfit}} holding a hormesis threshold
-#'     equation, the \bold{NSEC} read off the fitted curve as for a smooth
-#'     equation, below. This too is computed when the model is fitted.
+#'     equation, the \bold{NSEC} read off the fitted curve, as
+#'     \code{\link{nsec}} reads it. It is computed when the model is fitted,
+#'     with the \code{sig_val} passed to \code{\link{bnec}}.
 #'   \item For a \code{\link{bayesnecfit}} holding a smooth (\code{ecx}-type)
-#'     model, which has no threshold parameter, the \bold{NSEC} (Fisher and Fox
-#'     2023) -- the concentration at which the fitted curve falls below a
-#'     reference taken from the \code{sig_val} quantile of the control
-#'     posterior. This is computed when the model is fitted, using the
-#'     \code{sig_val} passed to \code{\link{bnec}}.
+#'     equation, which has no \code{nec} parameter, \code{nec} stops with an
+#'     error. Use \code{\link{nsec}} for its no-effect estimate, the
+#'     \bold{NSEC} (Fisher and Fox 2023): the concentration at which the
+#'     fitted curve falls below a reference taken from the \code{sig_val}
+#'     quantile of the control posterior.
 #'   \item For a \code{\link{bayesmanecfit}} whose model set contains both
 #'     kinds, the weighted posterior mixes sampled NEC draws from monotone
 #'     threshold equations with NSEC draws from smooth and hormesis threshold
@@ -113,11 +117,11 @@
 #'     The \code{ne_type} column is what a model-averaged N(S)EC cannot report.
 #' }
 #'
-#' \code{\link{summary}} labels the estimate NEC, NSEC or N(S)EC accordingly,
-#' and is the better choice where the type matters, because for every class but
-#' the joint refit \code{nec} returns an unlabelled vector. Use
-#' \code{\link{nsec}} where a NSEC is wanted from every model regardless of
-#' type.
+#' The result carries attribute \code{"toxicity_estimate"}, \code{"nec"},
+#' \code{"nsec"} or \code{"n(s)ec"}, which names the type of the estimate and
+#' is printed with it. \code{\link{summary}} labels the estimate NEC, NSEC or
+#' N(S)EC in the same way. Use \code{\link{nsec}} where an NSEC is wanted
+#' from every model regardless of type.
 #'
 #' Where \code{crf()} transforms the predictor inline, as in
 #' \code{crf(log(concentration))}, a sampled \code{nec} parameter is on the
@@ -180,16 +184,13 @@
 #' are reported the same way here, because neither claims a value for the draw.
 #'
 #' Which quantile estimator is used depends on whether anything is censored.
-#' A posterior with no beyond-range draw is summarised exactly as it was up to
-#' version 2.1.3, with \code{\link[stats]{quantile}}'s default type 7, which
-#' interpolates between two adjacent order statistics. Once any draw is
-#' censored every reported entry becomes an order statistic instead, because a
-#' value interpolated across a draw that has no value would be one the
-#' posterior does not support.
-#' Every entry therefore changes a little when the first draw is censored,
-#' including entries at the other end of the interval. Keeping the uncensored
-#' summary bit-identical to the release was preferred to making the two agree
-#' at the boundary, because every archived analysis is compared against it.
+#' A posterior with no beyond-range draw is summarised with
+#' \code{\link[stats]{quantile}}'s default type 7, which interpolates between
+#' two adjacent order statistics. Once any draw is censored every reported
+#' entry becomes an order statistic instead, because a value interpolated
+#' across a draw that has no value would be one the posterior does not
+#' support. Every entry therefore changes a little when the first draw is
+#' censored, including entries at the other end of the interval.
 #'
 #' @section Extrapolation:
 #' \code{extrapolate} chooses the bound the estimate is censored at. It is read
@@ -229,9 +230,9 @@
 #' Two requests re-evaluate nothing and return what \code{extrapolate = FALSE}
 #' returns: a limit equal to the current bounds, and any limit on a fit with no
 #' draw beyond either end, where every draw was identified inside the range the
-#' fit used and a wider grid has none left to identify. An object fitted before
-#' version 2.2.0 records nothing about which of its draws lie beyond the range,
-#' so it takes the second of those whatever its draws are, and
+#' fit used and a wider grid has none left to identify. An object fitted by a
+#' version before 3.0.0 records nothing about which of its draws lie beyond the
+#' range, so it takes the second of those whatever its draws are, and
 #' \code{extrapolate} does nothing to it. Refit it, or rebuild the set with
 #' \code{\link{amend}}, to extrapolate from it.
 #'
@@ -292,7 +293,7 @@ nec <- function(object, posterior = FALSE, xform = NULL,
 #' @inherit nec seealso return examples
 #' 
 #' @importFrom stats quantile
-#' @importFrom chk chk_logical
+#' @importFrom chk chk_flag
 #'
 #' @noRd
 #'
@@ -303,17 +304,22 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = NULL,
   check_component_arg(list(...), object)
   check_nec_no_dpar(list(...))
   check_no_effect_arg(list(...), object)
-  chk_logical(posterior)
+  check_removed_args(list(...))
+  check_unused_dots(list(...), "nec", nec_curve_args)
+  chk_flag(posterior)
   check_xform(xform)
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
+  if (!is.null(pool)) validate_pool(pool, "nec")
   # Test for a nec parameter, not for "ecx" in the equation name: an equation
   # named without that prefix would otherwise return an NSEC as a NEC.
   if (!has_nec_parameter(object$model, object$fit)) {
-    stop("nec is not a parameter in ecx model types.")
+    stop("nec() is not defined for ", object$model, ", which has no nec ",
+         "parameter. Use nsec() for its no-effect estimate, read off the ",
+         "fitted curve.", call. = FALSE)
   }
   if (is.null(object$observed_group)) {
     level_spec <- observed_level_spec(object)
@@ -379,6 +385,7 @@ necfit_ne <- function(object, posterior = FALSE, xform = NULL,
   # grid raises nothing.
   lims <- extrapolate_limits(extrapolate, ne_grid_bounds(object),
                              necfit_ne_type(object), object$model)
+  report_unused_curve_args(list(...), re_evaluated = !is.null(lims))
   if (!is.null(lims)) {
     dots <- list(...)
     bounds <- ne_grid_bounds(object)
@@ -432,6 +439,33 @@ necfit_ne <- function(object, posterior = FALSE, xform = NULL,
   }
 }
 
+#' The arguments nec() passes on to nsec() where it reads a curve
+#' @noRd
+nec_curve_args <- c("sig_val", "resolution", "x_range")
+
+#' Say which curve arguments a call to nec() did not use
+#'
+#' \code{nec()} returns the estimate stored at fitting unless it re-evaluates a
+#' curve for a finite \code{extrapolate} limit, which uses \code{sig_val} and
+#' \code{resolution} but never \code{x_range}.
+#'
+#' @param dots \code{list(...)} from the calling method.
+#' @param re_evaluated Whether a curve is re-evaluated in this call.
+#'
+#' @return \code{NULL}, invisibly. Called for the message.
+#' @noRd
+report_unused_curve_args <- function(dots, re_evaluated) {
+  used <- if (re_evaluated) c("sig_val", "resolution") else character()
+  unused <- setdiff(intersect(names(dots), nec_curve_args), used)
+  if (length(unused) && first_in_call("nec_unused_curve_args")) {
+    message("nec() returns the no-effect estimate stored when the model was ",
+            "fitted, and did not use ",
+            paste0("`", unused, "`", collapse = ", "), ". nsec() reads the ",
+            "NSEC of the fitted curve with them.")
+  }
+  invisible(NULL)
+}
+
 #' The no-effect estimate types a fit records
 #'
 #' @param object A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
@@ -472,7 +506,7 @@ ne_estimate_label <- function(types) {
 #' @inherit nec seealso return examples
 #' 
 #' @importFrom stats quantile
-#' @importFrom chk chk_logical
+#' @importFrom chk chk_flag
 #'
 #' @noRd
 #'
@@ -483,13 +517,16 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
   check_component_arg(list(...), object)
   check_nec_no_dpar(list(...))
   check_no_effect_arg(list(...), object)
-  chk_logical(posterior)
+  check_removed_args(list(...))
+  check_unused_dots(list(...), "nec", nec_curve_args)
+  chk_flag(posterior)
   check_xform(xform)
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
+  if (!is.null(pool)) validate_pool(pool, "nec")
   first <- object$mod_fits[[1]]
   if (!is.null(object$observed_group) ||
       (!is.null(first$fit) && !is.null(observed_level_spec(first)))) {
@@ -556,6 +593,7 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
   # nec.bayesnecfit(), ne_grid_bounds() is passed unevaluated.
   lims <- extrapolate_limits(extrapolate, ne_grid_bounds(object),
                              manec_ne_types(object), object$success_models)
+  report_unused_curve_args(list(...), re_evaluated = !is.null(lims))
   if (!is.null(lims)) {
     dots <- list(...)
     bounds <- ne_grid_bounds(object)

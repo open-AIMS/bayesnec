@@ -47,7 +47,8 @@ as given, on the recorded scale. See Details.}
 return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
 
-\item{...}{Further arguments to pass to class specific methods.}
+\item{...}{Further arguments to pass to class specific methods. A method
+refuses any argument it does not use.}
 
 \item{posterior}{Should the full posterior be returned instead of a summary?}
 

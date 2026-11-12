@@ -41,10 +41,13 @@ order. See the \emph{Extrapolation} section of \code{\link{nec}}.}
 \item{which}{Which component to return: \code{"combined"} (the default),
 \code{"growth"} or \code{"survival"}.}
 
-\item{...}{Additional arguments passed to methods. \code{sig_val} and
-\code{resolution} are forwarded to \code{\link{nsec}} where a finite
-\code{extrapolate} limit requires a curve to be re-evaluated, and are
-otherwise unused.}
+\item{...}{Additional arguments passed to methods. \code{sig_val},
+\code{resolution} and \code{x_range} are forwarded to \code{\link{nsec}}
+where an observed group level is read off its curve, and \code{sig_val}
+and \code{resolution} where a finite \code{extrapolate} limit requires a
+curve to be re-evaluated. Otherwise \code{nec} returns the estimate stored
+when the model was fitted, and a message names those it did not use. Any
+other argument is refused.}
 
 \item{pool}{How observed group levels are combined. \code{"none"} returns
 per-level estimates. \code{"mixture"} gives each posterior draw to one level, in

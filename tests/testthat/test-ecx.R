@@ -47,6 +47,37 @@ test_that("ecx_val warnings behave as expected", {
                "greater than 0")
 })
 
+test_that("ecx refuses arguments it cannot use", {
+  expect_error(ecx(nec4param, resolution = 1), "at least 2")
+  expect_error(ecx(nec4param, resolution = 0), "at least 2")
+  expect_error(ecx(nec4param, resolution = 10.5), "whole number")
+  expect_error(ecx(nec4param, ecx_val = NA_real_), "ecx_val")
+  expect_error(ecx(nec4param, ecx_val = c(10, 50)), "ecx_val")
+  expect_error(ecx(nec4param, posterior = "yes"), "posterior")
+  expect_error(ecx(manec_example, posterior = NA), "posterior")
+  expect_error(ecx(nec4param, pool = "bogus"), "`pool` must be one of")
+  expect_error(ecx(nec4param, foo = 1), "ecx() does not use `foo`",
+               fixed = TRUE)
+  expect_error(ecx(manec_example, foo = 1), "does not use `foo`")
+})
+
+test_that("the relative rename warns once for a call over several levels", {
+  skip_on_cran()
+  # The joint_split() fit is gaussian with nec4param, which has no asymptote
+  # for type = "relative"; measure towards 0 so that both levels are read.
+  local_mocked_bindings(ecx_asymptote = function(object, type, dpar = NULL) 0)
+  n <- 0
+  withCallingHandlers(
+    invisible(ecx(joint_split(), type = "relative", resolution = 20)),
+    warning = function(w) {
+      if (grepl("now measures", conditionMessage(w))) n <<- n + 1
+      invokeRestart("muffleWarning")
+    },
+    message = function(m) invokeRestart("muffleMessage")
+  )
+  expect_equal(n, 1)
+})
+
 test_that("ecx returns expected object types and arguments pass correctly", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

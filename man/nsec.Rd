@@ -14,6 +14,7 @@ nsec(
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
   ...,
+  posterior = FALSE,
   dpar = NULL,
   pool = NULL,
   x_control = "own"
@@ -52,7 +53,12 @@ grid points and their spacing are retained.
 \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
 See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
-\item{...}{Further arguments to pass to class specific methods.}
+\item{...}{Further arguments to pass to class specific methods. A method
+refuses any argument it does not use.}
+
+\item{posterior}{A \code{\link[base]{logical}} value indicating if the full
+posterior sample of calculated NSEC values should be returned instead of
+just the median and 95 credible intervals.}
 
 \item{dpar}{For a joint two-block fit only (\code{family = "hurdle_gamma"},
 \code{"zero_inflated_beta"}, \code{"hurdle_poisson"} or
@@ -89,7 +95,8 @@ recorded at fitting. Level controls are recorded in the result's
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
-lower 95\% credible interval bounds.
+lower 95\% credible interval bounds, or with \code{posterior = TRUE} the
+value for each posterior draw.
 }
 \description{
 Extracts the predicted NSEC value as desired from an
@@ -122,10 +129,8 @@ The reference is the \code{sig_val} quantile of the control posterior,
 the control being the predicted mean at the control concentration: the
 \code{x_control} stated in \code{\link{bnec}}, or else the lowest
 concentration in the supplied predictor. That holds for every equation,
-hormetic ones included: the \code{hormesis_def} argument selected between
-the control and the maximum of the predicted curve and has been removed,
-because a target below the control is crossed exactly once whatever the
-curve does above it.
+hormetic ones included, because a target below the control is crossed
+exactly once whatever the curve does above it.
 For a hormesis threshold equation, \code{\link{nec}} uses this NSEC as its
 no-effect estimate. Its \code{nec} parameter, the concentration at which
 the decline term starts, remains available through
@@ -141,9 +146,7 @@ recorded scale without \code{xform}, and no inverse is involved. A supplied
 
 The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
-the decline from the control towards zero. Up to 2.1.3 it was measured
-against the fitted range and computed by three different formulas that
-agreed only for a monotonic curve.
+the decline from the control towards zero.
 
 The reference is a quantile of the control posterior, so some draws start
 at or below it. A draw with a later decreasing crossing takes that crossing.
@@ -213,23 +216,16 @@ whose curve had already passed the target where the range begins is recorded
 at the other end and reported the same way.
 
 Which quantile estimator is used depends on whether anything is censored.
-A posterior with no beyond-range draw is summarised exactly as it was up to
-version 2.1.3, with \code{\link[stats]{quantile}}'s default type 7, which
-interpolates between two adjacent order statistics. Once any draw is
-censored every reported entry becomes an order statistic instead, because a
-value interpolated across a draw that has no value would be one the
-posterior does not support.
-Every entry therefore changes a little when the first draw is censored,
-including entries at the other end of the interval. Keeping the uncensored
-summary bit-identical to the release was preferred to making the two agree
-at the boundary, because every archived analysis is compared against it.
-
-Up to version 2.1.3 such a draw was deleted and the remaining draws were
-summarised as though nothing had been removed, which reported an estimate
-lower than the quantity it was labelled as, with an interval narrower than
-the posterior supports. See \code{\link{nec}} for the same treatment of a
-threshold parameter, where the draw does have a value and the operation is
-right-censoring in the ordinary sense.
+A posterior with no beyond-range draw is summarised with
+\code{\link[stats]{quantile}}'s default type 7, which interpolates between
+two adjacent order statistics. Once any draw is censored every reported
+entry becomes an order statistic instead, because a value interpolated
+across a draw that has no value would be one the posterior does not
+support. Every entry therefore changes a little when the first draw is
+censored, including entries at the other end of the interval. See
+\code{\link{nec}} for the same treatment of a threshold parameter, where
+the draw does have a value and the operation is right-censoring in the
+ordinary sense.
 }
 
 \section{Extrapolation}{

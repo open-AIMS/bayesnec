@@ -397,7 +397,7 @@ test_that("the NSEC of ecxflat is censored above but for the control share (#419
 test_that("nec() refuses a single ecxflat fit, and summary() labels an NSEC (#419)", {
   skip_on_cran()
   fit <- flat_fixtures("at_bound")$fit
-  expect_error(nec(fit), "nec is not a parameter in ecx model types")
+  expect_error(nec(fit), "has no nec parameter")
   s <- summary(fit)
   expect_true(s$is_ecx)
   expect_identical(rownames(s$nec_vals), "NSEC")
@@ -486,7 +486,7 @@ test_that("ecxflat estimates take the recorded scale and exceedance() (#419)", {
   expect_equal(ns$prob_upper, ns$n_above / ns$n_draws)
   # The default estimate is the NEC, which nec() refuses for a single fit
   # without a nec parameter.
-  expect_error(exceedance(fit, 3), "nec is not a parameter")
+  expect_error(exceedance(fit, 3), "has no nec parameter")
 })
 
 test_that("ecxflat is fitted on a grid reaching -Inf under crf(log(x)) (#419)", {
