@@ -1031,3 +1031,15 @@ test_that("amend() refuses a sig_val outside (0, 1) before recomputing", {
                "`sig_val` must be one number strictly between 0 and 1",
                fixed = TRUE)
 })
+
+test_that("amend() refuses a name in drop or add that is no equation", {
+  msg <- "\"necfoo\" is not an equation that bayesnec fits"
+  expect_error(amend(manec_example, drop = "necfoo"), msg, fixed = TRUE)
+  expect_error(amend(manec_example, add = c("necfoo", "ecxlin")), msg,
+               fixed = TRUE)
+  # A bayesnecfit names the remedy without the removed model argument.
+  single <- suppressMessages(pull_out(manec_example, model = "nec4param"))
+  err <- expect_error(amend(single, drop = "nec4param"),
+                      "naming the equation in crf()", fixed = TRUE)
+  expect_no_match(conditionMessage(err), "model = ")
+})

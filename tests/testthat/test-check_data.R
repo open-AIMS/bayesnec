@@ -753,7 +753,7 @@ test_that("constant_fallback replaces the set and records why (#419)", {
                fixed = TRUE)
   # A name that is no equation is refused, not recorded as set aside.
   expect_error(constant_fallback(bdat, fam, c("nec3param", "bogus")),
-               "bogus; is not a valid model entry", fixed = TRUE)
+               "\"bogus\" is not an equation that bayesnec fits", fixed = TRUE)
   # Said once by bnec_group() for every level, so the level's call is silent.
   expect_silent(constant_fallback(bdat, fam, "nec3param", report = FALSE))
   # A response one observation off the bound is fitted with the set asked for.
@@ -819,7 +819,7 @@ test_that("a grouped call names the levels fitted with ecxflat (#419)", {
   expect_error(
     constant_fallback_levels(bdat, bernoulli(), factor(d$site), "site",
                              model = c("nec3param", "bogus")),
-    "bogus; is not a valid model entry", fixed = TRUE
+    "\"bogus\" is not an equation that bayesnec fits", fixed = TRUE
   )
   expect_match(msgs, "2 level(s) of \"site\"", fixed = TRUE)
   expect_match(msgs, "\"north\" (the upper bound)", fixed = TRUE)

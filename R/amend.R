@@ -215,8 +215,8 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls,
     # Refuse rather than ignore `drop`: a bayesnecfit holds one model, so
     # dropping it would leave nothing.
     stop("Cannot drop models from a bayesnecfit: it contains the single model",
-         " \"", object$model, "\". Refit with bnec(..., model = ) to change",
-         " which model is fitted.", call. = FALSE)
+         " \"", object$model, "\". To fit another equation, refit with bnec(),",
+         " naming the equation in crf().", call. = FALSE)
   }
   if (missing(add) && missing(loo_controls) &&
         is.null(x_range) && is.null(resolution) && is.null(sig_val) &&
@@ -307,6 +307,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
                             asymptote_observed = TRUE,
                             predictor_scale = "auto", timeout = Inf) {
   check_prior_input(priors, "priors")
+  # handle_set() would otherwise drop nothing, or try to fit a misspelt name.
+  check_equation_names(setdiff(c(drop, add), names(mod_groups)))
   general_error <- amend_general_error()
   fam_tag <- mod_fits[[1]]$fit$family$family
   expand_args <- recorded_expand_args(

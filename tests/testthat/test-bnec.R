@@ -518,7 +518,7 @@ test_that("a misspelt equation at a bound is refused, not set aside (#419)", {
   expect_error(
     suppressMessages(bnec(alive ~ crf(x, c("nec4param", "bogus")),
                           data = cs$data, family = cs$family)),
-    "bogus; is not a valid model entry", fixed = TRUE
+    "\"bogus\" is not an equation that bayesnec fits", fixed = TRUE
   )
 })
 

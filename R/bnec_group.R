@@ -209,9 +209,8 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   check_trials_term(mod_dat, family)
   # A level with every observation at a bound is fitted with ecxflat alone, and
   # the other levels with the requested set. constant_fallback_levels() reports
-  # those levels, refuses a level ecxflat cannot fit either, and refuses a name
-  # that is not an equation. It must run before the flatness report, which
-  # reads the set each level will fit.
+  # those levels and refuses a level ecxflat cannot fit either. It must run
+  # before the flatness report, which reads the set each level will fit.
   requested_models <- try(get_model_from_formula(formula), silent = TRUE)
   flat_levels <- constant_fallback_levels(
     mod_dat, family, grp, group_var,

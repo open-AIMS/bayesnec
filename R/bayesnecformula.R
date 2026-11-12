@@ -581,6 +581,7 @@ check_formula.bayesnecformula <- function(formula, data,
     stop("You must specify which non-linear function to use with crf.",
          " See ?bayesnecformula")
   }
+  check_crf_term(x_str)
   crf_vars <- all.vars(str2lang(eval(parse(text = x_str))))
   if (length(crf_vars) != 1) {
     stop("The `crf` term in your formula can only have one variable; you",
@@ -1923,6 +1924,7 @@ get_model_from_formula <- function(formula) {
   if (length(x_str) == 0) {
     stop("You must specify which non-linear function to use with crf")
   }
+  check_crf_term(x_str)
   x_str <- paste0(substr(x_str, 1, nchar(x_str) - 1), ", \"model\")")
   # Evaluate in a frame that binds crf() and inherits from the formula's own
   # environment. crf() is not exported, so environment(formula) alone cannot
@@ -1946,7 +1948,34 @@ get_model_from_formula <- function(formula) {
          " class \"", class(model)[1], "\" and length ", length(model),
          ". See ?models.", call. = FALSE)
   }
-  expand_model_set(model)
+  model <- expand_model_set(model)
+  # Refuse a misspelt name here, before anything calls get("bf_<name>").
+  check_equation_names(model)
+  model
+}
+
+#' Refuse more than one crf() term, or one that names no equation
+#'
+#' @param x_str The \code{crf()} terms of the formula, as text.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_crf_term <- function(x_str) {
+  if (length(x_str) > 1) {
+    stop("The formula has ", length(x_str), " crf() terms, and one is",
+         " allowed: ", paste(x_str, collapse = ", "), ". A single crf() term",
+         " names the predictor and every equation fitted to it, as in",
+         " crf(x, c(\"nec3param\", \"ecx4param\")).", call. = FALSE)
+  }
+  term <- match.call(crf, str2lang(x_str))
+  if (is.null(term$model)) {
+    stop("crf() needs the equations to fit as its second argument, as in",
+         " crf(", deparse1(term$x), ", \"nec3param\"); ", x_str,
+         " names none. See ?models for the equations and groups.",
+         call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' @noRd

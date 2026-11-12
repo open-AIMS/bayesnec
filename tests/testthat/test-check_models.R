@@ -241,7 +241,8 @@ test_that("ecxflat is valid by name for every family (#419)", {
   expect_named(show_params("ecxflat")[[1]]$pforms, "top")
   # A name that is no equation is still refused.
   expect_error(check_models("ecxflatter", validate_family("gaussian")),
-               "is not a valid model entry")
+               "\"ecxflatter\" is not an equation that bayesnec fits",
+               fixed = TRUE)
 })
 
 test_that("ecxflat is in all, ecx and decline, and in no other group (#485)", {

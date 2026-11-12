@@ -22,10 +22,12 @@ equation_names <- function() {
 #'
 #' @noRd
 check_equation_names <- function(model) {
-  if (!all(model %in% equation_names())) {
-    to_flag <- paste0(model[!model %in% equation_names()], collapse = "; ")
-    stop("The model(s): ", to_flag, "; is not a valid",
-         " model entry. Please check ?bnec for valid model calls.")
+  bad <- model[!model %in% equation_names()]
+  if (length(bad) > 0) {
+    stop(paste0("\"", bad, "\"", collapse = ", "),
+         if (length(bad) > 1) " are not equations" else " is not an equation",
+         " that bayesnec fits. See ?models for the equations and groups that",
+         " can be named, as in crf(x, \"nec3param\").", call. = FALSE)
   }
   invisible(NULL)
 }
