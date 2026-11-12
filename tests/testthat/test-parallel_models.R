@@ -940,3 +940,26 @@ test_that("a grouped call leaves the caller's stream where it found it", {
   # restored stream means.
   expect_identical(after(3), after(3))
 })
+
+test_that("an unknown or unbounded worker count is not printed as a number", {
+  skip_if_not_installed("future")
+  local_mocked_bindings(bnec_plan_is_parallel = function() TRUE)
+  for (count in list(Inf, NA_integer_)) {
+    local_mocked_bindings(nbrOfWorkers = function(...) count,
+                          .package = "future")
+    msg <- tryCatch(plan_model_set(list(), 5), message = conditionMessage)
+    expect_match(msg, "Fitting 5 models in parallel over the plan's workers",
+                 fixed = TRUE)
+    expect_no_match(msg, "over (NA|Inf)")
+    msg <- tryCatch(plan_model_set(list(cores = 2), 5),
+                    message = conditionMessage)
+    expect_match(msg, "each worker may sample up to 2 chains at once",
+                 fixed = TRUE)
+    expect_no_match(msg, "(NA|Inf) x 2")
+  }
+  # A counted plan gives the number.
+  local_mocked_bindings(nbrOfWorkers = function(...) 3, .package = "future")
+  msg <- tryCatch(plan_model_set(list(cores = 2), 5), message = conditionMessage)
+  expect_match(msg, "over 3 workers")
+  expect_match(msg, "up to 3 x 2 chains")
+})
