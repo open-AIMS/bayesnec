@@ -183,14 +183,12 @@ best_crossed <- function(object) {
 #' \code{\link{ecx}}, \code{\link{nsec}}, \code{\link{nec}},
 #' \code{\link{ecnsec}} and \code{\link{exceedance}} on the returned object
 #' give one row per level, and \code{\link{autoplot}} draws one panel per
-#' level. \code{\link{ecx}}, \code{\link{nsec}} and \code{\link{exceedance}}
-#' return the \code{\link[base]{data.frame}} a \code{\link{bayesnecgroupfit}}
-#' returns, and \code{\link{nec}} adds columns naming each level's equation
-#' and the type of its estimate. A \code{\link{bayesnecgroupfit}} has no
-#' \code{\link{ecnsec}} method; \code{\link{bayesnecjointfit}} describes the
-#' table \code{\link{ecnsec}} returns here. Each level is estimated on its own
-#' prediction grid, so the estimate for a level is read off that level's curve
-#' alone.
+#' level. \code{\link{ecx}}, \code{\link{nsec}}, \code{\link{ecnsec}} and
+#' \code{\link{exceedance}} return the \code{\link[base]{data.frame}} a
+#' \code{\link{bayesnecgroupfit}} returns, and \code{\link{nec}} adds columns
+#' naming each level's equation and the type of its estimate. Each level is
+#' estimated on its own prediction grid, so the estimate for a level is read
+#' off that level's curve alone.
 #'
 #' @return For a \code{\link{bayesnechurdlefit}}, an object of class
 #' \code{\link{bayesnecfit}}; for a \code{\link{bayesnecgroupfit}}, an object

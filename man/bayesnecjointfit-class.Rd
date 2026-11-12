@@ -24,13 +24,12 @@ with the level varying slowest.
 \code{\link{ecnsec}} therefore return a
 \code{\link[base]{data.frame}} with one row per level, named in a
 \code{level} column, rather than the named vector of three they return for a
-\code{\link{bayesnecfit}}. For \code{\link{ecx}} and \code{\link{nsec}}
-that is the same table a \code{\link{bayesnecgroupfit}} returns, so the two
-routes can be read against each other. \code{\link{ecnsec}} has no
-\code{\link{bayesnecgroupfit}} method. On a joint refit it returns, at each
-level, the percent effect at the \code{nsec} supplied, which is one value
-for every level, read off that level's own curve as \code{\link{ecnsec}}
-reads it off a single fit.
+\code{\link{bayesnecfit}}. For \code{\link{ecx}}, \code{\link{nsec}} and
+\code{\link{ecnsec}} that is the same table a \code{\link{bayesnecgroupfit}}
+returns, so the two routes can be read against each other.
+\code{\link{ecnsec}} returns, at each level, the percent effect at the
+\code{nsec} supplied, which is one value for every level, read off that
+level's own curve as \code{\link{ecnsec}} reads it off a single fit.
 Its columns are named as those of the \code{\link{ecx}} table ---
 \code{Q50}, \code{Q2.5} and \code{Q97.5} under the default
 \code{prob_vals} --- where \code{\link{ecnsec}} on a single fit keeps the
