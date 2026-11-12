@@ -1285,7 +1285,7 @@ of them.
 
 
 
-Table: **Table 5.** Total model weight on the six equations whose lower asymptote is fixed at zero, for each convention on each dataset.
+Table: **Table 4.** Total model weight on the six equations whose lower asymptote is fixed at zero, for each convention on each dataset.
 
 |Convention | c_proliferum| c_proliferum2| r_salina| r_salina2|
 |:----------|------------:|-------------:|--------:|---------:|
@@ -1303,11 +1303,11 @@ Each fit is an average over thirteen or fourteen equations, and on two datasets
 a substantial share of the weight is on equations that mixed poorly. For each
 fit, the transcribed table records the weight held by equations whose tail
 effective sample size fell below 400, which is the level at which the bounds of
-a 95% interval are no longer reliably estimated (Table 4).
+a 95% interval are no longer reliably estimated (Table 5).
 
 
 
-Table: **Table 4.** Model weight held by equations whose tail effective sample size fell below 400, for the fits where it exceeds 0.01. Fits not listed hold essentially none. In the simulation the largest such figure in any cell and convention is under 0.005.
+Table: **Table 5.** Model weight held by equations whose tail effective sample size fell below 400, for the fits where it exceeds 0.01. Fits not listed hold essentially none. In the simulation the largest such figure in any cell and convention is under 0.005.
 
 |Dataset      |Convention | weight on tail ESS < 400|
 |:------------|:----------|------------------------:|
@@ -1330,7 +1330,7 @@ an equation that did not converge.
 
 Third, the weight on the zero-asymptote equations, which Section 5.7 identifies
 as a diagnostic for flooring under an unbounded family, can be computed here
-because it needs no truth (Table 5). Averaged over the four datasets `floored`
+because it needs no truth (Table 4). Averaged over the four datasets `floored`
 places 61% of its weight
 on these equations, against
 0% under `measured` and
