@@ -164,7 +164,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
   check_resolution(resolution)
   if (!is.null(pool)) validate_pool(pool, "ecnsec")
 
-  type <- validate_ecx_type(type, match.call())
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
   if (identical(type, "direct")) {
     stop("type = \"direct\" names a response value rather than a ",
          "percentage, so there is no percent effect for ecnsec to report. ",
@@ -179,6 +179,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
     }
     check_combined_relative(fit_family, "ecnsec")
   }
+  warn_relative_rename(type, match.call())
   check_xform(xform)
   if (is.null(xform)) {
     xform <- identity

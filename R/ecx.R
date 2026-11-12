@@ -250,7 +250,11 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   chk_number(ecx_val)
   check_resolution(resolution)
   chk_flag(posterior)
-  type <- validate_ecx_type(type, match.call())
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
+  if (identical(type, "relative") && is.null(dpar)) {
+    check_combined_relative(object$fit$family, "ecx")
+  }
+  warn_relative_rename(type, match.call())
   check_xform(xform)
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
@@ -283,9 +287,6 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   if (type != "direct" && ecx_val <= 0) {
     stop("Supplied ecx_val is not in the required range. ",
          "Please supply a percentage value greater than 0.", call. = FALSE)
-  }
-  if (identical(type, "relative") && is.null(dpar)) {
-    check_combined_relative(object$fit$family, "ecx")
   }
   # Do not refuse an absolute ECx for a gaussian response without a bot
   # parameter. Absolute measures towards 0 by design, and a gaussian mean that
@@ -420,7 +421,11 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
   chk_number(ecx_val)
   check_resolution(resolution)
   chk_flag(posterior)
-  type <- validate_ecx_type(type, match.call())
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
+  if (identical(type, "relative") && is.null(dpar)) {
+    check_combined_relative(object$mod_fits[[1]]$fit$family, "ecx")
+  }
+  warn_relative_rename(type, match.call())
   check_xform(xform)
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
@@ -504,12 +509,29 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
 #' for the earlier behaviour.
 #'
 #' @noRd
-validate_ecx_type <- function(type, mc) {
+validate_ecx_type <- function(type, mc, warn = TRUE) {
   valid <- c("absolute", "relative", "range", "direct")
   if (length(type) != 1 || !is.character(type) || !(type %in% valid)) {
     stop("type must be one of 'absolute' (the default), 'relative', 'range' ",
          "or 'direct'. Please see ?ecx for more details.", call. = FALSE)
   }
+  if (warn) {
+    warn_relative_rename(type, mc)
+  }
+  type
+}
+
+#' Warn that type = "relative" names a different quantity than in 2.1.3.1
+#'
+#' Call it after any refusal of \code{"relative"}, so that a refused request
+#' is not warned about first.
+#'
+#' @param type The validated \code{type}.
+#' @param mc The caller's \code{match.call()}.
+#'
+#' @return \code{NULL}, invisibly.
+#' @noRd
+warn_relative_rename <- function(type, mc) {
   if (identical(type, "relative") && "type" %in% names(mc) &&
       !isTRUE(getOption("bayesnec.relative_warned")) &&
       first_in_call("relative_rename")) {

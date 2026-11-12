@@ -432,7 +432,8 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
   chk_flag(posterior)
   if (!is.null(pool)) validate_pool(pool, "ecx")
   which <- hurdle_check_which(which)
-  type <- validate_ecx_type(type, match.call())
+  # "relative" is refused below, so it is not warned about.
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
   if (identical(type, "relative")) {
     # The combined endpoint, mu * (1 - hu), has no single bot parameter for
     # "relative" to measure towards.

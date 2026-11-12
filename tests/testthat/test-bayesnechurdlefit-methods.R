@@ -1227,6 +1227,21 @@ test_that("the hurdle estimators refuse arguments they cannot use", {
   expect_error(ecnsec(h, nsec = 1, resolution = 0), "at least 2")
 })
 
+test_that("a refused relative request on a hurdle fit is not warned about", {
+  h <- hurdle_pair()
+  warned <- FALSE
+  withCallingHandlers(
+    expect_error(ecx(h, type = "relative"), "not defined for a hurdle fit"),
+    warning = function(w) warned <<- TRUE
+  )
+  withCallingHandlers(
+    expect_error(ecnsec(h, nsec = 1, type = "relative"),
+                 "not defined for a hurdle fit"),
+    warning = function(w) warned <<- TRUE
+  )
+  expect_false(warned)
+})
+
 # ECNSEC outside the range, between grid points and under transformations.
 
 test_that("ecnsec refuses an nsec beyond the range on every hurdle curve", {
