@@ -102,19 +102,8 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   legend_pos <- check_position_legend(position_legend)
   family <- x$fit$family$family
   mod_dat <- model.frame(x$bayesnecformula, data = x$fit$data)
-  y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
-  rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
-  if (family == "binomial" | family == "beta_binomial") {
-    trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
-    y_dat <- x$fit$data[[y_var]] / x$fit$data[[trials_var]]
-  } else if (!is.na(rate_var)) {
-    # Draw the observations on the rate scale, the scale of the fitted curve,
-    # since the grid pins the denominator at 1.
-    y_dat <- x$fit$data[[y_var]] / x$fit$data[[rate_var]]
-  } else {
-    y_dat <- x$fit$data[[y_var]]
-  }
+  y_dat <- plotted_response(x$fit$data, attr(mod_dat, "bnec_pop"), family)
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
   # On the recorded axis with no xform, draw what the estimators return.
   recorded <- plot_reads_recorded(bdat, xform)
@@ -310,6 +299,30 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   }
 }
 
+#' The observed response on the scale of the fitted curve
+#'
+#' @param data The data the fit was made from.
+#' @param bnec_pop The \code{"bnec_pop"} attribute of its model frame.
+#' @param family The name of the fit's family.
+#'
+#' @return A \code{\link[base]{numeric}} vector: the response as a
+#' proportion of its trials for a binomial or beta-binomial fit, divided by the
+#' \code{rate()} denominator where there is one, and as recorded otherwise.
+#'
+#' @noRd
+plotted_response <- function(data, bnec_pop, family) {
+  y <- data[[bnec_pop[["y_var"]]]]
+  rate_var <- unname(bnec_pop["rate_var"])
+  if (family %in% c("binomial", "beta_binomial")) {
+    y / data[[bnec_pop[["trials_var"]]]]
+  } else if (!is.na(rate_var)) {
+    # The prediction grid sets the denominator to 1, so the curve is a rate.
+    y / data[[rate_var]]
+  } else {
+    y
+  }
+}
+
 #' Draw the model-averaged predictions of a model set on the current device
 #'
 #' The body of the model-average plot, separated from
@@ -330,15 +343,9 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
   universal <- x$mod_fits[[1]]
   mod_dat <- universal$fit$data
   bdat <- model.frame(x$mod_fits[[1]]$bayesnecformula, data = mod_dat)
-  y_var <- attr(bdat, "bnec_pop")[["y_var"]]
   x_var <- attr(bdat, "bnec_pop")[["x_var"]]
   family <- universal$fit$family$family
-  if (family == "binomial" | family == "beta_binomial") {
-    trials_var <- attr(bdat, "bnec_pop")[["trials_var"]]
-    y_dat <- mod_dat[[y_var]] / mod_dat[[trials_var]]
-  } else {
-    y_dat <- mod_dat[[y_var]]
-  }
+  y_dat <- plotted_response(mod_dat, attr(bdat, "bnec_pop"), family)
   # As in plot.bayesnecfit().
   recorded <- plot_reads_recorded(bdat, xform)
   est_xform <- if (recorded) NULL else identity

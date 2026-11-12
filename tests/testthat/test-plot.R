@@ -351,3 +351,47 @@ test_that("plot and autoplot make the xform decision the same way", {
   gg_ratio <- gg_x_max(f, xform = function(x) x * 100) / gg_x_max(f)
   expect_equal(pl_x_ratio(f), gg_ratio, tolerance = 1e-6)
 })
+
+
+# rate() observations
+
+# Metadata only: the stored curve was not fitted with a rate() term.
+rate_plot_fixture <- function(fit, model) {
+  fit$fit$data$n <- rep(c(2, 4), length.out = nrow(fit$fit$data))
+  fit$bayesnecformula <- bayesnecformula(stats::as.formula(paste0(
+    "y | rate(n) ~ crf(x, model = \"", model, "\")"
+  )))
+  fit
+}
+
+# The response values plot() draws as points. Call graphics::plot() on the
+# fit: a bare plot() here would reach the mock, which records the points.
+plotted_y <- function(obj) {
+  drawn <- NULL
+  local_mocked_bindings(
+    plot = function(x, y, ...) {
+      drawn <<- y
+      graphics::plot(x, y, ...)
+    },
+    .package = "bayesnec"
+  )
+  pdf(NULL)
+  on.exit(dev.off(), add = TRUE)
+  suppressWarnings(suppressMessages(graphics::plot(obj)))
+  drawn
+}
+
+test_that("a single fit draws rate() observations on the rate scale", {
+  skip_on_cran()
+  f <- rate_plot_fixture(nec4param, "nec4param")
+  expect_equal(plotted_y(f), f$fit$data$y / f$fit$data$n)
+})
+
+test_that("a model set draws rate() observations on the rate scale", {
+  skip_on_cran()
+  m <- manec_example
+  m$mod_fits[[1]] <- rate_plot_fixture(m$mod_fits[[1]], names(m$mod_fits)[1])
+  dat <- m$mod_fits[[1]]$fit$data
+  expect_equal(plotted_y(m), dat$y / dat$n)
+})
+
