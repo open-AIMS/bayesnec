@@ -165,7 +165,7 @@
 #' whole concentration-response curve. The special term \code{disp} lets that
 #' parameter vary, and takes one of two forms.
 #'
-#' 1) \code{disp(~x)} models dispersion as a function of the \bold{predictor} —
+#' 1) \code{disp(~x)} models dispersion as a function of the \bold{predictor} ---
 #' an ordinary \pkg{brms} distributional formula, e.g. \code{disp(~log(x))} or
 #' \code{disp(~s(x))}. Inside \code{disp()} a function call may not be
 #' followed by another term: write \code{disp(~z + s(x))} rather than
@@ -173,7 +173,7 @@
 #' 1) is descriptive: it says noise is larger at one end of the dose axis.
 #'
 #' 2) \code{disp("power")} models dispersion as a function of the \bold{mean
-#' curve} — a variance function in the GLM sense, and a statement about the
+#' curve} --- a variance function in the GLM sense, and a statement about the
 #' measurement process rather than about the dose axis. The functions available,
 #' on the log link every eligible family gives its dispersion parameter, with
 #' \code{m} a fixed reference value computed from the response before fitting,
@@ -302,12 +302,12 @@
 #'
 #' Both \code{"power"} and \code{"twosided"} take \code{log(mu)}, so a fitted
 #' mean that reaches zero is undefined. This rules them out for a response on
-#' the real line — a specific growth rate, yield or increment can be negative —
+#' the real line --- a specific growth rate, yield or increment can be negative ---
 #' and \code{\link{bnec}} refuses the combination rather than failing at
 #' initialisation, pointing at \code{"loglinear"} or \code{disp(~x)} instead.
 #'
-#' Worked guidance — how to decide whether a dispersion sub-model is warranted,
-#' why the covariate is centred, and how the forms differ in practice — is given
+#' Worked guidance --- how to decide whether a dispersion sub-model is warranted,
+#' why the covariate is centred, and how the forms differ in practice --- is given
 #' in \code{vignette("example1")}.
 #'
 #' \bold{Further brms terms (largely untested)}
