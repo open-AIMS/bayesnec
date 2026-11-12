@@ -959,3 +959,20 @@ test_that("the pooled comparison requires the same held-out levels", {
                  "do not cover the same levels")
   expect_identical(res$criterion, "waic")
 })
+
+test_that("bnec_group() refuses a sig_val outside (0, 1) before any level", {
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("level fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(
+    bnec_group(y ~ crf(x, "nec3param"), d, group_var = "site", sig = 2)
+  ), "`sig_val` must be one number strictly between 0 and 1", fixed = TRUE)
+  expect_identical(calls, 0L)
+})

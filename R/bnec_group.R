@@ -189,6 +189,10 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   check_disp_finite(formula, data)
   check_reserved_names(data)
   dots <- list(...)
+  sig_val <- dots_arg(dots, "sig_val")
+  if (!is.null(sig_val)) {
+    check_sig_val(sig_val)
+  }
   # dots_arg() matches an abbreviation such as `asymptote = FALSE`, as bnec()
   # does when do.call() passes it these arguments.
   declared <- dots_arg(dots, "asymptote_observed", TRUE)

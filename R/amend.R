@@ -262,7 +262,7 @@ check_expand_args <- function(x_range = NULL, resolution = NULL,
     check_resolution(resolution)
   }
   if (!is.null(sig_val)) {
-    chk_numeric(sig_val)
+    check_sig_val(sig_val)
   }
   invisible(NULL)
 }

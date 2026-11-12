@@ -946,7 +946,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # equation's no-effect estimate off the grid, it would arrive only after
   # every model had compiled and sampled.
   check_resolution(resolution)
-  chk_number(sig_val)
+  check_sig_val(sig_val)
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   chk_flag(asymptote_observed)
   predictor_scale <- validate_predictor_scale(predictor_scale)

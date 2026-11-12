@@ -1022,3 +1022,12 @@ test_that("update records only settings brms reuses after backend or algorithm c
   updated <- stats::update(legacy, recompile = TRUE)
   expect_identical(updated$call_args, obj$call_args)
 })
+
+test_that("amend() refuses a sig_val outside (0, 1) before recomputing", {
+  expect_error(amend(manec_example, sig_val = 2),
+               "`sig_val` must be one number strictly between 0 and 1",
+               fixed = TRUE)
+  expect_error(amend(manec_example, sig_val = c(0.01, 0.02)),
+               "`sig_val` must be one number strictly between 0 and 1",
+               fixed = TRUE)
+})

@@ -726,3 +726,23 @@ test_that("terms every equation keeps exclude nothing (#470)", {
   expect_identical(fitted, c("nec3param", "ecxll3"))
   expect_false(any(grepl("Dropping the model(s)", msgs, fixed = TRUE)))
 })
+
+test_that("a sig_val outside (0, 1) is refused once, before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  for (bad in list(-1, 0, 1, 2, c(0.01, 0.02), NA_real_)) {
+    msg <- tryCatch(suppressMessages(
+      bnec(y ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
+           sig_val = bad)
+    ), error = conditionMessage)
+    expect_match(msg, "`sig_val` must be one number strictly between 0 and 1",
+                 fixed = TRUE)
+  }
+  expect_identical(calls, 0L)
+})
