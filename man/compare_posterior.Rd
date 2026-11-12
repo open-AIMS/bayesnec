@@ -85,8 +85,9 @@ is not part of that state. With Box-Muller, the next normal draw can change
 after an odd number of preceding normal draws. Use R's default
 \code{normal.kind = "Inversion"} to preserve subsequent normal draws.}
 
-\item{...}{Further arguments that control posterior predictions via
-\code{\link[brms]{posterior_epred}}.}
+\item{...}{For \code{comparison = "fitted"} only, further arguments that
+control posterior predictions via \code{\link[brms]{posterior_epred}}. The
+other comparisons refuse any argument supplied here.}
 }
 \value{
 A named \code{\link[base]{list}} containing posterior differences,
@@ -149,9 +150,6 @@ taken through \code{...}, and \code{make_newdata = FALSE} requires
 \code{newdata}. \code{seed} changes the result only where \code{ndraws}
 selects the draws.
 
-The estimate comparisons take no further arguments through \code{...}, and
-refuse any that are supplied.
-
 \code{comparison = "nec"} requires a \code{nec} parameter at every level.
 Where a level fits a smooth equation, \code{"n(s)ec"} compares the
 no-effect estimate each level's equation supports.
@@ -162,7 +160,7 @@ concentration in the supplied predictor, per posterior draw. "absolute" (the
 default) measures to 0, "relative" to the equation's theoretical asymptote,
 "range" to the lowest response the curve predicts, and "direct" takes a
 response value rather than a percentage. See \code{\link{ecx}} for the full
-definitions and for what changed at 2.2.0.
+definitions.
 
 The argument \code{make_newdata} is only used if
 \code{comparison = "fitted"}. It is relevant to those who want the package

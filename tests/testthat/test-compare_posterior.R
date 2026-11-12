@@ -135,3 +135,22 @@ test_that("a joint fitted comparison asks for the rows it predicts", {
                                  re_formula = NULL),
                "`re_formula`")
 })
+
+test_that("an estimate comparison of separate fits refuses unused arguments", {
+  fits <- list(a = ecx4param, b = nec4param)
+  expect_error(compare_posterior(fits, comparison = "nsec", foo = 1),
+               "`foo`")
+  expect_error(compare_posterior(fits, comparison = "nsec",
+                                 hormesis_def = "max"),
+               "hormesis_def has been removed")
+  expect_error(compare_posterior(fits, comparison = "fitted",
+                                 hormesis_def = "max"),
+               "hormesis_def has been removed")
+})
+
+test_that("a joint comparison refuses hormesis_def by name", {
+  joint <- joint_split()
+  expect_error(compare_posterior(joint, comparison = "ecx",
+                                 hormesis_def = "max"),
+               "hormesis_def has been removed")
+})

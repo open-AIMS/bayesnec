@@ -11,6 +11,8 @@
 #' user allow the package to create \code{newdata} for predictions?
 #' If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
 #' to TRUE. See details.
+#' @param ... Further arguments that control posterior predictions via
+#' \code{\link[brms]{posterior_epred}}.
 #'
 #' @details The argument \code{make_newdata} is relevant to those who want the
 #' package to create a data.frame from which to make predictions. This is done

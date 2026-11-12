@@ -11,8 +11,9 @@
 #' user allow the package to create \code{newdata} for predictions?
 #' If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
 #' to TRUE. See details.
-#' @param ... Further arguments that control posterior predictions via
-#' \code{\link[brms]{posterior_epred}}.
+#' @param ... For \code{comparison = "fitted"} only, further arguments that
+#' control posterior predictions via \code{\link[brms]{posterior_epred}}. The
+#' other comparisons refuse any argument supplied here.
 #' @param seed A \code{\link[base]{numeric}} vector of length 1. Passed to
 #' \code{\link[base]{set.seed}} before the draws of the posteriors being
 #' compared are paired, so that two calls on the same fits return the same
@@ -37,7 +38,7 @@
 #' default) measures to 0, "relative" to the equation's theoretical asymptote,
 #' "range" to the lowest response the curve predicts, and "direct" takes a
 #' response value rather than a percentage. See \code{\link{ecx}} for the full
-#' definitions and for what changed at 2.2.0.
+#' definitions.
 #'
 #' The argument \code{make_newdata} is only used if
 #' \code{comparison = "fitted"}. It is relevant to those who want the package
@@ -104,7 +105,9 @@ compare_posterior.default <- function(x, comparison = "n(s)ec", ecx_val = 10,
   if (!is.character(comparison)) {
     stop("Argument comparison must be a character vector.")
   }
+  check_removed_args(list(...))
   if (comparison != "fitted") {
+    refuse_estimate_dots(...)
     if (missing(resolution)) {
       resolution <- 500
     }
@@ -193,9 +196,6 @@ compare_posterior.bayesnecgroupfit <- function(x, ...) {
 #' \code{newdata}. \code{seed} changes the result only where \code{ndraws}
 #' selects the draws.
 #'
-#' The estimate comparisons take no further arguments through \code{...}, and
-#' refuse any that are supplied.
-#'
 #' \code{comparison = "nec"} requires a \code{nec} parameter at every level.
 #' Where a level fits a smooth equation, \code{"n(s)ec"} compares the
 #' no-effect estimate each level's equation supports.
@@ -218,6 +218,7 @@ compare_posterior.bayesnecjointfit <- function(x, comparison = "n(s)ec",
     stop("A joint comparison needs at least two levels.", call. = FALSE)
   }
   chk_number(seed)
+  check_removed_args(list(...))
   if (missing(resolution)) {
     resolution <- if (identical(comparison, "fitted")) 50 else 500
   }
@@ -225,15 +226,7 @@ compare_posterior.bayesnecjointfit <- function(x, comparison = "n(s)ec",
     return(compare_joint_fitted(x, resolution, x_range, make_newdata,
                                 seed, ...))
   }
-  if (...length()) {
-    given <- names(list(...))
-    if (is.null(given)) given <- rep("", ...length())
-    given <- ifelse(nzchar(given), paste0("`", given, "`"),
-                    "an unnamed argument")
-    stop("Only comparison = \"fitted\" takes further arguments through",
-         " `...`, but this call supplied ", paste(given, collapse = ", "),
-         ".", call. = FALSE)
-  }
+  refuse_estimate_dots(...)
   chk_numeric(ecx_val)
   chk_numeric(sig_val)
   chk_numeric(resolution)
@@ -350,4 +343,26 @@ compare_joint_fitted <- function(x, resolution, x_range, make_newdata,
   })
   names(posterior_list) <- x$levels
   compare_fitted_draws(posterior_list, posterior_list, x_vec)
+}
+
+#' Refuse arguments that an estimate comparison does not use
+#'
+#' Only \code{comparison = "fitted"} passes \code{...} on. Every other
+#' comparison would otherwise accept a misspelt argument and ignore it.
+#'
+#' @param ... The \code{...} of the calling method.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+refuse_estimate_dots <- function(...) {
+  if (...length()) {
+    given <- names(list(...))
+    if (is.null(given)) given <- rep("", ...length())
+    given <- ifelse(nzchar(given), paste0("`", given, "`"),
+                    "an unnamed argument")
+    stop("Only comparison = \"fitted\" takes further arguments through",
+         " `...`, but this call supplied ", paste(given, collapse = ", "),
+         ".", call. = FALSE)
+  }
+  invisible(NULL)
 }
