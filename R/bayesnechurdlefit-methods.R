@@ -1464,11 +1464,9 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' \code{xform} is applied to \code{nsec}, and the curve is read at the
 #' result on the recorded predictor scale, as in \code{\link{ecnsec}} on a
 #' \code{\link{bayesnecfit}}. \code{NULL}, the default, reads \code{nsec} as
-#' given, the scale \code{\link{nsec}} returns by default. In earlier
-#' versions this method applied \code{xform} to the percentage it returned. A
-#' call that supplies an \code{xform} other than \code{identity} is warned of
-#' the change in this release. To transform the percentage, apply the function
-#' to the value returned.
+#' given, the scale \code{\link{nsec}} returns by default. The percentage
+#' returned is not transformed; to transform it, apply the function to the
+#' value returned.
 #'
 #' Without \code{x_range}, every curve is read over the whole concentration
 #' series, as in \code{\link{ecx.bayesnechurdlefit}}. The range sets the
@@ -1516,20 +1514,6 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
   check_xform(xform)
   if (is.null(xform)) {
     xform <- identity
-  }
-  if (!identical(xform, identity)) {
-    # Warn for one release that xform now applies to nsec rather than to the
-    # percentage returned, then remove this warning. It is a classed
-    # warning() because lifecycle is not in Imports.
-    warning(structure(
-      class = c("bayesnec_ecnsec_xform_changed", "warning", "condition"),
-      list(message = paste0(
-        "xform in ecnsec() on a hurdle pair is now applied to nsec before ",
-        "the curve is read, as it is on every other class. In earlier ",
-        "versions it was applied to the percentage returned. To transform the ",
-        "percentage, apply the function to the value ecnsec() returns."
-      ), call = NULL)
-    ))
   }
   if (is.null(object$observed_group)) {
     spec <- observed_level_spec(object)

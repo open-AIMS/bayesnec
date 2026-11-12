@@ -1275,19 +1275,16 @@ test_that("ecnsec on a fit agrees with the growth curve of a pair built from it"
   }
 })
 
-test_that("ecnsec applies xform to nsec on a hurdle fit, with a warning", {
+test_that("ecnsec applies xform to nsec on a hurdle fit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # Apply xform to nsec before reading the effect, and retain the transition
-  # warning for callers accustomed to transforming the returned percentage.
+  # Apply xform to nsec before reading the effect; the percentage returned is
+  # not transformed.
   obj <- hurdle_pair()
   plain <- ecnsec(obj, nsec = 1.5)
-  expect_warning(via <- ecnsec(obj, nsec = log(1.5), xform = exp),
-                 class = "bayesnec_ecnsec_xform_changed")
+  expect_no_warning(via <- ecnsec(obj, nsec = log(1.5), xform = exp))
   expect_equal(via, plain)
-  expect_warning(ecnsec(obj, nsec = log(1.5), xform = exp),
-                 "now applied to nsec before the curve is read")
   expect_no_warning(ecnsec(obj, nsec = 1.5))
   expect_no_warning(ecnsec(obj, nsec = 1.5, xform = identity))
   expect_error(ecnsec(obj, nsec = 1.5, xform = "log"),

@@ -99,11 +99,9 @@ response value rather than a percentage.
 \code{xform} is applied to \code{nsec}, and the curve is read at the
 result on the recorded predictor scale, as in \code{\link{ecnsec}} on a
 \code{\link{bayesnecfit}}. \code{NULL}, the default, reads \code{nsec} as
-given, the scale \code{\link{nsec}} returns by default. In earlier
-versions this method applied \code{xform} to the percentage it returned. A
-call that supplies an \code{xform} other than \code{identity} is warned of
-the change in this release. To transform the percentage, apply the function
-to the value returned.
+given, the scale \code{\link{nsec}} returns by default. The percentage
+returned is not transformed; to transform it, apply the function to the
+value returned.
 
 Without \code{x_range}, every curve is read over the whole concentration
 series, as in \code{\link{ecx.bayesnechurdlefit}}. The range sets the
