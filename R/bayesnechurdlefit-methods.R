@@ -1210,11 +1210,42 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
   invisible(x)
 }
 
+#' Refuse an argument a hurdle plot would ignore
+#'
+#' The hurdle plot methods take every argument they use as a formal after
+#' \code{...}, so what reaches \code{...} is unused. \code{dpar} is left to
+#' \code{check_plot_dpar()}, whose message names the remedy.
+#'
+#' @param dots The calling method's \code{list(...)}.
+#' @param what The function name, as \code{"autoplot"}.
+#'
+#' @return \code{NULL}, invisibly, or an error.
+#' @noRd
+hurdle_check_plot_dots <- function(dots, what) {
+  nms <- names(dots)
+  if (is.null(nms)) {
+    nms <- rep("", length(dots))
+  }
+  unused <- unique(nms[nzchar(nms) & nms != "dpar"])
+  if (length(unused) > 0) {
+    stop(what, "() on a bayesnechurdlefit does not use ",
+         paste0("`", unused, "`", collapse = ", "), ". See ?", what,
+         ".bayesnechurdlefit for the arguments it takes.", call. = FALSE)
+  }
+  if (any(!nzchar(nms))) {
+    stop(what, "() on a bayesnechurdlefit takes every argument after the",
+         " fit by name, as in `which = \"all\"`.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' Data underlying a \code{\link{bayesnechurdlefit}} plot
 #'
 #' @param x An object of class \code{\link{bayesnechurdlefit}}.
-#' @param add_nec Unused; retained for consistency with the generic.
-#' @param add_ecx Unused; retained for consistency with the generic.
+#' @param add_nec,add_ecx \code{FALSE}, the default. The data hold no
+#' estimates, so \code{TRUE} is refused: read the estimates with
+#' \code{\link{nec}} or \code{\link{ecx}} and \code{which}, or draw them
+#' with \code{autoplot()}.
 #' @param xform \code{NULL}, the default, or a function to apply to the
 #' predictor where \code{crf()} does not transform it inline. Where it does,
 #' the predictor is returned on the recorded scale, the scale the prediction
@@ -1223,7 +1254,8 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' The fitted option returns the predictor on the scale transformed inside
 #' \code{crf()}, with breaks in attribute \code{"x_axis"} labelled in
 #' recorded units.
-#' @param ... Unused. \code{dpar} is refused: select a curve with \code{which}.
+#' @param ... Not used. \code{dpar} is refused, so select a curve with
+#' \code{which}, and any other argument is refused as well.
 #' @param which Which curve(s) to return. See \code{\link{plot}}.
 #' @param resolution The number of unique predictor values.
 #' @param x_range A range of predictor values.
@@ -1234,14 +1266,24 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' @method ggbnec_data bayesnechurdlefit
 #'
 #' @export
-ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                          xform = NULL, ...,
+ggbnec_data.bayesnechurdlefit <- function(x, add_nec = FALSE,
+                                          add_ecx = FALSE, xform = NULL, ...,
                                           which = "combined", resolution = 1000,
                                           x_range = NA,
                                           x_scale = c("recorded", "fitted")) {
   which <- hurdle_check_plot_which(which)
+  chk_lgl(add_nec)
+  chk_lgl(add_ecx)
+  if (add_nec || add_ecx) {
+    stop("ggbnec_data() on a bayesnechurdlefit returns the curves and the",
+         " observations only, so it cannot add the estimates `add_nec` and",
+         " `add_ecx` ask for. Read them with nec() or ecx() and `which`, or",
+         " draw them with autoplot(x, nec = TRUE, ecx = TRUE).",
+         call. = FALSE)
+  }
   check_xform(xform)
   check_plot_dpar(list(...), x)
+  hurdle_check_plot_dots(list(...), "ggbnec_data")
   x_scale <- plot_x_scale(x, x_scale, xform)
   panels <- if (which == "all") {
     c("combined", "growth", "survival")
@@ -1370,6 +1412,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
                                        nec = TRUE, ecx = FALSE, ecx_val = 10) {
   which <- hurdle_check_plot_which(which)
   check_plot_dpar(list(...), object)
+  hurdle_check_plot_dots(list(...), "autoplot")
   chk_lgl(CI)
   check_point_alpha(point_alpha)
   chk_lgl(nec)

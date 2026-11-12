@@ -37,6 +37,28 @@ test_that("the plots of a factorised fit refuse dpar and name which", {
   expect_error(ggbnec_data(o, dpar = "hu"), "not `dpar`", fixed = TRUE)
 })
 
+test_that("the hurdle plots refuse what they would otherwise ignore", {
+  # Checked before the fit is read, so the mock reaches each refusal.
+  o <- mock_hurdle()
+  expect_error(ggbnec_data(o, add_nec = TRUE),
+               "returns the curves and the observations only", fixed = TRUE)
+  expect_error(ggbnec_data(o, add_ecx = TRUE),
+               "autoplot(x, nec = TRUE, ecx = TRUE)", fixed = TRUE)
+  expect_error(ggbnec_data(o, add_nec = NA))
+  expect_error(ggbnec_data(o, ecx_val = 50),
+               "ggbnec_data() on a bayesnechurdlefit does not use `ecx_val`",
+               fixed = TRUE)
+  expect_error(autoplot(o, group = "tank", foo = 1),
+               "autoplot() on a bayesnechurdlefit does not use `group`, `foo`",
+               fixed = TRUE)
+  # An unnamed argument would otherwise land in `...` rather than `which`.
+  expect_error(autoplot(o, "all"), "takes every argument after the fit by name",
+               fixed = TRUE)
+  # dpar keeps its own refusal, which names the remedy.
+  expect_error(autoplot(o, dpar = "mu", group = "tank"),
+               "`which = \"growth\"`", fixed = TRUE)
+})
+
 test_that("hurdle_raw_data recovers the response and a transformed predictor", {
   o <- mock_hurdle()
   d <- bayesnec:::hurdle_raw_data(o)
@@ -1709,6 +1731,9 @@ test_that("the hurdle plot data put points and curve on one scale (#487)", {
   d_plain_log <- ggbnec_data(plain, xform = log, resolution = 50)
   expect_equal(d_plain_log$raw$x, log(d_plain$raw$x))
   expect_equal(d_plain_log$curve$x, log(d_plain$curve$x))
+  # The estimates are never part of the data, so FALSE changes nothing.
+  expect_equal(ggbnec_data(plain, add_nec = FALSE, add_ecx = FALSE,
+                           resolution = 50), d_plain)
 })
 
 test_that("autoplot draws hurdle observations at the opacity point_alpha sets", {
