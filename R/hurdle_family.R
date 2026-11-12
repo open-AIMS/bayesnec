@@ -282,18 +282,6 @@ block_epred <- function(fit, formula, newdata, re_formula = NA, dpar = NULL,
   out
 }
 
-#' Non-linear parameter names of the second block for a given model
-#'
-#' @param model A \code{\link[base]{character}} string naming a bayesnec model.
-#' @param dpar The second block's name, "hu" or "zi".
-#'
-#' @return A \code{\link[base]{character}} vector.
-#'
-#' @noRd
-hu_pars <- function(model, dpar) {
-  paste0(dpar, names(get(paste0("bf_", model))$pforms))
-}
-
 #' Build the zero-probability sub-model for a bayesnec equation
 #'
 #' Derives the second block from an existing bayesnec equation. Every
