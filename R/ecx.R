@@ -520,18 +520,17 @@ validate_ecx_type <- function(type, mc) {
             "type = \"range\". The two differ for a hormetic curve and ",
             "wherever the equation has a bot parameter.", call. = FALSE)
   }
-  type
+  invisible(NULL)
 }
 
 #' The theoretical asymptote each draw's curve declines towards
 #'
 #' Used by \code{type = "relative"} only, and \code{NA} for every other type.
 #' An equation with a \code{bot} parameter declines towards it, and one
-#' without declines towards 0, both on the scale of the mean's link. An
-#' equation without \code{bot} is refused under a family not bounded below,
-#' because 0 is then no bound. The asymptote is returned on the response
-#' scale, the scale of the predictions it is compared with, so it is passed
-#' through the inverse of the mean's link.
+#' without declines towards 0. An equation without \code{bot} is refused under
+#' a family not bounded below, because 0 is then no bound. The asymptote is
+#' returned on the response scale, the scale of the predictions it is compared
+#' with, so \code{bot} is passed through the inverse of the mean's link.
 #'
 #' A \code{\link{bayesmanecfit}} has no single \code{fit}, and its curve is the
 #' model-averaged one, so \code{manec_asymptote()} assembles the model-averaged
@@ -605,9 +604,9 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
          "type = \"range\" to measure towards the lowest predicted response.",
          call. = FALSE)
   }
-  # The curve declines towards 0 on the link scale, so the mean declines
-  # towards the inverse link of 0: 1 under a log link.
-  mean_scale(object, 0)
+  # Under a log or logit link only the linear equations have no bot, and
+  # their mean tends to 0; under the identity link 0 is the asymptote itself.
+  0
 }
 
 #' Put draws of the bot parameter on the scale of the fitted mean

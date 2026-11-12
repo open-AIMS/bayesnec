@@ -373,15 +373,13 @@ test_that("count asymptotes take the asymptote on the mean scale", {
     ),
     expected
   )
-  # An equation without bot tends to zero on the link scale, hence to one on
-  # the mean scale under a log link.
+  # An equation without bot that a log link allows is linear on the log
+  # scale, so its mean tends to 0.
   expect_equal(bayesnec:::mean_scale(factorised, 0), 1)
   expect_equal(
-    bayesnec:::count_positive_asymptote(
-      factorised, NULL, bayesnec:::mean_scale(factorised, 0),
-      data.frame(x = 0)
-    ),
-    as.numeric(bayesnec:::hurdle_positive_mean(1, "poisson"))
+    bayesnec:::count_positive_asymptote(factorised, NULL, 0,
+                                        data.frame(x = 0)),
+    as.numeric(bayesnec:::hurdle_positive_mean(0, "poisson"))
   )
 })
 
