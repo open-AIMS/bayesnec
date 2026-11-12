@@ -402,3 +402,8 @@ test_that("the arguments are validated", {
   expect_invisible(check(5, "nsec", 10, FALSE, list(no_effect = FALSE)))
   expect_invisible(check(5, "nec", 10, FALSE, list(no_effect = TRUE)))
 })
+
+test_that("exceedance names itself when refusing an unused argument", {
+  expect_error(exceedance(nec4param, 1, foo = 1),
+               "exceedance() does not use `foo`", fixed = TRUE)
+})

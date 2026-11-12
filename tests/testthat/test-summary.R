@@ -416,3 +416,18 @@ test_that("a model not sampled by NUTS reports NA and is not flagged", {
   expect_true("Divergent transitions after warmup: NA" %in% out$printed)
   expect_length(out$warnings, 0)
 })
+
+test_that("summary() warns of the relative rename once", {
+  skip_on_cran()
+  n <- 0
+  withCallingHandlers(
+    invisible(summary(nec4param, ecx = TRUE, ecx_vals = c(10, 50, 90),
+                      type = "relative")),
+    warning = function(w) {
+      if (grepl("now measures", conditionMessage(w))) n <<- n + 1
+      invokeRestart("muffleWarning")
+    },
+    message = function(m) invokeRestart("muffleMessage")
+  )
+  expect_equal(n, 1)
+})

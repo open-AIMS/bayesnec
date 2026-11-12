@@ -3140,10 +3140,16 @@ check_unused_dots <- function(dots, fun, allowed = character()) {
   if (is.null(given)) given <- rep("", length(dots))
   bad <- !nzchar(given) | !given %in% allowed
   if (any(bad)) {
-    named <- ifelse(nzchar(given[bad]), paste0("`", given[bad], "`"),
-                    "an unnamed argument")
-    stop(fun, "() does not use ", paste(unique(named), collapse = ", "),
-         ". See ?", fun, " for its arguments.", call. = FALSE)
+    named <- unique(ifelse(nzchar(given[bad]), paste0("`", given[bad], "`"),
+                           "an unnamed argument"))
+    # The class lets a function that passes on its own ... name itself.
+    stop(structure(
+      class = c("bayesnec_unused_args", "error", "condition"),
+      list(message = paste0(fun, "() does not use ",
+                            paste(named, collapse = ", "), ". See ?", fun,
+                            " for its arguments."),
+           call = NULL, args = named)
+    ))
   }
   invisible(NULL)
 }
@@ -3168,7 +3174,7 @@ first_in_call <- function(what) {
     if (is.name(head)) as.character(head) else ""
   }, character(1))
   outer <- match(TRUE, heads %in% c("nec", "nsec", "ecx", "ecnsec",
-                                    "exceedance"))
+                                    "exceedance", "summary"))
   if (is.na(outer)) {
     return(TRUE)
   }

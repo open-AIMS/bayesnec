@@ -1550,7 +1550,8 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
   if (!is.null(pool)) validate_pool(pool, "ecnsec")
   # One value: the curve is interpolated at one point.
   chk_number(nsec)
-  type <- validate_ecx_type(type, match.call())
+  # "relative" is refused below, so it is not warned about.
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
   if (identical(type, "direct")) {
     stop("type = \"direct\" names a response value rather than a ",
          "percentage, so there is no percent effect for ecnsec to report. ",

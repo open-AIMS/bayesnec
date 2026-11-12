@@ -216,12 +216,9 @@ test_that("relative is refused where the bound is infinite", {
   fake$fit$family <- stats::gaussian()
   expect_error(ecx_asymptote(fake, "relative"), "no bot parameter")
   expect_error(ecx_asymptote(fake, "relative"), "not bounded below")
-  # Bounded below: the asymptote is 0 on the link scale and the request is
-  # answered, on the scale of the mean.
+  # Bounded below: the asymptote is 0 and the request is answered.
   fake$fit$family <- stats::Gamma(link = "identity")
   expect_equal(ecx_asymptote(fake, "relative"), 0)
-  fake$fit$family <- stats::Gamma(link = "log")
-  expect_equal(ecx_asymptote(fake, "relative"), 1)
   # Any other type never asks for an asymptote.
   expect_true(is.na(ecx_asymptote(fake, "absolute")))
 })
@@ -481,4 +478,22 @@ test_that("a relative ECx under a log link measures towards exp(bot)", {
   }, numeric(1))
   expect_false(anyNA(by_hand))
   expect_equal(as.numeric(est), by_hand, tolerance = 1e-3)
+})
+
+test_that("a linear equation under a log link is measured towards 0", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  # ecxlin has no bot and is linear on the log scale, so its mean tends to 0.
+  set.seed(578)
+  x <- rep(c(0, 2.5, 5, 10, 20, 40), each = 8)
+  mu <- exp(log(20) - 0.12 * x)
+  y <- stats::rgamma(length(x), shape = 50, rate = 50 / mu)
+  fit <- suppressWarnings(suppressMessages(bnec(
+    y ~ crf(x, "ecxlin"), data = data.frame(x = x, y = y),
+    family = Gamma(link = "log"), chains = 2, iter = 1000, seed = 578,
+    refresh = 0
+  )))
+  expect_equal(bayesnec:::ecx_asymptote(fit, "relative"), 0)
+  far <- posterior_epred(fit, newdata = data.frame(x = 200), re_formula = NA)
+  expect_lt(stats::median(far), 0.01)
 })

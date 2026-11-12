@@ -250,7 +250,11 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   chk_number(ecx_val)
   check_resolution(resolution)
   chk_flag(posterior)
-  type <- validate_ecx_type(type, match.call())
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
+  if (identical(type, "relative") && is.null(dpar)) {
+    check_combined_relative(object$fit$family, "ecx")
+  }
+  warn_relative_rename(type, match.call())
   check_xform(xform)
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
@@ -283,9 +287,6 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   if (type != "direct" && ecx_val <= 0) {
     stop("Supplied ecx_val is not in the required range. ",
          "Please supply a percentage value greater than 0.", call. = FALSE)
-  }
-  if (identical(type, "relative") && is.null(dpar)) {
-    check_combined_relative(object$fit$family, "ecx")
   }
   # Do not refuse an absolute ECx for a gaussian response without a bot
   # parameter. Absolute measures towards 0 by design, and a gaussian mean that
@@ -420,7 +421,11 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
   chk_number(ecx_val)
   check_resolution(resolution)
   chk_flag(posterior)
-  type <- validate_ecx_type(type, match.call())
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
+  if (identical(type, "relative") && is.null(dpar)) {
+    check_combined_relative(object$mod_fits[[1]]$fit$family, "ecx")
+  }
+  warn_relative_rename(type, match.call())
   check_xform(xform)
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
@@ -504,12 +509,29 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
 #' for the earlier behaviour.
 #'
 #' @noRd
-validate_ecx_type <- function(type, mc) {
+validate_ecx_type <- function(type, mc, warn = TRUE) {
   valid <- c("absolute", "relative", "range", "direct")
   if (length(type) != 1 || !is.character(type) || !(type %in% valid)) {
     stop("type must be one of 'absolute' (the default), 'relative', 'range' ",
          "or 'direct'. Please see ?ecx for more details.", call. = FALSE)
   }
+  if (warn) {
+    warn_relative_rename(type, mc)
+  }
+  type
+}
+
+#' Warn that type = "relative" names a different quantity than in 2.1.3.1
+#'
+#' Call it after any refusal of \code{"relative"}, so that a refused request
+#' is not warned about first.
+#'
+#' @param type The validated \code{type}.
+#' @param mc The caller's \code{match.call()}.
+#'
+#' @return \code{NULL}, invisibly.
+#' @noRd
+warn_relative_rename <- function(type, mc) {
   if (identical(type, "relative") && "type" %in% names(mc) &&
       !isTRUE(getOption("bayesnec.relative_warned")) &&
       first_in_call("relative_rename")) {
@@ -520,18 +542,17 @@ validate_ecx_type <- function(type, mc) {
             "type = \"range\". The two differ for a hormetic curve and ",
             "wherever the equation has a bot parameter.", call. = FALSE)
   }
-  type
+  invisible(NULL)
 }
 
 #' The theoretical asymptote each draw's curve declines towards
 #'
 #' Used by \code{type = "relative"} only, and \code{NA} for every other type.
 #' An equation with a \code{bot} parameter declines towards it, and one
-#' without declines towards 0, both on the scale of the mean's link. An
-#' equation without \code{bot} is refused under a family not bounded below,
-#' because 0 is then no bound. The asymptote is returned on the response
-#' scale, the scale of the predictions it is compared with, so it is passed
-#' through the inverse of the mean's link.
+#' without declines towards 0. An equation without \code{bot} is refused under
+#' a family not bounded below, because 0 is then no bound. The asymptote is
+#' returned on the response scale, the scale of the predictions it is compared
+#' with, so \code{bot} is passed through the inverse of the mean's link.
 #'
 #' A \code{\link{bayesmanecfit}} has no single \code{fit}, and its curve is the
 #' model-averaged one, so \code{manec_asymptote()} assembles the model-averaged
@@ -605,9 +626,9 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
          "type = \"range\" to measure towards the lowest predicted response.",
          call. = FALSE)
   }
-  # The curve declines towards 0 on the link scale, so the mean declines
-  # towards the inverse link of 0: 1 under a log link.
-  mean_scale(object, 0)
+  # Under a log or logit link only the linear equations have no bot, and
+  # their mean tends to 0; under the identity link 0 is the asymptote itself.
+  0
 }
 
 #' Put draws of the bot parameter on the scale of the fitted mean
