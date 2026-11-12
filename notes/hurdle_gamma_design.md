@@ -580,14 +580,14 @@ a single `link` argument; PR #172 added the second.
 
 **`R/set_distribution.R`** — auto-detection. A numeric `y` with `max > 1` and
 exact zeros present returns `"Gamma"`; it should return
-`"hurdle_gamma"`. Distinguish "has exact zeros" from `min >= 0`. At `a3368faa`
+`"hurdle_gamma"`. Distinguish "has exact zeros" from `min >= 0`. On `predev` at `2a9e6162`
 it still returns `"Gamma"`, as §2.4 recommends, and `hurdle_gamma` is opt-in.
 
 **`R/check_data.R` — critical.** When this was written, lines 51–54 nudged zero
 responses up to `min(y[y > 0]) / 10` for the Gamma family. For a hurdle family
 the zeros *are* the signal and must be left alone. This guard has to be skipped,
 or the hurdle component will see no zeros and the model becomes unidentifiable.
-PR #172 made `check_data()` skip it for a hurdle family; at `a3368faa` the nudge
+PR #172 made `check_data()` skip it for a hurdle family; on `predev` at `2a9e6162` the nudge
 applies only to an uncensored zero under `Gamma` or `beta`.
 
 **`R/helpers.R`, `extract_pars()` — critical.** When this was written it used
@@ -617,7 +617,7 @@ extract_pars <- function(x, model_fit, prefix = "") {
 ```
 
 Note `length(tt) == 0` guards the no-match case, which the version of the time
-did not handle either; `extract_pars()` at `a3368faa` has both. Verified: anchoring resolves `top`/`hutop`, `beta`/`hubeta`
+did not handle either; `extract_pars()` on `predev` at `2a9e6162` has both. Verified: anchoring resolves `top`/`hutop`, `beta`/`hubeta`
 and `nec`/`hunec` cleanly.
 
 **`R/check_models.R`** — hurdle_gamma must satisfy both sets of existing link

@@ -6,8 +6,8 @@ with a bearing on [#166](https://github.com/open-AIMS/bayesnec/issues/166).
 
 The defect is fixed. PR #281 locates every `ecx()`, `nsec()` and `ecnsec()`
 crossing by linear interpolation between the bracketing grid values, in
-`crossing_x()` (`R/helpers.R`), and PR #292 then lowered the default `resolution`
-to 200. #39 closed on 2026-09-08. The measurements below were made before the
+`crossing_x()` (`R/ecx.R`), and PR #292 then lowered the default `resolution`
+to 200. The default is 500 on `predev` at `2a9e6162`. #39 closed on 2026-09-08. The measurements below were made before the
 fix, and the functions and line numbers they name no longer exist.
 
 ## The short version
