@@ -134,6 +134,7 @@
 <h2 id="the-test-suite">The test suite<a class="anchor" aria-label="anchor" href="#the-test-suite"></a></h2>
 <p><code>notes/running_the_test_suite.md</code> holds the measurements and the four traps. Three things are worth repeating here because each one fails quietly.</p>
 <p><code>NOT_CRAN=true</code> is required. Without it a local run reports zero failures while skipping nearly every assertion, because the fitting tests are wrapped in <code>skip_on_cran()</code>.</p>
+<p>Routine <code>devtools::test()</code> and <code>R CMD check</code> runs skip files guarded by <code>skip_unless_full_suite()</code>. Set <code>BAYESNEC_FULL_TESTS=true</code> for the full local suite. <code>notes/running_the_test_suite.md</code> gives the installed-build command and the current split.</p>
 <p><code>devtools::load_all()</code> attaches internal functions as well as exported ones, so a change that depends on an unexported function being visible passes under <code>load_all()</code> and fails under <code>R CMD check</code>. Confirm a fix against an installed build before calling it done.</p>
 <p>Compiling Stan programs is what makes the suite slow, not the number of tests. Reuse a fixture across tests rather than refitting it; <code>rstan</code>’s <code>auto_write</code> does not prevent the recompilation. <code>Config/testthat/parallel: true</code> runs each test file in a fresh subprocess, which inherits nothing from the parent session.</p>
 </div>
