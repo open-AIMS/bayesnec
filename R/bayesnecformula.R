@@ -1968,7 +1968,12 @@ check_crf_term <- function(x_str) {
          " names the predictor and every equation fitted to it, as in",
          " crf(x, c(\"nec3param\", \"ecx4param\")).", call. = FALSE)
   }
-  term <- match.call(crf, str2lang(x_str))
+  term <- str2lang(x_str)
+  # A term may be written in parentheses, as in y ~ (crf(x, "nec3param")).
+  while (is.call(term) && identical(term[[1]], as.name("("))) {
+    term <- term[[2]]
+  }
+  term <- match.call(crf, term)
   if (is.null(term$model)) {
     stop("crf() needs the equations to fit as its second argument, as in",
          " crf(", deparse1(term$x), ", \"nec3param\"); ", x_str,
