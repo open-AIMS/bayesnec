@@ -365,7 +365,7 @@ prior_record <- function(prior_type = "regularizing", asymptote_observed = FALSE
                          predictor_scale = "concentration") {
   list(model_survival = NULL, control = NULL, seed = NULL,
        prior_type = prior_type, asymptote_observed = asymptote_observed,
-       predictor_scale = predictor_scale, prior = NULL)
+       predictor_scale = predictor_scale, x_control = NULL, prior = NULL)
 }
 
 # Replaces fit_bayesnec() inside bnec_joint() and records what it was given.
@@ -421,6 +421,29 @@ test_that("a grouped joint refit builds its priors as the grouped fit did (#516)
   g <- spread_group_fit()
   expect_error(bnec_joint(g, asymptote_observed = NA), "asymptote_observed")
   expect_error(bnec_joint(g, predictor_scale = "linear"), "should be one of")
+})
+
+test_that("a grouped joint refit checks a missing control despite partial priors", {
+  g <- mock_group_fit(list(a = c(nec3param = 0.8, nec4param = 0.2),
+                           b = c(nec3param = 0.8, nec4param = 0.2)))
+  g$data$y <- c(0.9, 0.8, 0.5, 0.3)
+  for (i in seq_along(g$fits)) {
+    rec <- prior_record(asymptote_observed = TRUE)
+    rec$x_control <- 1
+    g$fits[[i]]$mod_fits[[1]] <- list(call_args = rec)
+  }
+  local_mocked_bindings(
+    fit_bayesnec = function(...) stop("fit reached"),
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(bnec_joint(
+    g, model = "nec3param",
+    prior = brms::prior(normal(0, 1), nlpar = "bot")
+  )), "Supply a prior for `top`")
+  expect_error(suppressMessages(bnec_joint(
+    g, model = "nec3param",
+    prior = brms::prior(normal(0, 1), nlpar = "top")
+  )), "fit reached")
 })
 
 test_that("a hurdle joint refit builds its priors as the hurdle fit did (#516)", {
@@ -1471,7 +1494,7 @@ test_that("a joint level's grid and control value are its own", {
   captured <- NULL
   local_mocked_bindings(
     prediction_grid = function(fit, formula, x_range, resolution,
-                               level_spec) {
+                               level_spec, x_control = NULL) {
       captured <<- x_range
       list(newdata = data.frame(x = x_range))
     },

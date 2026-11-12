@@ -68,6 +68,11 @@ c.bnecfit <- function(x, ...) {
     }
     check_data_equality(mod_fits)
   }
+  controls <- vapply(mod_fits, control_x, numeric(1))
+  if (any(controls != controls[[1]])) {
+    stop("The objects use different control concentrations. Refit them with",
+         " the same `x_control` before combining them.", call. = FALSE)
+  }
   mod_fits <- mod_fits[!duplicated(names(mod_fits))]
   # Preserve c()'s input-level compatibility rule even where duplicate model
   # names are removed above. expand_manec() reads these sources only to decide
@@ -345,6 +350,15 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     if (!is.null(newdata) || !identical(checked$data, data_to_check)) {
       newdata <- checked$data
     }
+  }
+  stated_control <- recorded_x_control(object[[1]])
+  if (!is.null(stated_control) && !is.null(newdata)) {
+    frame <- model.frame(object[[1]]$bayesnecformula, data = newdata)
+    scale <- object[[1]]$call_args$predictor_scale
+    if (is.null(scale)) scale <- "auto"
+    check_fit_x_control(stated_control, object[[1]]$bayesnecformula,
+                        retrieve_var(frame, "x_var", error = TRUE),
+                        expand_args$x_range, scale, report = FALSE)
   }
   # The marker validate_family() uses to stay idempotent is bayesnec's own and
   # the family is stored in the brmsfit, so it is dropped before brms sees it.

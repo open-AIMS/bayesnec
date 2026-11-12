@@ -44,7 +44,7 @@ is_bayesnechurdlefit <- function(x) {
 #' are independent. Where the fits hold different numbers of draws, both are
 #' truncated to the smaller.
 #'
-#' The control is the prediction at the lowest observed concentration,
+#' The control is the prediction at the control concentration,
 #' not the first column of the grid, so that \code{x_range} does not change
 #' the reference. It is computed here so that the control and the curve are
 #' truncated to the same draws.
@@ -62,7 +62,10 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
     observed_level_spec(object)
   }
   if (!is.null(spec)) {
-    if (is.na(x_range[1])) x_range <- range(unlist(spec$x))
+    if (is.na(x_range[1])) {
+      x_range <- c(min(observed_level_controls(object, spec)),
+                   max(unlist(spec$x)))
+    }
     levels <- lapply(seq_len(nrow(spec$combinations)), function(i) {
       hurdle_component_preds(observed_level_fit(object, spec, i),
                              resolution, x_range, x_control)
@@ -93,7 +96,7 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
                                combined = controls("combined"))))
   }
   if (!is.null(object$observed_group) && is.na(x_range[1])) {
-    x_range <- range(object$level_x)
+    x_range <- level_read_span(object)
   }
   if (is.numeric(x_control)) {
     control_reading <- resolve_x_control(object, x_control, x_range)
@@ -429,7 +432,7 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
                                   x_range = x_range,
                                   x_control = x_control)
   p_samples <- preds[[which]]
-  # Take the control from hurdle_component_preds(), at the lowest observed
+  # Take the control from hurdle_component_preds(), at the control
   # concentration. p_samples[, 1] would make every estimate depend on x_range.
   control <- preds$control[[which]]
   out <- ecx_from_posterior(p_samples, preds$x, ecx_val, type, control,

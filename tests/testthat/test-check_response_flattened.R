@@ -70,6 +70,104 @@ test_that("a gaussian response is reported where its top two levels differ", {
   expect_silent(check_response_flattened(flat, gaussian(link = "identity")))
 })
 
+test_that("a decline close to zero retains its contrast without asymptote advice", {
+  set.seed(42)
+  conc <- c(0, 0.5, 1, 2, 4, 8, 16, 32)
+  p <- c(1, 0.98, 0.9, 0.5, 0.1, 0.02, 0.02, 0.005)
+  d <- data.frame(conc = rep(conc, each = 6), n = 100)
+  d$surv <- rbinom(nrow(d), d$n, rep(p, each = 6))
+  bdat <- flat_bdat(surv | trials(n) ~ crf(conc, "nec4param"), d)
+  msg <- capture_messages(check_response_flattened(
+    bdat, binomial(link = "identity")
+  ))
+  expect_length(msg, 1)
+  expect_match(msg, still_declining, fixed = TRUE)
+  expect_match(msg, "0.333% of the control mean", fixed = TRUE)
+  expect_false(grepl("lower asymptote may not be identified", msg,
+                     fixed = TRUE))
+  expect_false(grepl("asymptote_observed = FALSE", msg, fixed = TRUE))
+
+  declared <- capture_messages(check_response_flattened(
+    bdat, binomial(link = "identity"), asymptote_observed = FALSE
+  ))
+  expect_match(declared, still_declining, fixed = TRUE)
+  expect_match(declared,
+               "The lower asymptote may not be identified by this design",
+               fixed = TRUE)
+  expect_match(declared, "put a threshold above the tested range in their tail",
+               fixed = TRUE)
+  expect_false(grepl("declare it with asymptote_observed = FALSE", declared,
+                     fixed = TRUE))
+
+  d$surv[d$conc == 16] <- c(28, 30, 32, 29, 31, 30)
+  d$surv[d$conc == 32] <- c(8, 9, 10, 11, 12, 10)
+  bdat <- flat_bdat(surv | trials(n) ~ crf(conc, "nec4param"), d)
+  msg <- capture_messages(check_response_flattened(
+    bdat, binomial(link = "identity")
+  ))
+  expect_match(msg, "10% of the control mean", fixed = TRUE)
+  expect_match(msg, "The lower asymptote may not be identified", fixed = TRUE)
+  expect_match(msg, "asymptote_observed = FALSE", fixed = TRUE)
+})
+
+test_that("the five-percent gate includes its boundary and signed Gaussian means", {
+  x <- rep(c(0, 1, 2, 4), each = 4)
+  y <- c(100.1, 99.9, 100.1, 99.9,
+         50.1, 49.9, 50.1, 49.9,
+         10.1, 9.9, 10.1, 9.9,
+         5.1, 4.9, 5.1, 4.9)
+  report <- function(response) {
+    bdat <- flat_bdat(y ~ crf(x, "nec4param"),
+                      data.frame(x = x, y = response))
+    capture_messages(check_response_flattened(
+      bdat, gaussian(link = "identity")
+    ))
+  }
+  at_boundary <- report(y)
+  expect_match(at_boundary, "5% of the control mean", fixed = TRUE)
+  expect_false(grepl("lower asymptote may not be identified", at_boundary,
+                     fixed = TRUE))
+  above <- report(replace(y, 13:16, y[13:16] + 0.1))
+  expect_match(above, "The lower asymptote may not be identified", fixed = TRUE)
+
+  near_negative <- report(replace(y, 13:16, -y[13:16] / 10))
+  expect_match(near_negative, "-0.5% of the control mean", fixed = TRUE)
+  expect_false(grepl("lower asymptote may not be identified", near_negative,
+                     fixed = TRUE))
+  far_negative <- report(replace(y, 13:16, -y[13:16] * 4))
+  expect_match(far_negative, "The lower asymptote may not be identified",
+               fixed = TRUE)
+})
+
+test_that("a non-positive control mean leaves the advisory available", {
+  y <- c(-0.1, 0.1, -0.1, 0.1,
+         1.01, 0.99, 1.01, 0.99,
+         0.81, 0.79, 0.81, 0.79,
+         0.61, 0.59, 0.61, 0.59)
+  bdat <- flat_bdat(y ~ crf(x, "nec4param"),
+                    data.frame(x = flat_x, y = y))
+  msg <- capture_messages(check_response_flattened(
+    bdat, gaussian(link = "identity")
+  ))
+  expect_match(msg, "A control-relative percentage is unavailable", fixed = TRUE)
+  expect_match(msg, "The lower asymptote may not be identified", fixed = TRUE)
+})
+
+test_that("control means use each block's fitted response scale", {
+  binomial_block <- list(
+    x = c(0, 0, 1), successes = c(1, 1, 1), trials = c(1, 9, 10),
+    spec = flatness_spec("binomial")
+  )
+  expect_equal(flatness_level_mean(binomial_block, 0), 0.2)
+  expect_true(is.na(flatness_level_mean(binomial_block, 2)))
+
+  rate_block <- list(
+    x = c(0, 0, 1), y = c(1, 3, 2), denominator = c(1, 9, 10),
+    spec = flatness_spec("poisson")
+  )
+  expect_equal(flatness_level_mean(rate_block, 0), 0.4)
+})
+
 test_that("a high lower asymptote is not reported", {
   # A sublethal response that falls by a fifth and then flattens is complete;
   # effect size alone must not trigger the report.
@@ -320,6 +418,25 @@ test_that("a hurdle response block still falling is reported by name", {
   expect_length(grep("The survival block is still declining", msg), 0)
 })
 
+test_that("hurdle blocks receive control-relative advice separately", {
+  x <- rep(c(0, 1, 2, 4), each = 100)
+  alive <- c(rep(1, 100), rep(c(1, 0), c(70, 30)),
+             rep(c(1, 0), c(20, 80)), rep(c(1, 0), c(2, 98)))
+  y <- numeric(length(x))
+  for (i in seq_along(c(0, 1, 2, 4))) {
+    at <- which(x == c(0, 1, 2, 4)[i] & alive == 1)
+    y[at] <- c(10, 8, 5, 3)[i] + rep(c(-0.1, 0.1), length.out = length(at))
+  }
+  bdat <- hurdle_frame(x, y)
+  msg <- capture_messages(check_response_flattened(bdat, hurdle_family))
+  expect_match(msg, "The survival block is still declining", fixed = TRUE)
+  expect_match(msg, "The response block is still declining", fixed = TRUE)
+  expect_match(msg, "2% of the control mean", fixed = TRUE)
+  expect_match(msg, "30% of the control mean", fixed = TRUE)
+  expect_match(msg, "identified for the response block", fixed = TRUE)
+  expect_false(grepl("identified for the survival block", msg, fixed = TRUE))
+})
+
 test_that("a hurdle response block is assessed against its own two levels", {
   # Nothing survived the highest concentration, so the response block has no
   # observations there and its two highest levels are not the design's.
@@ -522,6 +639,41 @@ test_that("each level of a grouped call is assessed on its own", {
   )
   expect_length(grep("level \"incomplete\"", msg), 1)
   expect_length(grep("level \"complete\"", msg), 0)
+})
+
+test_that("a near-zero group does not suppress advice for another group", {
+  near <- c(1.01, 0.99, 1.01, 0.99,
+            0.50, 0.49, 0.51, 0.50,
+            0.021, 0.019, 0.021, 0.019,
+            0.0041, 0.0039, 0.0041, 0.0039)
+  d <- data.frame(x = rep(flat_x, 2),
+                  y = c(near, declining_y),
+                  site = rep(c("near", "high"), each = 16))
+  bdat <- flat_bdat(y ~ crf(x, "nec4param"), d)
+  msg <- capture_messages(check_response_flattened(
+    bdat, gaussian(link = "identity"), group = d$site
+  ))
+  expect_match(msg, 'the response of level "near" is still declining',
+               ignore.case = TRUE)
+  expect_match(msg, 'the response of level "high" is still declining',
+               ignore.case = TRUE)
+  expect_match(msg, '0.4% of the control mean', fixed = TRUE)
+  expect_match(msg, 'The lower asymptote may not be identified for the response of level "high"',
+               fixed = TRUE)
+  expect_false(grepl('identified for the response of level "near"', msg,
+                     fixed = TRUE))
+})
+
+test_that("an unset group label does not enter a control mean", {
+  d <- data.frame(x = flat_x, y = declining_y,
+                  site = rep("one", length(flat_x)))
+  d$site[1] <- NA_character_
+  bdat <- flat_bdat(y ~ crf(x, "nec4param"), d)
+  msg <- capture_messages(check_response_flattened(
+    bdat, gaussian(link = "identity"), group = d$site
+  ))
+  expect_match(msg, 'the response of level "one" is still declining',
+               ignore.case = TRUE)
 })
 
 test_that("a grouped count response skips only levels with a zero floor", {
@@ -918,4 +1070,18 @@ test_that("the report rate on a flat top is near the stated alpha", {
     list(x = x, y = rnorm(length(x), mu_declining, 0.1), spec = spec)
   }
   expect_gt(rate(declining_block, TRUE), 0.5)
+})
+
+test_that("a non-finite control level is not replaced by the lowest finite one", {
+  d <- data.frame(x = rep(c(0, 1, 2, 4), each = 4), y = declining_y)
+  bdat <- flat_bdat(y ~ crf(log(x), "nec3param"), d)
+  msg <- paste(capture_messages(
+    check_response_flattened(bdat, gaussian(link = "identity"))
+  ), collapse = "")
+  expect_match(msg, still_declining)
+  expect_match(msg, "control-relative percentage is unavailable", fixed = TRUE)
+  expect_match(msg, "is not finite", fixed = TRUE)
+  expect_false(grepl("of the control mean", msg, fixed = TRUE))
+  # The advice is kept although the lowest finite level is far above the top.
+  expect_match(msg, "default nec and ec50 priors", fixed = TRUE)
 })

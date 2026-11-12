@@ -318,8 +318,8 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
                                   x_range = x_range,
                                   x_control = x_control)
   p_samples <- preds[[which]]
-  # The control is read at the lowest observed concentration, not the first
-  # grid column, so x_range does not change the reference.
+  # The control is read at the control concentration, not the first grid
+  # column, so x_range does not change the reference.
   reference <- quantile(preds$control[[which]], sig_val)
   at <- if (is.numeric(x_control)) as.numeric(x_control) else
     control_x(object)
@@ -1558,7 +1558,7 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
                      curve = paste("the", which, "curve"))
   p_samples <- preds[[which]]
   # The percentage effect at nsec, against the reference ecx() uses for the
-  # same type, with the control at the lowest observed concentration.
+  # same type, with the control at the control concentration.
   control <- preds$control[[which]]
   floor_draws <- switch(type,
                         absolute = 0,

@@ -20,9 +20,21 @@
 #' predictions, and over which to extract ECx values. Large values will be
 #' slower but more precise.
 #' @param sig_val Probability value to use as the lower quantile to test
-#' significance of the predicted posterior values against the lowest observed
-#' concentration (assumed to be the control), to estimate NEC as an
+#' significance of the predicted posterior values against the control
+#' concentration, to estimate NEC as an
 #' interpolated NOEC value from smooth ECx curves.
+#' @param x_control \code{NULL} uses the lowest observed predictor value as
+#' the control. One finite number states the control concentration on the
+#' recorded predictor scale. It sets the lower bound of the default
+#' \code{nec} and \code{ec50} priors, the prediction grid, the stored
+#' no-effect estimate, and the defaults of \code{ecx()}, \code{nsec()}
+#' and \code{ecnsec()}. It must lie below the highest observed value, and
+#' cannot be negative, after any \code{crf()} transformation, where the
+#' predictor is treated as a concentration (see \code{predictor_scale}). If
+#' \code{x_range} is supplied, its lower end must equal the control.
+#' A control below the observed range extrapolates the curve. With
+#' \code{prior_type = "regularizing"}, an unobserved control requires a
+#' supplied \code{top} prior.
 #' @param loo_controls A named \code{\link[base]{list}} of up to five
 #' elements. "fitting" and "weights" are each a named \code{\link[base]{list}}
 #' containing the desired arguments to be passed on to \code{\link[brms]{loo}}
@@ -115,13 +127,16 @@
 #' response at the highest concentration is below the mean at the second
 #' highest by more than the contrast's standard error admits, tested one-sided
 #' at the 5% level under the mean-variance relationship of the fitted family,
-#' \code{\link{bnec}} reports that before fitting: an equation that estimates
-#' \code{bot} then has a prior describing the observed endpoint rather than the
-#' asymptote, and the \code{nec} and \code{ec50} priors, which are bounded to
-#' the tested range, exclude a threshold above that range. Inspect the
-#' generated entries with \code{\link{get_priors}} and pass a scientifically
-#' justified prior through \code{prior} where information beyond the design is
-#' available.
+#' \code{\link{bnec}} reports the contrast before fitting, with the highest
+#' mean relative to the control mean. With \code{asymptote_observed = TRUE},
+#' where it advises that the lower asymptote may be unobserved, an equation
+#' estimating \code{bot} can have a default prior describing the observed
+#' endpoint rather than the asymptote, and the default \code{nec} and \code{ec50}
+#' priors exclude a threshold above the tested range.
+#' Inspect the generated entries with \code{\link{get_priors}} and pass a
+#' scientifically justified prior through \code{prior} where information
+#' beyond the design is available. The \code{asymptote_observed} section gives
+#' the control-relative rule for that advice.
 #' Neither value of \code{prior_type} corrects a design that stopped before the
 #' asymptote; \code{asymptote_observed} is the argument for that. With a
 #' \code{disp("power")} term on a \code{Gamma}, \code{gaussian} or
@@ -146,8 +161,10 @@
 #' highest predictor level reached the lower asymptote of the curve. The default
 #' \code{TRUE} is the assumption both default prior sets are built on. Under it
 #' the \code{nec} and \code{ec50} priors are bounded to the tested range, from
-#' the lowest predictor value to the highest, because on a design that reached
-#' the asymptote the decline begins, and passes its midpoint, inside that range.
+#' the control concentration (the lowest predictor value unless
+#' \code{x_control} states another) to the highest, because on a design that
+#' reached the asymptote the decline begins, and passes its midpoint, inside
+#' that range.
 #' \code{FALSE} states that the series stopped short of the asymptote, which
 #' changes the \code{bot} prior, removes the upper bound of the \code{nec} and
 #' \code{ec50} priors, and widens the initial-value search. The \code{bot}
@@ -166,7 +183,7 @@
 #'
 #' Without the upper bound, a threshold above the highest concentration lies in
 #' the tail of the \code{nec} or \code{ec50} prior rather than outside its
-#' support. The lower bound stays at the lowest value tested. How far into the
+#' support. The lower bound stays at the control concentration. How far into the
 #' tail is a property of the branch and of \code{prior_type} together rather
 #' than of either alone. Three of the four combinations set the spread by a
 #' coverage rule that reaches the farthest concentration tested, at the 95%
@@ -197,10 +214,17 @@
 #'
 #' The declaration is the user's because the data cannot make it: a flat
 #' response at the top of the series is what a complete design and a truncated
-#' one both look like. \code{\link{bnec}} reports a response still declining at
-#' the top of the series before it fits anything, which is evidence that the
-#' design is incomplete, and it cannot supply evidence that a flat one is
-#' complete.
+#' one both look like. \code{\link{bnec}} reports a significant decline between
+#' the two highest predictor levels before fitting. For each declining response
+#' block it states the highest mean as a percentage of the mean at the stated
+#' control, or at the lowest predictor level when no control is stated. When
+#' no control response was observed, that percentage is unavailable. Under
+#' \code{TRUE}, the report advises considering
+#' an unobserved asymptote when the absolute ratio to a finite, positive
+#' control mean exceeds 5%, or when that ratio cannot be calculated. A smaller
+#' mean near zero can still decline significantly, so the contrast is reported
+#' without that advice. The 5% threshold governs the message; it does not
+#' establish whether the lower asymptote was observed.
 #'
 #' A gaussian response spanning negative values, and any response fitted on a
 #' link other than the identity, has no floor that can be derived from the data,
@@ -924,7 +948,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                  prior = NULL, prior_type = "uninformative",
                  asymptote_observed = TRUE,
                  timeout = Inf, model_survival = NULL,
-                 predictor_scale = "auto", ...) {
+                 predictor_scale = "auto", x_control = NULL, ...) {
   chk_number(resolution)
   # Refuse a bad resolution here. Left to expand_nec(), which reads a smooth
   # equation's no-effect estimate off the grid, it would arrive only after
@@ -968,6 +992,10 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   validate_predictor_scale(
     predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
   )
+  control_checked <- isTRUE(list(...)[[".bayesnec_control_checked"]])
+  check_fit_x_control(x_control, formula,
+                      retrieve_var(bdat, "x_var", error = TRUE), x_range,
+                      predictor_scale, report = !control_checked)
   # Check `data`, not `bdat`: a disp(~...) term's variables are kept out of the
   # model frame, because brm() reads them from the user's data frame.
   check_disp_finite(formula, data)
@@ -979,6 +1007,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # model-averaging draw.
   group_seed <- brm_args[[".bayesnec_group_seed"]]
   brm_args[[".bayesnec_group_seed"]] <- NULL
+  brm_args[[".bayesnec_control_checked"]] <- NULL
   # Each flag below says that bnec_group() has already made that check or
   # report once over every level, so this level's call does not repeat it.
   flatness_checked <- isTRUE(brm_args[[".bayesnec_flatness_checked"]])
@@ -1051,6 +1080,9 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # This must precede the flatness report, which checks the survival block of a
   # two-block fit against the equation that block will use.
   model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
+  check_control_top_prior(bdat, brm_args$family, model, brm_args$prior,
+                          prior_type, x_control, formula,
+                          model_survival = model_survival)
   # Report a response still declining at the top of the series. A partial prior
   # does not silence the report, because fill_missing_priors() fills the omitted
   # bot, nec and ec50 rows from the same defaults.
@@ -1065,7 +1097,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
       bdat, brm_args$family,
       blocks = names(sensitive_blocks)[sensitive_blocks],
       pool_dispersion = is.null(parse_disp_term(formula)),
-      asymptote_observed = asymptote_observed
+      asymptote_observed = asymptote_observed,
+      x_control = fitted_x_control(x_control, formula)
     )
   }
   # Make the asymptote declaration after the report it answers and before the
@@ -1125,6 +1158,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                        brm_args = brm_args, prior_type = prior_type,
                        asymptote_observed = asymptote_observed,
                        predictor_scale = predictor_scale,
+                       x_control = x_control,
                        timeout = timeout, model_survival = model_survival),
           silent = FALSE
         )
@@ -1139,6 +1173,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
            brm_args = brm_args, prior_type = prior_type, timeout = timeout,
            asymptote_observed = asymptote_observed,
            predictor_scale = predictor_scale,
+           x_control = x_control,
            model_survival = model_survival,
            description_reader = description_reader)
     )
@@ -1192,6 +1227,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                             brm_args = brm_args, prior_type = prior_type,
                             asymptote_observed = asymptote_observed,
                             predictor_scale = predictor_scale,
+                            x_control = x_control,
                             timeout = timeout,
                             model_survival = model_survival)
     mod_fit <- expand_nec(mod_fit, formula = formula, x_range = x_range,
@@ -1227,6 +1263,18 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
 #'
 #' @noRd
 message_control_fit <- function(x, cutoff = 1.15) {
+  stated <- recorded_x_control(x)
+  if (!is.null(stated)) {
+    one <- if (inherits(x, "bayesmanecfit")) grid_equation(x) else x
+    frame <- model.frame(one$bayesnecformula, data = one$fit$data)
+    x_var <- attr(frame, "bnec_pop")[["x_var"]]
+    if (!any(one$fit$data[[x_var]] == stated)) {
+      message("No observation is at the stated control concentration, ",
+              signif(stated, 3), ". check_fit() has no control group to",
+              " assess; the control response is predicted from the curve.")
+      return(invisible(NULL))
+    }
+  }
   flagged <- try(control_fit_issues(x, cutoff), silent = TRUE)
   if (inherits(flagged, "try-error") || is.null(flagged)) {
     return(invisible(NULL))

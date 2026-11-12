@@ -23,6 +23,7 @@ bnec(
   timeout = Inf,
   model_survival = NULL,
   predictor_scale = "auto",
+  x_control = NULL,
   ...
 )
 }
@@ -48,8 +49,8 @@ predictions, and over which to extract ECx values. Large values will be
 slower but more precise.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values against the lowest observed
-concentration (assumed to be the control), to estimate NEC as an
+significance of the predicted posterior values against the control
+concentration, to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.}
 
 \item{loo_controls}{A named \code{\link[base]{list}} of up to five
@@ -152,13 +153,16 @@ the curve. Where the mean
 response at the highest concentration is below the mean at the second
 highest by more than the contrast's standard error admits, tested one-sided
 at the 5\% level under the mean-variance relationship of the fitted family,
-\code{\link{bnec}} reports that before fitting: an equation that estimates
-\code{bot} then has a prior describing the observed endpoint rather than the
-asymptote, and the \code{nec} and \code{ec50} priors, which are bounded to
-the tested range, exclude a threshold above that range. Inspect the
-generated entries with \code{\link{get_priors}} and pass a scientifically
-justified prior through \code{prior} where information beyond the design is
-available.
+\code{\link{bnec}} reports the contrast before fitting, with the highest
+mean relative to the control mean. With \code{asymptote_observed = TRUE},
+where it advises that the lower asymptote may be unobserved, an equation
+estimating \code{bot} can have a default prior describing the observed
+endpoint rather than the asymptote, and the default \code{nec} and \code{ec50}
+priors exclude a threshold above the tested range.
+Inspect the generated entries with \code{\link{get_priors}} and pass a
+scientifically justified prior through \code{prior} where information
+beyond the design is available. The \code{asymptote_observed} section gives
+the control-relative rule for that advice.
 Neither value of \code{prior_type} corrects a design that stopped before the
 asymptote; \code{asymptote_observed} is the argument for that. With a
 \code{disp("power")} term on a \code{Gamma}, \code{gaussian} or
@@ -184,8 +188,10 @@ variation between groups.}
 highest predictor level reached the lower asymptote of the curve. The default
 \code{TRUE} is the assumption both default prior sets are built on. Under it
 the \code{nec} and \code{ec50} priors are bounded to the tested range, from
-the lowest predictor value to the highest, because on a design that reached
-the asymptote the decline begins, and passes its midpoint, inside that range.
+the control concentration (the lowest predictor value unless
+\code{x_control} states another) to the highest, because on a design that
+reached the asymptote the decline begins, and passes its midpoint, inside
+that range.
 \code{FALSE} states that the series stopped short of the asymptote, which
 changes the \code{bot} prior, removes the upper bound of the \code{nec} and
 \code{ec50} priors, and widens the initial-value search. The \code{bot}
@@ -204,7 +210,7 @@ fit then falls back to \pkg{Stan}'s own initialisation.
 
 Without the upper bound, a threshold above the highest concentration lies in
 the tail of the \code{nec} or \code{ec50} prior rather than outside its
-support. The lower bound stays at the lowest value tested. How far into the
+support. The lower bound stays at the control concentration. How far into the
 tail is a property of the branch and of \code{prior_type} together rather
 than of either alone. Three of the four combinations set the spread by a
 coverage rule that reaches the farthest concentration tested, at the 95\%
@@ -235,10 +241,17 @@ censored there; see the \code{extrapolate} argument of \code{\link{nec}}.
 
 The declaration is the user's because the data cannot make it: a flat
 response at the top of the series is what a complete design and a truncated
-one both look like. \code{\link{bnec}} reports a response still declining at
-the top of the series before it fits anything, which is evidence that the
-design is incomplete, and it cannot supply evidence that a flat one is
-complete.
+one both look like. \code{\link{bnec}} reports a significant decline between
+the two highest predictor levels before fitting. For each declining response
+block it states the highest mean as a percentage of the mean at the stated
+control, or at the lowest predictor level when no control is stated. When
+no control response was observed, that percentage is unavailable. Under
+\code{TRUE}, the report advises considering
+an unobserved asymptote when the absolute ratio to a finite, positive
+control mean exceeds 5\%, or when that ratio cannot be calculated. A smaller
+mean near zero can still decline significantly, so the contrast is reported
+without that advice. The 5\% threshold governs the message; it does not
+establish whether the lower asymptote was observed.
 
 A gaussian response spanning negative values, and any response fitted on a
 link other than the identity, has no floor that can be derived from the data,
@@ -295,6 +308,19 @@ concentrations. Values alone cannot identify a logged predictor whose minimum
 is non-negative, so use \code{"log"} whenever the predictor has already been
 logged. The argument affects only defaults generated by \pkg{bayesnec}; a
 complete prior supplied through \code{prior} is unchanged.}
+
+\item{x_control}{\code{NULL} uses the lowest observed predictor value as
+the control. One finite number states the control concentration on the
+recorded predictor scale. It sets the lower bound of the default
+\code{nec} and \code{ec50} priors, the prediction grid, the stored
+no-effect estimate, and the defaults of \code{ecx()}, \code{nsec()}
+and \code{ecnsec()}. It must lie below the highest observed value, and
+cannot be negative, after any \code{crf()} transformation, where the
+predictor is treated as a concentration (see \code{predictor_scale}). If
+\code{x_range} is supplied, its lower end must equal the control.
+A control below the observed range extrapolates the curve. With
+\code{prior_type = "regularizing"}, an unobserved control requires a
+supplied \code{top} prior.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}}.}
 }

@@ -33,7 +33,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   extracted_params <- lapply(extract_params, extract_pars, fit)
   names(extracted_params) <- gsub("^nec$", "ne", extract_params)
   grid <- prediction_grid(fit, formula, x_range = x_range,
-                          resolution = resolution)
+                          resolution = resolution,
+                          x_control = recorded_x_control(object))
   new_dat <- grid$newdata
   x_seq <- grid$x_seq
   # pull_equation() skips the level predictions: its estimators read the
@@ -81,17 +82,17 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # on. Used for smooth equations, hormesis threshold equations, and any
   # two-block fit whose combined endpoint has no flat no-effect region.
   nsec_off_curve <- function(post) {
-    control_x <- min(fit$data[[grid$x_var]])
-    control <- if (identical(pred_data$x[1], control_x)) {
+    control_at <- control_x(object)
+    control <- if (identical(pred_data$x[1], control_at)) {
       post[, 1]
     } else {
       control_nd <- new_dat[1, , drop = FALSE]
-      control_nd[[grid$x_var]] <- control_x
+      control_nd[[grid$x_var]] <- control_at
       factorised_count_epred(fit, formula, newdata = control_nd,
                             re_formula = NA)[, 1]
     }
     reference <- quantile(control, sig_val)
-    out <- nsec_from_posterior(post, reference, pred_data$x, control_x,
+    out <- nsec_from_posterior(post, reference, pred_data$x, control_at,
                                control)
     below <- attr(out, "below_range")
     above <- is.na(out) & !below
@@ -222,7 +223,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   if (!is.null(observed)) {
     level_fit <- allot_class(
       list(fit = fit, bayesnecformula = formula, model = object$model,
-           ne_posterior = ne_posterior),
+           ne_posterior = ne_posterior,
+           x_control = recorded_x_control(object)),
       c("bayesnecfit", "bnecfit")
     )
     ne_posterior <- if (!is.null(hurdle_parts) &&
@@ -236,7 +238,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
           re_formula = observed$re_formula, transform = TRUE
         )[, 1])
         out <- pmin(level$ne_posterior, hu_ne)
-        bounds <- sub_x_transformation(range(level$level_x), formula)
+        bounds <- sub_x_transformation(level_read_span(level), formula)
         attr(out, "censored") <- censoring_record(
           max(bounds), min(bounds), out >= max(bounds),
           out <= min(bounds)
@@ -345,12 +347,13 @@ extract_par_order <- function() {
 #'
 #' @noRd
 prediction_grid <- function(fit, formula, x_range = NA, resolution = 1000,
-                            level_spec = NULL) {
+                            level_spec = NULL, x_control = NULL) {
   mod_dat <- model.frame(formula, data = fit$data)
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   if (is.na(x_range[1])) {
     x <- fit$data[[x_var]]
-    x_seq <- seq(min(x), max(x), length = resolution)
+    lower <- if (is.null(x_control)) min(x) else x_control
+    x_seq <- seq(lower, max(x), length = resolution)
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = resolution)
   }
@@ -429,9 +432,11 @@ add_grid_levels <- function(newdata, level_spec, n_x) {
 #' @importFrom brms posterior_epred
 #'
 #' @noRd
-posterior_on_grid <- function(fit, formula, x_range = NA, resolution = 1000) {
+posterior_on_grid <- function(fit, formula, x_range = NA, resolution = 1000,
+                              x_control = NULL) {
   new_dat <- prediction_grid(fit, formula, x_range = x_range,
-                             resolution = resolution)$newdata
+                             resolution = resolution,
+                             x_control = x_control)$newdata
   factorised_count_epred(fit, formula, newdata = new_dat, re_formula = NA)
 }
 

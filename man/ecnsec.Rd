@@ -57,11 +57,14 @@ estimates at each draw, and \code{"mean_curve"} estimates from their weighted
 mean curve. A joint fit defaults to \code{"none"}; other fits with spanning group
 terms default to \code{"mixture"}.}
 
-\item{x_control}{\code{"own"} reads each level's lowest observed concentration;
-\code{"shared"} reads the lowest across levels; a single finite number specifies
-the concentration directly. A shared control below a level's observations
-extrapolates its curve and gives a warning. Level controls are recorded in
-the result's \code{x_control} attribute.}
+\item{x_control}{\code{"own"} reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+\code{x_control}. \code{"shared"} reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
 }
 \value{
 A vector containing the estimated ECNSEC value, including upper and
@@ -95,7 +98,7 @@ share are chosen for each level independently. The levels can therefore be
 contrasted draw by draw, as \code{\link{compare_posterior}} does.
 
 The effect is measured from the control --- the predicted mean at the
-lowest concentration in the supplied predictor, per posterior draw --- and
+control concentration, per posterior draw --- and
 \code{type} names what it is measured towards, exactly as in
 \code{\link{ecx}}: "absolute" (the default) towards 0, "relative" towards
 the equation's theoretical asymptote, "range" towards the lowest response

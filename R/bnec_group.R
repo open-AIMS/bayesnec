@@ -27,8 +27,9 @@
 #' to their observation counts; \code{"mean_estimate"} averages their
 #' estimates and \code{"mean_curve"} reads the estimate from their weighted
 #' mean curves. A NEC parameter has no curve to average, so \code{nec()} does
-#' not accept \code{"mean_curve"}. Each level uses its own lowest observed
-#' concentration as the control by default. \code{x_control = "shared"} or a
+#' not accept \code{"mean_curve"}. Each level uses the control recorded at
+#' fitting, or its own lowest observed concentration if none was stated.
+#' \code{x_control = "shared"} or a
 #' number reads all levels at one concentration and warns where this lies
 #' below a level's observations.
 #'
@@ -264,6 +265,33 @@ bnec_group <- function(formula, data, group_var, family = NULL,
     level_survival <- suppressMessages(
       check_model_survival(dots_arg(dots, "model_survival"), family, mod_dat)
     )
+    stated_control <- dots_arg(dots, "x_control")
+    for (level in levs) {
+      level_frame <- mod_dat[grp == level, , drop = FALSE]
+      attr(level_frame, "bnec_pop") <- attr(mod_dat, "bnec_pop")
+      check_fit_x_control(stated_control, formula,
+                          retrieve_var(level_frame, "x_var", error = TRUE),
+                          dots_arg(dots, "x_range", NA), predictor_scale,
+                          report = FALSE)
+      check_control_top_prior(
+        level_frame, family, level_models[[level]], dots_arg(dots, "prior"),
+        dots_arg(dots, "prior_type", "uninformative"), stated_control,
+        formula, model_survival = level_survival
+      )
+    }
+    if (!is.null(stated_control)) {
+      at <- fitted_x_control(stated_control, formula)
+      lows <- vapply(levs, function(level) min(retrieve_var(
+        mod_dat[grp == level, , drop = FALSE], "x_var", error = TRUE
+      )), numeric(1))
+      if (any(at < lows)) {
+        message("The control at ", signif(stated_control, 3),
+                " is below the lowest observed concentration in ",
+                sum(at < lows), " group level(s); those curves",
+                " are extrapolated from the control to the data.")
+      }
+      dots[[".bayesnec_control_checked"]] <- TRUE
+    }
     sensitive_blocks <- lapply(level_models, function(models) {
       uses_response_range_defaults(dots_arg(dots, "prior"), models, family,
                                    level_survival)
@@ -275,7 +303,8 @@ bnec_group <- function(formula, data, group_var, family = NULL,
           names(blocks)[blocks]
         }),
         pool_dispersion = is.null(parse_disp_term(formula)),
-        asymptote_observed = declared
+        asymptote_observed = declared,
+        x_control = fitted_x_control(stated_control, formula)
       )
     }
     # The union of the per-level sets: every equation some level will fit.
