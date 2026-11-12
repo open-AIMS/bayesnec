@@ -3,7 +3,7 @@
 Written 2026-09-09, during the case-study sweep for the grouping vignette
 (#6, #33). This note records **where each candidate dataset came from and
 whether it can be shipped**. It does not record structure, response gradient or
-fit diagnostics; those are in `notes/tasks/228-grouping-vignette-claude.md`.
+fit diagnostics; those were in `notes/tasks/228-grouping-vignette-claude.md`, deleted when the work finished (`git show efce694a:notes/tasks/228-grouping-vignette-claude.md`).
 
 The purpose is to stop the same searches being repeated. Several of the
 conclusions below are negative results that took a disk-wide search to reach.

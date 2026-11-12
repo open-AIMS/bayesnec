@@ -415,7 +415,7 @@ RF, 2026-09-12: a real example is needed before deciding.
 # The backlog run
 
 Answers given by RF on 2026-09-26 on the plan in
-`notes/tasks/backlog-run-human.md`. The evidence and alternatives for each are in
+`notes/tasks/backlog-run-human.md` (deleted; `git show 9bca4808:notes/tasks/backlog-run-human.md`). The evidence and alternatives for each are in
 `git show 9895f097:notes/tasks/backlog-run-claude.md` §5, under the question number given, and each
 ruling is also posted as a comment headed "Decision" on its issue.
 

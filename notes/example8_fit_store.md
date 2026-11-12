@@ -64,7 +64,7 @@ compendium's `hpc/bayesnec.lock` pins `dd9e2944`, a commit on PR #402's branch
 from before PR #409. Its fits are not what the current code fits, and the check
 above refuses it. It has to be refitted once PR #402 has merged into `predev`.
 No other item of the backlog run changes what `example8` fits
-(`notes/tasks/backlog-run-claude.md` §4, *The precompile and the store refit*).
+(§4 of the backlog-run plan, since deleted: `git show 9bca4808:notes/tasks/backlog-run-claude.md`).
 
 ## Refitting a store
 
