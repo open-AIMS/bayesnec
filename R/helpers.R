@@ -3168,7 +3168,7 @@ first_in_call <- function(what) {
     if (is.name(head)) as.character(head) else ""
   }, character(1))
   outer <- match(TRUE, heads %in% c("nec", "nsec", "ecx", "ecnsec",
-                                    "exceedance"))
+                                    "exceedance", "summary"))
   if (is.na(outer)) {
     return(TRUE)
   }
