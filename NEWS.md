@@ -1,12 +1,25 @@
-# bayesnec 2.2.0
+# bayesnec 3.0.0
 
 ## Breaking changes
+
+### Removed functions, methods and arguments
 
 - `average_estimates()` is removed. To combine estimates from several fits,
   call `nec()`, `nsec()` or `ecx()` with `posterior = TRUE` on each fit and
   combine the draws (#403).
 
-- `nec()`, `nsec()`, `ecx()`, `ggbnec_data()`, `plot()` and `autoplot()` now
+- `nsec()` no longer has methods for `brmsfit` and `drc` objects. Use
+  `toxval::nsec()` for those fits (#555).
+
+- `ecx()`, `nsec()`, `compare_estimates()` and `compare_posterior()` no longer
+  take `hormesis_def`. Every ECx and NSEC is measured from the control, which
+  is what the default `hormesis_def = "control"` selected. `ecx()` and
+  `nsec()` stop with an error that names the argument; remove it from the
+  call. Nothing replaces `hormesis_def = "max"` (#195).
+
+### Changed defaults
+
+- `nec()`, `nsec()`, `ecx()`, `ggbnec_data()`, `plot()` and `autoplot()`
   default to `xform = NULL`, and `summary()` reports on the same scale. Where
   `crf()` transforms the predictor inline, as in `crf(log(concentration))`, an
   estimate is returned on the scale the predictor was recorded on, a
@@ -14,6 +27,37 @@
   pass `xform = exp` return the same values as before. Write
   `xform = identity` to keep the transformed scale. A fit whose predictor is
   an untransformed column is unaffected. See `?nec` (#299).
+
+- The default `resolution` of `ecx()` and `nsec()` is 500 instead of 1000, and
+  both find where the curve reaches the target by interpolation rather than
+  at the nearest grid point. The grid `bnec()` stores with a fit is unchanged
+  (#325, #527).
+
+- `bnec()` fits on the identity link unless the call writes a link. A family
+  object such as `Beta()`, `Gamma()`, `binomial()` or `poisson()` kept the link
+  of its constructor in 2.1.3.1 (logit, inverse, logit, log), and now fits on
+  the identity link, so estimates and default priors change. Write
+  `Beta(link = "logit")` to keep the earlier model. `update()` applies the same
+  rules to a supplied family. See the link section of `?bnec` (#256).
+
+- `rhat()` uses a cutoff of 1.01 instead of 1.05 and ignores the `prior_*`
+  draws (#148).
+
+- `compare_estimates()`, `compare_fitted()`, `compare_posterior()` and
+  `sample_priors()` gain `seed`, 10 by default, and leave the session's random
+  number stream unchanged, so a preceding `set.seed()` no longer changes their
+  results. `compare_estimates()` and `compare_fitted()` pair a random subset of
+  the longer posterior rather than its first draws. Results differ from
+  2.1.3.1 (#218, #343).
+
+- `amend()`, `update()`, `pull_out()` and `c()` reuse the `x_range`,
+  `resolution`, `sig_val` and `loo_controls` a model set was fitted with,
+  where 2.1.3.1 reset them to the defaults. An equation added by `amend()`
+  takes the set's `prior`, `prior_type`, `asymptote_observed`,
+  `predictor_scale`, `control` and `seed`. A set fitted by 2.1.3.1 records none
+  of these settings, so the defaults still apply to it (#489, #522).
+
+### Changed estimates for the same call
 
 - `nsec()` and `ecx()` no longer set a posterior draw whose curve does not
   reach the target within the prediction range to the end of that range, and
@@ -26,33 +70,121 @@
   that post-processes the draws must handle `NA`. A posterior with no
   censored draw is summarised as before. See `?nec` (#39, #395).
 
-- `compare_estimates()` and `compare_posterior()` compare a censored draw
-  through its `censored` attribute. `prob_diff` gains `prob_lower` and
-  `prob_upper`, and `prob` is `NA` where censoring leaves the order of some
-  pairs undetermined, so code reading `prob` must handle `NA` (#404).
+- `ecx()` and `nsec()` measure every estimate from the control, the predicted
+  mean at the lowest observed concentration or at the `x_control` given to
+  `bnec()`, and search for the target from the control upwards. Supplying
+  `x_range` no longer changes the reference (#195, #527, #586, #589).
 
-- `ecx()`, `nsec()`, `compare_estimates()` and `compare_posterior()` no longer
-  take `hormesis_def`. Every ECx and NSEC is measured from the control, the
-  predicted mean at the lowest observed concentration, which is what the
-  default `hormesis_def = "control"` selected. `ecx()` and
-  `nsec()` stop with an error that names the argument; remove it from the
-  call. Nothing replaces `hormesis_def = "max"` (#195).
-
-- `ecx(type = "relative")` now measures from the control to the equation's
-  lower asymptote, `bot`, or to 0 for an equation without one, and warns that
-  its meaning has changed. The quantity 2.1.3.1 reported, from the top of the
+- `ecx(type = "relative")` measures from the control to the equation's lower
+  asymptote, `bot`, or to 0 for an equation without one, and warns that its
+  meaning has changed. The quantity 2.1.3.1 reported, from the top of the
   fitted curve to its lowest point, is now `type = "range"`, measured from the
   control. `type = "relative"` is an error for an equation without `bot` on a
   family unbounded below, such as `nec3param` on a gaussian response. The same
   applies to `compare_estimates()` and `compare_posterior()` (#195).
 
-- `bnec()` fits on the identity link unless the call writes a link. A family
-  object such as `Beta()`, `Gamma()`, `binomial()` or `poisson()` previously
-  kept the link of its constructor (logit, inverse, logit, log), and now fits
-  on the identity link, so estimates and default priors change. Write
-  `Beta(link = "logit")` to keep the earlier model. A link other than
-  identity, log or logit is refused. `update()` applies the same rules to a
-  supplied family. See the link section of `?bnec` (#256).
+- The `ecnsec_relativeP` attribute of `nsec()` is the percent effect at the
+  NSEC measured from the control (#195).
+
+- `nec()`, `summary()` and the plots report the NSEC as the no-effect estimate
+  of the six hormesis threshold equations, `nechorme`, `nechorme4`,
+  `neclinhorme`, `nechormepwr`, `nechorme4pwr` and `nechormepwr01`, where
+  2.1.3.1 reported their `nec` parameter. That parameter is the concentration
+  at which the decline term starts, where the response can still be above the
+  control, and `curve_params()` reports it. The model-averaged N(S)EC changes
+  wherever these equations contribute. `nec()` still returns the sampled `nec`
+  of `nec3param`, `nec4param`, `neclin` and `necsigm` (#570).
+
+- The default `nec` and `ec50` prior is a lognormal centred on the median of
+  the log of the distinct positive concentrations, or a normal for a predictor
+  already on the log scale, so replicates no longer shift it. It is still
+  bounded to the tested range (#269, #302, #314, #483).
+
+- The default `top` and `bot` priors for a `poisson` or `negbinomial`
+  response that contains zeros are scaled from its positive values (#210,
+  #232).
+
+- `bnec()` sets default priors on group-level standard deviations and on the
+  `ogl()` intercept, which 2.1.3.1 left at the brms defaults (#245, #257).
+
+- The initial-value search accepts each chain separately, checks the curve
+  against a band built from the level means, and re-draws a single parameter
+  when a full draw fails. A fit with the same seed therefore starts from other
+  initial values than under 2.1.3.1, and fewer fits fall back to Stan's random
+  initialisation (#162, #266, #309).
+
+- `bnec()` no longer replaces a zero in the predictor with a tenth of the
+  smallest positive value. The control is fitted at 0, which changes the
+  estimates of such fits (#269).
+
+- The default model set and the `"ecx"` and `"decline"` groups include
+  `ecxflat`, a new equation whose mean is constant, so model weights and
+  model-averaged estimates change (#419, #485).
+
+- A gaussian model set keeps the equations of the `zero_bounded` group, which
+  2.1.3.1 excluded, so a default gaussian fit includes eleven more equations
+  (#206).
+
+- `nechormepwr` and `nechorme4pwr` are excluded for `bernoulli`, `binomial`,
+  `beta_binomial` and `Beta` responses on the identity link, and
+  `ecxhormebc5` for a predictor with negative values on a family whose mean
+  cannot be negative (#177, #344).
+
+- Where each level of a group-level term is observed at a single
+  concentration, such as `ogl(conc_group)` on `lum31`, model weights are
+  computed by leaving out each level whole rather than each observation.
+  `loo_controls = list(leave_out = "observation")` restores the earlier score
+  (#529, #531).
+
+- `c()`, `+` and `update()` weight a model set by pseudo-BMA, as `bnec()`
+  does; 2.1.3.1 used stacking (#320).
+
+- Model-averaged estimates and predictions are drawn once when a model set is
+  built and recorded in `w_draw_index`, so `fitted()`, `posterior_epred()`,
+  `ecx()` and `nsec()` give the same result on every call (#216).
+
+- `bnec()` fits a model set with a group-level term at `adapt_delta = 0.99`
+  where the family bounds the mean and a group-level term could take it
+  outside that bound. A value supplied in `control` takes precedence (#257,
+  #294).
+
+- Group-level deviations on a family whose mean is bounded, fitted on the
+  identity link, are applied multiplicatively: on the odds for `Beta`,
+  `binomial`, `bernoulli` and `beta_binomial`, and on the value for `Gamma`,
+  `poisson` and `negbinomial`. This applies to an `ogl()` deviation, for the
+  equations whose curve stays inside the bounds of the family, and to a
+  `pgl()`, `(top | g)` or `(bot | g)` term on `top` or `bot`. The standard
+  deviation of a term on `top` or `bot` is then reported as
+  `sd(topgl_Intercept)` or `sd(botgl_Intercept)`, on the log or log-odds
+  scale, so code that reads those draws by name must use the new names. See
+  `?bayesnecformula` (#257, #294).
+
+- A user prior that omits a parameter is completed from the default priors,
+  with a warning naming each parameter filled, rather than leaving it on the
+  flat prior of brms (#207).
+
+- `bnec()` and `bnec_group()` fit `ecxflat` alone, with a message, to a
+  `bernoulli`, `binomial`, `beta_binomial` or `Beta` response at one bound in
+  every observation (#400, #419, #441).
+
+### Changed return values
+
+- A fitted object no longer holds `pred_vals$posterior`, and a model set no
+  longer holds `w_pred_vals$posterior`. Obtain the matrix with
+  `posterior_epred(fit, newdata = bnec_newdata(fit, resolution = 1000),
+  re_formula = NA)`. Objects saved by 2.1.3.1 keep it (#180, #213).
+
+- `compare_estimates()` and `compare_posterior()` compare a censored draw
+  through its `censored` attribute. `prob_diff` gains `prob_lower` and
+  `prob_upper`, and `prob` is `NA` where censoring leaves the order of some
+  pairs undetermined, so code reading `prob` must handle `NA` (#404).
+
+- The `"toxicity_estimate"` attribute of a `nec()` result is `"nec"` where
+  every draw is a sampled NEC, `"nsec"` where every draw is an NSEC, and
+  `"n(s)ec"` where a model set or a hurdle fit combines the two. 2.1.3.1 set
+  it to `"nec"` whatever the equation (#570).
+
+### Newly refused input
 
 - `bnec()` refuses a `brms` additional-response term other than `trials()`,
   `weights()`, `cens()` and `rate()`. 2.1.3.1 passed such a term on after a
@@ -71,24 +203,28 @@
   bare column and, under an inline transformation, fitted the complete rows
   without saying so (#278).
 
-- A fitted object no longer holds `pred_vals$posterior`, and a model set no
-  longer holds `w_pred_vals$posterior`. Obtain the matrix with
-  `posterior_epred(fit, newdata = bnec_newdata(fit, resolution = 1000),
-  re_formula = NA)`. Objects saved by 2.1.3.1 keep it (#180, #213).
+- `bnec()` refuses a link other than identity, log or logit (#256).
 
-- Group-level deviations on a family whose mean is bounded, fitted on the
-  identity link, are applied multiplicatively: on the odds for `Beta`,
-  `binomial`, `bernoulli` and `beta_binomial`, and on the value for `Gamma`,
-  `poisson` and `negbinomial`. This applies to an `ogl()` deviation, for the
-  equations whose curve stays inside the bounds of the family, and to a
-  `pgl()`, `(top | g)` or `(bot | g)` term on `top` or `bot`. The standard
-  deviation of a term on `top` or `bot` is then reported as
-  `sd(topgl_Intercept)` or `sd(botgl_Intercept)`, on the log or log-odds
-  scale, so code that reads those draws by name must use the new names. A user
-  prior on `top` or `bot` without the bounds of the family is refused where
-  such a term applies to it. A data column named `bnecmu`, `ogl`, `topgl`,
-  `bnectop`, `botgl` or `bnecbot` is refused. See `?bayesnecformula` (#257,
-  #294).
+- `bnec()` refuses a data column named `bnecmu`, `ogl`, `topgl`, `bnectop`,
+  `botgl` or `bnecbot`, and a user prior on `top` or `bot` without the bounds
+  of the family where a group-level term applies to it (#257, #294).
+
+- `bnec()` and `amend()` refuse a malformed prior before fitting, where they
+  replaced it with the default (#543, #552).
+
+- `bnec()`, `amend()` and `update()` refuse a `resolution` below 2, and an
+  `x_range` with one end missing (#211, #325).
+
+- `bnec()` refuses a name in `loo_controls$weights` that the weighting
+  function does not take, which 2.1.3.1 ignored (#583).
+
+- `bnec()` refuses a `poisson` or `negbinomial` response with no positive
+  value, and a `Beta` response of 0 in every observation (#210, #232, #400).
+
+- `c()` refuses to combine a fit from 2.1.3.1 whose zero predictor was
+  replaced with a new fit of the same data; refit it (#269).
+
+### Dependencies
 
 - bayesnec requires brms 2.23.0 or later and imports modelbased. It no longer
   imports evaluate. `bnec_hurdle()` with a count growth family needs brms
@@ -317,98 +453,21 @@
 - New datasets: `alga`, `coral_colour`, `coral_pam`, `lum31` and `nassarius`
   (#6, #33, #173, #181, #301).
 
-## Changed defaults and behaviour
+## Other changes
 
-- The default `nec` and `ec50` prior is now a lognormal centred on the median
-  of the log of the distinct positive concentrations, or a normal for a
-  predictor already on the log scale, so replicates no longer shift it. It is
-  still bounded to the tested range. Default fits therefore give different
-  estimates from 2.1.3.1 (#269, #302, #314, #483).
+- `summary()` of a model set flags an equation whose Rhat exceeds the new
+  `rhat_cutoff` argument, 1.01 by default (#148).
 
-- The default `top` and `bot` priors for a `poisson` or `negbinomial`
-  response that contains zeros are scaled from its positive values. A
-  response with no positive value is refused (#210, #232).
+- `pull_out()` gains `x_range`, `resolution` and `sig_val` (#489).
 
-- `bnec()` sets default priors on group-level standard deviations and on the
-  `ogl()` intercept, which 2.1.3.1 left at the brms defaults (#245, #257).
-
-- A user prior that omits a parameter is completed from the default priors,
-  with a warning naming each parameter filled, rather than leaving it on the
-  flat prior of brms (#207).
-
-- `bnec()` fits a model set with a group-level term at `adapt_delta = 0.99`
-  where the family bounds the mean and a group-level term could take it
-  outside that bound. A value supplied in `control` takes precedence (#257,
-  #294).
-
-- The initial-value search accepts each chain separately, checks the curve
-  against a band built from the level means, and re-draws a single parameter
-  when a full draw fails. A fit with the same seed therefore starts from other
-  initial values than under 2.1.3.1, and fewer fits fall back to Stan's random
-  initialisation. A search still running after 20 seconds says so (#162,
-  #266, #309).
-
-- The default model set and the `"ecx"` and `"decline"` groups include
-  `ecxflat`, so model weights and model-averaged estimates change (#485).
-
-- A gaussian model set keeps the equations of the `zero_bounded` group, which
-  2.1.3.1 excluded, so a default gaussian fit includes eleven more equations
-  (#206).
-
-- `nechormepwr` and `nechorme4pwr` are excluded for `bernoulli`, `binomial`,
-  `beta_binomial` and `Beta` responses on the identity link, and
-  `ecxhormebc5` for a predictor with negative values on a family whose mean
-  cannot be negative (#177, #344).
-
-- `bnec()` and `bnec_group()` fit `ecxflat` alone, with a message, to a
-  `bernoulli`, `binomial`, `beta_binomial` or `Beta` response at one bound in
-  every observation. A `Beta` response of 0 throughout is refused
-  (#400, #419, #441).
-
-- `bnec()` no longer replaces a zero in the predictor with a tenth of the
-  smallest positive value. The control is fitted at 0, which changes the
-  estimates of such fits. `c()` refuses to combine a fit from 2.1.3.1 with a
-  corrected zero and a new fit of the same data; refit it (#269).
-
-- `ecx()` and `nsec()` measure every estimate from the control. They find
-  where the curve reaches the target by interpolation rather than at the
-  nearest grid point, and their default `resolution` is 200 instead of 1000.
-  `ecx()` accepts any `ecx_val` above 0, and no longer refuses an absolute
-  ECx of a gaussian equation without `bot`. The `ecnsec_relativeP` attribute
-  of `nsec()` is now the percent effect measured from the control (#39, #195,
-  #206, #325, #395).
-
-- `rhat()` uses a cutoff of 1.01 instead of 1.05 and ignores the `prior_*`
-  draws, and `summary()` of a model set flags an equation by the same rule,
-  set by its new `rhat_cutoff` argument (#148).
-
-- Model-averaged estimates and predictions are drawn once when a model set is
-  built and recorded in `w_draw_index`, so `fitted()`, `posterior_epred()`,
-  `ecx()` and `nsec()` give the same result on every call (#216).
-
-- `compare_estimates()`, `compare_fitted()`, `compare_posterior()` and
-  `sample_priors()` gain `seed`, 10 by default, and leave the session's
-  random number stream unchanged, so a preceding `set.seed()` no longer
-  changes their results. `compare_estimates()` and `compare_fitted()` pair a
-  random subset of the longer posterior rather than its first draws. Results
-  differ from 2.1.3.1 (#218, #343).
-
-- `amend()`, `update()`, `pull_out()` and `c()` reuse the `x_range`,
-  `resolution`, `sig_val` and `loo_controls` a model set was fitted with,
-  where 2.1.3.1 reset them to the defaults. An equation added by `amend()`
-  takes the set's `prior`, `prior_type`, `asymptote_observed`,
-  `predictor_scale`, `control` and `seed`. `pull_out()` gains `x_range`,
-  `resolution` and `sig_val`. A set fitted by 2.1.3.1 records none of these
-  settings, so the defaults still apply to it (#489, #522).
+- The initial-value search says so when it is still running after 20 seconds
+  (#309).
 
 - `bnec()` reports, once per call, each value of the response it shifts off a
   boundary of the family (#93).
 
 - `bnec()` reports a response that appears normalised to the control or to
   its maximum (#173).
-
-- `bnec()`, `amend()` and `update()` refuse a `resolution` below 2, and an
-  `x_range` with one end missing (#211, #325).
 
 - A fit no longer stores the environment its formula was written in, only the
   objects the formula uses that the data do not supply, so saved fits are
@@ -498,9 +557,6 @@
 - `amend()`, `c()` and `+` recompute the LOO and WAIC criteria of every
   equation, so the weights of a combined set come from the same settings
   (#522).
-
-- `c()`, `+` and `update()` weight a model set by pseudo-BMA, as `bnec()`
-  does; 2.1.3.1 used stacking (#320).
 
 - The `sample_size` of a model set counts the draws each equation holds where
   `thin` does not divide the post-warmup iterations (#477).
