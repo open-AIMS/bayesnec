@@ -763,8 +763,8 @@ test_that("every audited method has a bayesnechurdlefit method or a branch", {
   s3 <- c("summary", "print", "plot", "autoplot", "ggbnec_data", "predict",
           "fitted", "posterior_epred", "posterior_predict", "nsec", "nec",
           "ecx", "ecnsec", "rhat", "check_chains", "check_priors",
-          "model.frame", "pull_brmsfit", "bnec_newdata",
-          "update", "amend", "c")
+          "check_fit", "curve_params", "model.frame", "pull_brmsfit",
+          "bnec_newdata", "update", "amend", "c")
   for (g in s3) {
     expect_true(!is.null(getS3method(g, "bayesnechurdlefit", optional = TRUE)),
                 label = paste0(g, ".bayesnechurdlefit"))
@@ -2117,4 +2117,27 @@ test_that("a hurdle update matches positional settings with or without new data"
       expect_equal(nrow(seen[[2]]$newdata), nrow(nd))
     }
   }
+})
+
+test_that("the hurdle diagnostics and accessors return one element per component", {
+  h <- hurdle_pair()
+  parts <- c("growth", "survival")
+  r <- rhat(h)
+  expect_named(r, parts)
+  expect_equal(r$growth, rhat(nec4param))
+  expect_equal(r$survival, rhat(nec4param))
+  mf <- model.frame(h)
+  expect_named(mf, parts)
+  expect_equal(mf$survival, model.frame(nec4param))
+  fits <- pull_brmsfit(h)
+  expect_named(fits, parts)
+  expect_identical(fits$growth, nec4param$fit)
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  # The plotting diagnostics say that the combined curve has no analogue.
+  expect_message(chains <- check_chains(h), "check_chains describes a single")
+  expect_named(chains, parts)
+  expect_message(priors <- check_priors(h), "check_priors describes a single")
+  expect_named(priors, parts)
+  expect_s3_class(priors$growth, "ggplot")
 })
