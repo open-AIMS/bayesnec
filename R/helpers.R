@@ -2354,7 +2354,6 @@ sub_x_transformation <- function(value, formula) {
 #' the control concentration, which is the estimate for such a draw.
 #' @return A \code{\link[base]{numeric}} value, or \code{NA}.
 #'
-#' @importFrom modelbased zero_crossings
 #' @noRd
 crossing_x <- function(y, target, x_vec, x_start = NA_real_) {
   if (all(is.na(y)) || is.na(target)) {
@@ -2366,8 +2365,8 @@ crossing_x <- function(y, target, x_vec, x_start = NA_real_) {
   if (!is.na(y[1]) && y[1] <= target) {
     return(x_start)
   }
-  # zero_crossings() stops on a single value instead of returning nothing.
-  # nsec_from_posterior() can pass one where x_range leaves one grid point.
+  # nsec_from_posterior() can pass a single value where x_range leaves one
+  # grid point, which has no interval to search.
   if (length(y) < 2) {
     return(NA_real_)
   }
@@ -2378,6 +2377,36 @@ crossing_x <- function(y, target, x_vec, x_start = NA_real_) {
   floor_x <- x_vec[floor(val)]
   ceiling_x <- x_vec[ceiling(val)]
   floor_x + (val - floor(val)) * (ceiling_x - floor_x)
+}
+
+#' The positions at which a series crosses zero
+#'
+#' Finds the roots of the linear interpolant of \code{v} over its index. The
+#' interpolant is evaluated at 101 equally spaced positions, a root is sought
+#' with \code{\link[stats]{uniroot}} between each pair that change sign, and
+#' a position at which it is exactly zero is a root too.
+#'
+#' @param v A \code{\link[base]{numeric}} vector of length 2 or more.
+#'
+#' @return A \code{\link[base]{numeric}} vector of positions on the index
+#' scale of \code{v}, or \code{NA} where there is none.
+#' @noRd
+zero_crossings <- function(v) {
+  # Keep this identical to modelbased::zero_crossings(), which it replaces:
+  # any change to the search moves every ECx and NSEC.
+  f <- stats::approxfun(seq_along(v), v)
+  positions <- seq(1, length(v), length.out = 101)
+  values <- f(positions)
+  roots <- positions[which(values == 0)]
+  sign_change <- which(values[1:100] * values[2:101] < 0)
+  for (i in sign_change) {
+    roots <- c(roots, stats::uniroot(f, lower = positions[i],
+                                     upper = positions[i + 1])$root)
+  }
+  if (length(roots) == 0) {
+    return(NA)
+  }
+  roots
 }
 
 #' Refuse a resolution that defines no interval
