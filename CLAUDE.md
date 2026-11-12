@@ -137,8 +137,9 @@ them; the current implementation and tests determine what is supported now.
 
 ## NEWS.md
 
-Everything above the last released section is one `# bayesnec 2.2.0` entry,
-stating the net change since `master`. Edit that entry; do not append to it.
+Everything above the last released section is one entry for the next
+release, stating the net change since `master`. Edit that entry; do not
+append to it.
 
 - Revise the existing bullet for a feature when a pull request changes it.
   Add a bullet only for a change no bullet yet describes.
