@@ -338,9 +338,8 @@ the same call returns.
   every fit over the same levels, and on WAIC otherwise. It refuses a set
   weighted by stacking (#33, #531).
 
-- `compare_posterior()` is generic. Its `bayesnecgroupfit` method compares
-  the levels of the factor, and a named list of fits is compared as before
-  (#33).
+- `compare_posterior()` accepts a `bayesnecgroupfit`, whose levels it
+  compares, as well as a named list of fits (#33).
 
 - `group_level_sd()` tabulates the group-level standard deviations of each
   equation, such as those of an `ogl()` or `pgl()` term, beside the
@@ -455,7 +454,7 @@ the same call returns.
   that each contrast keeps the dependence between levels estimated in one
   posterior. A group term the levels share, such as a batch in which both
   were tested, is read at the same value for every level at each draw.
-  Separate fits are paired at random, as before (#571, #574).
+  Separate fits are paired at random (#571, #574).
 
 - `nec()` on a `bayesnecjointfit` names each level's equation in a `model`
   column and the kind of its estimate in an `ne_type` column. It gives the
