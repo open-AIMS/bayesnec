@@ -280,3 +280,35 @@ test_that("no family drops ecxflat from a group (#485)", {
     expect_true("ecxflat" %in% names(models(range)), info = toString(range))
   }
 })
+
+test_that("the zero-probability block exclusions apply under every mean link", {
+  # The second block is 1 - curve on the identity link whatever the mean link.
+  two_block <- list(
+    validate_family(brms::hurdle_gamma(link = "log"), link_source = "link"),
+    validate_family(brms::zero_inflated_beta(link = "logit"),
+                    link_source = "link"),
+    validate_family(brms::hurdle_poisson(link = "log"), link_source = "link")
+  )
+  for (fam in two_block) {
+    expect_identical(fam[[paste0("link_", bayesnec:::hurdle_dpar(fam$family))]],
+                     "identity")
+    got <- suppressMessages(check_models(models()$all, fam))
+    expect_false(any(c("neclin", "neclinhorme", "ecxlin", "nechorme4pwr",
+                       "nechormepwr") %in% got), info = fam$family)
+    expect_true("nec4param" %in% got, info = fam$family)
+  }
+  rec <- attr(suppressMessages(check_models(
+    c("ecxlin", "nec4param"), two_block[[1]], record = TRUE
+  )), "excluded")
+  expect_identical(rec$model, "ecxlin")
+  expect_message(check_models(c("ecxlin", "nec4param"), two_block[[1]]),
+                 "zero-probability block is 0-1 bounded on the identity link")
+  # Under the identity link a Gamma mean block also drops nechormepwr01, and a
+  # beta mean block keeps it.
+  expect_false("nechormepwr01" %in% suppressMessages(
+    check_models(models()$all, validate_family("hurdle_gamma"))
+  ))
+  expect_true("nechormepwr01" %in% suppressMessages(
+    check_models(models()$all, validate_family("zero_inflated_beta"))
+  ))
+})
