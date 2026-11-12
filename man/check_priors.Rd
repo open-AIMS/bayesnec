@@ -20,7 +20,10 @@ empty character string will indicate the user wants to save the plots.}
 \code{\link{bayesmanecfit}}.}
 }
 \value{
-A plot of the prior and posterior parameter probability densities.
+For a \code{\link{bayesnecfit}}, a \code{\link[ggplot2]{ggplot}} of
+the prior and posterior probability densities of each parameter. For a
+\code{\link{bayesmanecfit}}, one such plot per equation is printed, or
+written to \code{filename}, and \code{NULL} is returned invisibly.
 }
 \description{
 Plots the prior and posterior parameter probability densities from an
