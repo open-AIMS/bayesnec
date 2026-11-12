@@ -109,9 +109,12 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
          " level. Call it on the fit of each level, as in",
          " lapply(fit$fits, dispersion).", call. = FALSE)
   }
-  # expand_nec() passes a prebayesnecfit, the stored form of one equation.
+  # expand_nec() passes a prebayesnecfit, the stored form of one equation, or
+  # a plain list holding the brmsfit of one.
+  one_equation <- is.list(model) && !inherits(model, "bnecfit") &&
+    inherits(model$fit, "brmsfit")
   if (!inherits(model, c("bayesnecfit", "bayesmanecfit", "bayesnechurdlefit",
-                         "prebayesnecfit"))) {
+                         "prebayesnecfit")) && !one_equation) {
     stop("dispersion() applies to a bayesnecfit, bayesmanecfit or",
          " bayesnechurdlefit, not an object of class \"", class(model)[1],
          "\".", call. = FALSE)
