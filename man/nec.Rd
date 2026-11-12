@@ -71,6 +71,34 @@ predicted over, that draw keeps its rank in the summary and is given no
 value, so an entry falling among such draws is the end of the prediction
 range rather than a quantile. Attribute \code{"censored_summary"} marks
 which entries those are and states how many draws lie beyond each end.
+
+Under the default \code{asymptote_observed = TRUE}, the \code{nec} prior is
+bounded at the lowest and highest concentrations tested. Where the data do
+not place the threshold inside that range, much of the posterior can lie
+near a bound, and a credible limit there is set by the prior. Where more
+than 7.5\% of the finite draws of a sampled NEC lie within the outer 5\% of
+its prior range at either end, a message says so and attribute
+\code{"prior_bound_summary"} holds a \code{\link[base]{data.frame}} with one
+row per bounded end. Its columns are the equation (\code{model}), its model
+weight (\code{wi}), \code{parameter}, \code{side}, the bound on the scale of
+the returned estimate (\code{bound}) and on the fitted scale
+(\code{fitted_bound}), and the number (\code{n_near}) and share
+(\code{share}) of \code{n_draws} finite draws within that 5\%. The window is
+measured on the fitted scale, as 5\% of the prior range, or of the
+prediction range where only one end is bounded. On a model set there is a
+row per sampled NEC equation, each from that equation's own draws, and
+\code{attr(, "weighted_share")} gives the model-weighted share at each end,
+which is the share the 7.5\% applies to. On a
+\code{\link{bayesnecgroupfit}} each level's record is kept, with a
+\code{level} column, on the table, and \code{attr(, "weighted_share")} is a
+list of those shares named by level, for the levels fitted as a model set.
+The estimate and its quantiles are
+unchanged. There is no record where the estimate is not a sampled NEC, as
+for an NSEC, a two-block fit with a smooth block or the combined estimate
+of a \code{\link{bayesnechurdlefit}}; where it is read per observed level;
+or with \code{posterior = TRUE} or \code{extrapolate}.
+\code{\link{curve_params}} gives the same record for every sampled
+\code{nec} and \code{ec50} parameter, whatever the share.
 }
 \description{
 Extracts the predicted NEC value as desired from an object of class
@@ -217,15 +245,16 @@ label it prints, so the two cannot disagree about what the set is.
 A finite limit applies to both classes, by a different route for each. The
 threshold components are compared against it, which requires no further
 computation because every draw of a sampled \code{nec} already has a value.
-The curve-read components are re-evaluated on a grid extended to it, through
-the \code{x_range} argument of \code{\link{nsec}}. That recomputes from the
-stored fit and needs no refit, but it does evaluate the curve once for each
-such equation, at a run time proportional to \code{resolution}. The
-re-evaluation reuses the \code{sig_val} the fit was built with unless
-\code{sig_val} is given, and the number of grid points the fit stored
-unless \code{resolution} is given. Over a wider range the grid is
-therefore proportionally coarser, and its numbers can differ in the last
-digits from the stored summary.
+The curve-read components are re-evaluated by \code{\link{nsec}}, with its
+\code{extrapolate} argument, on the stored prediction range with points
+appended out to the limit. That recomputes from the stored fit and needs no
+refit, but it does evaluate the curve once for each such equation, at a run
+time proportional to the number of grid points. The re-evaluation reuses
+the \code{sig_val} the fit was built with unless \code{sig_val} is given,
+and the number of grid points the fit stored unless \code{resolution} is
+given. The appended points keep that grid's spacing, so a wider range adds
+points rather than coarsening the grid, and its numbers can differ in the
+last digits from the stored summary.
 
 Two requests re-evaluate nothing and return what \code{extrapolate = FALSE}
 returns: a limit equal to the current bounds, and any limit on a fit with no
@@ -253,9 +282,9 @@ default \code{asymptote_observed = TRUE} of \code{\link{bnec}}:
 user prior that sets a wider one. The lower bound at the lowest value tested
 applies under both settings and is reported by the other arm of the same
 message. And a curve-read
-component is measured from the control, so a lower limit below the lowest
-observed concentration extends the grid without extending the search, and
-those components stay censored at the control.
+component is measured from the control, so a lower limit below the control
+concentration does not extend its search, and a message states that the
+search begins at the control.
 }
 
 \examples{

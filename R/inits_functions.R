@@ -664,7 +664,8 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
   # round draws only the slots still empty.
   draw <- function(n) {
     do.call(make_inits,
-            c(list(model, fct_args), modifyList(dots, list(chains = n))))
+            c(list(model, fct_args),
+              utils::modifyList(dots, list(chains = n))))
   }
   # Hold a constant equation to the support, not the band:
   # check_init_predictions() requires a declining curve with more than three
@@ -962,13 +963,17 @@ add_level_defaults <- function(brm_args, level_spec, family, response,
                                predictor_scale = "auto",
                                init_supplied = FALSE,
                                prior_supplied = FALSE,
-                               asymptote_observed = TRUE) {
+                               asymptote_observed = TRUE,
+                               x_control = NULL,
+                               x_control_fitted = NULL) {
   n_lev <- length(level_spec$levels)
   if (isTRUE(level_spec$composed)) {
     brm_args <- compose_level_defaults(brm_args, level_spec, family, predictor,
                                        response, prior_type, predictor_scale,
                                        init_supplied, prior_supplied,
-                                       asymptote_observed = asymptote_observed)
+                                       asymptote_observed = asymptote_observed,
+                                       x_control = x_control,
+                                       x_control_fitted = x_control_fitted)
     return(add_level_disp_defaults(brm_args, level_spec, family, response,
                                    n_lev))
   }
@@ -1061,12 +1066,16 @@ add_level_disp_defaults <- function(brm_args, level_spec, family, response,
 compose_level_defaults <- function(brm_args, level_spec, family, predictor,
                                    response, prior_type, predictor_scale,
                                    init_supplied, prior_supplied,
-                                   asymptote_observed = TRUE) {
+                                   asymptote_observed = TRUE,
+                                   x_control = NULL,
+                                   x_control_fitted = NULL) {
   eqs <- unique(unlist(level_spec$models))
   per_eq <- lapply(eqs, function(m) {
     define_prior(m, family, predictor, response, prior_type = prior_type,
                  asymptote_observed = asymptote_observed,
-                 predictor_scale = predictor_scale)
+                 predictor_scale = predictor_scale,
+                 x_control = x_control,
+                 x_control_fitted = x_control_fitted)
   })
   names(per_eq) <- eqs
   if (!prior_supplied) {

@@ -61,6 +61,30 @@ hurdle_fit_cache <- local({
   }
 })
 
+# A hormesis equation with plates p1 and p2 tested from 1 and p3 from 2.
+# Below each level's control the curve lies under its ECx target.
+hormesis_fit_cache <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      set.seed(592)
+      d <- expand.grid(x = c(1, 2, 4, 6, 8, 12, 16),
+                       plate = paste0("p", 1:3), replicate = 1:2)
+      d <- d[!(d$plate == "p3" & d$x == 1), , drop = FALSE]
+      gain <- c(p1 = 0.9, p2 = 1, p3 = 1.1)[as.character(d$plate)]
+      d$plate <- as.character(d$plate)
+      d$y <- gain * (10 + 2 * d$x) * exp(-0.25 * pmax(d$x - 4, 0)) +
+        stats::rnorm(nrow(d), 0, 0.7)
+      cached <<- suppressWarnings(suppressMessages(bnec(
+        y ~ crf(x, "nechorme") + ogl(plate), data = d, family = "gaussian",
+        iter = 500, warmup = 250, chains = 2, seed = 5922, refresh = 0,
+        resolution = 40
+      )))
+    }
+    cached
+  }
+})
+
 joint_fit_cache <- local({
   cached <- NULL
   function() {
@@ -171,6 +195,15 @@ test_that("a pooled estimate holds each level's own draw at its position", {
     take <- owner == i
     expect_equal(band[take, ], full[take, ])
   }
+  # Row k holds draw_ids[k], although brms returns draw_ids in sorted order.
+  ids <- c(40L, 3L, 17L, 3L)
+  full <- brms::posterior_epred(fit$fit, newdata = nd, re_formula = NA)
+  expect_equal(unname(bayesnec:::block_epred(fit$fit, fit$bayesnecformula, nd,
+                                             draw_ids = ids)),
+               unname(full[ids, ]))
+  some <- bayesnec:::observed_grid_posterior(fit$fit, fit$bayesnecformula, nd,
+                                             spec, draw_ids = ids)
+  expect_equal(some, band[ids, ])
 })
 
 test_that("the toxicant mixtures of a joint refit pair by posterior draw", {
@@ -215,16 +248,26 @@ test_that("the toxicant mixtures of a joint refit pair by posterior draw", {
   fitted <- compare_posterior(fit, comparison = "fitted", resolution = 5)
   expect_equal(fitted$diff_list[["a-b"]],
                fitted$posterior_list$a - fitted$posterior_list$b)
-  # The fitted comparison reads the plates the plotted band reads.
+  # The plotted band is the population curve; the fitted comparison reads
+  # the plates.
   x_range <- range(unlist(lapply(fit$levels, function(l) {
     bayesnec:::joint_level_x(fit, l)
   })))
   for (tox in fit$levels) {
     curve <- bayesnec:::joint_level_curve(fit, tox, resolution = 5,
                                           x_range = x_range)
-    expect_equal(unname(apply(fitted$posterior_list[[tox]], 2,
-                              stats::median)),
-                 curve$Estimate, label = tox)
+    grid <- bayesnec:::prediction_grid(
+      fit$fit, fit$bayesnecformula, x_range = x_range, resolution = 5,
+      level_spec = bayesnec:::joint_level_spec(fit, tox)
+    )
+    population <- brms::posterior_epred(fit$fit, newdata = grid$newdata,
+                                        re_formula = NA)
+    expect_equal(curve$Estimate,
+                 unname(apply(population, 2, stats::median)), label = tox)
+    expect_false(isTRUE(all.equal(
+      unname(apply(fitted$posterior_list[[tox]], 2, stats::median)),
+      curve$Estimate
+    )), label = tox)
   }
 })
 
@@ -243,6 +286,15 @@ test_that("stored smooth no-effect draws use the recorded significance", {
                                  xform = identity))
   expect_false(isTRUE(all.equal(as.numeric(direct), as.numeric(other))))
   expect_true(isTRUE(smooth$pred_vals$observed_levels))
+  expect_identical(smooth$pred_vals$band, "population")
+  # The stored band is the population curve, with the plate deviations at zero.
+  grid <- bayesnec:::prediction_grid(smooth$fit, smooth$bayesnecformula,
+                                     resolution = nrow(smooth$pred_vals$data))
+  population <- stats::fitted(smooth$fit, newdata = grid$newdata,
+                              robust = TRUE, re_formula = NA,
+                              scale = "response")
+  expect_equal(smooth$pred_vals$data$Q2.5, unname(population[, "Q2.5"]))
+  expect_equal(smooth$pred_vals$data$Q97.5, unname(population[, "Q97.5"]))
   mixture <- suppressMessages(ecx(smooth, posterior = TRUE,
                                   resolution = 30))
   shares <- table(attr(mixture, "level")) / length(mixture)
@@ -251,13 +303,21 @@ test_that("stored smooth no-effect draws use the recorded significance", {
                tolerance = 1 / length(mixture))
   stale <- smooth
   stale$pred_vals$observed_levels <- NULL
+  stale$pred_vals$band <- NULL
   expect_false(bayesnec:::needs_observed_rebuild(smooth))
   expect_true(bayesnec:::needs_observed_rebuild(stale))
-  expect_warning(summary(stale), "saved before observed-level")
+  expect_warning(summary(stale), "no-effect summary describes the population")
+  # A fit saved with a band mixing the observed levels is stale as well.
+  mixed_band <- smooth
+  mixed_band$pred_vals$band <- NULL
+  expect_true(bayesnec:::needs_observed_rebuild(mixed_band))
+  expect_warning(summary(mixed_band), "band mixes the curves")
   rebuilt <- suppressWarnings(suppressMessages(amend(
     stale, resolution = 40
   )))
   expect_true(isTRUE(rebuilt$pred_vals$observed_levels))
+  expect_identical(rebuilt$pred_vals$band, "population")
+  expect_false(bayesnec:::needs_observed_rebuild(rebuilt))
 })
 
 test_that("a saved observed-level hormesis fit reads each level's NSEC", {
@@ -348,12 +408,23 @@ test_that("hurdle endpoints and band read observed levels", {
   level <- bayesnec:::observed_level_fit(fit, spec, 1)
   level_band <- bayesnec:::hurdle_component_preds(level, resolution = 12)
   expect_false(isTRUE(all.equal(band$combined, level_band$combined)))
+  # The plotted panels use the population curves.
+  population <- bayesnec:::hurdle_component_preds(fit, resolution = 12,
+                                                  levels = FALSE)
+  nd <- bayesnec:::newdata_eval(fit$growth, resolution = 12,
+                                x_range = range(population$x))$newdata
+  growth <- brms::posterior_epred(fit$growth, newdata = nd, re_formula = NA)
+  expect_equal(population$growth,
+               growth[seq_len(nrow(population$growth)), , drop = FALSE])
+  panel <- bayesnec:::hurdle_panel(fit, "combined", 12, NA)
+  expect_equal(unname(panel$est),
+               unname(apply(population$combined, 2, stats::median)))
   expect_true(is.finite(unname(suppressWarnings(suppressMessages(ecx(
     fit, pool = "mean_curve", resolution = 25
   )))[1])))
 })
 
-test_that("the block panels of a joint refit read its observed levels", {
+test_that("the block panels of a joint refit draw the population curves", {
   skip_on_cran()
   skip_if_not_installed("rstan")
   fit <- joint_fit_cache()
@@ -362,12 +433,11 @@ test_that("the block panels of a joint refit read its observed levels", {
   grid <- fit$pred_vals$data$x
   nd <- bnec_newdata(fit, resolution = length(grid), x_range = range(grid))
   band <- function(dpar) {
-    bayesnec:::observed_grid_posterior(fit$fit, fit$bayesnecformula, nd,
-                                       spec, dpar = dpar)
+    bayesnec:::block_epred(fit$fit, fit$bayesnecformula, nd, re_formula = NA,
+                           dpar = dpar)
   }
   growth <- band("mu")
   survival <- band("hu")
-  # The block bands pair the levels and draws of the stored combined band.
   expect_equal(growth * survival, band(NULL))
   drawn <- function(name) d$y_e[d$panel == name & !is.na(d$y_e)]
   medians <- function(draws) unname(apply(draws, 2, stats::median))
@@ -375,9 +445,11 @@ test_that("the block panels of a joint refit read its observed levels", {
   expect_equal(drawn("Probability of survival"), medians(survival))
   expect_equal(drawn("Response per individual exposed"),
                fit$pred_vals$data$Estimate)
-  population <- bayesnec:::joint_hurdle_epred(fit, nd, "mu", re_formula = NA)
+  expect_equal(fit$pred_vals$data$Estimate, medians(band(NULL)))
+  observed <- bayesnec:::observed_grid_posterior(fit$fit, fit$bayesnecformula,
+                                                 nd, spec, dpar = "mu")
   expect_false(isTRUE(all.equal(drawn("Response of survivors"),
-                                medians(population))))
+                                medians(observed))))
 
   # Both blocks are threshold equations, so the stored combined NEC is the
   # smaller of the two block NECs, level by level and draw by draw.
@@ -449,4 +521,122 @@ test_that("a joint refit reads its spanning group levels", {
     re_formula = spec$re_formula, transform = TRUE
   )[, 1]
   expect_equal(as.numeric(level$ne_posterior), as.numeric(pmin(mu, hu)))
+})
+
+lower_limit_notes <- function(expr) {
+  notes <- character()
+  value <- withCallingHandlers(
+    suppressWarnings(expr),
+    message = function(m) {
+      if (grepl("cannot begin below", conditionMessage(m))) {
+        notes <<- c(notes, conditionMessage(m))
+      }
+      invokeRestart("muffleMessage")
+    }
+  )
+  list(value = value, notes = notes)
+}
+
+test_that("an ECx inside the data is unchanged by a limit beyond it", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- hormesis_fit_cache()
+  read <- function(...) {
+    lower_limit_notes(ecx(fit, posterior = TRUE, resolution = 50, ...))
+  }
+  base <- read(pool = "none")$value
+  # A pair reaching below every control, and an upper limit alone, which
+  # extended plate p3 below its own control at 2.
+  pair <- read(pool = "none", extrapolate = c(0.1, 30))
+  upper <- read(pool = "none", extrapolate = 30)
+  for (level in names(base)) {
+    expect_identical(as.numeric(pair$value[[level]]),
+                     as.numeric(base[[level]]))
+    expect_identical(as.numeric(upper$value[[level]]),
+                     as.numeric(base[[level]]))
+  }
+  expect_true(all(is.finite(base[["plate=p3"]])))
+  expect_length(upper$notes, 0L)
+  expect_length(pair$notes, 2L)
+  expect_match(pair$notes, "lowest observed concentration", all = TRUE)
+  ranged <- read(pool = "none", type = "range")$value
+  ranged_far <- read(pool = "none", type = "range", extrapolate = 30)$value
+  expect_identical(as.numeric(ranged_far[["plate=p3"]]),
+                   as.numeric(ranged[["plate=p3"]]))
+  mixed <- read(extrapolate = c(0.1, 30))
+  expect_identical(as.numeric(mixed$value), as.numeric(read()$value))
+  expect_length(mixed$notes, 2L)
+  curve <- read(pool = "mean_curve", extrapolate = c(0.1, 30))
+  expect_identical(as.numeric(curve$value),
+                   as.numeric(read(pool = "mean_curve")$value))
+  expect_length(curve$notes, 1L)
+  expect_match(curve$notes, "highest of the levels' lowest observed")
+})
+
+test_that("a level is extended from its own control", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- hormesis_fit_cache()
+  upper <- lower_limit_notes(nsec(fit, pool = "none", posterior = TRUE,
+                                  resolution = 50, extrapolate = 30))
+  expect_length(upper$notes, 0L)
+  expect_equal(attr(upper$value[["plate=p3"]], "censored")$lower, 2)
+  pooled <- lower_limit_notes(nsec(fit, pool = "mean_curve", resolution = 50,
+                                   extrapolate = c(0.1, 30)))
+  expect_length(pooled$notes, 1L)
+  expect_match(pooled$notes, "cannot begin below 2,")
+  expect_equal(as.numeric(pooled$value),
+               as.numeric(suppressMessages(nsec(fit, pool = "mean_curve",
+                                                resolution = 50))))
+  necs <- lower_limit_notes(nec(fit, pool = "none", extrapolate = 30))
+  expect_length(necs$notes, 0L)
+
+  set <- observed_fit_cache()
+  set_upper <- lower_limit_notes(nsec(set, resolution = 30, extrapolate = 5))
+  expect_length(set_upper$notes, 0L)
+  # Plates p1 and p2 start at 0.05 and p3 at 0.15: one note for each control,
+  # not one for each equation.
+  set_pair <- lower_limit_notes(nsec(set, resolution = 30,
+                                     extrapolate = c(0.01, 5)))
+  expect_length(set_pair$notes, 2L)
+
+  hurdle <- hurdle_fit_cache()
+  for (estimate in list(nsec, ecx)) {
+    out <- lower_limit_notes(estimate(hurdle, pool = "none", resolution = 25,
+                                      posterior = TRUE, extrapolate = 6))
+    expect_length(out$notes, 0L)
+  }
+  hurdle_nsec <- lower_limit_notes(nsec(hurdle, pool = "none", resolution = 25,
+                                        posterior = TRUE, extrapolate = 6))
+  expect_equal(attr(hurdle_nsec$value[["plate=p3"]], "censored")$lower, 0.15)
+})
+
+test_that("limits on a crf(log(x)) fit are checked on the recorded scale", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- logged_fit_cache()
+  spec <- bayesnec:::observed_level_spec(fit)
+  level <- bayesnec:::observed_level_fit(fit, spec, 1)
+  base <- bayesnec:::newdata_eval(level, 21, NA)
+  lims <- bayesnec:::curve_extrapolate_limits(10, level, NA, "own", "ECx")
+  extended <- bayesnec:::extended_newdata_eval(level, 21, NA, lims)
+  at <- match(base$x_vec, extended$x_vec)
+  expect_identical(extended$x_vec[at], base$x_vec)
+  expect_identical(extended$newdata$x[at], base$newdata$x)
+  expect_true(all(extended$original[at]))
+  expect_equal(max(extended$x_vec), 10)
+  inside <- suppressMessages(ecx(fit, pool = "none", posterior = TRUE,
+                                 resolution = 30))
+  beyond <- suppressWarnings(suppressMessages(ecx(
+    fit, pool = "none", posterior = TRUE, resolution = 30, extrapolate = 10
+  )))
+  found <- is.finite(inside[["plate=p1"]])
+  expect_true(any(found))
+  expect_identical(as.numeric(beyond[["plate=p1"]])[found],
+                   as.numeric(inside[["plate=p1"]])[found])
+  for (pool in c("none", "mean_curve")) {
+    expect_error(suppressMessages(ecx(fit, pool = pool, resolution = 30,
+                                      extrapolate = c(0, 4))),
+                 "domain of the crf")
+  }
 })

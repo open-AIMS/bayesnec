@@ -19,9 +19,9 @@
 #' message names the argument. An object fitted by an earlier version of
 #' \pkg{bayesnec} records none of them.
 #'
-#' All component models must retain the same number of posterior draws for
-#' model weighting. When iteration counts differ, refit with \code{thin} set
-#' during fitting so the retained draw counts agree before combining the fits.
+#' Component models may retain different numbers of posterior draws. The
+#' model average draws from each fit in proportion to its model weight, with
+#' its total draw count set by the fit with the fewest draws.
 #'
 #' Each equation keeps the record of the installation of \pkg{bayesnec} that
 #' fitted it, and a message reports a combined set whose equations were fitted
@@ -67,6 +67,11 @@ c.bnecfit <- function(x, ...) {
       mod_fits <- c(mod_fits, recover_prebayesnecfit(dots[[i]]))
     }
     check_data_equality(mod_fits)
+  }
+  controls <- vapply(mod_fits, control_x, numeric(1))
+  if (any(controls != controls[[1]])) {
+    stop("The objects use different control concentrations. Refit them with",
+         " the same `x_control` before combining them.", call. = FALSE)
   }
   mod_fits <- mod_fits[!duplicated(names(mod_fits))]
   # Preserve c()'s input-level compatibility rule even where duplicate model
@@ -345,6 +350,15 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     if (!is.null(newdata) || !identical(checked$data, data_to_check)) {
       newdata <- checked$data
     }
+  }
+  stated_control <- recorded_x_control(object[[1]])
+  if (!is.null(stated_control) && !is.null(newdata)) {
+    frame <- model.frame(object[[1]]$bayesnecformula, data = newdata)
+    scale <- object[[1]]$call_args$predictor_scale
+    if (is.null(scale)) scale <- "auto"
+    check_fit_x_control(stated_control, object[[1]]$bayesnecformula,
+                        retrieve_var(frame, "x_var", error = TRUE),
+                        expand_args$x_range, scale, report = FALSE)
   }
   # The marker validate_family() uses to stay idempotent is bayesnec's own and
   # the family is stored in the brmsfit, so it is dropped before brms sees it.

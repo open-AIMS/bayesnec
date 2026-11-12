@@ -525,8 +525,10 @@ report_weight_k <- function(criteria, wi, leave_out, refit = FALSE,
   named <- names(criteria)[high > 0 & wi >= 0.01]
   n_units <- nrow(criteria[[1]]$pointwise)
   groupwise <- !identical(leave_out, "observation")
+  # message() adds no newline to a condition object, so add it here or the
+  # next message continues this line.
   emit <- function(msg) {
-    condition <- simpleMessage(msg)
+    condition <- simpleMessage(paste0(msg, "\n"))
     class(condition) <- c("bayesnec_pareto_k_message", class(condition))
     message(condition)
   }

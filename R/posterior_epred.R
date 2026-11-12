@@ -81,6 +81,7 @@ posterior_epred.bayesmanecfit <- function(object, newdata = NULL, ...) {
   sample_size <- min(sapply(pred_list, nrow))
   # Use the index stored when the object was built, so that repeated calls
   # return identical draws.
-  draw_index <- pull_draw_index(object, model_set, sample_size)
+  draw_index <- pull_draw_index(object, model_set, sample_size,
+                                draw_counts = vapply(pred_list, nrow, integer(1)))
   do_wrapper(model_set, w_pred_list_calc, pred_list, draw_index, fct = "rbind")
 }

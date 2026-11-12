@@ -129,8 +129,8 @@ with_preserved_rng_state <- function(expr) {
 
 #' Realise the model-averaging draw once, reproducibly
 #'
-#' Model averaging keeps \code{round(sample_size * wi)} of each component's
-#' draws. The draw is seeded from a value stored on the
+#' Model averaging apportions \code{sample_size} draws by model weight. The
+#' draw is seeded from a value stored on the
 #' \code{bayesmanecfit}, so that every quantity computed from one object uses
 #' the same draws, and the caller's RNG state is restored afterwards.
 #'
@@ -140,25 +140,40 @@ with_preserved_rng_state <- function(expr) {
 #'
 #' @param model_set A \code{\link[base]{character}} vector of model names.
 #' @param sample_size A \code{\link[base]{numeric}} vector of length 1, the
-#' number of draws available per component.
+#' number of draws in the model-averaged mixture.
 #' @param mod_stats A \code{\link[base]{data.frame}} with a \code{wi} column
 #' and model names as row names.
 #' @param seed A \code{\link[base]{numeric}} vector of length 1, or NULL.
+#' @param draw_counts Optional named draw counts for each component. If omitted,
+#' each component has \code{sample_size} available draws.
+#' @param exact_total Whether rounding must preserve \code{sample_size}. Set
+#' to \code{FALSE} only when rebuilding an older object without a stored index.
 #'
 #' @return A named \code{\link[base]{list}} of integer vectors, the draw
 #' indices kept for each model.
 #' @noRd
-weighted_draw_index <- function(model_set, sample_size, mod_stats, seed) {
+weighted_draw_index <- function(model_set, sample_size, mod_stats, seed,
+                                draw_counts = NULL, exact_total = TRUE) {
   if (is.null(seed)) {
     # Objects saved before the seed was stored have none. Any fixed value
     # makes every call on such an object agree.
     seed <- 216
   }
+  shares <- sample_size * mod_stats[model_set, "wi"]
+  sizes <- as.integer(round(shares))
+  remainder <- as.integer(sample_size - sum(sizes))
+  if (exact_total && remainder != 0L) {
+    # Adjust the largest rounding errors so the mixture has sample_size rows.
+    adjust <- order(shares - sizes, decreasing = remainder > 0L)[
+      seq_len(abs(remainder))]
+    sizes[adjust] <- sizes[adjust] + sign(remainder)
+  }
+  names(sizes) <- model_set
   with_preserved_rng_state({
     set.seed(seed, sample.kind = "Rejection")
     out <- lapply(model_set, function(index) {
-      size <- as.integer(round(sample_size * mod_stats[index, "wi"]))
-      sample(seq_len(sample_size), size)
+      n <- if (is.null(draw_counts)) sample_size else draw_counts[[index]]
+      sample(seq_len(n), sizes[[index]])
     })
   })
   names(out) <- model_set
@@ -175,11 +190,13 @@ weighted_draw_index <- function(model_set, sample_size, mod_stats, seed) {
 #' @param object An object of class \code{\link{bayesmanecfit}}.
 #' @param model_set A \code{\link[base]{character}} vector of model names.
 #' @param sample_size A \code{\link[base]{numeric}} vector of length 1, the
-#' number of draws available per component.
+#' number of draws in the model-averaged mixture.
+#' @param draw_counts Optional named counts of the draws available to the
+#' caller for each component.
 #'
 #' @return A named \code{\link[base]{list}} of integer vectors.
 #' @noRd
-pull_draw_index <- function(object, model_set, sample_size) {
+pull_draw_index <- function(object, model_set, sample_size, draw_counts = NULL) {
   idx <- object$w_draw_index
   # `==`, not identical(): sample_size is a double on the object and an integer
   # from nrow(), and identical() would always take the fallback.
@@ -189,11 +206,28 @@ pull_draw_index <- function(object, model_set, sample_size) {
     sample_size <- object$sample_size
     same_n <- TRUE
   }
-  if (!is.null(idx) && same_n && all(model_set %in% names(idx))) {
+  fit_counts <- if (!is.null(object$mod_fits)) {
+    vapply(object$mod_fits[model_set], function(x) brms::ndraws(x$fit),
+           numeric(1))
+  } else NULL
+  if (!is.null(idx) && same_n && all(model_set %in% names(idx)) &&
+      (is.null(draw_counts) ||
+       (!is.null(fit_counts) &&
+        isTRUE(all(draw_counts[model_set] == fit_counts[model_set]))))) {
     idx[model_set]
   } else {
+    legacy_n <- !is.null(fit_counts) && same_n &&
+      isTRUE(object$sample_size < min(fit_counts)) &&
+      undercounted_set(object, min(fit_counts))
+    if (legacy_n) {
+      # An older set used its recorded count even when the fits held one more.
+      draw_counts <- NULL
+    } else if (is.null(draw_counts) && !is.null(fit_counts)) {
+      draw_counts <- if (same_n) fit_counts else pmin(fit_counts, sample_size)
+    }
     weighted_draw_index(model_set, sample_size, object$mod_stats,
-                        object$w_draw_seed)
+                        object$w_draw_seed, draw_counts = draw_counts,
+                        exact_total = !is.null(idx))
   }
 }
 
@@ -255,7 +289,9 @@ w_grid_pred_calc <- function(index, mod_fits, formulas, x_range, resolution,
                              draw_index) {
   pred_list <- list(posterior_on_grid(mod_fits[[index]]$fit, formulas[[index]],
                                       x_range = x_range,
-                                      resolution = resolution))
+                                      resolution = resolution,
+                                      x_control = recorded_x_control(
+                                        mod_fits[[index]])))
   names(pred_list) <- index
   w_pred_list_calc(index, pred_list, draw_index)
 }
@@ -798,6 +834,7 @@ print_mat <- function(x, digits = 2) {
   # Drop the record before printing, or print.default() lists it under the
   # matrix.
   attr(out, "censored_summary") <- NULL
+  attr(out, "prior_bound_summary") <- NULL
   print(out, quote = FALSE, right = TRUE)
   invisible(x)
 }
@@ -822,6 +859,7 @@ clean_nec_vals <- function(x, all_models, ecx_models, vals = NULL) {
   # as.matrix() drops the censoring record, so copy it by hand, or summary()
   # prints the bound as though it were a quantile.
   attr(mat, "censored_summary") <- attr(vals, "censored_summary")
+  attr(mat, "prior_bound_summary") <- attr(vals, "prior_bound_summary")
   # Prefer the recorded ne_type: for a hurdle fit the estimate's type depends
   # on the equations of both blocks, not on the model name alone.
   if (!is.null(x$ne_type)) {
@@ -1356,6 +1394,8 @@ add_brm_defaults <- function(
   prior_type = "uninformative",
   asymptote_observed = TRUE,
   predictor_scale = "auto",
+  x_control = NULL,
+  x_control_fitted = NULL,
   model_survival = NULL,
   disp_spec = NULL,
   group_spec = NULL,
@@ -1410,6 +1450,8 @@ add_brm_defaults <- function(
       prior_type = prior_type,
       asymptote_observed = asymptote_observed,
       predictor_scale = predictor_scale,
+      x_control = x_control,
+      x_control_fitted = x_control_fitted,
       model_survival = model_survival,
       disp_spec = disp_spec,
       group_spec = group_spec,
@@ -1542,7 +1584,9 @@ add_brm_defaults <- function(
                                    predictor_scale = predictor_scale,
                                    init_supplied = init_supplied,
                                    prior_supplied = prior_supplied,
-                                   asymptote_observed = asymptote_observed)
+                                   asymptote_observed = asymptote_observed,
+                                   x_control = x_control,
+                                   x_control_fitted = x_control_fitted)
   }
   brm_args
 }
@@ -1961,7 +2005,7 @@ check_args_newdata <- function(resolution, x_range) {
 }
 
 #' @noRd
-newdata_eval <- function(object, resolution, x_range) {
+newdata_eval <- function(object, resolution, x_range, x_values = NULL) {
   # Every model of a set shares the data, so one model gives the grid. A
   # hurdle fit takes it from the survival component, which sees every row and
   # so the full predictor range, and adds the growth component's disp()
@@ -1978,9 +2022,21 @@ newdata_eval <- function(object, resolution, x_range) {
   data <- model.frame(object$bayesnecformula, object$fit$data)
   bnec_pop_vars <- attr(data, "bnec_pop")
   if (!is.null(object$observed_group) && is.na(x_range[1])) {
-    x_range <- range(object$level_x, na.rm = TRUE)
+    x_range <- c(control_x(object), max(object$level_x, na.rm = TRUE))
+  }
+  if (!is.null(x_values)) {
+    resolution <- length(x_values)
+    x_range <- range(x_values)
   }
   newdata <- bnec_newdata(object, resolution = resolution, x_range = x_range)
+  if (!is.null(x_values)) {
+    if (nrow(newdata) != length(x_values)) {
+      stop("The requested grid has ", length(x_values), " points but ",
+           "bnec_newdata() returned ", nrow(newdata), " rows.",
+           call. = FALSE)
+    }
+    newdata[[bnec_pop_vars[["x_var"]]]] <- x_values
+  }
   if (!is.null(object$observed_group)) {
     for (v in names(object$observed_group)) {
       newdata[[v]] <- object$observed_group[[v]][rep(1L, nrow(newdata))]
@@ -2346,8 +2402,9 @@ check_resolution <- function(resolution) {
 
 #' The predictor value the control is read at
 #'
-#' The lowest \emph{observed} value of the predictor named in \code{crf()}, on
-#' the scale the user supplied it on. It is read from the data, not from the
+#' The control recorded at fitting, or else the lowest \emph{observed} value
+#' of the predictor named in \code{crf()}, on the scale the user supplied it
+#' on. It is read from the data, not from the
 #' prediction grid, so that \code{x_range} does not change it or any estimate
 #' anchored on it. A \code{\link{bayesnechurdlefit}} reads it from the
 #' survival component, which sees every concentration tested.
@@ -2359,6 +2416,34 @@ check_resolution <- function(resolution) {
 #'
 #' @noRd
 control_x <- function(object) {
+  recorded <- recorded_x_control(object)
+  if (!is.null(recorded)) {
+    return(recorded)
+  }
+  observed_low_x(object)
+}
+
+#' Whether a call-time control is the one recorded at fitting
+#'
+#' \code{bnec()} reported that control if it lies below the data, so the
+#' estimators do not warn about it again.
+#'
+#' @param object A fitted bayesnec object.
+#' @param value One number.
+#' @return A \code{\link[base]{logical}} value.
+#' @noRd
+is_recorded_control <- function(object, value) {
+  stated <- recorded_x_control(object)
+  !is.null(stated) && isTRUE(as.numeric(value) == as.numeric(stated))
+}
+
+#' The lowest observed concentration of a fit, whatever its control
+#'
+#' @param object A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}},
+#' \code{\link{bayesnechurdlefit}}, observed level or joint level.
+#' @return A \code{\link[base]{numeric}} value on the recorded scale.
+#' @noRd
+observed_low_x <- function(object) {
   if (!is.null(object$observed_group) && length(object$level_x)) {
     return(min(object$level_x))
   }
@@ -2370,6 +2455,106 @@ control_x <- function(object) {
     grid_obj <- grid_equation(grid_obj)
   }
   lowest_observed_x(grid_obj)
+}
+
+#' The control concentration explicitly recorded at fitting
+#'
+#' An older fit has no such record and continues to use its lowest observed
+#' concentration. A model set reads its first equation after the controls of
+#' its equations have been checked for agreement.
+#'
+#' @param object A fitted bayesnec object.
+#' @return A number, or \code{NULL} for the observed-data default.
+#' @noRd
+recorded_x_control <- function(object) {
+  if (!is.list(object)) return(NULL)
+  if (is_bayesnechurdlefit(object)) {
+    object <- object$survival
+  }
+  if (inherits(object, "bayesmanecfit")) {
+    if (is.null(object$mod_fits[[1]])) return(NULL)
+    object <- grid_equation(object)
+  }
+  if (!is.null(object$x_control)) {
+    return(object$x_control)
+  }
+  object$call_args$x_control
+}
+
+#' A stated control on the fitted predictor scale
+#'
+#' A model frame holds the predictor after the \code{crf()} transformation, so
+#' compare a stated control with it only through this.
+#'
+#' @param x_control The stated control on the recorded scale, or \code{NULL}.
+#' @param formula The formula whose \code{crf()} term gives the transformation.
+#' @return A number, or \code{NULL}.
+#' @noRd
+fitted_x_control <- function(x_control, formula) {
+  if (is.null(x_control)) {
+    return(NULL)
+  }
+  as.numeric(sub_x_transformation(x_control, formula))
+}
+
+#' Validate a control concentration before fitting
+#'
+#' @param x_control The requested control on the recorded scale, or
+#' \code{NULL}.
+#' @param formula The formula whose predictor transformation is fitted.
+#' @param predictor The observed predictor on the fitted scale, as read from
+#' the model frame.
+#' @param x_range The requested prediction range, on the recorded scale.
+#' @param predictor_scale The predictor-scale declaration.
+#' @param report Whether to report extrapolation below the data.
+#' @return The control, invisibly, or \code{NULL}.
+#' @noRd
+check_fit_x_control <- function(x_control, formula, predictor, x_range = NA,
+                                predictor_scale = "auto", report = TRUE) {
+  if (is.null(x_control)) {
+    return(invisible(NULL))
+  }
+  if (!is.numeric(x_control) || length(x_control) != 1L ||
+      !is.finite(x_control)) {
+    stop("`x_control` must be NULL or one finite number.", call. = FALSE)
+  }
+  transformed <- tryCatch(
+    suppressWarnings(fitted_x_control(x_control, formula)),
+    error = function(e) NA_real_
+  )
+  if (length(transformed) != 1L || !is.finite(transformed)) {
+    stop("`x_control = ", x_control, "` is not finite under the crf()",
+         " predictor transformation.", call. = FALSE)
+  }
+  predictor_scale <- validate_predictor_scale(predictor_scale,
+                                              c(transformed, predictor))
+  # define_prior() clamps the nec and ec50 lower bound at 0 on a concentration
+  # predictor, so a negative control there would not be the bound.
+  if (transformed < 0 && !predictor_is_logged(predictor, predictor_scale)) {
+    stop("`x_control = ", x_control, "` is ",
+         if (isTRUE(all.equal(transformed, as.numeric(x_control)))) "negative"
+         else paste0(signif(transformed, 3),
+                     " on the transformed predictor scale"),
+         ", but the predictor is",
+         " treated as a concentration, which has no value below zero. Use",
+         " `predictor_scale = \"log\"` if the predictor is already logged.",
+         call. = FALSE)
+  }
+  if (transformed >= max(predictor)) {
+    stop("`x_control` must be below the highest observed concentration.",
+         call. = FALSE)
+  }
+  if (!all(is.na(x_range)) &&
+      !isTRUE(all.equal(min(x_range), as.numeric(x_control)))) {
+    stop("The lower end of `x_range` must equal `x_control` when both are",
+         " supplied.", call. = FALSE)
+  }
+  if (report && transformed < min(predictor)) {
+    message("The control at ", signif(x_control, 3), " is below the lowest",
+            " observed concentration; the curve from the control to the data",
+            " is extrapolated.")
+  }
+  invisible(as.numeric(x_control))
 }
 
 #' The first equation of a model set, for reading its data and grid
@@ -2408,7 +2593,7 @@ resolve_x_control <- function(object, x_control, x_range) {
     grid_obj <- grid_equation(grid_obj)
   }
   check_control_finite(object, x_control)
-  low <- control_x(object)
+  low <- observed_low_x(object)
   high <- if (length(grid_obj$level_x)) max(grid_obj$level_x) else {
     frame <- stats::model.frame(grid_obj$bayesnecformula,
                                 data = grid_obj$fit$data)
@@ -2420,10 +2605,11 @@ resolve_x_control <- function(object, x_control, x_range) {
     stop("`x_control` must be below the highest concentration in the",
          " prediction range.", call. = FALSE)
   }
-  if (x_control < low && !isTRUE(attr(x_control, "warned"))) {
+  if (x_control < low && !isTRUE(attr(x_control, "warned")) &&
+      !is_recorded_control(object, x_control)) {
     warning("The control at ", signif(x_control, 3), " is below the lowest",
             " observed concentration, ", signif(low, 3),
-            "; the curve from control to the data is extrapolated.",
+            "; the curve from the control to the data is extrapolated.",
             call. = FALSE)
   }
   list(value = as.numeric(x_control), x_range = c(x_control, high))
@@ -2431,9 +2617,10 @@ resolve_x_control <- function(object, x_control, x_range) {
 
 #' The lowest observed predictor value of one fit
 #'
-#' The rule \code{control_x()} and \code{control_posterior()} share. One level
-#' of a joint refit reads its own lowest concentration, not the lowest of every
-#' level together. See \code{joint_level_x()}.
+#' The control where none was recorded at fitting, and the value a call-time
+#' control is compared with. One level of a joint refit reads its own lowest
+#' concentration, not the lowest of every level together. See
+#' \code{joint_level_x()}.
 #'
 #' @param grid_obj A \code{\link{bayesnecfit}}, already taken from its model
 #' set or hurdle fit.
@@ -2494,10 +2681,10 @@ nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
   }
   keep <- x_vec > x_control
   if (!any(keep)) {
-    # Reached by an x_range at or below the lowest observed value, or by a
+    # Reached by an x_range at or below the control value, or by a
     # resolution of 1. Refuse rather than return a vector of NA.
     stop("The prediction grid holds no concentration above ",
-         signif(x_control, 3), ", the lowest observed value of the predictor, ",
+         signif(x_control, 3), ", the control value of the predictor, ",
          "so there is nothing above the control to read the NSEC from. Check ",
          "x_range, and that resolution is at least 2.", call. = FALSE)
   }
@@ -2594,11 +2781,10 @@ family_has_lower_bound <- function(family) {
 
 #' The control posterior
 #'
-#' The predicted mean at the lowest \emph{observed} concentration, per draw.
+#' The predicted mean at the control concentration, per draw.
 #'
-#' Read at the lowest observed predictor value, not at the first column of the
-#' prediction grid, so that \code{x_range} does not change any reported
-#' estimate.
+#' Read at \code{control_x()}, not at the first column of the prediction grid,
+#' so that \code{x_range} does not change any reported estimate.
 #'
 #' @param object A \code{\link{bayesnecfit}}.
 #' @param newdata The prediction grid, used as the template for the columns
@@ -2858,7 +3044,7 @@ remap_censored_summary <- function(cens, map, decreasing, probs = NULL) {
 check_removed_args <- function(dots) {
   if ("hormesis_def" %in% names(dots)) {
     stop("hormesis_def has been removed. Every ECx, NSEC and ECNSEC is now ",
-         "measured from the control -- the predicted mean at the lowest ",
+         "measured from the control -- the predicted mean at the control ",
          "concentration -- which is what hormesis_def = \"control\" selected. ",
          "There is no longer an option to measure from the maximum of the ",
          "predicted curve. Drop the argument.", call. = FALSE)

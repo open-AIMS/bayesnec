@@ -46,7 +46,8 @@ return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 \item{extrapolate}{The bound beyond which the estimate is reported as
 censored. \code{FALSE}, the default, censors at the ends of the prediction
 grid. A single number is an upper limit, and a pair of numbers is a lower
-and an upper limit, in that order; the grid is extended to reach them.
+and an upper limit, in that order; points are appended while the original
+grid points and their spacing are retained.
 \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
 See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
@@ -67,11 +68,14 @@ estimates at each draw, and \code{"mean_curve"} estimates from their weighted
 mean curve. A joint fit defaults to \code{"none"}; other fits with spanning group
 terms default to \code{"mixture"}.}
 
-\item{x_control}{\code{"own"} reads each level's lowest observed concentration;
-\code{"shared"} reads the lowest across levels; a single finite number specifies
-the concentration directly. A shared control below a level's observations
-extrapolates its curve and gives a warning. Level controls are recorded in
-the result's \code{x_control} attribute.}
+\item{x_control}{\code{"own"} reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+\code{x_control}. \code{"shared"} reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
 }
 \value{
 A vector containing the estimated NSEC value and credible bounds.

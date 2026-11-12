@@ -1,5 +1,52 @@
 # bayesnec 2.2.0
 
+- `ecx()` and `ecnsec()` now accept finite `extrapolate` limits, as `nsec()`
+  does, and `ecnsec()` can read an NSEC inside the same extension. All three
+  estimators keep the original prediction grid and append points beyond it at
+  the same spacing, including for model sets, observed level curves and hurdle
+  fits, so an estimate found inside the data is unchanged by a limit beyond it.
+  For `type = "range"` the lowest response is taken over the unextended range.
+  The ECx search begins at the control, as the NSEC search does, and each
+  observed level of a group term is extended from its own control (#589).
+
+- `bnec(x_control = ...)` now records a stated control concentration for
+  priors, prediction grids, stored no-effect estimates, estimator defaults,
+  plots and fit checks. The control is given on the recorded scale, also under
+  a transformed predictor such as `crf(log(x), ...)`, and is refused if
+  negative after that transformation where the predictor is treated as a
+  concentration. A control below the lowest concentration tested is reported
+  as an extrapolation, and a regularising fit with no observation at the
+  control needs a supplied `top` prior. The control is inherited by grouped,
+  hurdle and joint fits, and by `amend()` and `update()`. Objects saved before
+  this argument existed retain their previous control convention (#586).
+
+- A significant decline between the two highest concentrations now includes
+  the highest mean as a percentage of the control mean. When the absolute
+  ratio to a finite, positive control mean is at most 5%, the message omits
+  advice to declare the lower asymptote unobserved. The contrast is still
+  reported; where the lowest predictor value is not finite, as for a control
+  at 0 under `crf(log(x), ...)`, there is no control mean and the advice is
+  kept. Grouped levels and hurdle response blocks are assessed separately
+  (#585).
+
+- `nec()`, printed `summary()` and `curve_params()` now report a sampled `nec`
+  or `ec50` posterior with much of its mass near a bound of its prior. Under
+  the default `asymptote_observed = TRUE` both priors are bounded at the
+  tested range, so a credible limit near a bound can be set by the prior.
+  Where more than 7.5% of draws lie within the outer 5% of the prior range,
+  `nec()` and `summary()` give a note and a `prior_bound_summary` attribute
+  with the bound on the reported and the fitted scale. For a model set the
+  record gives each sampled NEC equation and the model-weighted share.
+  `curve_params()` gives the same record for every bounded `nec` and `ec50`
+  row. The estimates are unchanged (#584).
+
+- Model sets can now combine equations with different numbers of retained
+  posterior draws. Model weights use each equation's pointwise leave-one-out
+  scores, and the model average samples from all draws of each equation. The
+  total number of draws in the average is the smallest count among the
+  equations. A longer refit can therefore be combined with the original set
+  without thinning it to match the other equations (#583).
+
 - The no-effect estimate of the six hormesis threshold equations, `nechorme`,
   `nechorme4`, `neclinhorme`, `nechormepwr`, `nechorme4pwr` and
   `nechormepwr01`, is now their NSEC: the concentration at which the fitted
@@ -81,7 +128,11 @@
   excluded from estimates, with a message naming it. If every level has only
   one concentration, the term remains at zero when curves are predicted. This
   applies to single fits, model sets, hurdle fits and joint refits, and to
-  curves and no-effect summaries stored during fitting (#554).
+  no-effect summaries stored during fitting (#554). The curve and credible
+  band of `autoplot()` and `ggbnec_data()` remain the population curve, with
+  group deviations at zero, so they do not include the variation between
+  levels, and the estimate lines need not fall where that curve equals the
+  corresponding response.
 - `pool` selects per-level estimates, an observation-weighted mixture, a
   weighted mean of estimates, or an estimate from the weighted mean curve.
   A joint refit returns levels by default; a single fit with a spanning group
@@ -99,9 +150,8 @@
   those values from the stored model; the endpoint functions read observed
   levels directly from either an old or a new fit.
 - `ggbnec_data()` now reads a single fit's credible band from its stored
-  `pred_vals`, so the band uses the same observed-level basis as the stored
-  no-effect summary. Its numerical values can differ slightly from the older
-  band built with `conditional_effects()`.
+  `pred_vals`. Its numerical values can differ slightly from the older band
+  built with `conditional_effects()`.
 
 ## Default priors
 
@@ -631,8 +681,8 @@
   on the default `bnec()` model set, which fits equations of both classes,
   `TRUE` is an error naming the finite form. A finite limit applies to that set,
   releasing the threshold components by comparison and re-evaluating the
-  curve-read ones on a grid extended to the limit, through the `x_range`
-  argument `nsec()` already takes, which needs no refit.
+  curve-read ones on the stored grid with points appended out to the limit,
+  which needs no refit.
 
   A limit inside the current range is an error rather than a silent tightening;
   narrow the range with `x_range`. The range a limit is measured against is the
@@ -650,8 +700,8 @@
   stored on the fit is itself bounded, a message names that bound, because the
   posterior holds no draw beyond it and a wider limit returns the same
   truncated posterior. And a curve-read component is measured from the control,
-  so a lower limit below the lowest observed concentration extends the grid
-  without extending the search.
+  so a lower limit below the control concentration does not extend its search,
+  and a message states that the search begins at the control.
 
 - `compare_estimates()` and `compare_posterior()` now compare a censored draw
   through its censoring record instead of deleting it. For many pairs the

@@ -85,6 +85,7 @@ print.necsummary <- function(x, ...) {
   print_mat(x$nec_vals)
   print_censoring_note(attr(x$nec_vals, "censored_summary"),
                        rownames(x$nec_vals)[1])
+  print_nec_prior_boundary(attr(x$nec_vals, "prior_bound_summary"), x$model)
   if (!is.null(x$ecs)) {
     cat("\n\n")
     for (i in seq_along(x$ecs)) {
@@ -124,7 +125,7 @@ print.manecsummary <- function(x, ...) {
   cat(x$family$family, "\n")
   cat(x$family$links, "\n")
   cat("\n")
-  cat("Number of posterior draws per model: ", x$sample_size)
+  cat("Number of draws in model average: ", x$sample_size)
   cat("\n\n")
   cat("Model weights (Method: ", x$mod_weights_method,
       leave_out_label(x$mod_weights_leave_out), "):\n", sep = "")
@@ -138,6 +139,8 @@ print.manecsummary <- function(x, ...) {
   }
   print_mat(x$nec_vals)
   print_censoring_note(attr(x$nec_vals, "censored_summary"), neclab)
+  print_nec_prior_boundary(attr(x$nec_vals, "prior_bound_summary"),
+                           "model-averaged")
   cat("\n\n")
   if (!is.null(x$ecs)) {
     for (i in seq_along(x$ecs)) {

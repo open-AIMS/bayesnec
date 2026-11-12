@@ -17,7 +17,8 @@
   posterior = FALSE,
   which = "combined",
   pool = NULL,
-  x_control = "own"
+  x_control = "own",
+  extrapolate = FALSE
 )
 }
 \arguments{
@@ -63,11 +64,21 @@ estimates at each draw, and \code{"mean_curve"} estimates from their weighted
 mean curve. A joint fit defaults to \code{"none"}; other fits with spanning group
 terms default to \code{"mixture"}.}
 
-\item{x_control}{\code{"own"} reads each level's lowest observed concentration;
-\code{"shared"} reads the lowest across levels; a single finite number specifies
-the concentration directly. A shared control below a level's observations
-extrapolates its curve and gives a warning. Level controls are recorded in
-the result's \code{x_control} attribute.}
+\item{x_control}{\code{"own"} reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+\code{x_control}. \code{"shared"} reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
+
+\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
+A single finite number extends the upper end; two finite numbers may
+extend both ends. The original grid points are retained. Limits are on
+the recorded predictor scale. \code{TRUE} and narrowing limits are refused.
+For \code{type = "range"} the lowest response is taken over the prediction
+range before it is extended.}
 }
 \value{
 A vector of estimates.

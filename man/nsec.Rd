@@ -47,7 +47,8 @@ return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 \item{extrapolate}{The bound beyond which the estimate is reported as
 censored. \code{FALSE}, the default, censors at the ends of the prediction
 grid. A single number is an upper limit, and a pair of numbers is a lower
-and an upper limit, in that order; the grid is extended to reach them.
+and an upper limit, in that order; points are appended while the original
+grid points and their spacing are retained.
 \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
 See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
@@ -77,11 +78,14 @@ estimates at each draw, and \code{"mean_curve"} estimates from their weighted
 mean curve. A joint fit defaults to \code{"none"}; other fits with spanning group
 terms default to \code{"mixture"}.}
 
-\item{x_control}{\code{"own"} reads each level's lowest observed concentration;
-\code{"shared"} reads the lowest across levels; a single finite number specifies
-the concentration directly. A shared control below a level's observations
-extrapolates its curve and gives a warning. Level controls are recorded in
-the result's \code{x_control} attribute.}
+\item{x_control}{\code{"own"} reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+\code{x_control}. \code{"shared"} reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
@@ -115,11 +119,13 @@ share are chosen for each level independently. The levels can therefore be
 contrasted draw by draw, as \code{\link{compare_posterior}} does.
 
 The reference is the \code{sig_val} quantile of the control posterior,
-the control being the predicted mean at the lowest concentration in the
-supplied predictor. That holds for every equation, hormetic ones included:
-the \code{hormesis_def} argument selected between the control and the
-maximum of the predicted curve and has been removed, because a target
-below the control is crossed exactly once whatever the curve does above it.
+the control being the predicted mean at the control concentration: the
+\code{x_control} stated in \code{\link{bnec}}, or else the lowest
+concentration in the supplied predictor. That holds for every equation,
+hormetic ones included: the \code{hormesis_def} argument selected between
+the control and the maximum of the predicted curve and has been removed,
+because a target below the control is crossed exactly once whatever the
+curve does above it.
 For a hormesis threshold equation, \code{\link{nec}} uses this NSEC as its
 no-effect estimate. Its \code{nec} parameter, the concentration at which
 the decline term starts, remains available through
@@ -147,10 +153,11 @@ draw shows no decreasing effect in the searched range and is censored there.
 The crossing is sought at or above the control, so extending \code{x_range}
 below the data does not place an estimate below any tested concentration.
 
-Two limits on that. The value is the lowest \emph{observed} concentration,
-where Fisher and Fox (2023) report zero concentration, which they reach by
-extrapolating the fitted curve below the data. The two agree where the control
-of the design is a true zero and the predictor is untransformed; otherwise the
+Two limits on that. The value is the control concentration, which is the
+lowest \emph{observed} concentration unless \code{\link{bnec}} was given
+\code{x_control}. Fisher and Fox (2023) report zero concentration, which
+they reach by extrapolating the fitted curve below the data. The two agree
+where the control is 0 and the predictor is untransformed; otherwise the
 bound reported here is the control rather than the 0 of their Table 3. And
 it applies where the prediction grid begins at the control. Where
 \code{x_range} begins at a higher concentration, a draw already at or below
@@ -236,9 +243,12 @@ the fit is. An NSEC is the concentration at which a fitted curve reaches a
 reference, so reading one means evaluating that curve on a grid, and no grid
 reaches infinity. Name a finite limit instead.
 
-A finite limit extends the grid the curve is searched on and then censors
-there, so \code{extrapolate} does through a checked argument what
-\code{x_range} does through an unchecked one: a limit inside the current
+A finite limit appends points to the grid the curve is searched on, at the
+grid's own spacing, and then censors there. The points of the unextended
+grid are kept, so an estimate inside the data is read off the same points
+as without \code{extrapolate}. Widening \code{x_range} to the same limit
+instead spreads \code{resolution} points over the wider range, so its grid
+is coarser and its estimates can differ slightly. A limit inside the current
 range is an error rather than a silent tightening, because it would report
 an estimate as censored at a value the fit had no trouble identifying. Use
 \code{x_range} to narrow the range.
@@ -253,13 +263,14 @@ would report the estimate as censored inside the grid the fit was built on,
 so both have to be cleared. \code{\link{nec}} measures against that stored
 grid alone, having no \code{x_range} of its own, so the two agree on a fit
 whose grid reaches beyond the data and can differ on one whose grid stops
-short of it.
+short of it. For each observed level of a group term the range is that
+level's own, from its control to its highest concentration.
 
-A lower limit extends the grid but not the search. The reference is a
-quantile of the control posterior, so the control is where the search
+A lower limit below the control does not extend the search. The reference
+is a quantile of the control posterior, so the control is where the search
 begins, and a draw already past the reference there has no identifiable
 crossing at any lower concentration. Such a limit is accepted, and a message
-states that the estimate stays censored at the control.
+states that the search begins at the control.
 }
 
 \examples{

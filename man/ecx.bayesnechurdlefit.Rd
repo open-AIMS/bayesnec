@@ -16,7 +16,8 @@
   which = "combined",
   ...,
   pool = NULL,
-  x_control = "own"
+  x_control = "own",
+  extrapolate = FALSE
 )
 }
 \arguments{
@@ -68,11 +69,25 @@ estimates at each draw, and \code{"mean_curve"} estimates from their weighted
 mean curve. A joint fit defaults to \code{"none"}; other fits with spanning group
 terms default to \code{"mixture"}.}
 
-\item{x_control}{\code{"own"} reads each level's lowest observed concentration;
-\code{"shared"} reads the lowest across levels; a single finite number specifies
-the concentration directly. A shared control below a level's observations
-extrapolates its curve and gives a warning. Level controls are recorded in
-the result's \code{x_control} attribute.}
+\item{x_control}{\code{"own"} reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+\code{x_control}. \code{"shared"} reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
+
+\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
+A finite upper limit or a pair of finite lower and upper limits extends the
+search grid and marks any unresolved draw as censored at that limit.
+Limits are on the recorded predictor scale. \code{TRUE} and limits that
+narrow the current range are refused. The original grid points and their
+spacing are retained when extension points are appended. The search begins
+at the control, so a lower limit extends it only where the prediction range
+begins above the control. For \code{type = "range"} the lowest response is
+taken over the prediction range before it is extended, so a limit beyond
+the data does not change the estimate.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and

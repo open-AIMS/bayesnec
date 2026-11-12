@@ -305,7 +305,7 @@ test_that("a relative ECx of a joint fit's combined curve is refused (#491)", {
                    class = c("bayesmanecfit", "bnecfit"))
   local_mocked_bindings(
     pull_draw_index = function(...) list(a = 1:10),
-    pull_out = function(object, model) object$mod_fits[[model]],
+    pull_out = function(object, model, ...) object$mod_fits[[model]],
     .package = "bayesnec"
   )
   expect_error(suppressWarnings(ecx(set, type = "relative")),

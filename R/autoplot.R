@@ -61,6 +61,16 @@
 #' Where \code{which = "all"}, the panel titles name the curves and
 #' \code{NULL} leaves the axis unlabelled.
 #'
+#' @details Where a group-level term spans the predictor, as a plate does when
+#' each plate is tested at every concentration, the curve and credible band
+#' are those of the population curve, with every group deviation set to zero.
+#' The band is therefore the 95% credible interval of the expected response
+#' of a typical level, and it does not include the variation between levels:
+#' the observations of a level whose deviation is large can lie outside it.
+#' The NEC, NSEC and ECx lines are read from the observed levels instead (see
+#' \code{pool} in \code{\link{ecx}}), so they need not fall where the plotted
+#' curve equals the corresponding response.
+#'
 #' @return A \code{\link[ggplot2]{ggplot}} object, or, for a
 #' \code{\link{bayesmanecfit}} with \code{multi_facet = FALSE}, a
 #' \code{\link[base]{list}} of them, returned invisibly, as described under
@@ -607,6 +617,11 @@ fitted_axis_labels <- function(values, object, x_grid_raw) {
 #' \code{\link{autoplot}}. Every other class and family has one curve, and
 #' refuses any value but \code{"combined"}.
 #'
+#' @details The curve and credible band are those \code{\link{autoplot}}
+#' draws: where a group-level term spans the predictor, the population curve,
+#' with every group deviation set to zero. See the Details of
+#' \code{\link{autoplot}}.
+#'
 #' @return A \code{\link[base]{data.frame}}. When \code{group} is supplied, or
 #' \code{x} is a \code{bayesnecgroupfit} or a \code{bayesnecjointfit}, the
 #' frame includes a \code{group} column and a \code{"group_var"} attribute.
@@ -697,22 +712,17 @@ plot_fitted_curve <- function(object) {
 #' \code{Estimate}, \code{Q2.5} and \code{Q97.5}.
 #' @noRd
 plot_curve <- function(object, grid, dpar = NULL) {
-  # Use the basis of the stored band: the observed levels of a group term that
-  # spans the series, otherwise the population curve.
+  # The population curve, as in the stored band.
   grid_draws <- function(fit, formula) {
-    spec <- observed_level_spec(list(fit = fit, bayesnecformula = formula))
-    if (is.null(spec)) {
-      block_epred(fit, formula, grid$newdata, re_formula = NA, dpar = dpar)
-    } else {
-      observed_grid_posterior(fit, formula, grid$newdata, spec, dpar)
-    }
+    block_epred(fit, formula, grid$newdata, re_formula = NA, dpar = dpar)
   }
   if (inherits(object, "bayesmanecfit")) {
     models <- names(object$mod_fits)
     draw_index <- pull_draw_index(object, models,
                                   set_draw_count(object$mod_fits))
-    # Retain only the draws contributing to the mixture before predicting the
-    # next equation, so a large set does not hold every full grid posterior.
+    # Retain only the draws contributing to the model average before
+    # predicting the next equation, so a large set does not hold every full
+    # grid posterior.
     pieces <- lapply(models, function(model) {
       fit <- object$mod_fits[[model]]
       draws <- grid_draws(fit$fit, fit$bayesnecformula)
@@ -1224,7 +1234,7 @@ joint_block_ne <- function(object, dpar) {
       object$fit, newdata = nd, nlpar = nlpar,
       re_formula = spec$re_formula, transform = TRUE
     )[, 1])
-    with_record(draws, range(level$level_x))
+    with_record(draws, level_read_span(level))
   })
   pool_observed_draws(parts, spec)
 }

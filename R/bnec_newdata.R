@@ -58,7 +58,8 @@ bnec_newdata.bayesnecfit <- function(x, resolution = 100, x_range = NA) {
   # Delegate, so that this, expand_nec() and posterior_on_grid() build the
   # same grid.
   prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
-                  resolution = resolution)$newdata
+                  resolution = resolution,
+                  x_control = recorded_x_control(x))$newdata
 }
 
 #' bnec_newdata.bayesmanecfit

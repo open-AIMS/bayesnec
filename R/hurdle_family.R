@@ -265,15 +265,21 @@ joint_hurdle_epred <- function(object, newdata, dpar = NULL,
 #' @noRd
 block_epred <- function(fit, formula, newdata, re_formula = NA, dpar = NULL,
                         draw_ids = NULL) {
-  if (is.null(dpar)) {
-    return(factorised_count_epred(fit, formula, newdata = newdata,
-                                  re_formula = re_formula,
-                                  draw_ids = draw_ids))
+  # brms returns the draws of a draw_ids call in increasing order. Ask in that
+  # order, then put row k back at draw_ids[k].
+  ord <- if (!is.null(draw_ids)) order(draw_ids)
+  ids <- if (!is.null(ord)) draw_ids[ord]
+  out <- if (is.null(dpar)) {
+    factorised_count_epred(fit, formula, newdata = newdata,
+                           re_formula = re_formula, draw_ids = ids)
+  } else {
+    object <- allot_class(list(fit = fit, bayesnecformula = formula),
+                          c("bayesnecfit", "bnecfit"))
+    joint_hurdle_epred(object, newdata, dpar, re_formula = re_formula,
+                       draw_ids = ids)
   }
-  object <- allot_class(list(fit = fit, bayesnecformula = formula),
-                        c("bayesnecfit", "bnecfit"))
-  joint_hurdle_epred(object, newdata, dpar, re_formula = re_formula,
-                     draw_ids = draw_ids)
+  if (!is.null(ord)) out[ord, ] <- out
+  out
 }
 
 #' Non-linear parameter names of the second block for a given model

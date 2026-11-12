@@ -440,6 +440,25 @@ test_that("the combined simulation is on the full exposed set", {
   expect_equal(sum(as.data.frame(res$combined)$n), nrow(f$dat))
 })
 
+test_that("the combined table labels a stated control under a transformation", {
+  # Only the survival formula and the control record change. The combined
+  # table reads its groups from that formula's model frame, on the fitted
+  # scale, so the stated control has to be transformed to find its group.
+  skip_on_cran()
+  fit <- hurdle_fixture()$fit
+  stated <- sort(unique(hurdle_fixture()$dat$x))[2]
+  surv <- fit$survival
+  surv$bayesnecformula <- bayesnecformula(stats::as.formula(sub(
+    "crf(x,", "crf(sqrt(x),", deparse1(surv$bayesnecformula), fixed = TRUE
+  )))
+  surv$call_args$x_control <- stated
+  fit$survival <- surv
+  res <- as.data.frame(suppressWarnings(check_fit(fit))$combined)
+  expect_equal(sum(res$control), 1)
+  expect_equal(as.character(res$group[res$control]),
+               as.character(sqrt(stated)))
+})
+
 # Threshold the automatic control message on ratios. A posterior
 # predictive p-value can fail to flag a control discrepancy.
 

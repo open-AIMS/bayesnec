@@ -185,6 +185,17 @@ A \code{\link[ggplot2]{ggplot}} object, or, for a
 \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard \pkg{ggplot2}
 plotting method.
 }
+\details{
+Where a group-level term spans the predictor, as a plate does when
+each plate is tested at every concentration, the curve and credible band
+are those of the population curve, with every group deviation set to zero.
+The band is therefore the 95\% credible interval of the expected response
+of a typical level, and it does not include the variation between levels:
+the observations of a level whose deviation is large can lie outside it.
+The NEC, NSEC and ECx lines are read from the observed levels instead (see
+\code{pool} in \code{\link{ecx}}), so they need not fall where the plotted
+curve equals the corresponding response.
+}
 \examples{
 \dontrun{
 library(brms)

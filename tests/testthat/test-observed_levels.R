@@ -381,6 +381,42 @@ test_that("mean_curve NSEC starts at the latest own control", {
   expect_equal(attr(out, "censored")$lower, 2)
 })
 
+test_that("mean_curve NSEC does not search below the latest own control", {
+  fits <- list(a = list(label = "a"), b = list(label = "b"))
+  local_mocked_bindings(
+    level_x_bounds = function(object) {
+      if (object$label == "a") c(1, 3) else c(2, 3)
+    },
+    level_curve_draws = function(object, x_vec, ...) {
+      intercept <- if (object$label == "a") 11.5 else 12.5
+      list(curve = matrix(rep(intercept - x_vec, each = 2), nrow = 2),
+           control = c(10.5, 10.5), asymptote = 0)
+    },
+    returns_recorded = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  estimate <- function(x_control = "own", extrapolate = FALSE) {
+    bayesnec:::mean_curve_estimate(
+      fits, c(1, 1), "nsec",
+      list(resolution = 3, posterior = TRUE, x_control = x_control,
+           extrapolate = extrapolate)
+    )
+  }
+  own <- estimate()
+  expect_message(
+    extended <- estimate(extrapolate = c(1, 3)),
+    "cannot begin below 2, the highest of the levels' lowest observed"
+  )
+  expect_equal(as.numeric(extended), as.numeric(own))
+  expect_equal(attr(extended, "censored")$lower, 2)
+  expect_message(shared <- estimate("shared", c(0.5, 3)),
+                 "cannot begin below 1, the control concentration set by")
+  expect_equal(as.numeric(shared), as.numeric(estimate("shared")))
+  expect_message(stated <- estimate(1.5, c(1, 3)), "cannot begin below 1.5")
+  expect_equal(as.numeric(stated), as.numeric(estimate(1.5)))
+  expect_no_message(estimate(extrapolate = 3))
+})
+
 test_that("mean_curve NSEC censors crossings before the common range", {
   fits <- list(a = list(label = "a"), b = list(label = "b"))
   local_mocked_bindings(
@@ -406,9 +442,11 @@ test_that("mean_curve NSEC censors crossings before the common range", {
 
 test_that("mean_curve NSEC reads a finite extrapolation limit", {
   fits <- list(a = list(), b = list())
+  grids <- list()
   local_mocked_bindings(
     level_x_bounds = function(object) c(0, 3),
     level_curve_draws = function(object, x_vec, ...) {
+      grids[[length(grids) + 1L]] <<- x_vec
       list(curve = rbind(10 - 0.5 * x_vec, 12 - 0.5 * x_vec),
            control = c(10, 12), asymptote = 0)
     },
@@ -421,6 +459,7 @@ test_that("mean_curve NSEC reads a finite extrapolation limit", {
   )
   tested <- estimate(FALSE)
   extended <- estimate(5)
+  expect_identical(grids[[3]][match(grids[[1]], grids[[3]])], grids[[1]])
   expect_true(is.na(tested[2]))
   expect_true(is.finite(extended[2]))
   expect_gt(extended[2], 3)
@@ -456,8 +495,11 @@ test_that("saved population displays identify their earlier prediction basis", {
     .package = "bayesnec"
   )
   expect_warning(bayesnec:::warn_stale_observed_display(fit),
-                 "saved before observed-level display values")
+                 "no-effect summary describes the population curve")
   fit$pred_vals$observed_levels <- TRUE
+  expect_warning(bayesnec:::warn_stale_observed_display(fit),
+                 "band mixes the curves of the observed levels")
+  fit$pred_vals$band <- "population"
   expect_silent(bayesnec:::warn_stale_observed_display(fit))
 })
 
@@ -478,4 +520,113 @@ test_that("pooled observed-level ECx retains the value used by plot labels", {
   plotted <- bayesnec:::bind_ecx(data.frame(x = 1:3), estimate)
   expect_equal(plotted$ecx_int[4], 10)
   expect_equal(attr(estimate, "resolution"), 20)
+})
+
+# Two plates whose lowest concentration is 0.05, on a fit that records a
+# control of 0.01. `read_at` returns the control each level was read at.
+recorded_control_levels <- function() {
+  fit <- ecx4param
+  fit$call_args <- list(x_control = 0.01)
+  spec <- list(combinations = data.frame(plate = c("p1", "p2")),
+               x = list(c(0.05, 0.4, 1), c(0.05, 0.4, 1)),
+               n = c(3L, 3L), re_formula = NA)
+  read_at <- function(level, control, range) {
+    rep(bayesnec:::resolve_x_control(level, control, range)$value, 10)
+  }
+  list(fit = fit, spec = spec, read_at = read_at)
+}
+
+test_that("observed levels read and label a recorded control", {
+  case <- recorded_control_levels()
+  run <- function(x_control) {
+    bayesnec:::estimate_observed_levels(
+      case$fit, case$spec, "nsec", case$read_at, pool = "none",
+      posterior = TRUE, prob_vals = c(0.5, 0.025, 0.975),
+      x_control = x_control
+    )
+  }
+  own <- run("own")
+  expect_equal(unlist(own, use.names = FALSE), rep(0.01, 20))
+  expect_equal(unname(attr(own, "x_control")), c(0.01, 0.01))
+  shared <- run("shared")
+  expect_equal(unlist(shared, use.names = FALSE), rep(0.01, 20))
+  expect_equal(unname(attr(shared, "x_control")), c(0.01, 0.01))
+})
+
+test_that("a call-time control below the levels warns of extrapolation", {
+  case <- recorded_control_levels()
+  run <- function(x_control) {
+    bayesnec:::estimate_observed_levels(
+      case$fit, case$spec, "nsec", case$read_at, pool = "none",
+      posterior = TRUE, prob_vals = c(0.5, 0.025, 0.975),
+      x_control = x_control
+    )
+  }
+  expect_warning(run(0.02),
+                 "0.02, is below the lowest observation of 2 level\\(s\\)")
+  # The recorded control was reported at fitting.
+  expect_no_warning(run("shared"))
+})
+
+test_that("an observed level's nec censoring starts at the recorded control", {
+  spec <- list(combinations = data.frame(plate = c("p1", "p2")),
+               x = list(c(0.05, 0.4, 1), c(0.05, 0.4, 1)),
+               n = c(3L, 3L), re_formula = NA)
+  fit <- nec4param
+  plain <- bayesnec:::observed_level_fit(fit, spec, 1, with_ne = TRUE)
+  expect_equal(attr(plain$ne_posterior, "censored")$lower, 0.05)
+  fit$call_args <- list(x_control = 0.01)
+  level <- bayesnec:::observed_level_fit(fit, spec, 1, with_ne = TRUE)
+  expect_equal(attr(level$ne_posterior, "censored")$lower, 0.01)
+  expect_equal(attr(level$ne_posterior, "censored")$upper, 1)
+})
+
+test_that("an observed hurdle level's grid starts at the recorded control", {
+  spec <- list(combinations = data.frame(plate = c("p1", "p2")),
+               x = list(c(0.05, 0.4, 1), c(0.1, 0.4, 2)),
+               n = c(3L, 3L), re_formula = NA)
+  pair <- bayesnec:::allot_class(
+    list(growth = nec4param, survival = nec4param),
+    c("bayesnechurdlefit", "bnecfit")
+  )
+  ranges <- list()
+  local_mocked_bindings(
+    observed_level_spec = function(object) spec,
+    newdata_eval = function(object, resolution, x_range) {
+      ranges[[length(ranges) + 1]] <<- x_range
+      stop("grid built")
+    }
+  )
+  expect_error(bayesnec:::hurdle_component_preds(pair, resolution = 5),
+               "grid built")
+  expect_equal(ranges[[1]], c(0.05, 2))
+  pair$survival$call_args <- list(x_control = 0.01)
+  expect_error(bayesnec:::hurdle_component_preds(pair, resolution = 5),
+               "grid built")
+  expect_equal(ranges[[2]], c(0.01, 2))
+  level <- bayesnec:::observed_level_fit(pair, spec, 2)
+  expect_error(bayesnec:::hurdle_component_preds(level, resolution = 5),
+               "grid built")
+  expect_equal(ranges[[3]], c(0.01, 2))
+})
+
+test_that("pull_equation does not repeat a set's exact leave-one-out refits", {
+  set <- with_expand_record(
+    manec_example,
+    expand_record(fitting = list(reloo = TRUE), leave_out = "observation")
+  )
+  seen <- NULL
+  local_mocked_bindings(
+    expand_manec = function(..., loo_controls) {
+      seen <<- loo_controls
+      stop("expand_manec reached")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(bayesnec:::pull_equation(set, "ecx4param"),
+               "expand_manec reached")
+  expect_null(seen$fitting$reloo)
+  # pull_out() itself keeps the recorded controls.
+  expect_error(pull_out(set, model = "ecx4param"), "expand_manec reached")
+  expect_true(seen$fitting$reloo)
 })

@@ -439,7 +439,7 @@ test_that("model-averaged count asymptotes retain their draw pairing", {
   local_mocked_bindings(
     as_draws_df = function(x) data.frame(draw = seq_along(asymptote)),
     pull_draw_index = function(...) draw_index,
-    pull_out = function(object, model) parts[[model]],
+    pull_out = function(object, model, ...) parts[[model]],
     ecx_asymptote = function(object, type) asymptote,
     .package = "bayesnec"
   )
