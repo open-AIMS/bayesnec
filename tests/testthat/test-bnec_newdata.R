@@ -11,7 +11,7 @@ test_that("bnec and amend refuse a fractional resolution before fitting", {
   # The grid check would otherwise stop the call after every model had been
   # fitted.
   expect_error(bnec(y ~ crf(x, "nec3param"), data = nec_data,
-                    resolution = 100.5), "must be a whole number")
+                    resolution = 100.5), "must be one whole number")
   expect_error(amend(manec_example, drop = "nec4param", resolution = 10.5),
-               "must be a whole number")
+               "must be one whole number")
 })

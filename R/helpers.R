@@ -2441,12 +2441,6 @@ check_resolution <- function(resolution) {
     stop("Argument `resolution` must be at least 2; a single grid point ",
          "defines no interval to read an estimate from.", call. = FALSE)
   }
-  # check_args_newdata() refuses a fraction, and bnec() reaches it only after
-  # every model has been fitted.
-  if (resolution != round(resolution)) {
-    stop("Argument `resolution` must be a whole number, the number of grid ",
-         "points.", call. = FALSE)
-  }
   invisible(NULL)
 }
 
