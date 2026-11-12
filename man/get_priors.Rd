@@ -20,13 +20,19 @@ get_priors(object, ...)
 )
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnecfit}},
-\code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}} as returned by
-\code{\link{bnec}}; or a \code{\link{bayesnecformula}}, a
-\code{\link[stats]{formula}} or a \code{\link[base]{character}} string that
-can be coerced to one.}
+\item{object}{An object of class \code{\link{bayesnecfit}} or
+\code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or
+\code{\link{bayesnechurdlefit}} as returned by \code{\link{bnec_hurdle}};
+or a \code{\link{bayesnecformula}}, a \code{\link[stats]{formula}} or a
+\code{\link[base]{character}} string that can be coerced to one. A grouped
+fit from \code{\link{bnec_group}} is refused: call \code{get_priors} on
+one of its levels, \code{fit$fits[[level]]}. A joint fit from
+\code{\link{bnec_joint}} is refused as well; its priors can be read with
+\code{\link[brms]{prior_summary}} on \code{fit$fit}.}
 
-\item{...}{Unused.}
+\item{...}{Not used. Any argument passed here is refused: a fitted object
+takes no further argument, and a formula takes only the arguments named
+below.}
 
 \item{data}{A \code{\link[base]{data.frame}} containing the data referred to
 by the formula.}
@@ -102,13 +108,17 @@ supplied prior whole, so a set handed back without them leaves \pkg{brms} to
 put a flat prior on each, which is a different model. See
 \code{\link{bayesnecformula}}.
 
-What is left to \pkg{brms} and its defaults, and so is not returned, is the
-family's own dispersion parameter (\code{sigma}, \code{shape}, \code{phi})
-where dispersion is held constant, and the linear predictor of a
-\code{disp(~x)} sub-model. Neither can be supplied through
-\code{bnec(prior = )} in any case, because the initial-value search matches
-prior names against the model's own parameters and rejects any prior naming
-one outside that set.
+What is left to \pkg{brms} and its defaults, and so is not returned from a
+formula, is the family's own dispersion parameter (\code{sigma},
+\code{shape}, \code{phi}) where dispersion is held constant, and the
+linear predictor of a \code{disp(~x)} sub-model. A prior on \code{sigma},
+\code{shape} or \code{phi} can be added to the set passed to
+\code{bnec(prior = )}. It reaches \pkg{brms} in place of the default, the
+initial value of that parameter is left to Stan, and \code{get_priors} on
+the fit returns it with the curve's priors. A prior on a slope of a
+\code{disp(~x)} sub-model, of class \code{"b"} with \code{dpar} set, is
+refused, because the initial-value search reads it as a curve parameter
+that the equation does not have.
 
 This is why \code{get_priors} is not \code{\link{pull_prior}}, which returns
 the whole \code{brmsprior} a fit carries -- \pkg{brms} defaults, duplicated

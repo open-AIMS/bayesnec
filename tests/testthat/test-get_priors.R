@@ -163,6 +163,32 @@ test_that("get_priors rejects what it cannot build priors from", {
   )
 })
 
+test_that("get_priors refuses arguments it would not use", {
+  expect_error(get_priors(nec4param, x_control = 1),
+               "takes no further argument, but this call supplied `x_control`")
+  expect_error(get_priors(manec_example, prior_type = "regularizing"),
+               "supplied `prior_type`")
+  hurdle <- structure(list(growth = nec4param, survival = manec_example),
+                      class = c("bayesnechurdlefit", "bnecfit"))
+  expect_error(get_priors(hurdle, nec_data), "supplied an unnamed argument")
+  expect_error(get_priors(y ~ crf(x, "nec3param"), data = nec_data, foo = 1),
+               "does not use `foo`")
+  expect_error(get_priors(bnf(y ~ crf(x, "nec3param")), data = nec_data,
+                          foo = 1), "does not use `foo`")
+  expect_error(get_priors("y ~ crf(x, \"nec3param\")", data = nec_data,
+                          foo = 1), "does not use `foo`")
+})
+
+test_that("get_priors names the remedy for a grouped or a joint fit", {
+  grouped <- structure(list(fits = list(a = nec4param), group_var = "site"),
+                       class = c("bayesnecgroupfit", "bnecfit"))
+  expect_error(get_priors(grouped),
+               "get_priors(grouped$fits[[\"a\"]])", fixed = TRUE)
+  joint <- structure(list(), class = c("bayesnecjointfit", "bnecfit"))
+  expect_error(get_priors(joint), "brms::prior_summary(joint$fit)",
+               fixed = TRUE)
+})
+
 test_that("a disp variance function's priors come back with the curve's", {
   # Return the variance-function coefficients with the curve's priors. A set
   # without c0 and c1 is incomplete, and bnec() refills them with a warning.
