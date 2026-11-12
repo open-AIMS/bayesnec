@@ -140,14 +140,16 @@ is followed by inhibition at higher concentrations, and its statistical
 guidance prefers the more general term low-dose stimulation, which also
 covers solvent effects and experimental error <span class="citation">(Environment Canada 2007, 2005)</span>. Stimulation is
 frequent in the algal and aquatic plant growth tests that supply many
-chronic inputs to water quality guideline values. For example, <span class="citation">Cedergreen et al. (2007)</span> found at least one
+chronic inputs to water quality guideline values. For example, among
+curves for nine herbicides and a fungicide, <span class="citation">Cedergreen et al. (2007)</span> found at least one
 treatment above 105% of the control in 25–76% of the growth-rate curves
 for each of four plant and algal species, and Environment Canada
 describes low-dose stimulation as perhaps the most common hindrance to
 the analysis of well-designed sublethal toxicity tests <span class="citation">(Environment Canada 2005)</span>. Reviews of the
 literature put the maximum stimulation at about 30–60% above the control
-<span class="citation">(Calabrese 2008)</span>, although Canadian
-laboratories regard about 30% as a more likely maximum <span class="citation">(Environment Canada 2005)</span>.</p>
+<span class="citation">(Calabrese 2008; Calabrese et al. 2019)</span>,
+although Canadian laboratories regard about 30% as a more likely maximum
+<span class="citation">(Environment Canada 2005)</span>.</p>
 <p>The pattern is descriptive, and it does not by itself establish a
 beneficial effect. A nutrient or other growth factor added with the test
 material can increase growth <span class="citation">(Environment Canada
@@ -168,7 +170,7 @@ curve should be read.</p>
 threshold hormesis equations (<code>nechorme</code>,
 <code>nechorme4</code>, <code>neclinhorme</code>,
 <code>nechormepwr</code>, <code>nechorme4pwr</code> and
-<code>nechormepwr01</code>) add a rising term below a threshold and
+<code>nechormepwr01</code>) add a rising term at every concentration and
 start a declining term at the <code>nec</code> parameter, whereas the
 smooth equations <code>ecxhormebc4</code> and <code>ecxhormebc5</code>
 are based on the Brain–Cousens form <span class="citation">(Brain and
@@ -199,9 +201,9 @@ towards the stimulated treatments, because that creates a reference
 response not observed in the test <span class="citation">(Environment
 Canada 2005)</span>, and the European Chemicals Agency advises that
 positive effects should not be considered in deriving an ECx <span class="citation">(European Chemicals Agency 2008)</span>. For no-effect
-estimates the guidance addresses hypothesis tests only. Environment
-Canada treats stimulation as non-harmful, so that only effects
-significantly worse than the true control count in designating a
+estimates from stimulated data, the guidance addresses hypothesis tests
+only. Environment Canada treats stimulation as non-harmful, so that only
+effects significantly worse than the true control count in designating a
 no-observed-effect concentration (NOEC) <span class="citation">(Environment Canada 2005)</span>, and the OECD
 recommends pairwise comparisons for nonmonotone data <span class="citation">(OECD 2006)</span>. None of these documents defines a
 regression-based no-effect estimate for a hormetic curve, and the
@@ -822,13 +824,24 @@ should probably not be used <span class="citation">(Warne et al.
 one that depends on a poorly fitting declining limb, should be reported
 as unresolved.</p>
 <p>These choices concern where a fitted curve is read, and they do not
-establish whether stimulation is beneficial. A growth-based NSEC could
-miss an adverse effect if increased growth draws resources from
-reproduction <span class="citation">(Forbes 2000; Jager et al.
-2013)</span>, and a stimulus from organic carbon in a mixture, as <span class="citation">Negri et al. (2021)</span> suggested for the marine
-series, may change with receiving-water chemistry. The endpoint, the
-true control and other available endpoints should therefore be examined
-before a hormetic NSEC is used as a guideline input.</p>
+establish whether stimulation is beneficial. If increased growth draws
+resources from reproduction <span class="citation">(Forbes 2000; Jager
+et al. 2013)</span>, a growth-based NSEC could miss an adverse effect. A
+stimulus from organic carbon in a mixture, as <span class="citation">Negri et al. (2021)</span> suggested for the marine
+series, may also change with receiving-water chemistry. The endpoint,
+the true control and other available endpoints should therefore be
+examined before a hormetic NSEC is used as a guideline input.</p>
+<p>Counting only a decline as an effect is appropriate for a toxicant
+whose overall effect on the tested species is detrimental, where the
+decline at higher concentrations is the adverse response and a rise at
+lower concentrations is not itself a concern. For such a toxicant the
+post-peak NSEC is consistent with the guidance above, which counts only
+a decline as an effect in hypothesis tests <span class="citation">(Environment Canada 2005)</span>. Where a rise is
+itself of concern, for example the growth and toxin production of
+harmful algae <span class="citation">(Agathokleous et al. 2022)</span>,
+an NSEC is also needed for the increase. The <code><a href="../reference/nsec.html">nsec()</a></code>
+function of the <code>toxval</code> package returns an NSEC for both a
+decrease and an increase from a <code>bayesnec</code> fit <span class="citation">(Fisher et al. 2026)</span>.</p>
 </div>
 <div class="section level2">
 <h2 id="reproducibility">Reproducibility<a class="anchor" aria-label="anchor" href="#reproducibility"></a>
@@ -851,6 +864,13 @@ observations in Figure 2 are read from
 <h2 class="unnumbered" id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-agathokleous2022algae" class="csl-entry">
+Agathokleous, Evgenios, Josep Peñuelas, Ricardo A. Azevedo, Matthias C.
+Rillig, Haoyu Sun, and Edward J. Calabrese. 2022. <span>“Low Levels of
+Contaminants Stimulate Harmful Algal Organisms and Enrich Their
+Toxins.”</span> <em>Environmental Science &amp; Technology</em> 56 (17):
+11991–2002. <a href="https://doi.org/10.1021/acs.est.2c02763" class="external-link">https://doi.org/10.1021/acs.est.2c02763</a>.
+</div>
 <div id="ref-aims2020condensatedata" class="csl-entry">
 Australian Institute of Marine Science. 2020. <em>Condensate Toxicity
 Testing</em>. <a href="https://apps.aims.gov.au/metadata/view/615e208d-f6c7-4b2f-b99e-d4fc50614e48" class="external-link">https://apps.aims.gov.au/metadata/view/615e208d-f6c7-4b2f-b99e-d4fc50614e48</a>.
@@ -868,7 +888,13 @@ Responses Where There Is Stimulation of Growth at Low Doses.”</span>
 <div id="ref-calabrese2008" class="csl-entry">
 Calabrese, E. J. 2008. <span>“Hormesis: Why It Is Important to
 Toxicology and Toxicologists.”</span> <em>Environmental Toxicology and
-Chemistry</em> 27 (7): 1451–74. <a href="https://doi.org/10.1897/07-541" class="external-link">https://doi.org/10.1897/07-541</a>.
+Chemistry</em> 27 (7): 1451–74. <a href="https://doi.org/10.1897/07-541.1" class="external-link">https://doi.org/10.1897/07-541.1</a>.
+</div>
+<div id="ref-calabrese2019" class="csl-entry">
+Calabrese, E. J., E. Agathokleous, W. J. Kozumbo, E. J. Stanek III, and
+D. Leonard. 2019. <span>“Estimating the Range of the Maximum Hormetic
+Stimulatory Response.”</span> <em>Environmental Research</em> 170:
+337–43. <a href="https://doi.org/10.1016/j.envres.2018.12.020" class="external-link">https://doi.org/10.1016/j.envres.2018.12.020</a>.
 </div>
 <div id="ref-cedergreen2008" class="csl-entry">
 Cedergreen, N. 2008. <span>“Is the Growth Stimulation by Low Doses of
@@ -905,6 +931,12 @@ Ewijk, P. H. van, and J. A. Hoekstra. 1993. <span>“Calculation of the
 <span>EC50</span> and Its Confidence Interval When Subtoxic Stimulus Is
 Present.”</span> <em>Ecotoxicology and Environmental Safety</em> 25:
 25–32. <a href="https://doi.org/10.1006/eesa.1993.1003" class="external-link">https://doi.org/10.1006/eesa.1993.1003</a>.
+</div>
+<div id="ref-toxval2026" class="csl-entry">
+Fisher, Rebecca, Diego R. Barneche, Darren Koppel, David R. Fox, and
+Ayla Pearson. 2026. <em><span class="nocase">toxval</span>: Functions
+for Extracting <span>NSEC</span> and <span>ECx</span> Values from Fitted
+Frequentist and <span>Bayesian</span> Model Objects</em>. <a href="https://github.com/open-AIMS/toxval" class="external-link">https://github.com/open-AIMS/toxval</a>.
 </div>
 <div id="ref-fisher2024" class="csl-entry">
 Fisher, Rebecca, Diego R. Barneche, Gerard F. Ricardo, and David R. Fox.
