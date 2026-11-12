@@ -1161,6 +1161,53 @@ test_that("the block panels of a joint fit match the estimators", {
   expect_equal(lines(combined, "ecx_vals"), as.numeric(q(ecx(fit))))
 })
 
+test_that("a hormesis threshold block is marked and labelled by its NSEC", {
+  # A mocked block: only the equation names and the block's parameters matter.
+  object <- list(model = "nechorme", fit = list(family = brms::hurdle_gamma()))
+  blocks <- c(growth = "mu", survival = "hu")
+  survival_model <- "nechorme4"
+  local_mocked_bindings(
+    dpar_models = function(object) c(mu = object$model, hu = survival_model),
+    block_has_nec = function(object, dpar) TRUE,
+    recorded_expand_args = function(...) {
+      list(sig_val = 0.01, resolution = 50, x_range = NA)
+    },
+    nsec = function(object, ..., dpar) paste("nsec", dpar)
+  )
+  labels <- bayesnec:::plot_block_labels(object, blocks, "N(S)EC")
+  expect_equal(unname(labels$tag), c("NSEC", "NSEC"))
+  expect_equal(bayesnec:::joint_block_ne(object, "mu"), "nsec mu")
+  expect_equal(bayesnec:::joint_block_ne(object, "hu"), "nsec hu")
+
+  object$model <- "nec3param"
+  survival_model <- "nec4param"
+  labels <- bayesnec:::plot_block_labels(object, blocks, "NEC")
+  expect_equal(unname(labels$tag), c("NEC", "NEC"))
+})
+
+test_that("a hormesis threshold block of a joint fit plots nsec()", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  fit <- joint_hurdle_cache()
+  q <- function(expr) suppressWarnings(suppressMessages(expr))
+  # Name the survival block, fitted as nec3param, as a hormesis threshold
+  # equation, so that its mark must come from nsec() and not its nec draws.
+  real_models <- bayesnec:::dpar_models
+  local_mocked_bindings(dpar_models = function(object) {
+    out <- real_models(object)
+    out[["hu"]] <- "nechorme"
+    out
+  })
+  d <- q(ggbnec_data(fit, which = "all"))
+  survival <- d[d$panel == "Probability of survival", , drop = FALSE]
+  ne <- survival$nec_vals[!is.na(survival$nec_vals)]
+  expect_equal(ne, as.numeric(q(nsec(fit, dpar = "hu", resolution = 50))))
+  p <- q(autoplot(fit, which = "all"))
+  text <- Filter(function(layer) inherits(layer$geom, "GeomText"),
+                 p$layers)[[1]]$data
+  expect_equal(text$tag[3], "NSEC")
+})
+
 test_that("the block panels of a joint fit follow the fitted axis", {
   skip_on_cran()
   skip_if_not_installed("rstan")

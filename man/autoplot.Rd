@@ -125,8 +125,9 @@ survivors, which \code{dpar = "mu"} selects in \code{\link{ecx}};
 \code{"all"} for a panel of each. The panels and their titles are those
 \code{\link{autoplot.bayesnechurdlefit}} draws for a factorised fit, and
 each title names the equation of its block. A growth or survival panel marks
-the \code{nec} parameter of its block where the block's equation has one,
-and otherwise the NSEC of its curve, and draws the ECx that
+the \code{nec} parameter of its block where the block's equation is a
+monotone threshold equation, and otherwise the NSEC of its curve, as
+\code{\link{nec}} reports them, and draws the ECx that
 \code{\link{ecx}} returns with the matching \code{dpar}. A model set, a
 \code{\link{bayesnecgroupfit}}, a \code{\link{bayesnecjointfit}} and a fit
 of any other family draw one curve and refuse any value but
