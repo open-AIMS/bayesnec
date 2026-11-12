@@ -264,22 +264,22 @@ outside_prior_bounds <- function(value, prior_row) {
 #' @noRd
 max_exp_argument <- 700
 
-#' Evaluate an initial curve and record the largest exp() argument
+#' A prediction function that records the largest exp() argument
 #'
 #' The prediction functions are written as the Stan formulas are, so the
 #' arguments their \code{exp()} calls receive are those Stan evaluates at the
-#' initial values.
+#' initial values. Build the tracer once per search: it is slower than the
+#' plain function, so evaluate it only for a draw that passed every other
+#' check.
 #'
-#' @param init One chain's initial values.
-#' @param x The sorted predictor.
 #' @param pred_fct The prediction function of the equation.
-#' @param fct_args Its argument names, other than \code{x}.
 #'
-#' @return A \code{\link[base]{list}} with \code{preds}, the curve, and
-#' \code{largest}, the largest argument any \code{exp()} call received, or
-#' \code{-Inf} where there was none.
+#' @return A function of \code{(init, x, fct_args)} that returns a
+#' \code{\link[base]{list}} with \code{preds}, the curve, and \code{largest},
+#' the largest argument any \code{exp()} call received, or \code{-Inf} where
+#' there was none.
 #' @noRd
-exp_traced_predictions <- function(init, x, pred_fct, fct_args) {
+exp_tracer <- function(pred_fct) {
   largest <- -Inf
   traced <- pred_fct
   environment(traced) <- list2env(
@@ -291,8 +291,24 @@ exp_traced_predictions <- function(init, x, pred_fct, fct_args) {
     }),
     parent = environment(pred_fct)
   )
-  preds <- get_init_predictions(init, x, traced, fct_args)
-  list(preds = preds, largest = largest)
+  function(init, x, fct_args) {
+    largest <<- -Inf
+    preds <- get_init_predictions(init, x, traced, fct_args)
+    list(preds = preds, largest = largest)
+  }
+}
+
+#' Evaluate one initial curve with exp_tracer()
+#'
+#' @param init One chain's initial values.
+#' @param x The sorted predictor.
+#' @param pred_fct The prediction function of the equation.
+#' @param fct_args Its argument names, other than \code{x}.
+#'
+#' @return As the function \code{exp_tracer()} returns.
+#' @noRd
+exp_traced_predictions <- function(init, x, pred_fct, fct_args) {
+  exp_tracer(pred_fct)(init, x, fct_args)
 }
 
 #' refine_inits
@@ -764,21 +780,20 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
   # support is a level the likelihood can evaluate.
   constant <- model %in% constant_equations()
   support <- init_support(family)
+  trace_exp <- exp_tracer(pred_fct)
   passes <- function(inits) {
     vapply(inits, function(init) {
-      evaluated <- exp_traced_predictions(init, x_sorted, pred_fct, fct_args)
-      # Stan cannot start where an exp() in the curve overflows: R returns a
-      # finite curve, but the gradient is Inf / Inf.
-      if (evaluated$largest >= max_exp_argument) {
-        return(FALSE)
-      }
-      preds <- evaluated$preds
-      if (constant) {
+      preds <- get_init_predictions(init, x_sorted, pred_fct, fct_args)
+      ok <- if (constant) {
         all(is.finite(preds)) && min(preds) > support[1] &&
           max(preds) < support[2]
       } else {
         check_init_predictions(preds, limits)
       }
+      # Stan cannot start where an exp() in the curve overflows: R returns a
+      # finite curve, but the gradient is Inf / Inf. Neither check draws a
+      # random number, so their order does not change the draws accepted.
+      ok && trace_exp(init, x_sorted, fct_args)$largest < max_exp_argument
     }, logical(1))
   }
   # Seed only where a seed was supplied; see Details. NA is brms's "no seed",
