@@ -12,49 +12,20 @@
 #'
 #' @details The highest-weighted candidate contributes most to the
 #' model-averaged estimate, so its fit is the one normally inspected with
-#' \code{\link{pp_check}} and \code{\link{check_fit}}. Selecting it by hand
-#' requires two things that are not obvious. The weights are held in
-#' \code{mod_stats} and \code{\link{pull_out}} takes a model name, so the name
-#' has to be found before it can be passed; and \code{mod_stats} exists on a
-#' \code{\link{bayesmanecfit}} alone, so the same code applied to a set that
-#' \code{\link{screen_models}} has reduced to one equation --- which is returned
-#' as a \code{\link{bayesnecfit}} --- reads a \code{NULL}. Both cases reach the
-#' same result here.
+#' \code{\link{pp_check}} and \code{\link{check_fit}}.
 #'
-#' The weight selected on is reported along with the number of candidates it was
-#' selected from, since the two together are what says whether the selection
-#' means anything. The highest weight of a flat set of ten candidates is little
-#' more than the equal share of 0.1, and one such candidate describes the
-#' model-averaged estimate hardly at all. No warning is raised against a
-#' threshold, because what counts as a small weight depends on the size of the
-#' set, and a cut placed anywhere would be either noise on a set of two or false
-#' comfort on a set of twenty. \code{\link{summary}} reports the whole weights
-#' table, which is what a judgement of a marginal case needs.
+#' The weight selected on is reported with the number of candidates it was
+#' selected from: the highest weight of a flat set of ten candidates is little
+#' more than the equal share of 0.1. No threshold is applied;
+#' \code{\link{summary}} reports the whole weights table. Where two or more
+#' candidates hold exactly the same highest weight, the first in the order of
+#' the set is returned and the tie is reported.
 #'
-#' Where two or more candidates hold exactly the same highest weight, the first
-#' in the order of the set is returned and the tie is reported. Only exact ties
-#' are detected; two weights differing in the last decimal place are not a tie
-#' and the larger is taken.
-#'
-#' The object is the only argument. This function selects a model rather than
-#' re-specifying a fit, so \code{x_range}, \code{resolution}, \code{sig_val}
-#' and \code{loo_controls} are not accepted and are refused rather than
-#' ignored: honouring them on the \code{\link{bayesmanecfit}} branch, where
-#' \code{\link{pull_out}} rebuilds the fit, and ignoring them on the
-#' \code{\link{bayesnecfit}} branch, where nothing is rebuilt, would make the
-#' returned object depend on the class the caller was told not to test for.
-#' \code{\link{pull_out}} takes them alongside a model name, and
-#' \code{\link{amend}} rebuilds a fit that already exists.
-#'
-#' Which equation was selected is reported on both branches, including the
-#' pass-through, so that a workflow leaves the same record whether or not the
-#' set had been reduced to one equation before the call. \code{suppressMessages}
-#' silences it.
-#'
-#' The refusal of \code{...} is raised in the generic, before dispatch, so a
-#' method written for another class outside this package cannot take an
-#' argument of its own either. \code{\link{screen_models}} and
-#' \code{\link{amend}} are closed to extension in the same way.
+#' The object is the only argument, and any other is refused. To rebuild a fit
+#' at a different \code{x_range}, \code{resolution}, \code{sig_val} or
+#' \code{loo_controls}, use \code{\link{pull_out}} with a model name, or
+#' \code{\link{amend}}. The selected equation is reported for a
+#' \code{\link{bayesnecfit}} as well; \code{suppressMessages} silences it.
 #'
 #' A \code{\link{bayesnechurdlefit}} is handled one component at a time and
 #' rewrapped, as \code{\link{screen_models}} and \code{\link{amend}} already do

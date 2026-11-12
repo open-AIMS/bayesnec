@@ -18,23 +18,14 @@
 #' \emph{Nothing failed} --- returns the object unchanged, and says so.
 #' \code{\link{amend}} is not called at all.
 #'
-#' \emph{Some failed} --- the failures are intersected against the models the
-#' object actually holds before \code{\link{amend}} is called. That guard lives
-#' here rather than in \code{\link{amend}}, which is deliberately not modified:
-#' \code{amend(drop = )} already handles a mix of present and absent names
-#' correctly, and silently returns the object unchanged only when \emph{every}
-#' named model is absent.
+#' \emph{Some failed} --- the failed models the object holds are dropped with
+#' \code{\link{amend}}.
 #'
-#' \emph{Everything failed} --- decided here, from the table, before
-#' \code{\link{amend}} is called at all, and reported as a result rather than
-#' a usage error, with the same per-model reasons the drop message carries: a
-#' fit where no candidate sampled properly is an outcome the analysis has to
-#' state, and stating it without saying what failed is not enough to write up. Deciding it up front rather than catching an error out
-#' of \code{\link{amend}} matters, because \code{\link{amend}} raises
-#' unrelated errors that would otherwise be reported as convergence results ---
-#' a \code{\link{bayesnecfit}} raises "Cannot drop models from a bayesnecfit",
-#' and refitting the model weights can fail for reasons of its own. Everything
-#' except the all-failed case now propagates as itself.
+#' \emph{Everything failed} --- an error, raised before \code{\link{amend}}
+#' is called, that gives the reason each model failed. A fit where no candidate
+#' sampled properly is an outcome the analysis has to state, with what failed.
+#' An error raised by \code{\link{amend}} in the other cases is passed on
+#' unchanged.
 #'
 #' @section Hurdle fits:
 #'
