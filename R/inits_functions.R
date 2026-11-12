@@ -130,12 +130,14 @@ prior_sampler <- function(dist) {
 #' @param priors an object of class \code{\link[brms]{brmsprior}} from package
 #' \pkg{brms}.
 #' @param chains Number of chains to be passed to \pkg{brms} model.
+#' @param max_redraws The number of redraws of one bounded value allowed
+#' before the search stops with an error.
 #'
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 #'
 #' @noRd
-make_inits <- function(model, fct_args, priors, chains) {
+make_inits <- function(model, fct_args, priors, chains, max_redraws = 1e6) {
   priors <- blank_bounds_to_na(as.data.frame(priors))
   priors <- priors[priors$prior != "", ]
   # Search only the curve's own coefficients, class "b". A parameter of any
@@ -182,10 +184,13 @@ make_inits <- function(model, fct_args, priors, chains) {
         out[[i]][[j]] <- fct_i(1, v1, v2)
         if (any(!is.na(priors[j, c("lb", "ub")]))) {
           n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
+          n_redraws <- 0
           if (n_bounds == 2) {
             bounds <- as.numeric(priors[j, c("lb", "ub")])
             while (out[[i]][[j]] <= min(bounds) |
                      out[[i]][[j]] >= max(bounds)) {
+              n_redraws <- count_redraw(n_redraws, max_redraws, model,
+                                        priors[j, ])
               out[[i]][[j]] <- fct_i(1, v1, v2)
             }
           } else if (n_bounds == 1) {
@@ -193,6 +198,8 @@ make_inits <- function(model, fct_args, priors, chains) {
             bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
             bounds <- as.numeric(priors[j, direction])
             while (bound_fct(out[[i]][[j]], bounds)) {
+              n_redraws <- count_redraw(n_redraws, max_redraws, model,
+                                        priors[j, ])
               out[[i]][[j]] <- fct_i(1, v1, v2)
             }
           }
@@ -204,6 +211,49 @@ make_inits <- function(model, fct_args, priors, chains) {
     }
   }
   out
+}
+
+#' Count one redraw of a bounded initial value, stopping at the cap
+#'
+#' @param n_redraws The number of redraws made so far.
+#' @param max_redraws The cap passed to \code{make_inits()}.
+#' @param model The equation name, for the message.
+#' @param prior_row The one-row \code{\link[base]{data.frame}} of the prior,
+#' read for the message.
+#'
+#' @return \code{n_redraws + 1}.
+#'
+#' @noRd
+count_redraw <- function(n_redraws, max_redraws, model, prior_row) {
+  if (n_redraws >= max_redraws) {
+    bound <- function(b) if (is.na(b)) "none" else b
+    stop("In model ", model, ", no initial value for ", prior_row$nlpar,
+         " fell inside its bounds (lb = ", bound(prior_row$lb), ", ub = ",
+         bound(prior_row$ub), ") in ",
+         format(max_redraws, big.mark = ",", scientific = FALSE),
+         " draws from its prior, ", prior_row$prior, ". Supply a prior with",
+         " more of its mass inside the bounds, or supply `init` to bnec().",
+         call. = FALSE)
+  }
+  n_redraws + 1
+}
+
+#' Whether a draw lies outside the bounds of its prior
+#'
+#' @param value A \code{\link[base]{numeric}} value.
+#' @param prior_row The one-row \code{\link[base]{data.frame}} of the prior.
+#'
+#' @details The bounds are exclusive, as in \code{make_inits()}. A blank or
+#' missing bound is absent.
+#'
+#' @return A \code{\link[base]{logical}} value.
+#'
+#' @noRd
+outside_prior_bounds <- function(value, prior_row) {
+  lb <- suppressWarnings(as.numeric(prior_row$lb))
+  ub <- suppressWarnings(as.numeric(prior_row$ub))
+  (length(lb) == 1 && !is.na(lb) && value <= lb) ||
+    (length(ub) == 1 && !is.na(ub) && value >= ub)
 }
 
 #' refine_inits
@@ -251,6 +301,8 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
     for (k in seq_len(n_sub)) {
       candidate <- init
       new_val <- fct_i(1, v1, v2)
+      # Stan refuses an initial value outside the prior's bounds.
+      if (outside_prior_bounds(new_val, priors[pr_row, ])) next
       if (priors$class[pr_row] == "b") {
         dim(new_val) <- 1
       }
@@ -866,8 +918,8 @@ group_inits <- function(brms_bf, data, family, priors, group_spec = NULL) {
     # Warn rather than return quietly: without these values the fit may not
     # start, and the cause would be hard to trace.
     warning("Could not determine the group-level dimensions, so no initial ",
-            "values were generated for them. The fit may fail to initialise. ",
-            "See #245.", call. = FALSE)
+            "values were generated for them. The fit may fail to initialise.",
+            call. = FALSE)
     return(list())
   }
   m_names <- grep("^M_[0-9]+$", names(sdata), value = TRUE)

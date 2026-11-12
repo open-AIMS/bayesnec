@@ -283,6 +283,20 @@ test_that("a prior naming a parameter the curve does not have still errors", {
   )
 })
 
+# A bounded draw must stop when its prior has almost no mass inside the bounds.
+
+test_that("make_inits stops at the redraw cap and names the prior", {
+  pr <- disp_prior_df()
+  pr <- pr[pr$class == "b", ]
+  pr$prior[pr$nlpar == "nec"] <- "normal(0, 1)"
+  pr$lb[pr$nlpar == "nec"] <- "50"
+  expect_error(
+    bayesnec:::make_inits("nec4param", c("b_top", "b_beta", "b_bot", "b_nec"),
+                          priors = pr, chains = 1, max_redraws = 100),
+    "no initial value for nec fell inside its bounds \\(lb = 50, ub = none\\)"
+  )
+})
+
 # A constant prior supplies its fixed value without a distribution draw.
 
 const_prior_df <- function(prior_bot = "constant(0)", lb = "", ub = "") {
@@ -353,6 +367,23 @@ test_that("refine_inits skips a parameter that is fixed", {
                                    n_sub = 5)
   )
   expect_equal(as.numeric(out$b_beta), -0.5)
+})
+
+test_that("refine_inits keeps a redrawn value inside its prior's bounds", {
+  # Stan refuses an initial value outside the bounds of its prior.
+  x <- as.numeric(rep(1:10, each = 5))
+  priors <- const_prior_df(prior_bot = "normal(0.5, 1)")
+  priors$lb[priors$nlpar == "beta"] <- "4"
+  priors$ub[priors$nlpar == "beta"] <- "5"
+  fct_args <- c("b_top", "b_beta", "b_bot", "b_nec")
+  init <- list(b_top = as.array(1), b_beta = as.array(6),
+               b_bot = as.array(0), b_nec = as.array(5))
+  set.seed(1)
+  out <- bayesnec:::refine_inits(init, sort(x), bayesnec:::pred_nec4param,
+                                 fct_args, limits = c(0, 3), priors = priors,
+                                 n_sub = 200)
+  expect_gt(as.numeric(out$b_beta), 4)
+  expect_lt(as.numeric(out$b_beta), 5)
 })
 
 test_that("a constant prior that fixes no readable value errors", {
