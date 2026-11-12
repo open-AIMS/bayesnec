@@ -93,8 +93,8 @@
 - `ecx(type = "relative")` measures from the control to the equation's lower
   asymptote, `bot`, taken on the response scale under a log or logit link, and
   warns that its meaning has changed. For an equation without `bot` it
-  measures towards the value the mean declines to: 0 on the identity link, 1
-  under a log link and 0.5 under a logit link. The quantity 2.1.3.1 reported,
+  measures towards 0, the value the mean declines to under each link. The
+  quantity 2.1.3.1 reported,
   from the top of the fitted curve to its lowest point, is now `type =
   "range"`, measured from the control. `type = "relative"` is an error for an
   equation without `bot` on a family unbounded below, such as `nec3param` on a
@@ -322,9 +322,10 @@ the same call returns.
   2.1.3.1 ignored. A `crf()` term without an equation is refused (#211, #325,
   #578).
 
-- `ecx()`, `nsec()`, `nec()` and `ecnsec()` refuse a `sig_val` outside
-  (0, 1), a `resolution` that is not a whole number of at least 2, a missing
-  or vector `ecx_val` and a `posterior` that is not `TRUE` or `FALSE`.
+- `nsec()` refuses a `sig_val` outside (0, 1). `ecx()`, `nsec()` and
+  `ecnsec()` refuse a `resolution` that is not a whole number of at least 2,
+  `ecx()` refuses a missing or vector `ecx_val`, and all four estimators
+  refuse a `posterior` that is not `TRUE` or `FALSE`.
   `nsec()` refuses `type` and any other argument it does not use, which
   2.1.3.1 ignored. `nec()` says that it does not use `sig_val`,
   `resolution` or `x_range`, and its refusal of a smooth equation points to
