@@ -528,9 +528,8 @@ An equation that fails on Rhat or ESS with no more than ten divergent
 transitions should be refitted under the same prior with more iterations before
 it is excluded, because changing the prior would not test whether the original
 run was too short. The chunk below refits any such equation with twice the
-iterations and warmup, thinned by two so that it keeps the 8,000 draws of the
-other equations (the model weights compare leave-out scores computed from equal
-numbers of draws), and replaces it in the set before screening. An equation
+iterations and warmup, and replaces it in the set before screening. The refit
+keeps more draws than the other equations, which the model weights allow. An equation
 with more than ten divergent transitions is instead refitted with the same
 iterations at `adapt_delta = 0.99`, or at 0.999 if its first fit already used
 0.99. Steps 4 and 5 apply the same rules to their refits.
@@ -541,7 +540,7 @@ tune_models <- function(tab) tab$model[tab$failed & tab$n_divergent > 10]
 refit_failed <- function(fit, retry, tune) {
   if (!length(retry) && !length(tune)) return(fit)
   longer <- lapply(retry, function(m) {
-    update(pull_out(fit, model = m), iter = 2e4, warmup = 1.6e4, thin = 2,
+    update(pull_out(fit, model = m), iter = 2e4, warmup = 1.6e4,
            refresh = 0)
   })
   tuned <- lapply(tune, function(m) {

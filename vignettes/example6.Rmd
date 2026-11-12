@@ -472,9 +472,10 @@ that `summary()` and `nec()` report for such a set is a weighted mixture of
 NEC and NSEC draws. A smooth equation has no threshold parameter, so its
 contribution to that estimate is an NSEC [@fisherfox2023], not an NEC, and
 `bayesnec` refers to the mixture as the N(S)EC [@fisher2023ieam]. `summary()`
-labels each endpoint accordingly, whereas `nec()` returns the estimate as an
-unlabelled vector with a message to that effect, so `summary()` is the better
-choice where the distinction is important.
+labels each endpoint accordingly, and `nec()` records the same label in the
+`toxicity_estimate` attribute of its result: `"nec"` where every draw is a
+sampled NEC, `"nsec"` where every draw is an NSEC, and `"n(s)ec"` where the
+draws mix the two.
 
 `autoplot()` draws the model-averaged curves of the screened sets with the
 arguments used for the single factorised fit (figure below). `bayesnec` forms

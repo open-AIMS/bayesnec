@@ -171,7 +171,7 @@ are 0, all of them for
 `r min(herbicide$concentration[fvfm_zero])` µg/L or more, where their curves
 fall lowest. A 0 is therefore a yield below `r fvfm_step / 2` that was rounded
 down, and not a separate outcome (see *Zeros from rounding* in [Hurdle and
-zero-inflated models][e6]). We treat these readings as left-censored at
+zero-inflated concentration-response models][e6]). We treat these readings as left-censored at
 `r fvfm_step / 2`, which states only that the true value is at or below that
 bound (see *Censoring* in [Single model usage][e1]). Shifting each 0 to a fixed
 small value instead, as `bnec()` does for an uncensored Beta response, would
