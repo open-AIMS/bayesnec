@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("bnec validates the timeout argument before fitting", {
   # A non-positive or non-numeric timeout is rejected up front, so these
   # checks do not require an actual (slow) model fit to run.

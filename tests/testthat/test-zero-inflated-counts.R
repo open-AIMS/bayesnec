@@ -107,6 +107,7 @@ test_that("disp() is refused, with the reason that applies", {
 })
 
 test_that("a zero-inflated count response fits through bnec", {
+  skip_unless_full_suite()
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }

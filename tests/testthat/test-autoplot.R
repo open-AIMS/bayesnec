@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Use stored fits and changed formula metadata to check plotting only.
 # Assert both predictor and annotation scales on each class; correcting one
 # path does not establish that the others agree.

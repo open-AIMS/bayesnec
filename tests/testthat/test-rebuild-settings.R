@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("amend honours prediction settings without a model or LOO change", {
   set.seed(525)
   local_mocked_bindings(

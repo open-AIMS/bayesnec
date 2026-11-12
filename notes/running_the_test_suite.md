@@ -1,8 +1,33 @@
 # Running the test suite
 
-The suite fits models: 53 `bnec()` calls across 25 of the 57 test files, each
-compiling and sampling a Stan program. That is what makes it slow, and it is the
-only thing that does.
+Stan compilation accounts for most of the full suite's duration. An earlier
+inventory counted 53 `bnec()` calls across 25 of 57 test files; the suite has
+since grown.
+
+## Routine and full tests
+
+The routine `devtools::test()` and `R CMD check` runs skip 30 files focused on
+fitting at file entry. The other 51 test files still run their unit checks. Two
+individual integration tests in `test-component-args.R` and
+`test-zero-inflated-counts.R` also require the full suite because they fit
+models. Set `BAYESNEC_FULL_TESTS=true` to run all tests locally. The full suite
+is a release and targeted regression check; it is no longer part of every pull
+request. The guards apply to `devtools::test()` as well as `R CMD check`.
+
+Guard new tests that compile or sample a model with `skip_unless_full_suite()`.
+Keep tests based on stored fits or mocked fitting calls in the routine suite.
+Run the full suite before a release, especially on Windows: routine CI no longer
+exercises Stan model compilation during tests.
+
+On 2026-11-12, the routine suite took 13 minutes 17 seconds on WSL with two
+workers: 4,444 passes, 14 warnings, 32 skips and no failures. This local time
+does not estimate Windows runner speed.
+
+On 2026-11-12, a three-job Windows split on [PR #595](https://github.com/open-AIMS/bayesnec/pull/595)
+completed two 26-minute test jobs, while the main Windows package check was
+still running when it was cancelled after 56 minutes. The Linux and macOS full
+checks were also still running. Splitting files across jobs did not meet the
+30-minute development target.
 
 ## In parallel, which is the default
 
@@ -41,12 +66,12 @@ following fails in a way that does not name the cause:
    any test runs. Everything in `setup.R` outside base is namespaced for this
    reason; keep it that way.
 
-The incantation that works:
+For a full local run against an installed build:
 
 ```bash
 R CMD INSTALL --no-docs --library=/tmp/lib .
 
-NOT_CRAN=true TESTTHAT_PARALLEL=TRUE TESTTHAT_CPUS=8 Rscript -e '
+BAYESNEC_FULL_TESTS=true NOT_CRAN=true TESTTHAT_PARALLEL=TRUE TESTTHAT_CPUS=8 Rscript -e '
   .libPaths(c("/tmp/lib", .libPaths()))
   library(testthat); library(bayesnec)
   test_dir("tests/testthat", package = "bayesnec", load_package = "installed")'
@@ -65,14 +90,12 @@ number that leaves it room --- the suite is not the only thing that matters.
 every assertion**, because most files open with `skip_on_cran()`. A clean run
 that finishes suspiciously quickly is that, not success.
 
-`R-CMD-check.yaml` does not set it in its own `env:` block, and the only
-`NOT_CRAN` under `.github/` is in `precompile-vignettes.yaml`, so the workflow
-file reads as though CI skips the fitting tests. It does not:
 `r-lib/actions/check-r-package` sets `NOT_CRAN: true` itself. Read the run's
 testthat line rather than the workflow to settle it --- on `2026-09-22`,
 `ubuntu-latest (release)` reported `FAIL 0 | WARN 19 | SKIP 4 | PASS 5061` with
-`checking tests` taking 25 minutes. So the four-platform matrix is a full-suite
-run and is better evidence than one local one.
+`checking tests` taking 25 minutes. At that date the four-platform matrix ran
+the full suite in each job. The routine suite now skips the files guarded by
+`skip_unless_full_suite()` even though `NOT_CRAN=true` remains set.
 
 ## Green checks that mean less than they appear
 

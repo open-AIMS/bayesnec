@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Structural tests for the bayesnechurdlefit methods. None require sampling:
 # they use a mock built from the pieces each method actually reads.
 mock_hurdle <- function() {

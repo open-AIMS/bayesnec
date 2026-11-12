@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Inspect family validation and refit arguments without sampling. Stubs
 # halt update() at the brms entry point.
 

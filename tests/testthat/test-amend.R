@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("input checks work correctly and return appropriate messages", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

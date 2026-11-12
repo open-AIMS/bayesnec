@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Sampler diagnostics must report absolute and relative efficiency,
 # exclude unscreenable parameters and distinguish partial from total failure.
 

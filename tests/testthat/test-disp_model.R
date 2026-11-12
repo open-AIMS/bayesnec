@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 disp_dat <- data.frame(
   x = rep(c(0.1, 0.3, 1, 3, 10), each = 6),
   tank = rep(letters[1:3], 10)

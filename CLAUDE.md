@@ -113,6 +113,11 @@ Three things are worth repeating here because each one fails quietly.
 skipping nearly every assertion, because the fitting tests are wrapped in
 `skip_on_cran()`.
 
+Routine `devtools::test()` and `R CMD check` runs skip files guarded by
+`skip_unless_full_suite()`. Set `BAYESNEC_FULL_TESTS=true` for
+the full local suite. `notes/running_the_test_suite.md` gives the installed-build
+command and the current split.
+
 `devtools::load_all()` attaches internal functions as well as exported ones, so
 a change that depends on an unexported function being visible passes under
 `load_all()` and fails under `R CMD check`. Confirm a fix against an installed

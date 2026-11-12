@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("hurdle_response_var accepts a plain response", {
   expect_equal(
     bayesnec:::hurdle_response_var(bnf(y ~ crf(x, "nec3param"))), "y"

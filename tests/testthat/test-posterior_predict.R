@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Share one Gamma nec3param fit with shape 60 at tight and 4 at loose;
 # 70% of rows are tight. The roughly fourfold spread contrast makes
 # dispersion marginalisation distinguishable from either level alone.

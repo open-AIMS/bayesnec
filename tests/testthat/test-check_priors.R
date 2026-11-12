@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("returns ggplot for bayesnecfit objects", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

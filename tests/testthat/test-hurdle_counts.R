@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Count hurdles use two independent blocks only when every zero is known to be
 # structural. Their positive count block is therefore fitted on Y >= 1.
 
