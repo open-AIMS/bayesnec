@@ -182,6 +182,14 @@
   `bernoulli`, `binomial`, `beta_binomial` or `Beta` response at one bound in
   every observation (#400, #419, #441).
 
+- `manec_example` is refitted under this release from
+  `data-raw/manec_example.R`, with two chains of 1200 post-warmup draws and
+  seed 10, where the 2.1.3.1 object held two chains of 50. Both equations
+  pass `screen_models()` at its defaults, `bnec_version()` returns the
+  installation that fitted it, and the object no longer stores the compiled
+  Stan model. Values computed from it differ from those of the 2.1.3.1 object
+  (#579).
+
 ### Corrected results
 
 The defects of 2.1.3.1 below are corrected, and each correction changes what
