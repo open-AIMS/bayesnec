@@ -72,8 +72,15 @@
 
 - `ecx()` and `nsec()` measure every estimate from the control, the predicted
   mean at the lowest observed concentration or at the `x_control` given to
-  `bnec()`, and search for the target from the control upwards. Supplying
-  `x_range` no longer changes the reference (#195, #527, #586, #589).
+  `bnec()`, and take the first concentration at or above the control where a
+  draw's curve crosses the target. 2.1.3.1 measured `type = "absolute"` from
+  the highest point of the curve, read the control at the first point of the
+  prediction grid, so that `x_range` changed it, and took the grid point
+  nearest the target anywhere in the range. An NSEC draw already past the
+  reference at the control takes a later decreasing crossing where there is
+  one; otherwise it takes the control concentration, or is censored above the
+  range where the curve later rises above the reference (#195, #527, #586,
+  #589).
 
 - `ecx(type = "relative")` measures from the control to the equation's lower
   asymptote, `bot`, or to 0 for an equation without one, and warns that its
@@ -94,6 +101,12 @@
   control, and `curve_params()` reports it. The model-averaged N(S)EC changes
   wherever these equations contribute. `nec()` still returns the sampled `nec`
   of `nec3param`, `nec4param`, `neclin` and `necsigm` (#570).
+
+- For a group-level term whose levels span concentrations, `nec()`,
+  `nsec()` and `ecx()` read the curve of each observed level, with its fitted
+  deviation, and by default pool the levels as an observation-weighted
+  mixture. 2.1.3.1 read the population curve, with the deviations at zero.
+  See "Estimates from observed group levels" below (#554, #557).
 
 - The default `nec` and `ec50` prior is a lognormal centred on the median of
   the log of the distinct positive concentrations, or a normal for a predictor
@@ -233,24 +246,60 @@
 ## Grouped fits
 
 - `bnec_group()` fits a model set separately at each level of a factor and
-  returns a `bayesnecgroupfit`. Its `nec()`, `nsec()` and `ecx()` methods
-  return one row for each level, with `bound_` columns marking censored
-  entries. It also has `print()`, `summary()`, `plot()`, `autoplot()`,
-  `ggbnec_data()`, `curve_params()` and `exceedance()` methods. Each level is
+  returns a `bayesnecgroupfit`. Its `nec()`, `nsec()`, `ecx()`, `ecnsec()`,
+  `exceedance()` and `curve_params()` methods return one row for each level,
+  with `bound_` columns marking censored entries, and take `pool` to combine
+  the levels. It also has `print()`, `summary()`, `plot()`, `autoplot()`,
+  `ggbnec_data()`, `amend()` and `compare_posterior()` methods. Each level is
   fitted with a seed derived from `seed` and recorded in `level_seeds`. Under
   a `future` plan the levels or the equations take the workers, whichever
   needs fewer rounds. See `?bnec_group` and `vignette("example8")` (#33,
-  #338).
+  #338, #557).
+
+- `check_fit()` on a `bayesnecgroupfit` checks each level and returns a
+  `checkfit_group` object, with `print()` and `plot()` methods (#562, #563).
 
 - `crossed_group_weights()` gives the model weight of every combination of
-  per-level equations in a `bayesnecgroupfit` (#33).
+  per-level equations in a `bayesnecgroupfit`. It compares the grouped and
+  pooled fits on the leave-one-group-out score, as LOOIC, where that score was
+  computed for every fit over the same levels, and on WAIC otherwise (#33,
+  #531).
 
-- `compare_posterior()` is now generic. Its `bayesnecgroupfit` method compares
+- `compare_posterior()` is generic. Its `bayesnecgroupfit` method compares
   the levels of the factor, and a named list of fits is compared as before
   (#33).
 
+- `group_level_sd()` tabulates the group-level standard deviations of each
+  equation, such as those of an `ogl()` or `pgl()` term, beside the
+  equation's model weight. It accepts a `bayesnecfit`, a `bayesmanecfit`, a
+  `bayesnecgroupfit`, with a `level` column, and a `bayesnechurdlefit`, with
+  one table per component (#532).
+
 - `ggbnec_data()` and `autoplot()` gain `group` and `group_aes`, which join
   the observations of each level of a grouping variable or colour them (#368).
+
+## Estimates from observed group levels
+
+- For a group-level term whose levels span concentrations, `nec()`, `nsec()`,
+  `ecx()` and `ecnsec()` read the curve of each observed level, including its
+  fitted deviation. A level observed at only one concentration is excluded,
+  with a message naming it. This applies to single fits, model sets, hurdle
+  fits and joint refits, and to the no-effect estimate stored at fitting
+  (#554, #557).
+
+- `pool` chooses how the levels are combined: `"none"` returns per-level
+  estimates, `"mixture"` gives each posterior draw to one level in proportion
+  to its observation count, `"mean_estimate"` averages the levels' estimates
+  at each draw, and `"mean_curve"` estimates from their weighted mean curve.
+  A joint refit and a grouped fit default to `"none"`, and other fits with a
+  spanning group term to `"mixture"`. `x_control = "own"`, the default, reads
+  each level from its own control, `"shared"` reads every level from the
+  lowest control, and a number gives the control concentration, with a
+  warning where it extrapolates a level's curve (#557).
+
+- The curve and credible band of `autoplot()` and `ggbnec_data()` remain the
+  population curve, with the group deviations at zero, so the estimate lines
+  need not fall where that curve reaches the corresponding response (#576).
 
 ## Hurdle and zero-inflated models
 
@@ -267,12 +316,21 @@
   excluded for every two-block family, and `nechormepwr01` as well where the
   positive block is a `Gamma` or count response. For a two-block family
   `posterior_epred()` returns the mean of the positive block multiplied by
-  the probability of a non-zero response (#104, #173, #209, #249).
+  the probability of a non-zero response. A `zero_inflated_beta` response at
+  one bound in every observation is treated as a `Beta` response is (#104,
+  #173, #209, #249).
 
 - `ecx()` and `nsec()` gain `dpar`, which reports one block of a joint
   two-block fit. Under `dpar = "mu"` a count hurdle reports the mean of the
   positive counts. `type = "relative"` with `dpar = NULL` is refused on a
   two-block fit (#249, #491).
+
+- `autoplot()` and `ggbnec_data()` on a two-block fit take `which`.
+  `which = "all"` draws the combined curve, the response of survivors and the
+  probability of survival in three panels, each with the no-effect estimate
+  and ECx of its own block and titled with the equation of each block it
+  reads; `"growth"` or `"survival"` draws one of them. `ggbnec_data()`
+  returns a `panel` column naming the curve of each row (#564, #565).
 
 - `bnec_hurdle()` fits a hurdle model as two `bnec()` fits: the growth of the
   units with a non-zero response, and a `bernoulli` model for survival. It
@@ -283,8 +341,16 @@
   continuous. `trials()` and `weights()` are refused, as are `binomial`,
   `beta_binomial`, zero-inflated count and two-block growth families.
   `crossed_weights()` gives the weight of every growth and survival pair, and
-  `best_crossed()` names the highest. See `?bnec_hurdle` and
-  `vignette("example6")` (#188, #249, #412, #415).
+  `best_crossed()` names the highest. `autoplot()` marks each panel's
+  no-effect estimate and its credible limits, and the ECx when `ecx = TRUE`.
+  See `?bnec_hurdle` and `vignette("example6")` (#188, #249, #412, #415,
+  #547).
+
+- `bnec_hurdle()` fits count survivors, with a `poisson` or `negbinomial`
+  growth family, by a zero-truncated likelihood, which needs brms 2.23.2 or
+  later. With an earlier brms it stops before fitting and names the joint
+  count hurdle, `bnec(family = "hurdle_poisson")` or
+  `bnec(family = "hurdle_negbinomial")`, which brms 2.23.0 fits (#249).
 
 ## Joint refits
 
@@ -293,13 +359,25 @@
   matching two-block family. For a `bayesnecgroupfit` it composes the equation
   each level favours into one model in which every curve parameter takes a
   value per level, and returns a `bayesnecjointfit` with `nec()`, `nsec()`,
-  `ecx()`, `ecnsec()`, `exceedance()`, `autoplot()`, `ggbnec_data()` and
-  `print()` methods. With `disp_by_level = TRUE`, the default, the dispersion
-  parameter also takes a value per level. Each level is read over its own
-  concentrations, with its own lowest concentration as the control.
-  `prior_type`, `asymptote_observed` and `predictor_scale` are taken from the
-  fit unless supplied. See `?bnec_joint` and `vignette("example8")` (#382,
-  #388, #448, #500, #516).
+  `ecx()`, `ecnsec()`, `exceedance()`, `compare_posterior()`, `autoplot()`,
+  `ggbnec_data()` and `print()` methods. With `disp_by_level = TRUE`, the
+  default, the dispersion parameter also takes a value per level. Each level
+  is read over its own concentrations, from its own control. `prior_type`,
+  `asymptote_observed` and `predictor_scale` are taken from the fit unless
+  supplied. See `?bnec_joint` and `vignette("example8")` (#382, #388, #448,
+  #500, #516, #557).
+
+- Where a factorised `Gamma` growth fit includes a left-censored survivor,
+  `bnec_joint()` fits that row as an interval from zero to the recorded
+  bound, so that the joint likelihood conditions on known survival. A
+  `zero_inflated_beta` joint refit with such a row is refused (#544, #546).
+
+- `compare_posterior()` on a `bayesnecjointfit` contrasts its levels at the
+  same posterior draw, for the NEC, N(S)EC, NSEC, ECx and fitted curve, so
+  that each contrast keeps the dependence between levels estimated in one
+  posterior. A group term the levels share, such as a batch in which both
+  were tested, is read at the same value for every level at each draw.
+  Separate fits are paired at random, as before (#571, #574).
 
 - `nec()` gains `no_effect` for a `bayesnecjointfit`. `TRUE` reports for each
   level the no-effect estimate its own equation supports, the NEC or the NSEC,
@@ -308,8 +386,13 @@
 
 ## Estimates beyond the prediction range
 
-- `nec()` and `nsec()` gain `extrapolate`, which widens or removes the bound at
-  which a draw is censored. See `?nec` (#392).
+- `nec()`, `nsec()`, `ecx()` and `ecnsec()` gain `extrapolate`, which widens
+  the bound at which a draw is censored. A finite limit appends points beyond
+  the prediction grid at its spacing, so an estimate found inside the range
+  is unchanged by a limit beyond it. `nec(extrapolate = TRUE)` removes the
+  bound only where every equation samples its NEC, and is refused for a fit
+  or set that includes a hormesis threshold equation. See `?nec` (#392,
+  #570, #589).
 
 - `exceedance()` gives the posterior probability that a NEC, NSEC or ECx lies
   above a threshold concentration, such as a guideline value. Censored draws
@@ -320,8 +403,16 @@
 
 - `check_fit()` compares the observed location and spread of the response at
   each predictor value against the values the fit simulates, and gives a
-  posterior predictive p-value for each comparison. It has `print()` and
-  `plot()` methods (#56, #148).
+  posterior predictive p-value for each comparison, counting ties as one
+  half. Where the observed statistic and the median simulated one are both
+  zero their ratio is 1. A group with one observation gets the mean
+  statistics only. In a group with readings censored through `cens()`, the
+  observed and simulated values beyond the bound are set to it, and `n_cens`
+  gives the number censored. It accepts a `bayesnecfit`, `bayesmanecfit`,
+  `bayesnecgroupfit` or `bayesnechurdlefit`, prints the Pareto *k* summary
+  of the stored LOO criterion separately, and returns it in the `"pareto"`
+  attribute. It has `print()` and `plot()` methods (#56, #148, #542, #558,
+  #566, #568).
 
 - `pp_check()` has methods for `bayesnecfit`, `bayesmanecfit` and
   `bayesnechurdlefit` objects. A model set returns one plot per equation
@@ -339,16 +430,45 @@
   the control. `summary()` of a model set does the same, controlled by the new
   `check_fit` and `fit_ratio_cutoff` arguments (#148).
 
+- `nec()`, the printed `summary()` and `curve_params()` report a sampled `nec`
+  or `ec50` posterior with more than 7.5 per cent of its draws within the
+  outer 5 per cent of its prior range, where the prior bound may set the
+  credible limit. `nec()` and `summary()` give a note and a
+  `prior_bound_summary` attribute; for a model set it gives each equation's
+  share and the model-weighted share. The estimates are unchanged (#584).
+
 - `failed_models()` returns each equation that `bnec()` or `amend()` could not
   fit, with its error, priors and initial values, and `summary()` lists them
   (#133).
+
+## Model weights
+
+- `loo_controls` takes three new elements. `leave_out` is `"group"`, the
+  default, or `"observation"`; `"group"` leaves out each level of a
+  group-level term whole where every level is observed at a single
+  concentration, and otherwise scores each observation with a warning giving
+  the reason. `refit = TRUE` refits each equation without each level whose
+  Pareto *k* is at or above 0.7 and scores that level from the refit.
+  `report_k = FALSE` silences the Pareto *k* report (#529, #531, #536).
+
+- A model set reports Pareto *k* at or above 0.7 for the scores behind its
+  weights, naming equations with at least 0.01 of the model weight, and
+  separately reports values below 0.7 that exceed the threshold `loo` sets
+  for the number of draws (#536, #553).
+
+- `mod_stats` gains `elpd`, the score the weights were computed from, and
+  `summary()` prints what the score left out. A set fitted by 2.1.3.1 keeps
+  its score when `amend()`, `pull_out()`, `c()` or `update()` rebuilds it;
+  `amend(x, loo_controls = list(leave_out = "group"))` recomputes its weights
+  (#531).
 
 ## Priors
 
 - `bnec()` and `amend()` gain `prior_type`. `prior_type = "regularizing"`
   builds narrower default priors than the default `"uninformative"`, centring
   `top` on the response at the lowest concentrations and `bot` on the response
-  at the highest. See `?bnec` and `vignette("example3")`.
+  at the highest, and placing `normal(0, 1)` on the curve-shape exponents `d`
+  and `f`. See `?bnec` and `vignette("example3")` (#535, #537).
 
 - `bnec()`, `get_priors()` and `amend()` gain `asymptote_observed`. `FALSE`
   declares that the highest concentration did not reach the lower asymptote.
@@ -357,8 +477,11 @@
   upper bound of the `nec` and `ec50` priors, and extends the initial-value
   search to the floor. It is refused where the response has no floor, unless
   `prior` supplies `bot`. `bnec()` reports, before fitting, a response still
-  declining between the two highest concentrations (#390, #394, #449, #483,
-  #516).
+  declining between the two highest concentrations, with the highest mean as
+  a percentage of the control mean. Where that is at most 5 per cent, the
+  report omits the advice to declare the asymptote unobserved. Grouped levels
+  and hurdle blocks are assessed separately (#390, #394, #449, #483, #516,
+  #561, #585).
 
 - `bnec()`, `get_priors()` and `bnec_group()` gain `predictor_scale`, which
   declares whether the predictor is a concentration or already on the log
@@ -421,6 +544,27 @@
   warning, and is written `model = fit$success_models, average = FALSE`
   (#120).
 
+- `bnec()` gains `x_control`, a stated control concentration, given on the
+  scale the predictor was recorded on. It sets the concentration at which
+  the estimators read the control, the lower bound of the default `nec` and
+  `ec50` priors, the start of the prediction grid and the control of the fit
+  checks. A negative control is refused where the predictor is a
+  concentration, a control below the lowest concentration tested is reported
+  as an extrapolation, and under `prior_type = "regularizing"` a control with
+  no observation needs a supplied `top` prior. Grouped, hurdle and joint
+  fits, `amend()` and `update()` inherit it (#586).
+
+- `ggbnec_data()` and `autoplot()` accept `x_scale = "fitted"` where `crf()`
+  transforms the predictor inline. The curve and observations are then drawn
+  on the fitted scale, and the axis is labelled in recorded concentrations,
+  including a zero control where the transformation is finite at zero
+  (#547).
+
+- `autoplot()` gains `point_alpha`, the opacity of the observation points,
+  and every `autoplot()` method takes `xlab` and `ylab`. `autoplot()` and
+  `ggbnec_data()` refuse `dpar`, and a `which` they cannot draw (#533, #564,
+  #565).
+
 - `bnec_record()` reports the equations requested, those attempted, those
   excluded with the reason, and any change made to the response before
   fitting (#93, #261).
@@ -473,6 +617,13 @@
   objects the formula uses that the data do not supply, so saved fits are
   smaller (#329).
 
+- `ecx()` accepts any `ecx_val` above 0, and an absolute ECx of a gaussian
+  equation without `bot`, both of which 2.1.3.1 refused (#206, #325).
+
+- `ggbnec_data()` reads the credible band of a single fit from its stored
+  `pred_vals` rather than from `brms::conditional_effects()`, so its values
+  can differ slightly from 2.1.3.1 (#557).
+
 ## Bug fixes
 
 - `bnec()` excludes, before fitting, an equation left with no group-level term
@@ -483,8 +634,12 @@
 - `bnec()` drops a parameter an equation lacks from every `(par | group)` term
   that names it, not only the first (#470).
 
-- `ogl()` and `pgl()` fit `a/b`, `a:b` and `a*b` as the nested or crossed
-  groupings written, rather than as separate terms on `a` and `b` (#466).
+- `ogl()` and `pgl()` fit `a/b`, `a:b`, `a*b` and a `gr()` grouping as
+  written, rather than as separate terms on each variable they name. A
+  `gr()` grouping with `by`, such as `pgl(gr(plate, by = toxicant))`, fits
+  one standard deviation for each level of `by`. A `gr()` grouping in a
+  `(par | group)` term is refused with a message naming the `pgl()` and
+  `ogl()` form (#466, #550).
 
 - `check_formula()` refuses a missing grouping variable in any `(par | group)`
   term, not only the first (#466).
@@ -557,6 +712,17 @@
 - `amend()`, `c()` and `+` recompute the LOO and WAIC criteria of every
   equation, so the weights of a combined set come from the same settings
   (#522).
+
+- A model set can combine equations with different numbers of posterior
+  draws, where `c()` in 2.1.3.1 stopped with "subscript out of bounds". The
+  weights use each equation's pointwise leave-one-out scores, and the model
+  average holds as many draws as the shortest equation, each sampled from
+  the whole posterior of its equation (#548, #583).
+
+- `compare_estimates()` and `compare_posterior()` return the names of the
+  fits unchanged in `posterior_data`. 2.1.3.1 turned a name that is not a
+  syntactic R name, such as `"2018"`, into `"X2018"`, which then did not
+  match `prob_diff` and `diff_data`.
 
 - The `sample_size` of a model set counts the draws each equation holds where
   `thin` does not divide the post-warmup iterations (#477).
