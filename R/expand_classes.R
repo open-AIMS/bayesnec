@@ -440,6 +440,55 @@ posterior_on_grid <- function(fit, formula, x_range = NA, resolution = 1000,
   factorised_count_epred(fit, formula, newdata = new_dat, re_formula = NA)
 }
 
+#' The loo_controls$weights arguments each weighting method reads
+#'
+#' @return A named \code{\link[base]{list}} of
+#' \code{\link[base]{character}} vectors: the arguments
+#' \code{\link[loo]{pseudobma_weights}} and \code{\link[loo]{stacking_weights}}
+#' are given.
+#'
+#' @noRd
+weight_control_names <- function() {
+  list(pseudobma = c("BB", "BB_n", "alpha"),
+       stacking = c("optim_method", "optim_control"))
+}
+
+#' Refuse a loo_controls$weights argument the weighting method does not read
+#'
+#' @param weights The "weights" element of \code{loo_controls}, with its
+#' \code{method} filled in.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_weight_controls <- function(weights) {
+  method <- weights$method
+  read <- weight_control_names()
+  if (!is.character(method) || length(method) != 1 ||
+        !method %in% names(read)) {
+    stop("Element \"method\" of loo_controls$weights should be \"pseudobma\"",
+         " or \"stacking\". See ?bnec", call. = FALSE)
+  }
+  supplied <- setdiff(names(weights), "method")
+  unknown <- setdiff(supplied, unlist(read))
+  if (length(unknown) > 0) {
+    stop("Unknown loo_controls$weights argument: ",
+         paste(unknown, collapse = ", "), ". The weights are computed from",
+         " the pointwise elpd by loo::pseudobma_weights(), which reads BB,",
+         " BB_n and alpha, or by loo::stacking_weights(), which reads",
+         " optim_method and optim_control.", call. = FALSE)
+  }
+  other <- setdiff(names(read), method)
+  unread <- intersect(supplied, read[[other]])
+  if (length(unread) > 0) {
+    stop("loo_controls$weights argument(s) ", paste(unread, collapse = ", "),
+         " apply to ", other, " weights and are not read under method = \"",
+         method, "\". Remove them, or set method = \"", other, "\".",
+         call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}
 #' objects.
 #'
@@ -560,24 +609,13 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
          ".", call. = FALSE)
   }
   lpd_point <- do.call(cbind, pointwise)
-  method <- match.arg(loo_w_controls$method, c("stacking", "pseudobma"))
+  # define_loo_controls() has refused any argument the method does not read.
+  method <- loo_w_controls$method
   loo_w_controls$method <- NULL
-  unknown_weight_args <- setdiff(names(loo_w_controls),
-                                 c("BB", "BB_n", "alpha", "optim_method",
-                                   "optim_control", "r_eff_list", "cores"))
-  if (length(unknown_weight_args) > 0L) {
-    stop("Unknown loo_controls$weights argument: ",
-         paste(unknown_weight_args, collapse = ", "), ".", call. = FALSE)
-  }
-  if (method == "pseudobma") {
-    weight_fun <- pseudobma_weights
-    weight_args <- loo_w_controls[intersect(names(loo_w_controls),
-                                             c("BB", "BB_n", "alpha"))]
-  } else {
-    weight_fun <- stacking_weights
-    weight_args <- loo_w_controls[intersect(names(loo_w_controls),
-                                             c("optim_method", "optim_control"))]
-  }
+  weight_fun <- if (method == "pseudobma") pseudobma_weights else
+    stacking_weights
+  weight_args <- loo_w_controls[intersect(names(loo_w_controls),
+                                          weight_control_names()[[method]])]
   mod_stats$wi <- do.call(weight_fun,
                           c(list(lpd_point = lpd_point), weight_args))
   names(mod_stats$wi) <- names(scores$criteria)

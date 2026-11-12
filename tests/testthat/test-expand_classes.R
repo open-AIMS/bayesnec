@@ -643,3 +643,28 @@ test_that("an undercounted set without an index rebuilds consistently", {
     expect_true(all(unlist(small) <= 10))
   }
 })
+
+test_that("a weights argument the method does not read is refused", {
+  define <- function(weights) {
+    bayesnec:::define_loo_controls(list(weights = weights), "gaussian")
+  }
+  # loo::pseudobma_weights() and loo::stacking_weights() read neither.
+  expect_error(define(list(cores = 2)),
+               "Unknown loo_controls\\$weights argument: cores")
+  expect_error(define(list(method = "stacking", r_eff_list = 1)),
+               "Unknown loo_controls\\$weights argument: r_eff_list")
+  expect_error(define(list(optim_method = "BFGS")),
+               "optim_method apply to stacking weights and are not read under method = \"pseudobma\"",
+               fixed = TRUE)
+  expect_error(define(list(method = "stacking", BB = FALSE, alpha = 2)),
+               "BB, alpha apply to pseudobma weights", fixed = TRUE)
+  expect_error(define(list(method = "pseudo")),
+               "should be \"pseudobma\" or \"stacking\"", fixed = TRUE)
+  # The arguments each method reads pass.
+  expect_identical(define(list(BB = FALSE, BB_n = 10, alpha = 2))$weights,
+                   list(BB = FALSE, BB_n = 10, alpha = 2,
+                        method = "pseudobma"))
+  expect_identical(define(list(method = "stacking",
+                               optim_method = "BFGS"))$weights,
+                   list(method = "stacking", optim_method = "BFGS"))
+})

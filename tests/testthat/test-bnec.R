@@ -746,3 +746,20 @@ test_that("a sig_val outside (0, 1) is refused once, before any model", {
   }
   expect_identical(calls, 0L)
 })
+
+test_that("a weights argument the method does not read is refused before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  msg <- tryCatch(suppressMessages(
+    bnec(y ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
+         loo_controls = list(weights = list(method = "stacking", BB = FALSE)))
+  ), error = conditionMessage)
+  expect_match(msg, "BB apply to pseudobma weights", fixed = TRUE)
+  expect_identical(calls, 0L)
+})

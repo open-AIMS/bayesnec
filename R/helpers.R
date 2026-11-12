@@ -1262,6 +1262,7 @@ define_loo_controls <- function(loo_controls, family_str) {
     stop("Element \"refit\" of loo_controls applies only where \"leave_out\"",
          " is \"group\". See ?bnec")
   }
+  check_weight_controls(loo_controls$weights)
   loo_controls[c("fitting", "weights", "leave_out", "refit", "report_k")]
 }
 
