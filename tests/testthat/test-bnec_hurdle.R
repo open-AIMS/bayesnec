@@ -190,6 +190,21 @@ test_that("bnec_hurdle validates the full predictor before either fit (#317)", {
   expect_equal(calls, 0L)
 })
 
+test_that("bnec_hurdle passes a prior with x_control to the component fits", {
+  set.seed(1)
+  x <- rep(c(0.1, 0.5, 1, 2, 4, 8), each = 4)
+  dat <- data.frame(x = x, y = exp(1 - 0.3 * x + stats::rnorm(24, 0, 0.2)))
+  dat$y[x == 8][1:2] <- 0
+  local_mocked_bindings(
+    bnec = function(...) stop("reached the component fit"),
+    .package = "bayesnec"
+  )
+  # A prior is not read as prior_type, which would stop before either fit.
+  expect_error(suppressMessages(bnec_hurdle(
+    y ~ crf(x, "nec3param"), data = dat, prior = list(), x_control = 0.5
+  )), "reached the component fit")
+})
+
 test_that("bnec_hurdle refuses a component with no equation left (#470)", {
   # Each component's bnec() call excludes such an equation. A survival set
   # with none left would otherwise be refused only after the growth component

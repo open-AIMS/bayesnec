@@ -766,13 +766,16 @@ compare_pooled_logo <- function(object, pooled, best, pooled_model) {
        n_groups = n_groups)
 }
 
-#' One argument of \code{bnec()}, read from a \code{bnec_group()} dot list
+#' One argument of \code{bnec()}, read from a dot list passed on to it
 #'
-#' @details Matches \code{name} as \code{do.call(bnec, ...)} will, so that an
-#' abbreviation is found: \code{model_s = "nec3param"} reaches \code{bnec()} as
-#' \code{model_survival}, and an exact lookup would read it as absent.
+#' @details Matches \code{name} as \code{do.call(bnec, ...)} will. An exact
+#' name is taken first. Otherwise a supplied name that is not itself a formal
+#' of \code{bnec()} is read as \code{name} where it abbreviates \code{name}
+#' and no other formal not supplied exactly, so \code{model_s = "nec3param"}
+#' is \code{model_survival}, while \code{prior} is never \code{prior_type}.
 #'
-#' @param dots The dot list \code{\link{bnec_group}} collected.
+#' @param dots The dot list \code{\link{bnec_group}} or
+#' \code{\link{bnec_hurdle}} collected.
 #' @param name The \code{\link{bnec}} formal to read.
 #' @param default What to return where the argument was not supplied.
 #'
@@ -780,6 +783,20 @@ compare_pooled_logo <- function(object, pooled, best, pooled_model) {
 #'
 #' @noRd
 dots_arg <- function(dots, name, default = NULL) {
-  hit <- which(!is.na(pmatch(names(dots), name)))
+  supplied <- names(dots)
+  if (is.null(supplied)) {
+    return(default)
+  }
+  exact <- which(supplied == name)
+  if (length(exact) > 0) {
+    return(dots[[exact[1]]])
+  }
+  formal_names <- setdiff(names(formals(bnec)), "...")
+  open_formals <- setdiff(formal_names, supplied)
+  abbreviates <- function(s) {
+    nzchar(s) && !s %in% formal_names && startsWith(name, s) &&
+      sum(startsWith(open_formals, s)) == 1L
+  }
+  hit <- which(vapply(supplied, abbreviates, logical(1)))
   if (length(hit) == 1) dots[[hit]] else default
 }

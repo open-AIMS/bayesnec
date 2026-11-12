@@ -585,6 +585,34 @@ test_that("bnec_group resolves a dot argument the way do.call will (#394)", {
                                   TRUE))
 })
 
+test_that("dots_arg does not read a formal as a longer formal it prefixes", {
+  # prior, model and random are formals of bnec() in their own right, so none
+  # abbreviates prior_type, model_survival or random_vars.
+  expect_null(bayesnec:::dots_arg(list(prior = "p"), "prior_type"))
+  expect_identical(bayesnec:::dots_arg(list(prior = "p"), "prior_type", "u"),
+                   "u")
+  expect_null(bayesnec:::dots_arg(list(model = "m"), "model_survival"))
+  expect_null(bayesnec:::dots_arg(list(random = "r"), "random_vars"))
+  expect_identical(bayesnec:::dots_arg(list(prior = "p"), "prior"), "p")
+  # An abbreviation of two formals matches neither, as in R's own matching.
+  expect_null(bayesnec:::dots_arg(list(x_ = 1), "x_control"))
+})
+
+test_that("bnec_group passes a prior with x_control to the level fits", {
+  set.seed(1)
+  d <- data.frame(x = rep(c(0.1, 0.5, 1, 2, 4, 8), 4),
+                  site = rep(c("a", "b"), each = 12))
+  d$y <- exp(1 - 0.3 * d$x + stats::rnorm(24, 0, 0.2))
+  f <- y ~ crf(x, "nec3param")
+  pr <- suppressMessages(get_priors(f, data = d[d$site == "a", ],
+                                    family = Gamma(link = "identity")))
+  local_mocked_bindings(bnec = function(...) stop("reached the level fit"))
+  expect_error(suppressMessages(bnec_group(
+    f, d, "site", family = Gamma(link = "identity"), prior = pr,
+    x_control = 0.5
+  )), "reached the level fit")
+})
+
 test_that("a level at a bound is fitted with ecxflat, the others as asked (#419)", {
   # A level at one bound throughout gets ecxflat; other levels keep their set.
   # Report each substitution once, before fitting; level calls do not repeat it.
