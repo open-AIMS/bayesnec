@@ -37,10 +37,13 @@
 #'
 #' Factor levels partition the data disjointly and share no parameters, so the
 #' log likelihood is a sum over levels and the expected log predictive density
-#' is additive. Under pseudo-BMA --- the package default --- the crossed model
-#' weights are then exactly the outer product of the per-level weight vectors,
-#' which is the same identity \code{\link{crossed_weights}} rests on for the two
-#' blocks of a hurdle fit. See \code{\link{crossed_group_weights}}.
+#' is additive. For pseudo-BMA weights computed without the Bayesian bootstrap,
+#' the crossed model weights are then exactly the outer product of the
+#' per-level weight vectors, the identity \code{\link{crossed_weights}} rests
+#' on for the two blocks of a hurdle fit. The default pseudo-BMA weights use
+#' the bootstrap, which each level applies to its own observations, so for them
+#' the outer product approximates the weight of a combination scored on all
+#' levels together. See \code{\link{crossed_group_weights}}.
 #'
 #' \bold{The family is chosen once}
 #'
@@ -57,13 +60,9 @@
 #' break the factorisation the crossed weights depend on. A model with structure
 #' spanning levels --- shared dispersion, a group-level effect crossing levels,
 #' an explicit contrast --- is a different model, and is not what this function
-#' fits.
-#'
-#' \bold{What this does not do}
-#'
-#' It does not refit the favoured combination jointly. That is stage 2 of #33
-#' and lands in the post-processing that the \code{toxval} migration moves, so
-#' it is deliberately out of scope here.
+#' fits. The favoured combination is not refitted jointly here;
+#' \code{\link{bnec_joint}} composes the equation each level favours into one
+#' model and fits it.
 #'
 #' \bold{Fitting the levels in parallel}
 #'
@@ -73,7 +72,7 @@
 #' list, so \code{bnec_group()} decides which and says which.
 #'
 #' The two arrangements are counted in rounds of one fit and the smaller is
-#' taken, a tie going to the models, which is what earlier versions did. Writing
+#' taken, a tie going to the models. Writing
 #' \emph{L} for the levels, \emph{M} for the equations the formula asks for and
 #' \emph{W} for the workers, the levels take \code{ceiling(L / W) * M} rounds
 #' and the models \code{L * ceiling(M / W)}. Seven levels of eleven equations
@@ -106,12 +105,8 @@
 #' trusted to be the same one years later --- \code{sample.int()}'s algorithm
 #' changed once already, in R 3.6.0 --- and these objects are archived and
 #' reopened, so the realisation is stored rather than described.
-#'
-#' The estimates a grouped call reports are not those earlier versions reported,
-#' because the levels are now seeded rather than drawing from the session's
-#' stream as each is reached. They are another realisation of the same
-#' weighting. \code{\link{bnec}} describes the rest of what a plan does to a
-#' fit, and none of that changes here.
+#' \code{\link{bnec}} describes the rest of what a plan does to a fit, and none
+#' of that changes here.
 #'
 #' @return An object of class \code{\link{bayesnecgroupfit}}.
 #'
@@ -482,13 +477,20 @@ fit_model_weights <- function(x) {
 #'
 #' @details Levels partition the data disjointly and share no parameters, so
 #' \code{elpd} is additive across them:
-#' \code{elpd(m_1, ..., m_G) = sum_g elpd_g(m_g)}. Under pseudo-BMA the crossed
-#' weight of a combination is proportional to the product of its per-level
-#' weights, so the whole table follows from the per-level vectors and never has
-#' to be materialised --- which matters, because with the 24 equations of the
+#' \code{elpd(m_1, ..., m_G) = sum_g elpd_g(m_g)}. For pseudo-BMA weights
+#' computed without the Bayesian bootstrap, the crossed weight of a combination
+#' is therefore exactly proportional to the product of its per-level weights,
+#' so the whole table follows from the per-level vectors and never has to be
+#' materialised --- which matters, because with the 24 equations of the
 #' default set and \emph{G} levels it has \code{24^G} cells.
 #'
-#' \bold{This identity is specific to pseudo-BMA}, the package default, and
+#' The default pseudo-BMA weights use the Bayesian bootstrap, which each level
+#' applies to its own observations. A combination scored on all levels together
+#' would resample them jointly, so for the default weights the product of the
+#' per-level weights that \code{crossed_group_weights()} returns approximates
+#' that combination's weight rather than equalling it.
+#'
+#' The identity is specific to pseudo-BMA, and
 #' \code{crossed_group_weights()} enforces it rather than assuming it: a fit
 #' built with any other weighting method is refused, because there is no
 #' correct crossed table to return for one.
@@ -561,6 +563,10 @@ fit_model_weights <- function(x) {
 #' @examples
 #' \dontrun{
 #' library(bayesnec)
+#' data(nec_data)
+#' nec_data$site <- rep(c("a", "b"), length.out = nrow(nec_data))
+#' fit <- bnec_group(y ~ crf(x, c("nec3param", "ecx4param")), data = nec_data,
+#'                   group_var = "site")
 #' crossed_group_weights(fit)
 #' }
 #'
@@ -591,10 +597,11 @@ crossed_group_weights <- function(object, pooled = NULL) {
   }
   if (!identical(method, "pseudobma")) {
     stop("crossed_group_weights is defined for pseudo-BMA weights only, and",
-         " this fit used \"", method, "\". The crossed weight of a",
-         " combination is the product of its per-level weights because a",
-         " pseudo-BMA weight is a deterministic function of that model's own",
-         " elpd, which is additive over levels. Stacking optimises a",
+         " this fit used \"", method, "\". The product of a combination's",
+         " per-level weights is its crossed weight, exactly without the",
+         " Bayesian bootstrap and approximately with it, because a pseudo-BMA",
+         " weight is a function of that model's own elpd, which is additive",
+         " over levels. Stacking optimises a",
          " different objective over the whole set at once and its solution is",
          " not an outer product, so multiplying stacked weights gives a table",
          " that looks right and is not. Refit with the default weighting, or",
