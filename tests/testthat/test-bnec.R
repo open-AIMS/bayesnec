@@ -763,3 +763,56 @@ test_that("a weights argument the method does not read is refused before any mod
   expect_match(msg, "BB apply to pseudobma weights", fixed = TRUE)
   expect_identical(calls, 0L)
 })
+
+test_that("degenerate data are refused once, before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  set <- c("nec3param", "nec4param")
+  run <- function(d, f = y ~ crf(x, c("nec3param", "nec4param")), ...) {
+    msg <- tryCatch(suppressWarnings(suppressMessages(bnec(f, data = d, ...))),
+                    error = conditionMessage)
+    expect_no_match(msg, "None of the models")
+    msg
+  }
+  d <- nec_data
+  inf_x <- d
+  inf_x$x[3] <- Inf
+  expect_match(run(inf_x),
+               "predictor column contains values that are not finite, in x at row(s) 3",
+               fixed = TRUE)
+  inf_y <- d
+  inf_y$y[c(3, 5)] <- c(Inf, -Inf)
+  expect_match(run(inf_y),
+               "response column contains values that are not finite, in y at row(s) 3, 5",
+               fixed = TRUE)
+  zero <- d
+  zero$x[1:2] <- 0
+  expect_match(run(zero, y ~ crf(log(x), c("nec3param", "nec4param"))),
+               "such as a zero under log(), is the usual cause", fixed = TRUE)
+  expect_match(run(d[0, ]), "Your data have no rows", fixed = TRUE)
+  expect_match(run(d[1, ]), "takes the single value", fixed = TRUE)
+  const <- d
+  const$x <- 1
+  expect_match(run(const),
+               "takes the single value 1 in 100 observations. A concentration-response curve needs observations at two or more",
+               fixed = TRUE)
+  low <- d
+  low$trials[2] <- low$count[2] - 1L
+  low$trials[4] <- 0L
+  for (fam in c("binomial", "beta_binomial")) {
+    msg <- run(low, count | trials(trials) ~ crf(x, c("nec3param",
+                                                      "nec4param")),
+               family = fam)
+    expect_match(msg, "must be a positive whole number, and is not at row(s) 4",
+                 fixed = TRUE, info = fam)
+    expect_match(msg, "exceeds the number of trials, trials, at row(s) 2",
+                 fixed = TRUE, info = fam)
+  }
+  expect_identical(calls, 0L)
+})

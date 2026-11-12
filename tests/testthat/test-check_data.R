@@ -926,3 +926,39 @@ test_that("check_data() keeps the trials() refusal as the backstop (#442)", {
                 nec_data, validate_family("binomial"))
   expect_identical(res$mod_dat$trials, nec_data$trials)
 })
+
+test_that("a constant predictor is refused by check_data() and get_priors()", {
+  d <- data.frame(x = rep(1, 6), y = c(5, 4, 6, 5, 4, 6))
+  msg <- "The predictor x takes the single value 1 in 6 observations"
+  expect_error(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()), msg,
+               fixed = TRUE)
+  expect_error(suppressMessages(get_priors(y ~ crf(x, "nec3param"), data = d)),
+               msg, fixed = TRUE)
+})
+
+test_that("check_data() names the rows of an infinite value", {
+  d <- cd_data_zero()
+  d$y[c(2, 7)] <- c(Inf, -Inf)
+  expect_error(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
+               "in y at row(s) 2, 7", fixed = TRUE)
+  expect_identical(bayesnec:::row_list(as.character(1:12)),
+                   "1, 2, 3, 4, 5, 6, 7, 8, 9, 10 and 2 more")
+})
+
+test_that("check_data() refuses trials below the response, or not positive", {
+  d <- data.frame(x = rep(c(0.1, 1, 10, 100), each = 3),
+                  y = c(9L, 8L, 9L, 6L, 5L, 7L, 3L, 2L, 3L, 1L, 0L, 1L),
+                  n = 10L)
+  d$n[c(1, 5)] <- c(8L, 0L)
+  f <- y | trials(n) ~ crf(x, model = "nec3param")
+  err <- expect_error(cd_run(f, d, binomial()))
+  expect_match(conditionMessage(err),
+               "The number of trials, n, must be a positive whole number, and is not at row(s) 5",
+               fixed = TRUE)
+  expect_match(conditionMessage(err),
+               "The response y exceeds the number of trials, n, at row(s) 1",
+               fixed = TRUE)
+  d$n[c(1, 5)] <- 10L
+  d$n[3] <- 9.5
+  expect_error(cd_run(f, d, binomial()), "not at row(s) 3", fixed = TRUE)
+})

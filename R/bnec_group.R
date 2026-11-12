@@ -178,6 +178,8 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # sampled, and the row names would refer to a subset.
   mod_dat <- model.frame(formula, data = data)
   check_complete_cases(mod_dat)
+  check_finite_cases(mod_dat)
+  check_level_concentrations(mod_dat, grp, group_var)
   validate_predictor_scale(
     predictor_scale, retrieve_var(mod_dat, "x_var", error = TRUE)
   )
@@ -207,6 +209,7 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # Refuse a missing trials() term before the reports below read the response,
   # which they cannot do without it.
   check_trials_term(mod_dat, family)
+  check_trials_values(mod_dat, family)
   # A level with every observation at a bound is fitted with ecxflat alone, and
   # the other levels with the requested set. constant_fallback_levels() reports
   # those levels and refuses a level ecxflat cannot fit either. It must run
@@ -423,6 +426,42 @@ bnec_group <- function(formula, data, group_var, family = NULL,
               # version may differ, as sample.int() has changed before.
               level_seeds = level_seeds)
   allot_class(out, c("bayesnecgroupfit", "bnecfit"))
+}
+
+#' Refuse a level observed at one concentration, and warn of one at two
+#'
+#' @param data The model frame of the whole data, rows in the order of
+#' \code{group}.
+#' @param group The grouping factor.
+#' @param group_name The name of the grouping column, for the messages.
+#'
+#' @return \code{NULL}, invisibly. Called for its error and warning.
+#'
+#' @noRd
+check_level_concentrations <- function(data, group, group_name) {
+  x <- retrieve_var(data, "x_var", error = TRUE)
+  n_conc <- tapply(x, group, function(v) length(unique(v)))
+  name_levels <- function(levels) {
+    paste0("Level(s) ", paste0("\"", levels, "\"", collapse = ", "), " of \"",
+           group_name, "\"")
+  }
+  single <- names(n_conc)[n_conc < 2]
+  if (length(single) > 0) {
+    stop(name_levels(single), " have observations at a single",
+         " concentration. Each level is fitted as a complete",
+         " concentration-response model, which needs observations at two or",
+         " more concentrations; remove those levels before calling",
+         " bnec_group().", call. = FALSE)
+  }
+  pair <- names(n_conc)[n_conc == 2]
+  if (length(pair) > 0) {
+    warning(name_levels(pair), " have observations at only two",
+            " concentrations. Two concentrations give two mean responses, so",
+            " the data cannot identify an equation with more than two curve",
+            " parameters, whose fitted shape then depends on its priors.",
+            call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' The weighting method a fit was built with

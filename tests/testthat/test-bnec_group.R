@@ -1021,3 +1021,57 @@ test_that("messages from the estimators and summary name their level", {
   expect_true(length(sm) > 0)
   expect_true(all(grepl("^Level (a|b): ", sm)))
 })
+
+test_that("degenerate data are refused before any level", {
+  calls <- 0L
+  local_mocked_bindings(
+    bnec = function(...) {
+      calls <<- calls + 1L
+      stop("level fit should not start")
+    },
+    .package = "bayesnec"
+  )
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  run <- function(d, f = y ~ crf(x, "nec3param"), ...) {
+    msgs <- capture.output(
+      msg <- tryCatch(suppressWarnings(
+        bnec_group(f, d, group_var = "site", ...)
+      ), error = conditionMessage),
+      type = "message"
+    )
+    expect_false(any(grepl("Fitting level", msgs)))
+    msg
+  }
+  inf_x <- d
+  inf_x$x[3] <- Inf
+  expect_match(run(inf_x), "not finite, in x at row(s) 3", fixed = TRUE)
+  one <- d
+  one$x[one$site == "b"] <- 1
+  expect_match(run(one),
+               "Level(s) \"b\" of \"site\" have observations at a single concentration",
+               fixed = TRUE)
+  low <- d
+  low$trials[2] <- low$count[2] - 1L
+  expect_match(run(low, count | trials(trials) ~ crf(x, "nec3param"),
+                   family = "binomial"),
+               "exceeds the number of trials", fixed = TRUE)
+  expect_identical(calls, 0L)
+})
+
+test_that("a level at two concentrations is warned of before any level", {
+  local_mocked_bindings(
+    bnec = function(...) stop("level fit should not start"),
+    .package = "bayesnec"
+  )
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  d$x[d$site == "b"] <- rep(c(0.5, 2), length.out = sum(d$site == "b"))
+  expect_warning(
+    expect_error(suppressMessages(
+      bnec_group(y ~ crf(x, "nec3param"), d, group_var = "site")
+    ), "level fit should not start"),
+    "Level(s) \"b\" of \"site\" have observations at only two concentrations",
+    fixed = TRUE
+  )
+})

@@ -919,6 +919,136 @@ check_complete_cases <- function(data) {
        " those rows before fitting.", call. = FALSE)
 }
 
+#' Row names for a message, shortened where there are many
+#'
+#' @param rows A \code{\link[base]{character}} vector of row names.
+#' @param max The number of names to list before counting the rest.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+row_list <- function(rows, max = 10) {
+  if (length(rows) <= max) {
+    return(paste0(rows, collapse = ", "))
+  }
+  paste0(paste0(rows[seq_len(max)], collapse = ", "), " and ",
+         length(rows) - max, " more")
+}
+
+#' Refuse a predictor or response that is not finite
+#'
+#' \code{check_complete_cases()} refuses \code{NA} and \code{NaN}; this
+#' refuses \code{Inf} and \code{-Inf}, which \code{stats::model.frame()}
+#' keeps. Rows are named by row name, as there.
+#'
+#' @param data A model frame for a \code{\link{bayesnecformula}}.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_finite_cases <- function(data) {
+  pop_vars <- attr(data, "bnec_pop")
+  msgs <- character(0)
+  hint <- ""
+  for (var in c("x_var", "y_var")) {
+    values <- retrieve_var(data, var, error = TRUE)
+    bad <- !is.finite(values)
+    if (!any(bad)) {
+      next
+    }
+    role <- if (var == "x_var") "predictor" else "response"
+    label <- pop_var_label(data, var, role)
+    msgs <- c(msgs, paste0("Your ", role, " column contains values that are",
+                           " not finite, in ", label, " at row(s) ",
+                           row_list(rownames(data)[bad]), "."))
+    if (var == "x_var" && !identical(label, unname(pop_vars[["x_var"]]))) {
+      hint <- paste0(" Where crf() transforms the predictor, as ", label,
+                     " does, a concentration outside the domain of the",
+                     " transformation, such as a zero under log(), is the",
+                     " usual cause.")
+    }
+  }
+  if (length(msgs) == 0) {
+    return(invisible(NULL))
+  }
+  stop(paste(msgs, collapse = " "), " Every value of the predictor and the",
+       " response must be a finite number; remove or correct those rows",
+       " before fitting.", hint, call. = FALSE)
+}
+
+#' Refuse data with fewer than two distinct predictor values
+#'
+#' A curve needs observations at two or more concentrations. Zero rows, one
+#' row and a constant predictor are all refused here.
+#'
+#' @param data A model frame for a \code{\link{bayesnecformula}}.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_concentration_count <- function(data) {
+  x <- retrieve_var(data, "x_var", error = TRUE)
+  if (length(unique(x)) >= 2) {
+    return(invisible(NULL))
+  }
+  x_label <- pop_var_label(data, "x_var", "x")
+  stop(if (length(x) == 0) {
+         "Your data have no rows"
+       } else {
+         paste0("The predictor ", x_label, " takes the single value ",
+                format(x[1]), " in ", n_obs_phrase(length(x)))
+       },
+       ". A concentration-response curve needs observations at two or more",
+       " concentrations; supply data that span the concentrations tested.",
+       call. = FALSE)
+}
+
+#' Refuse a number of trials that cannot hold the response
+#'
+#' The number of trials must be a positive whole number no smaller than the
+#' successes it holds. \code{\link{check_trials_term}} refuses a formula with
+#' no \code{trials()} term.
+#'
+#' @param data A model frame for a \code{\link{bayesnecformula}}.
+#' @param family A validated \code{\link[stats]{family}}, or a family name.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_trials_values <- function(data, family) {
+  fam_tag <- if (inherits(family, "family")) family$family else family
+  if (!fam_tag %in% c("binomial", "beta_binomial")) {
+    return(invisible(NULL))
+  }
+  trials <- retrieve_var(data, "trials_var")
+  if (is.null(trials)) {
+    return(invisible(NULL))
+  }
+  y <- retrieve_var(data, "y_var", error = TRUE)
+  t_label <- unname(attr(data, "bnec_pop")[["trials_var"]])
+  y_label <- pop_var_label(data, "y_var", "the response")
+  invalid <- !is.finite(trials) | trials <= 0 | trials != round(trials)
+  below <- !invalid & is.finite(y) & y > trials
+  msgs <- character(0)
+  if (any(invalid)) {
+    msgs <- c(msgs, paste0("The number of trials, ", t_label, ", must be a",
+                           " positive whole number, and is not at row(s) ",
+                           row_list(rownames(data)[invalid]), "."))
+  }
+  if (any(below)) {
+    msgs <- c(msgs, paste0("The response ", y_label, " exceeds the number of",
+                           " trials, ", t_label, ", at row(s) ",
+                           row_list(rownames(data)[below]), "; under the ",
+                           fam_tag, " family the response counts the",
+                           " successes out of those trials."))
+  }
+  if (length(msgs) == 0) {
+    return(invisible(NULL))
+  }
+  stop(paste(msgs, collapse = " "), " Correct or remove those rows before",
+       " fitting.", call. = FALSE)
+}
+
 #' Does every dispersion sub-model term evaluate to finite values?
 #'
 #' \code{check_data()} tests only the variables \code{crf()} declares, and a
@@ -1084,14 +1214,12 @@ check_data <- function(data, family, model) {
   # checks on the response, so that nothing about the response is reported for
   # a formula that cannot be fitted.
   check_trials_term(data, family)
-  # Test every element, so that an NA left by options(na.action = "na.pass")
-  # is reported too.
-  if (!all(is.finite(x))) {
-    stop("Your predictor column contains values that are not finite.")
-  }
-  if (!all(is.finite(y))) {
-    stop("Your response column contains values that are not finite.")
-  }
+  # Backstops for get_priors() and amend(), as above. check_finite_cases()
+  # tests every element, so an NA left by options(na.action = "na.pass") is
+  # reported too.
+  check_finite_cases(data)
+  check_concentration_count(data)
+  check_trials_values(data, family)
   resp_check <- mean(y[which(x < mean(x))]) <
     mean(y[which(x > mean(x))])
   if (resp_check && !grepl("horme", model)) {

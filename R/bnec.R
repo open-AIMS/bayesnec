@@ -981,6 +981,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # Check missing values first, so that nothing below, the family choice
   # included, is decided from fewer rows than were supplied.
   check_complete_cases(bdat)
+  check_finite_cases(bdat)
+  check_concentration_count(bdat)
   validate_predictor_scale(
     predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
   )
@@ -1034,6 +1036,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # the family is known. constant_fallback() and the flatness report below
   # cannot read the response without the trials.
   check_trials_term(bdat, brm_args$family)
+  check_trials_values(bdat, brm_args$family)
   # A bounded response with every observation at one bound identifies no curve,
   # so ecxflat is fitted alone in place of the requested set.
   # constant_fallback() refuses a response ecxflat cannot fit either, beta or
