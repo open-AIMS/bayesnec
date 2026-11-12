@@ -1088,3 +1088,10 @@ test_that("bnec_group() refuses an x_range with one end missing before any level
                x_range = c(0.1, NA))
   ), "`x_range` must be NA, or two finite numbers in", fixed = TRUE)
 })
+
+test_that("a pool value that is not one of the four is refused on a grouped fit", {
+  gf <- fake_group_fit()
+  msg <- "`pool` must be one of 'none', 'mixture', 'mean_estimate', 'mean_curve'."
+  expect_error(ecx(gf, pool = "foo"), msg, fixed = TRUE)
+  expect_error(nsec(gf, pool = c("none", "mixture")), msg, fixed = TRUE)
+})
