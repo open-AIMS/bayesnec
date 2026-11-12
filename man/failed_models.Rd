@@ -28,8 +28,8 @@ and could not fit, together with the priors and initial values that were
 used in the attempt.
 }
 \details{
-A model set fitted with many equations can lose one or two, and the
-error scrolls past in the middle of a long run. Diagnosing a failure needs
+In a model set fitted with many equations, one or two can fail to
+fit, and the error scrolls past in the middle of a long run. Diagnosing a failure needs
 the prior and the starting values the model was given, which
 \code{\link{bnec}} constructs rather than the user, so both are kept on the
 returned object.

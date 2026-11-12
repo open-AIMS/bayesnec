@@ -33,7 +33,7 @@ model-averaged estimate, so its fit is the one normally inspected with
 The weight selected on is reported with the number of candidates it was
 selected from: the highest weight of a flat set of ten candidates is little
 more than the equal share of 0.1. No threshold is applied;
-\code{\link{summary}} reports the whole weights table. Where two or more
+\code{\link{summary}} prints the whole weights table. Where two or more
 candidates hold exactly the same highest weight, the first in the order of
 the set is returned and the tie is reported.
 
