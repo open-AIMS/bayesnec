@@ -1043,3 +1043,11 @@ test_that("amend() refuses a name in drop or add that is no equation", {
                       "naming the equation in crf()", fixed = TRUE)
   expect_no_match(conditionMessage(err), "model = ")
 })
+
+test_that("amend() refuses a reversed, partial or over-long x_range", {
+  for (bad in list(c(10, 0), c(0, 1, 2), c(0, NA))) {
+    expect_error(amend(manec_example, x_range = bad),
+                 "`x_range` must be NA, or two finite numbers in",
+                 fixed = TRUE)
+  }
+})

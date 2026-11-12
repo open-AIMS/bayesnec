@@ -1075,3 +1075,16 @@ test_that("a level at two concentrations is warned of before any level", {
     fixed = TRUE
   )
 })
+
+test_that("bnec_group() refuses an x_range with one end missing before any level", {
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  local_mocked_bindings(
+    bnec = function(...) stop("level fit should not start"),
+    .package = "bayesnec"
+  )
+  expect_error(suppressMessages(
+    bnec_group(y ~ crf(x, "nec3param"), d, group_var = "site",
+               x_range = c(0.1, NA))
+  ), "`x_range` must be NA, or two finite numbers in", fixed = TRUE)
+})

@@ -259,15 +259,33 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls,
 #' @noRd
 check_expand_args <- function(x_range = NULL, resolution = NULL,
                               sig_val = NULL) {
-  if (!is.null(x_range) && !is.na(x_range[1])) {
-    chk_numeric(x_range)
-  }
+  check_x_range(x_range)
   if (!is.null(resolution)) {
     chk_numeric(resolution)
     check_resolution(resolution)
   }
   if (!is.null(sig_val)) {
     check_sig_val(sig_val)
+  }
+  invisible(NULL)
+}
+
+#' Refuse an x_range that is not NA or two increasing finite numbers
+#'
+#' @param x_range The value supplied, or \code{NULL} where none was.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_x_range <- function(x_range) {
+  if (is.null(x_range) || (length(x_range) == 1 && is.na(x_range))) {
+    return(invisible(NULL))
+  }
+  if (!is.numeric(x_range) || length(x_range) != 2 ||
+        !all(is.finite(x_range)) || x_range[1] >= x_range[2]) {
+    stop("`x_range` must be NA, or two finite numbers in increasing order",
+         " giving the lowest and highest predictor values to predict over;",
+         " it was ", deparse1(x_range), ".", call. = FALSE)
   }
   invisible(NULL)
 }

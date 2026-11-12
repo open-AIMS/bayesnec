@@ -816,3 +816,24 @@ test_that("degenerate data are refused once, before any model", {
   }
   expect_identical(calls, 0L)
 })
+
+test_that("an x_range that is not NA or an increasing pair is refused before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  for (bad in list(c(0.1, NA), c(NA, 2), c(2, 0.1), c(0.1, 1, 2), c(0, Inf),
+                   "a")) {
+    msg <- tryCatch(suppressMessages(
+      bnec(y ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
+           x_range = bad)
+    ), error = conditionMessage)
+    expect_match(msg, "`x_range` must be NA, or two finite numbers in",
+                 fixed = TRUE, info = deparse1(bad))
+  }
+  expect_identical(calls, 0L)
+})

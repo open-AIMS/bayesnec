@@ -190,6 +190,7 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   if (!is.null(sig_val)) {
     check_sig_val(sig_val)
   }
+  check_x_range(dots_arg(dots, "x_range"))
   # dots_arg() matches an abbreviation such as `asymptote = FALSE`, as bnec()
   # does when do.call() passes it these arguments.
   declared <- dots_arg(dots, "asymptote_observed", TRUE)
