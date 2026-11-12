@@ -528,7 +528,9 @@ validate_ecx_type <- function(type, mc) {
 #' Used by \code{type = "relative"} only, and \code{NA} for every other type.
 #' An equation with a \code{bot} parameter declines towards it, and one
 #' without declines towards 0. An equation without \code{bot} is refused under
-#' a family not bounded below, because 0 is then no bound.
+#' a family not bounded below, because 0 is then no bound. The asymptote is
+#' returned on the response scale, the scale of the predictions it is compared
+#' with, so \code{bot} is passed through the inverse of the mean's link.
 #'
 #' A \code{\link{bayesmanecfit}} has no single \code{fit}, and its curve is the
 #' model-averaged one, so \code{manec_asymptote()} assembles the model-averaged
@@ -563,18 +565,18 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
         re_formula = object$re_formula, transform = TRUE
       )[, 1])
       floor <- read_par(bot_par)
-      if ("ogl" %in% pforms) {
-        offset <- read_par("ogl")
-        kind <- ogl_transform_kind(object$model, object$fit$family)
-        floor <- switch(kind,
-                        log = floor * exp(offset),
-                        logit = floor * exp(offset) /
-                          (1 - floor + floor * exp(offset)),
-                        none = floor + offset)
-        if (identical(kind, "none") &&
-            !identical(object$fit$family$link, "identity")) {
-          floor <- object$fit$family$linkinv(floor)
-        }
+      if (!"ogl" %in% pforms) {
+        return(mean_scale(object, floor))
+      }
+      offset <- read_par("ogl")
+      kind <- ogl_transform_kind(object$model, object$fit$family)
+      floor <- switch(kind,
+                      log = floor * exp(offset),
+                      logit = floor * exp(offset) /
+                        (1 - floor + floor * exp(offset)),
+                      none = floor + offset)
+      if (identical(kind, "none")) {
+        floor <- mean_scale(object, floor)
       }
       return(floor)
     }
@@ -585,12 +587,12 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
   if (inherits(object, "bayesnecjointlevel")) {
     bot_draws <- joint_level_draws(object, "bot")
     if (!is.null(bot_draws)) {
-      return(bot_draws)
+      return(mean_scale(object, bot_draws))
     }
   } else {
     bot_draws <- as_draws_df(object$fit)[["b_bot_Intercept"]]
     if (!is.null(bot_draws)) {
-      return(as.numeric(bot_draws))
+      return(mean_scale(object, as.numeric(bot_draws)))
     }
   }
   if (!family_has_lower_bound(object$fit$family)) {
@@ -603,6 +605,30 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
          call. = FALSE)
   }
   0
+}
+
+#' Put draws of the bot parameter on the scale of the fitted mean
+#'
+#' The curve, \code{bot} included, is on the scale of the mean's link, and the
+#' predictions an ECx is read from are on the response scale.
+#'
+#' @param object A fit, or one level of a joint refit.
+#' @param draws Draws of \code{bot} on the link scale.
+#'
+#' @return \code{draws} with the inverse of the mean's link applied.
+#' @noRd
+mean_scale <- function(object, draws) {
+  family <- object$fit$family
+  link <- family$link
+  if (is.null(link) || identical(link, "identity")) {
+    return(draws)
+  }
+  linkinv <- if (is.function(family$linkinv)) {
+    family$linkinv
+  } else {
+    stats::make.link(link)$linkinv
+  }
+  linkinv(draws)
 }
 
 #' The asymptote of a two-block fit's zero block
@@ -721,9 +747,9 @@ count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
   if (!factorised && !joint) {
     return(asymptote)
   }
-  # The asymptote is on the link scale and the predictions on the response
-  # scale, so apply linkinv() before converting to E[Y | Y > 0].
-  mean_asymptote <- object$fit$family$linkinv(asymptote)
+  # ecx_asymptote() returns the response scale already; do not apply
+  # linkinv() again.
+  mean_asymptote <- asymptote
   shape <- NULL
   if (family %in% c("negbinomial", "hurdle_negbinomial")) {
     spec <- parse_disp_term(object$bayesnecformula)

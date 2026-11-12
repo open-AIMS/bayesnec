@@ -435,3 +435,45 @@ test_that("one level of a joint refit reads the zero block's bot (#491)", {
   level_draws <- c(0.3, 0.4)
   expect_equal(bayesnec:::ecx_asymptote(obj, "relative", "hu"), c(0.3, 0.4))
 })
+
+test_that("mean_scale puts bot on the response scale", {
+  mean_scale <- bayesnec:::mean_scale
+  as_fit <- function(family) list(fit = list(family = family))
+  expect_equal(mean_scale(as_fit(brms::brmsfamily("Gamma", link = "log")),
+                          log(c(2, 5))), c(2, 5))
+  expect_equal(mean_scale(as_fit(brms::brmsfamily("Beta", link = "logit")),
+                          0), 0.5)
+  expect_identical(mean_scale(as_fit(brms::brmsfamily("gaussian")), -3), -3)
+})
+
+test_that("a relative ECx under a log link measures towards exp(bot)", {
+  skip_on_cran()
+  skip_if_not_installed("rstan")
+  set.seed(578)
+  x <- rep(c(0.1, 0.3, 1, 3, 10, 30, 100), each = 10)
+  mu <- 2 + 18 * exp(-0.15 * pmax(x - 2, 0))
+  y <- stats::rgamma(length(x), shape = 30, rate = 30 / mu)
+  fit <- suppressWarnings(suppressMessages(bnec(
+    y ~ crf(x, "nec4param"), data = data.frame(x = x, y = y),
+    family = Gamma(link = "log"), chains = 2, iter = 2000, seed = 578,
+    refresh = 0
+  )))
+  bot <- as.numeric(brms::as_draws_df(fit$fit)[["b_bot_Intercept"]])
+  expect_equal(bayesnec:::ecx_asymptote(fit, "relative"), exp(bot))
+  est <- suppressWarnings(ecx(fit, ecx_val = 50, type = "relative",
+                              resolution = 100, posterior = TRUE))
+  # Each draw's curve on ecx()'s grid, measured from its control towards
+  # exp(bot) and interpolated linearly between the bracketing grid points.
+  grid <- bnec_newdata(fit, resolution = 100)
+  pe <- posterior_epred(fit, newdata = grid, re_formula = NA)
+  target <- pe[, 1] - (pe[, 1] - exp(bot)) * 0.5
+  by_hand <- vapply(seq_len(nrow(pe)), function(i) {
+    k <- which(pe[i, ] <= target[i])[1]
+    if (is.na(k) || k == 1) return(NA_real_)
+    x0 <- grid$x[k - 1]
+    x0 + (target[i] - pe[i, k - 1]) / (pe[i, k] - pe[i, k - 1]) *
+      (grid$x[k] - x0)
+  }, numeric(1))
+  expect_false(anyNA(by_hand))
+  expect_equal(as.numeric(est), by_hand, tolerance = 1e-3)
+})
