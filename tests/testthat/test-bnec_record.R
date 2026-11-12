@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Check that the record partitions requested equations into attempted and
 # excluded sets and retains response substitutions.
 

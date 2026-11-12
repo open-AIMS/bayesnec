@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("get_priors returns only what bnec accepts back", {
   out <- get_priors(nec4param)
   expect_s3_class(out, "brmsprior")

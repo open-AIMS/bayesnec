@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("a joint refit conditions left censoring on known survival", {
   d <- data.frame(
     x = c(5, 5, 4, 3, 2, 1),

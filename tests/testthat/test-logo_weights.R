@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("gauss_legendre integrates polynomials on [-1, 1]", {
   gl <- bayesnec:::gauss_legendre(10)
   expect_equal(sum(gl$w), 2)

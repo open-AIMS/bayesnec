@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("hormesis breakpoints are not classified as no-effect estimates", {
   hormesis <- intersect(bayesnec:::mod_groups$nec,
                         bayesnec:::mod_groups$hormesis)

@@ -56,6 +56,7 @@ test_that("the guards fire through the exported generics", {
 })
 
 test_that("ecx and nsec forward dpar to the per-model calls", {
+  skip_unless_full_suite()
   # Use real joint fits to check component forwarding through model averaging.
   skip_on_cran()
   skip_on_ci()

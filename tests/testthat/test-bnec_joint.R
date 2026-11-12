@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Use minimal structural mocks for selection and formula checks. Tests that
 # need posterior draws use the cached fitted fixtures below.
 

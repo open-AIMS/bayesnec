@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Initial curves for identity-link beta-binomial fits must stay inside (0, 1).
 
 

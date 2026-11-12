@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 observed_fit_data <- function() {
   set.seed(554)
   d <- expand.grid(x = c(0.05, 0.15, 0.4, 0.8, 1.5, 3),

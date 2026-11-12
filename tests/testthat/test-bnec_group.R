@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Levels are fitted independently and model-averaged within level.
 # Use manec_example as each fitted level to check validation, dispatch and
 # crossed weights without repeated sampling.

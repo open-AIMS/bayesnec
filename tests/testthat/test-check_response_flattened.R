@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Check the contrast between the two highest tested concentrations before
 # fitting. Decline from the control measures effect size, not flattening.
 # These tests compile no Stan programs.

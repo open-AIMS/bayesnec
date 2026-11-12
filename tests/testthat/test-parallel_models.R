@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Use multisession to exercise serialisation on every supported platform.
 # Restore the caller's plan after the test.
 with_parallel_plan <- function(code, workers = 2) {

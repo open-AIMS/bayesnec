@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("Check for data when using formula syntax", {
   expect_error(bnec(y ~ crf(x, "ecxlin")), "argument \"data\" is missing")
 })

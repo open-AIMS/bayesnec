@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 gl_sd_columns <- c("model", "wi", "group", "by", "parameter", "Estimate", "Q2.5",
                    "Q97.5")
 

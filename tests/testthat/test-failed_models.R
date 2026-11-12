@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("failed_models is empty for a fit where nothing failed", {
   out <- failed_models(manec_example)
   expect_s3_class(out, "bnecfailures")

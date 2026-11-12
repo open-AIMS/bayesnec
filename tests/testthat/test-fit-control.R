@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 test_that("an unobserved control sets prior bounds and needs its own top", {
   d <- data.frame(x = rep(c(0.04, 0.08, 0.12, 0.20, 0.26), each = 3),
                   y = rep(c(212, 195, 170, 115, 65), each = 3))

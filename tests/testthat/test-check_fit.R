@@ -1,3 +1,5 @@
+skip_unless_full_suite()
+
 # Check variability by predictor group: a global dispersion statistic can
 # miss opposing discrepancies in different regions.
 
