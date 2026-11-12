@@ -13,14 +13,6 @@
 #' @docType data
 NULL
 
-#' Custom beta-binomial family
-#'
-#' @format An object of class \code{\link[brms]{customfamily}}
-#'
-#' @name "beta_binomial"
-#' @docType data
-NULL
-
 #' Example bayesmanecfit object
 #'
 #' @format An object of class \code{\link{bayesmanecfit}}. This was created
