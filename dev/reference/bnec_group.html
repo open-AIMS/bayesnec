@@ -163,8 +163,9 @@ of per-level draws. <code>pool = "mixture"</code> combines levels in proportion
 to their observation counts; <code>"mean_estimate"</code> averages their
 estimates and <code>"mean_curve"</code> reads the estimate from their weighted
 mean curves. A NEC parameter has no curve to average, so <code><a href="nec.html">nec()</a></code> does
-not accept <code>"mean_curve"</code>. Each level uses its own lowest observed
-concentration as the control by default. <code>x_control = "shared"</code> or a
+not accept <code>"mean_curve"</code>. Each level uses the control recorded at
+fitting, or its own lowest observed concentration if none was stated.
+<code>x_control = "shared"</code> or a
 number reads all levels at one concentration and warns where this lies
 below a level's observations.</p>
 <p><b>Why the levels can be fitted separately</b></p>

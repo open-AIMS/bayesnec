@@ -198,11 +198,14 @@ terms default to <code>"mixture"</code>.</p></dd>
 
 
 <dt id="arg-x-control">x_control<a class="anchor" aria-label="anchor" href="#arg-x-control"></a></dt>
-<dd><p><code>"own"</code> reads each level's lowest observed concentration;
-<code>"shared"</code> reads the lowest across levels; a single finite number specifies
-the concentration directly. A shared control below a level's observations
-extrapolates its curve and gives a warning. Level controls are recorded in
-the result's <code>x_control</code> attribute.</p></dd>
+<dd><p><code>"own"</code> reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+<code>x_control</code>. <code>"shared"</code> reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+<code>x_control</code> attribute.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -232,11 +235,13 @@ as often as their observation counts on that term allow. Terms they do not
 share are chosen for each level independently. The levels can therefore be
 contrasted draw by draw, as <code><a href="compare_posterior.html">compare_posterior</a></code> does.</p>
 <p>The reference is the <code>sig_val</code> quantile of the control posterior,
-the control being the predicted mean at the lowest concentration in the
-supplied predictor. That holds for every equation, hormetic ones included:
-the <code>hormesis_def</code> argument selected between the control and the
-maximum of the predicted curve and has been removed, because a target
-below the control is crossed exactly once whatever the curve does above it.
+the control being the predicted mean at the control concentration: the
+<code>x_control</code> stated in <code><a href="bnec.html">bnec</a></code>, or else the lowest
+concentration in the supplied predictor. That holds for every equation,
+hormetic ones included: the <code>hormesis_def</code> argument selected between
+the control and the maximum of the predicted curve and has been removed,
+because a target below the control is crossed exactly once whatever the
+curve does above it.
 For a hormesis threshold equation, <code><a href="nec.html">nec</a></code> uses this NSEC as its
 no-effect estimate. Its <code>nec</code> parameter, the concentration at which
 the decline term starts, remains available through
@@ -260,10 +265,11 @@ changes away from the effect and later rises above the reference. Such a
 draw shows no decreasing effect in the searched range and is censored there.
 The crossing is sought at or above the control, so extending <code>x_range</code>
 below the data does not place an estimate below any tested concentration.</p>
-<p>Two limits on that. The value is the lowest <em>observed</em> concentration,
-where Fisher and Fox (2023) report zero concentration, which they reach by
-extrapolating the fitted curve below the data. The two agree where the control
-of the design is a true zero and the predictor is untransformed; otherwise the
+<p>Two limits on that. The value is the control concentration, which is the
+lowest <em>observed</em> concentration unless <code><a href="bnec.html">bnec</a></code> was given
+<code>x_control</code>. Fisher and Fox (2023) report zero concentration, which
+they reach by extrapolating the fitted curve below the data. The two agree
+where the control is 0 and the predictor is untransformed; otherwise the
 bound reported here is the control rather than the 0 of their Table 3. And
 it applies where the prediction grid begins at the control. Where
 <code>x_range</code> begins at a higher concentration, a draw already at or below

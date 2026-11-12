@@ -209,11 +209,14 @@ terms default to <code>"mixture"</code>.</p></dd>
 
 
 <dt id="arg-x-control">x_control<a class="anchor" aria-label="anchor" href="#arg-x-control"></a></dt>
-<dd><p><code>"own"</code> reads each level's lowest observed concentration;
-<code>"shared"</code> reads the lowest across levels; a single finite number specifies
-the concentration directly. A shared control below a level's observations
-extrapolates its curve and gives a warning. Level controls are recorded in
-the result's <code>x_control</code> attribute.</p></dd>
+<dd><p><code>"own"</code> reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+<code>x_control</code>. <code>"shared"</code> reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+<code>x_control</code> attribute.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -224,9 +227,10 @@ lower 95% credible interval bounds.</p>
     <div id="details">
     <h2>Details</h2>
     <p><b>Every ECx is measured from the control.</b> The control is the
-predicted mean at the lowest concentration in the supplied predictor, taken
-per posterior draw. <code>type</code> names what the percentage is measured
-<em>towards</em>:</p>
+predicted mean at the control concentration, taken per posterior draw: the
+<code>x_control</code> stated in <code><a href="bnec.html">bnec</a></code>, or else the lowest
+concentration in the supplied predictor. <code>type</code> names what the
+percentage is measured <em>towards</em>:</p>
 <ul><li><p><code>"absolute"</code> (the default) — control to 0.</p></li>
 <li><p><code>"relative"</code> — control to the equation's theoretical
 asymptote, the <code>bot</code> parameter where the equation has one and 0
@@ -243,7 +247,7 @@ a percentage, and the x value at which the curve reaches it is returned.</p></li
 </ul><p><code>"range"</code> is what <code>"relative"</code> computed in versions up to
 2.1.3, except that the span was taken from the maximum of the predicted
 curve rather than from the control. The two differ only for a curve whose
-maximum is not at the lowest concentration, which in practice means a
+maximum is not at the control concentration, which in practice means a
 hormetic one.</p>
 <p>Measuring from the control rather than from the maximum of the predicted
 curve is what makes an ECx well defined for a hormesis equation: the target

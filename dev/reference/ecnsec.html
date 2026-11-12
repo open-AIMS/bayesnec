@@ -176,11 +176,14 @@ terms default to <code>"mixture"</code>.</p></dd>
 
 
 <dt id="arg-x-control">x_control<a class="anchor" aria-label="anchor" href="#arg-x-control"></a></dt>
-<dd><p><code>"own"</code> reads each level's lowest observed concentration;
-<code>"shared"</code> reads the lowest across levels; a single finite number specifies
-the concentration directly. A shared control below a level's observations
-extrapolates its curve and gives a warning. Level controls are recorded in
-the result's <code>x_control</code> attribute.</p></dd>
+<dd><p><code>"own"</code> reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+<code>x_control</code>. <code>"shared"</code> reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+<code>x_control</code> attribute.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -210,7 +213,7 @@ as often as their observation counts on that term allow. Terms they do not
 share are chosen for each level independently. The levels can therefore be
 contrasted draw by draw, as <code><a href="compare_posterior.html">compare_posterior</a></code> does.</p>
 <p>The effect is measured from the control — the predicted mean at the
-lowest concentration in the supplied predictor, per posterior draw — and
+control concentration, per posterior draw — and
 <code>type</code> names what it is measured towards, exactly as in
 <code><a href="ecx.html">ecx</a></code>: "absolute" (the default) towards 0, "relative" towards
 the equation's theoretical asymptote, "range" towards the lowest response
