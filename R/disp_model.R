@@ -105,7 +105,8 @@ parse_disp_term <- function(formula) {
     start <- regexpr("disp(", full, fixed = TRUE)
     chars <- strsplit(substring(full, start), "")[[1]]
     depth <- cumsum((chars == "(") - (chars == ")"))
-    written <- substring(full, start, start + which(depth == 0)[1] - 1)
+    close <- which(depth == 0 & cumsum(chars == "(") > 0)[1]
+    written <- substring(full, start, start + close - 1)
     stop("Could not parse the disp() term \"", written, "\". Inside disp() a",
          " function call followed by another term, as in disp(~s(x) + group),",
          " cannot currently be written inline. Write the call last, as in",

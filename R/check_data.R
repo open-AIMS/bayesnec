@@ -1031,13 +1031,13 @@ check_trials_values <- function(data, family) {
   below <- !invalid & is.finite(y) & y > trials
   msgs <- character(0)
   if (any(invalid)) {
-    msgs <- c(msgs, paste0("The number of trials, ", t_label, ", must be a",
-                           " positive whole number, and is not at row(s) ",
+    msgs <- c(msgs, paste0("The trials column \"", t_label, "\" must hold a",
+                           " positive whole number, and does not at row(s) ",
                            row_list(rownames(data)[invalid]), "."))
   }
   if (any(below)) {
-    msgs <- c(msgs, paste0("The response ", y_label, " exceeds the number of",
-                           " trials, ", t_label, ", at row(s) ",
+    msgs <- c(msgs, paste0("The response \"", y_label, "\" exceeds the trials",
+                           " column \"", t_label, "\" at row(s) ",
                            row_list(rownames(data)[below]), "; under the ",
                            fam_tag, " family the response counts the",
                            " successes out of those trials."))

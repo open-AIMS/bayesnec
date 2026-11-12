@@ -1055,7 +1055,7 @@ test_that("degenerate data are refused before any level", {
   low$trials[2] <- low$count[2] - 1L
   expect_match(run(low, count | trials(trials) ~ crf(x, "nec3param"),
                    family = "binomial"),
-               "exceeds the number of trials", fixed = TRUE)
+               "exceeds the trials column", fixed = TRUE)
   expect_identical(calls, 0L)
 })
 

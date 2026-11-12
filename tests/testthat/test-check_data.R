@@ -953,10 +953,10 @@ test_that("check_data() refuses trials below the response, or not positive", {
   f <- y | trials(n) ~ crf(x, model = "nec3param")
   err <- expect_error(cd_run(f, d, binomial()))
   expect_match(conditionMessage(err),
-               "The number of trials, n, must be a positive whole number, and is not at row(s) 5",
+               "The trials column \"n\" must hold a positive whole number, and does not at row(s) 5",
                fixed = TRUE)
   expect_match(conditionMessage(err),
-               "The response y exceeds the number of trials, n, at row(s) 1",
+               "The response \"y\" exceeds the trials column \"n\" at row(s) 1",
                fixed = TRUE)
   d$n[c(1, 5)] <- 10L
   d$n[3] <- 9.5

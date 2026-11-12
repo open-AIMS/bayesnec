@@ -809,9 +809,11 @@ test_that("degenerate data are refused once, before any model", {
     msg <- run(low, count | trials(trials) ~ crf(x, c("nec3param",
                                                       "nec4param")),
                family = fam)
-    expect_match(msg, "must be a positive whole number, and is not at row(s) 4",
+    expect_match(msg,
+                 "The trials column \"trials\" must hold a positive whole number, and does not at row(s) 4",
                  fixed = TRUE, info = fam)
-    expect_match(msg, "exceeds the number of trials, trials, at row(s) 2",
+    expect_match(msg,
+                 "The response \"count\" exceeds the trials column \"trials\" at row(s) 2",
                  fixed = TRUE, info = fam)
   }
   expect_identical(calls, 0L)
