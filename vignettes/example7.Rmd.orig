@@ -27,9 +27,9 @@ knitr::opts_chunk$set(
 ```
 
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2]: https://open-aims.github.io/bayesnec/articles/example2.html
-[e6]: https://open-aims.github.io/bayesnec/articles/example6.html
+[e1]: example1.html
+[e2]: example2.html
+[e6]: example6.html
 
 # Summary
 
@@ -2019,7 +2019,7 @@ knitr::kable(
     arrange(arm),
   digits = 2,
   col.names = c("Convention", levels(cases$dataset)),
-  caption = "**Table 5.** Total model weight on the six equations whose lower asymptote is fixed at zero, for each convention on each dataset."
+  caption = "**Table 4.** Total model weight on the six equations whose lower asymptote is fixed at zero, for each convention on each dataset."
 )
 ```
 
@@ -2028,7 +2028,7 @@ Each fit is an average over thirteen or fourteen equations, and on two datasets
 a substantial share of the weight is on equations that mixed poorly. For each
 fit, the transcribed table records the weight held by equations whose tail
 effective sample size fell below 400, which is the level at which the bounds of
-a 95% interval are no longer reliably estimated (Table 4).
+a 95% interval are no longer reliably estimated (Table 5).
 
 ```{r, echo = FALSE}
 knitr::kable(
@@ -2038,7 +2038,7 @@ knitr::kable(
     arrange(desc(w_failing_ess)),
   digits = 3,
   col.names = c("Dataset", "Convention", "weight on tail ESS < 400"),
-  caption = "**Table 4.** Model weight held by equations whose tail effective sample size fell below 400, for the fits where it exceeds 0.01. Fits not listed hold essentially none. In the simulation the largest such figure in any cell and convention is under 0.005."
+  caption = "**Table 5.** Model weight held by equations whose tail effective sample size fell below 400, for the fits where it exceeds 0.01. Fits not listed hold essentially none. In the simulation the largest such figure in any cell and convention is under 0.005."
 )
 ```
 
@@ -2053,7 +2053,7 @@ an equation that did not converge.
 
 Third, the weight on the zero-asymptote equations, which Section 5.7 identifies
 as a diagnostic for flooring under an unbounded family, can be computed here
-because it needs no truth (Table 5). Averaged over the four datasets `floored`
+because it needs no truth (Table 4). Averaged over the four datasets `floored`
 places `r pc(mean(sapply(levels(cases$dataset), zw, "floored")))` of its weight
 on these equations, against
 `r pc(mean(sapply(levels(cases$dataset), zw, "measured")))` under `measured` and
@@ -2172,8 +2172,7 @@ realisations used above, but do not report those results. A sub-model does not
 repair the conventions that impose the zero boundary through the response
 distribution, and adding one to a Gaussian family, whose variance model is
 already correct, gives its variance a gradient the data do not have. The code
-and the tables are in the compendium, and its `CLAUDE.md` records why they are
-not cited.
+and the tables are in the compendium.
 
 The priors are the defaults of `bnec()`, derived once per cell and convention
 from a reference realisation and then held fixed across the 100 realisations of
@@ -2187,14 +2186,6 @@ default `nec` prior is a lognormal on the log of the predictor, with a central
 places the true `nec` of 1.3 between the 23rd and the 63rd percentile, depending
 on the cell, and the true ErC50 between the 80th and the 95th, so both are
 comfortably inside it.
-
-This was not the case in the version of this study published before, in which
-the default `nec` and `ec50` prior was a gamma whose spread is tied to its
-shape. Its central 95% interval therefore covered a fraction of a
-logarithmically spaced series, however the series was designed, and it placed
-the true ErC50 above the 99th percentile in each cell. Anyone comparing both
-versions should therefore be aware that the equations parameterised by `ec50`
-are likely to behave differently between them for that reason alone.
 
 Each cell was simulated 100 times, and the Monte Carlo standard error of the
 reported bias has a median of

@@ -13,10 +13,10 @@ bibliography: bayesnec.bib
 
 
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2]: https://open-aims.github.io/bayesnec/articles/example2.html
-[e3]: https://open-aims.github.io/bayesnec/articles/example3.html
-[e9]: https://open-aims.github.io/bayesnec/articles/example9.html
+[e1]: example1.html
+[e2]: example2.html
+[e3]: example3.html
+[e9]: example9.html
 
 # Overview
 

@@ -11,12 +11,12 @@ bibliography: bayesnec.bib
 
 
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2]: https://open-aims.github.io/bayesnec/articles/example2.html
-[e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
-[e3]: https://open-aims.github.io/bayesnec/articles/example3.html
-[e4]: https://open-aims.github.io/bayesnec/articles/example4.html
-[e5]: https://open-aims.github.io/bayesnec/articles/example5.html
+[e1]: example1.html
+[e2]: example2.html
+[e2b]: example2b.html
+[e3]: example3.html
+[e4]: example4.html
+[e5]: example5.html
 
 # `bayesnec`
 
@@ -235,7 +235,7 @@ autoplot(exp_1, xform = exp) +
 
 There are many built in methods available for `brmsfit` objects and we encourage you to make use of these in full.
 
-This model fit does not look great. You can see that the error bounds around the fit are far too narrow for this data given the variability among the points, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). For models whose response data are Binomial- or Poisson-distributed, an estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_1$dispersion`. Values > 1 indicate overdispersion and values < 1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model does not properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.
+The error bounds around the fit are narrower than the variability among the points, which suggests overdispersion (the data are more variable than this model fit predicts). For models whose response data are Binomial- or Poisson-distributed, an estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_1$dispersion`. Values > 1 indicate overdispersion and values < 1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model does not properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.
 
 
 ``` r
@@ -461,7 +461,7 @@ count_data_od <- data.frame(
 )
 ```
 
-Fitting these data with a Poisson distribution gives credible bands that are far too narrow for the variability among the points and a dispersion estimate well above one, which indicates that a different distribution should be used.
+Fitting these data with a Poisson distribution gives credible bands that are narrower than the variability among the points and a dispersion estimate well above one, which indicates that a different distribution should be used.
 
 
 ``` r

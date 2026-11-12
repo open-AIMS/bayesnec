@@ -36,13 +36,13 @@ clauses <- function(x) {
 }
 ```
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2]: https://open-aims.github.io/bayesnec/articles/example2.html
-[e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
-[e3]: https://open-aims.github.io/bayesnec/articles/example3.html
-[e4]: https://open-aims.github.io/bayesnec/articles/example4.html
-[e6]: https://open-aims.github.io/bayesnec/articles/example6.html
-[e8]: https://open-aims.github.io/bayesnec/articles/example8.html
+[e1]: example1.html
+[e2]: example2.html
+[e2b]: example2b.html
+[e3]: example3.html
+[e4]: example4.html
+[e6]: example6.html
+[e8]: example8.html
 
 # Overview
 
@@ -171,7 +171,7 @@ are 0, all of them for
 `r min(herbicide$concentration[fvfm_zero])` µg/L or more, where their curves
 fall lowest. A 0 is therefore a yield below `r fvfm_step / 2` that was rounded
 down, and not a separate outcome (see *Zeros from rounding* in [Hurdle and
-zero-inflated models][e6]). We treat these readings as left-censored at
+zero-inflated concentration-response models][e6]). We treat these readings as left-censored at
 `r fvfm_step / 2`, which states only that the true value is at or below that
 bound (see *Censoring* in [Single model usage][e1]). Shifting each 0 to a fixed
 small value instead, as `bnec()` does for an uncensored Beta response, would
@@ -1014,8 +1014,9 @@ R.version.string
 
 `herbicide` was built from the data of @jones2003 by `data-raw/herbicide_data.R`,
 and `coral_colour` and `coral_pam` from the records behind @flores2021 by
-`data-raw/coral_diuron.R`. The source records for the coral data are not
-distributed with the package, although the scripts are, and the manual pages
-state what was derived and how.
+`data-raw/coral_diuron.R`. The scripts are in the `data-raw` folder of the package's GitHub repository
+(`open-AIMS/bayesnec`) and are not part of the installed package; the source
+records for the coral data are not distributed, and the manual pages state
+what was derived and how.
 
 # References

@@ -30,11 +30,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
-[e7]: https://open-aims.github.io/bayesnec/articles/example7.html
-[e8]: https://open-aims.github.io/bayesnec/articles/example8.html
-[e9]: https://open-aims.github.io/bayesnec/articles/example9.html
+[e1]: example1.html
+[e2b]: example2b.html
+[e7]: example7.html
+[e8]: example8.html
+[e9]: example9.html
 
 ## Overview
 
@@ -109,7 +109,7 @@ Before fitting anything, `bnec()` gives a message where the response is still de
 
 On the logged route, the `"uninformative"` standard deviation is a fixed multiple of the spread of the predictor values, not a width set to cover the series, and it is typically several times wider than the tested range. Under the default the bound confines it to that range, but once the upper bound is removed most of its mass is typically above the highest concentration (see [Priors for predictor-scaled parameters](#priors-for-predictor-scaled-parameters)). Where the design does not reach the asymptote and the predictor is supplied logged, we therefore recommend supplying a prior through the `prior` argument, instead of relying on the `"uninformative"` set.
 
-For the parameters **beta**, **slope**, **d** and **f**, each equation is written so that theoretical values of `-Inf` to `+Inf` are allowable. The `"uninformative"` set gives all four a `normal(0, 5)` prior, and the `"regularizing"` set narrows **d** and **f** to `normal(0, 1)` (see [Spread of the shape parameters](#spread-of-the-shape-parameters)). For example, in the **nec3param** model, **beta** is an exponential decay parameter, and the decay rate must by definition be bounded to `0` and `+Inf`. Calling `exp(beta)` in the model formula ensures the rate meets these requirements, while **beta** itself can take any value. Note also that a mean of `0` and standard deviation of `5` represents a relatively broad prior on the exponential scaling. See the [Model details][e2b] vignette or `?model("all")` for more information on all the models available in `bayesnec` and their specific formulation.
+For the parameters **beta**, **slope**, **d** and **f**, each equation is written so that theoretical values of `-Inf` to `+Inf` are allowable. The `"uninformative"` set gives all four a `normal(0, 5)` prior, and the `"regularizing"` set narrows **d** and **f** to `normal(0, 1)` (see [Spread of the shape parameters](#spread-of-the-shape-parameters)). For example, in the **nec3param** model, **beta** is an exponential decay parameter, and the decay rate must by definition be bounded to `0` and `+Inf`. Calling `exp(beta)` in the model formula ensures the rate meets these requirements, while **beta** itself can take any value. Note also that a mean of `0` and standard deviation of `5` represents a relatively broad prior on the exponential scaling. See the [Model details][e2b] vignette or `?models` for more information on all the models available in `bayesnec` and their specific formulation.
 
 ## Choosing a prior set
 
