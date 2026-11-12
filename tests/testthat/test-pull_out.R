@@ -45,3 +45,40 @@ test_that("pull_out() computes the estimates with the arguments the set records"
   expect_identical(attr(out, "bnec_expand_args"),
                    default_expand_record(leave_out = "observation"))
 })
+
+test_that("pull_out() refuses an argument it does not use", {
+  expect_error(pull_out(manec_example, "nec4param", foo = 1),
+               "pull_out\\(\\) takes no further arguments, so `foo`")
+  expect_error(pull_out(manec_example, "nec4param", , , , , 1),
+               "pull_out\\(\\) takes no further arguments\\.")
+})
+
+test_that("pull_out() says which loo_controls elements it ignores", {
+  q <- function(expr) suppressWarnings(expr)
+  msgs <- function(expr) {
+    out <- character(0)
+    withCallingHandlers(q(expr), message = function(m) {
+      out <<- c(out, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    })
+    out
+  }
+  ignored <- msgs(pull_out(manec_example, "ecx4param",
+                           loo_controls = list(leave_out = "observation",
+                                               refit = TRUE)))
+  expect_true(any(grepl(
+    "loo_controls$leave_out, loo_controls$refit are ignored here", ignored,
+    fixed = TRUE
+  )))
+  weights <- msgs(pull_out(manec_example, "ecx4param",
+                           loo_controls = list(weights = list(BB = FALSE))))
+  expect_true(any(grepl("loo_controls$weights is ignored here. Use ?amend",
+                        weights, fixed = TRUE)))
+  fitting <- msgs(pull_out(manec_example, "ecx4param",
+                           loo_controls = list(fitting = list())))
+  expect_false(any(grepl("ignored here", fitting)))
+})
+
+test_that("pull_out() refuses a sig_val outside (0, 1) before rebuilding", {
+  expect_error(pull_out(manec_example, "ecx4param", sig_val = 2), "sig_val")
+})
