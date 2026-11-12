@@ -216,9 +216,12 @@ test_that("relative is refused where the bound is infinite", {
   fake$fit$family <- stats::gaussian()
   expect_error(ecx_asymptote(fake, "relative"), "no bot parameter")
   expect_error(ecx_asymptote(fake, "relative"), "not bounded below")
-  # Bounded below: the asymptote is 0 and the request is answered.
-  fake$fit$family <- stats::Gamma()
+  # Bounded below: the asymptote is 0 on the link scale and the request is
+  # answered, on the scale of the mean.
+  fake$fit$family <- stats::Gamma(link = "identity")
   expect_equal(ecx_asymptote(fake, "relative"), 0)
+  fake$fit$family <- stats::Gamma(link = "log")
+  expect_equal(ecx_asymptote(fake, "relative"), 1)
   # Any other type never asks for an asymptote.
   expect_true(is.na(ecx_asymptote(fake, "absolute")))
 })
