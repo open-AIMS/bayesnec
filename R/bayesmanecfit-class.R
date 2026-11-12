@@ -86,7 +86,7 @@
 #' doi:10.18637/jss.v110.i05.
 #' 
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
-#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028. 
 #' doi: 10.1002/etc.5610.
 #'
 #' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -95,7 +95,7 @@
 #' 
 #' Fox DR (2010). A Bayesian Approach for Determining the No Effect
 #' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-#' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+#' and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 #'
 NULL
 
