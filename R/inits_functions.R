@@ -238,22 +238,25 @@ count_redraw <- function(n_redraws, max_redraws, model, prior_row) {
   n_redraws + 1
 }
 
-#' Whether a draw lies outside the bounds of its prior
+#' A test of whether a draw lies outside the bounds of one prior
 #'
-#' @param value A \code{\link[base]{numeric}} value.
 #' @param prior_row The one-row \code{\link[base]{data.frame}} of the prior.
 #'
 #' @details The bounds are exclusive, as in \code{make_inits()}. A blank or
-#' missing bound is absent.
+#' missing bound is absent. The bounds are read once, when the test is built.
 #'
-#' @return A \code{\link[base]{logical}} value.
+#' @return A function of one \code{\link[base]{numeric}} value that returns
+#' \code{TRUE} where the value lies outside the bounds.
 #'
 #' @noRd
-outside_prior_bounds <- function(value, prior_row) {
+prior_bounds_test <- function(prior_row) {
   lb <- suppressWarnings(as.numeric(prior_row$lb))
   ub <- suppressWarnings(as.numeric(prior_row$ub))
-  (length(lb) == 1 && !is.na(lb) && value <= lb) ||
-    (length(ub) == 1 && !is.na(ub) && value >= ub)
+  has_lb <- length(lb) == 1 && !is.na(lb)
+  has_ub <- length(ub) == 1 && !is.na(ub)
+  function(value) {
+    (has_lb && value <= lb) || (has_ub && value >= ub)
+  }
 }
 
 #' The largest argument an exp() in an initial curve may receive
@@ -264,22 +267,22 @@ outside_prior_bounds <- function(value, prior_row) {
 #' @noRd
 max_exp_argument <- 700
 
-#' Evaluate an initial curve and record the largest exp() argument
+#' A prediction function that records the largest exp() argument
 #'
 #' The prediction functions are written as the Stan formulas are, so the
 #' arguments their \code{exp()} calls receive are those Stan evaluates at the
-#' initial values.
+#' initial values. Build the tracer once per search: it is slower than the
+#' plain function, so evaluate it only for a draw that passed every other
+#' check.
 #'
-#' @param init One chain's initial values.
-#' @param x The sorted predictor.
 #' @param pred_fct The prediction function of the equation.
-#' @param fct_args Its argument names, other than \code{x}.
 #'
-#' @return A \code{\link[base]{list}} with \code{preds}, the curve, and
-#' \code{largest}, the largest argument any \code{exp()} call received, or
-#' \code{-Inf} where there was none.
+#' @return A function of \code{(init, x, fct_args)} that returns a
+#' \code{\link[base]{list}} with \code{preds}, the curve, and \code{largest},
+#' the largest argument any \code{exp()} call received, or \code{-Inf} where
+#' there was none.
 #' @noRd
-exp_traced_predictions <- function(init, x, pred_fct, fct_args) {
+exp_tracer <- function(pred_fct) {
   largest <- -Inf
   traced <- pred_fct
   environment(traced) <- list2env(
@@ -291,8 +294,24 @@ exp_traced_predictions <- function(init, x, pred_fct, fct_args) {
     }),
     parent = environment(pred_fct)
   )
-  preds <- get_init_predictions(init, x, traced, fct_args)
-  list(preds = preds, largest = largest)
+  function(init, x, fct_args) {
+    largest <<- -Inf
+    preds <- get_init_predictions(init, x, traced, fct_args)
+    list(preds = preds, largest = largest)
+  }
+}
+
+#' Evaluate one initial curve with exp_tracer()
+#'
+#' @param init One chain's initial values.
+#' @param x The sorted predictor.
+#' @param pred_fct The prediction function of the equation.
+#' @param fct_args Its argument names, other than \code{x}.
+#'
+#' @return As the function \code{exp_tracer()} returns.
+#' @noRd
+exp_traced_predictions <- function(init, x, pred_fct, fct_args) {
+  exp_tracer(pred_fct)(init, x, fct_args)
 }
 
 #' refine_inits
@@ -337,11 +356,14 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
     fct_i <- prior_sampler(bits[1])
     v1 <- as.numeric(bits[2])
     v2 <- as.numeric(bits[3])
+    # Read the bounds once: indexing the data frame for every candidate is
+    # most of the search's time.
+    outside <- prior_bounds_test(priors[pr_row, ])
     for (k in seq_len(n_sub)) {
       candidate <- init
       new_val <- fct_i(1, v1, v2)
       # Stan refuses an initial value outside the prior's bounds.
-      if (outside_prior_bounds(new_val, priors[pr_row, ])) next
+      if (outside(new_val)) next
       if (priors$class[pr_row] == "b") {
         dim(new_val) <- 1
       }
@@ -764,21 +786,20 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
   # support is a level the likelihood can evaluate.
   constant <- model %in% constant_equations()
   support <- init_support(family)
+  trace_exp <- exp_tracer(pred_fct)
   passes <- function(inits) {
     vapply(inits, function(init) {
-      evaluated <- exp_traced_predictions(init, x_sorted, pred_fct, fct_args)
-      # Stan cannot start where an exp() in the curve overflows: R returns a
-      # finite curve, but the gradient is Inf / Inf.
-      if (evaluated$largest >= max_exp_argument) {
-        return(FALSE)
-      }
-      preds <- evaluated$preds
-      if (constant) {
+      preds <- get_init_predictions(init, x_sorted, pred_fct, fct_args)
+      ok <- if (constant) {
         all(is.finite(preds)) && min(preds) > support[1] &&
           max(preds) < support[2]
       } else {
         check_init_predictions(preds, limits)
       }
+      # Stan cannot start where an exp() in the curve overflows: R returns a
+      # finite curve, but the gradient is Inf / Inf. Neither check draws a
+      # random number, so their order does not change the draws accepted.
+      ok && trace_exp(init, x_sorted, fct_args)$largest < max_exp_argument
     }, logical(1))
   }
   # Seed only where a seed was supplied; see Details. NA is brms's "no seed",
