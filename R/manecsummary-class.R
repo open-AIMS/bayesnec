@@ -28,8 +28,9 @@
 #' @slot mod_weights_leave_out What the criterion behind the weights left out:
 #' the name of a grouping, each of whose levels was left out whole, or
 #' \code{"observation"}.
-#' @slot ecx_mods A \code{\link[base]{logical}} indicating which \code{models}
-#' are ECx-type models.
+#' @slot ecx_mods A \code{\link[base]{character}} vector naming the equations
+#' that have no \code{nec} parameter, or \code{NULL} where every equation has
+#' one.
 #' @slot nec_vals The model-averaged NEC values. Note that if model stack
 #' contains ECx-type models, these will be via NSEC proxies. Where any draw of
 #' the weighted posterior lies beyond the range the models were predicted over,

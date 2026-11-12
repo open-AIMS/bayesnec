@@ -13,6 +13,8 @@
 #' to TRUE. See details.
 #' @param ... Further arguments that control posterior predictions via
 #' \code{\link[brms]{posterior_epred}}.
+#' @param resolution The number of grid points each curve is predicted over.
+#' Defaults to 50.
 #'
 #' @details The argument \code{make_newdata} is relevant to those who want the
 #' package to create a data.frame from which to make predictions. This is done
@@ -63,6 +65,7 @@
 #' @export
 compare_fitted <- function(x, resolution = 50, x_range = NA,
                            make_newdata = TRUE, seed = 10, ...) {
+  check_comparison_list(x)
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   }
@@ -85,12 +88,16 @@ compare_fitted <- function(x, resolution = 50, x_range = NA,
       dot_list$newdata <- newdata_list$newdata
       dot_list$re_formula <- newdata_list$re_formula
       dot_list$object <- x[[i]]
+      if (i == 1L) {
+        check_draw_selection(dot_list$ndraws, dot_list$draw_ids,
+                             min(vapply(x, fit_ndraws, numeric(1))))
+      }
       posterior_list[[i]] <- do.call(posterior_epred, dot_list)
     }
     n_samples <- min(sapply(posterior_list, nrow))
     r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
       # A random subset of a longer posterior, not its first n_samples rows.
-      m[sample(seq_len(nrow(m)), n_samples, replace = FALSE), ]
+      m[sample(seq_len(nrow(m)), n_samples, replace = FALSE), , drop = FALSE]
     }, n_samples = n_samples)
   })
   compare_fitted_draws(posterior_list, r_posterior_list, x_vec)

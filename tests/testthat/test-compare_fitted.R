@@ -1,6 +1,7 @@
 test_that("x must be a named list", {
-  expect_error(compare_fitted(list(ecx4param, nec4param)))
-  expect_error(compare_fitted(ecx4param, nec4param))
+  expect_error(compare_fitted(list(ecx4param, nec4param)), "named list")
+  expect_error(compare_fitted(ecx4param, nec4param), "named list")
+  expect_error(compare_fitted(list(a = ecx4param)), "at least two fits")
 })
 
 test_that("output is a list of appropriately name elements", {

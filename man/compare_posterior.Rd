@@ -57,11 +57,9 @@ Details.}
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.}
 
-\item{resolution}{The number of unique x values over which to find ECx.
-The crossing is located by linear interpolation between the two grid values
-that bracket it, so precision saturates well below the grid spacing.
-The default is 500 grid values, matching \pkg{toxval}. A finer grid can
-change an interpolated crossing and increases prediction time.}
+\item{resolution}{The number of grid points each curve is read over.
+Defaults to 500 for the estimate comparisons, as in \code{\link{ecx}} and
+\code{\link{nsec}}, and to 50 for \code{comparison = "fitted"}.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -121,7 +119,8 @@ level's estimate is computed over its own prediction range, as
 \code{\link{compare_estimates}} computes every fit over one range common
 to them all. The draws in \code{posterior_list} are those that
 \code{\link{ecx}}, \code{\link{nsec}} or \code{\link{nec}} return for the
-refit with \code{posterior = TRUE}.
+refit with \code{posterior = TRUE}. \code{seed} has no effect on these
+estimate comparisons, whose draws are paired by position.
 
 Where a group term spans concentrations, each level is read at its own
 observed group levels, as \code{\link{ecx}} reads it: each posterior draw

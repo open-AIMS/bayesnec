@@ -36,7 +36,8 @@ with or without \code{ecx = TRUE}. See Details.}
 
 \item{ecx}{Should summary ECx values be calculated? Defaults to FALSE.}
 
-\item{ecx_vals}{ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
+\item{ecx_vals}{ECx targets, as percentages greater than 0, as for
+\code{ecx_val} in \code{\link{ecx}}. Only relevant if ecx = TRUE.
 If no value is specified by the user, returns calculations for EC10, EC50,
 and EC90.}
 

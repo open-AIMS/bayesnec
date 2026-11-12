@@ -40,8 +40,9 @@ smallest posterior draw count among the component models.}
 the name of a grouping, each of whose levels was left out whole, or
 \code{"observation"}.}
 
-\item{\code{ecx_mods}}{A \code{\link[base]{logical}} indicating which \code{models}
-are ECx-type models.}
+\item{\code{ecx_mods}}{A \code{\link[base]{character}} vector naming the equations
+that have no \code{nec} parameter, or \code{NULL} where every equation has
+one.}
 
 \item{\code{nec_vals}}{The model-averaged NEC values. Note that if model stack
 contains ECx-type models, these will be via NSEC proxies. Where any draw of

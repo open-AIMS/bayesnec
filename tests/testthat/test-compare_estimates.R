@@ -1,6 +1,13 @@
 test_that("x must be a named list", {
-  expect_error(compare_estimates(list(ecx4param, nec4param)))
-  expect_error(compare_estimates(ecx4param, nec4param))
+  expect_error(compare_estimates(list(ecx4param, nec4param)), "named list")
+  expect_error(compare_estimates(ecx4param, nec4param), "named list")
+  expect_error(compare_estimates(list(a = ecx4param)), "at least two fits")
+})
+
+test_that("compare_estimates reads curves on the estimators' default grid", {
+  ce <- compare_estimates(list(a = ecx4param, b = nec4param),
+                          comparison = "nsec")
+  expect_equal(attr(ce$posterior_list$a, "resolution"), 500)
 })
 
 test_that("output is a list of appropriately name elements", {

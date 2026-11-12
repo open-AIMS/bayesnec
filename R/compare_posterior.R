@@ -29,6 +29,9 @@
 #' after an odd number of preceding normal draws. Use R's default
 #' \code{normal.kind = "Inversion"} to preserve subsequent normal draws.
 #' 
+#' @param resolution The number of grid points each curve is read over.
+#' Defaults to 500 for the estimate comparisons, as in \code{\link{ecx}} and
+#' \code{\link{nsec}}, and to 50 for \code{comparison = "fitted"}.
 #' @inheritParams ecx
 #' @inheritParams nsec
 #'
@@ -99,12 +102,9 @@ compare_posterior.default <- function(x, comparison = "n(s)ec", ecx_val = 10,
                                       sig_val = 0.01, resolution,
                                       x_range = NA, make_newdata = TRUE,
                                       seed = 10, ...) {
-  if (!is.list(x) | is.null(names(x))) {
-    stop("Argument x must be a named list.")
-  }
-  if (!is.character(comparison)) {
-    stop("Argument comparison must be a character vector.")
-  }
+  check_comparison_list(x)
+  check_comparison_choice(comparison,
+                          c("nec", "n(s)ec", "nsec", "ecx", "fitted"))
   check_removed_args(list(...))
   if (comparison != "fitted") {
     refuse_estimate_dots(...)
@@ -167,7 +167,8 @@ compare_posterior.bayesnecgroupfit <- function(x, ...) {
 #' \code{\link{compare_estimates}} computes every fit over one range common
 #' to them all. The draws in \code{posterior_list} are those that
 #' \code{\link{ecx}}, \code{\link{nsec}} or \code{\link{nec}} return for the
-#' refit with \code{posterior = TRUE}.
+#' refit with \code{posterior = TRUE}. \code{seed} has no effect on these
+#' estimate comparisons, whose draws are paired by position.
 #'
 #' Where a group term spans concentrations, each level is read at its own
 #' observed group levels, as \code{\link{ecx}} reads it: each posterior draw
@@ -208,12 +209,8 @@ compare_posterior.bayesnecjointfit <- function(x, comparison = "n(s)ec",
                                                x_range = NA,
                                                make_newdata = TRUE,
                                                seed = 10, ...) {
-  choices <- c("nec", "n(s)ec", "nsec", "ecx", "fitted")
-  if (!is.character(comparison) || length(comparison) != 1L ||
-      is.na(comparison) || !comparison %in% choices) {
-    stop("comparison must be one of ", paste(choices, collapse = ", "), ".",
-         call. = FALSE)
-  }
+  check_comparison_choice(comparison,
+                          c("nec", "n(s)ec", "nsec", "ecx", "fitted"))
   if (length(x$levels) < 2L) {
     stop("A joint comparison needs at least two levels.", call. = FALSE)
   }
@@ -307,6 +304,7 @@ compare_joint_fitted <- function(x, resolution, x_range, make_newdata,
     }
   }
   n <- brms::ndraws(x$fit)
+  check_draw_selection(dots$ndraws, dots$draw_ids, n)
   keep <- if (!is.null(dots$draw_ids)) {
     dots$draw_ids
   } else if (!is.null(dots$ndraws)) {
@@ -365,4 +363,81 @@ refuse_estimate_dots <- function(...) {
          ".", call. = FALSE)
   }
   invisible(NULL)
+}
+
+#' Refuse an x that is not a named list of at least two fits
+#'
+#' A single fit is itself a named list, so it is tested for by class.
+#'
+#' @param x The object passed to a comparison.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_comparison_list <- function(x) {
+  if (inherits(x, "bnecfit") || !is.list(x) || is.null(names(x)) ||
+      any(!nzchar(names(x)))) {
+    stop("Argument x must be a named list of fits, such as ",
+         "list(a = fit_a, b = fit_b).", call. = FALSE)
+  }
+  if (length(x) < 2L) {
+    stop("Argument x must hold at least two fits to compare.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Refuse a comparison that is not one of the choices
+#'
+#' @param comparison The \code{comparison} argument.
+#' @param choices The values accepted.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_comparison_choice <- function(comparison, choices) {
+  if (!is.character(comparison) || length(comparison) != 1L ||
+      is.na(comparison) || !comparison %in% choices) {
+    stop("comparison must be one of ", paste(choices, collapse = ", "), ".",
+         call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Refuse a draw selection that the fits cannot supply
+#'
+#' @param ndraws,draw_ids As passed to \code{\link[brms]{posterior_epred}}.
+#' @param n The number of posterior draws each fit holds.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_draw_selection <- function(ndraws, draw_ids, n) {
+  if (!is.null(ndraws) &&
+      (!is.numeric(ndraws) || length(ndraws) != 1L || !is.finite(ndraws) ||
+       ndraws != round(ndraws) || ndraws < 1 || ndraws > n)) {
+    stop("`ndraws` must be one whole number from 1 to ", n,
+         ", the number of posterior draws the fits hold.", call. = FALSE)
+  }
+  if (!is.null(draw_ids) &&
+      (!is.numeric(draw_ids) || !length(draw_ids) ||
+       any(!is.finite(draw_ids)) || any(draw_ids != round(draw_ids)) ||
+       any(draw_ids < 1) || any(draw_ids > n))) {
+    stop("`draw_ids` must be whole numbers from 1 to ", n,
+         ", the number of posterior draws the fits hold.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' The number of posterior draws a fit holds
+#'
+#' @param object A fit from \code{\link{bnec}}.
+#'
+#' @return A \code{\link[base]{numeric}} value, \code{Inf} where the class
+#' records none.
+#' @noRd
+fit_ndraws <- function(object) {
+  if (inherits(object, "bayesmanecfit")) {
+    return(object$sample_size)
+  }
+  if (inherits(object$fit, "brmsfit")) {
+    return(brms::ndraws(object$fit))
+  }
+  Inf
 }
