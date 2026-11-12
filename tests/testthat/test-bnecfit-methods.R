@@ -699,9 +699,11 @@ test_that("update() computes the estimates with the arguments the set records", 
   out <- q(update(m, recompile = FALSE, x_range = NA, resolution = 1000,
                   sig_val = 0.01, loo_controls = list(fitting = list())))
   expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
-  # A set that records none takes the bnec() defaults.
+  # A set that records none takes the bnec() defaults, except that it was
+  # scored by observation.
   out <- q(update(manec_example, recompile = FALSE))
-  expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
+  expect_identical(attr(out, "bnec_expand_args"),
+                   default_expand_record(leave_out = "observation"))
   expect_equal(range(out$w_pred_vals$data$x),
                range(manec_example$mod_fits[[1]]$fit$data$x))
 })

@@ -148,6 +148,10 @@ get_priors.bayesnechurdlefit <- function(object, ...) {
 #' @param model_survival An optional \code{\link[base]{character}} string naming
 #' the equation for the second block of a joint hurdle or zero-inflated fit. See
 #' \code{\link{bnec}}.
+#' @param x_control The control concentration on the recorded predictor scale,
+#' as in \code{\link{bnec}}. It sets the lower bound of the default
+#' \code{nec} and \code{ec50} priors. A regularising \code{top} prior needs an
+#' observed response at this concentration.
 #'
 #' @inherit get_priors return details examples
 #'
@@ -161,7 +165,8 @@ get_priors.formula <- function(object, data, family = NULL,
                                prior_type = "uninformative",
                                asymptote_observed = TRUE,
                                model_survival = NULL,
-                               predictor_scale = "auto", ...) {
+                               predictor_scale = "auto", x_control = NULL,
+                               ...) {
   # A bayesnecformula has class c("formula", "bayesnecformula"), so dispatch
   # reaches this method for both. The bayesnecformula method forwards here;
   # forwarding the other way would recurse.
@@ -181,6 +186,9 @@ get_priors.formula <- function(object, data, family = NULL,
   validate_predictor_scale(
     predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)
   )
+  check_fit_x_control(x_control, object,
+                      retrieve_var(bdat, "x_var", error = TRUE),
+                      predictor_scale = predictor_scale, report = FALSE)
   # Read from `data`, as bnec() does: the variables of a disp(~...) term are
   # not in the model frame.
   check_disp_finite(object, data)
@@ -200,6 +208,8 @@ get_priors.formula <- function(object, data, family = NULL,
   check_response_at_bound(bdat, family, model = requested)
   model <- check_models(requested, family, bdat)
   model_survival <- check_model_survival(model_survival, family, bdat)
+  check_control_top_prior(bdat, family, model, NULL, prior_type,
+                          x_control, object, model_survival = model_survival)
   if (length(model) == 0) {
     stop("No valid models have been supplied for this data type.",
          call. = FALSE)
@@ -241,6 +251,9 @@ get_priors.formula <- function(object, data, family = NULL,
                  asymptote_observed = asymptote_observed,
                  model_survival = model_survival,
                  predictor_scale = predictor_scale,
+                 x_control = x_control,
+                 x_control_fitted = if (is.null(x_control)) NULL else
+                   sub_x_transformation(x_control, single_form),
                  disp_spec = disp_spec,
                  group_spec = parse_group_terms(single_form, m),
                  rate_response = !is.null(checked$mod_dat$denom),

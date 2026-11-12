@@ -12,7 +12,8 @@ nec(
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
   ...,
-  no_effect = FALSE
+  no_effect = FALSE,
+  pool = NULL
 )
 }
 \arguments{
@@ -45,13 +46,22 @@ order. See the \emph{Extrapolation} section of \code{\link{nec}}.}
 otherwise unused.}
 
 \item{no_effect}{For a \code{\link{bayesnecjointfit}} only, a
-\code{\link[base]{logical}} value. \code{FALSE}, the default, reports the
-\code{nec} parameter alone, so a level whose equation has none returns
-\code{NA}. \code{TRUE} reports instead the no-effect estimate each level's
-own equation supports --- the \code{nec} parameter for a threshold equation,
-the NSEC of the fitted curve for a smooth one --- labelled by type in an
-\code{ne_type} column. The other classes have no such argument and reject it
-rather than discarding it.}
+\code{\link[base]{logical}} value. \code{FALSE}, the default, returns
+\code{NA} for a smooth equation with no \code{nec} parameter. A monotone
+threshold equation returns its sampled NEC, and a hormesis threshold
+equation returns the NSEC of its fitted curve. \code{TRUE} additionally
+returns the NSEC of each smooth equation. The \code{ne_type} column labels
+every estimate. The other classes reject this argument.}
+
+\item{pool}{How observed group levels are combined. \code{"none"} returns
+per-level estimates. \code{"mixture"} gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw \emph{i} of the mixture comes from posterior iteration
+\emph{i}. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. \code{"mean_estimate"} averages the levels'
+estimates at each draw. \code{"mean_curve"} is unavailable for a sampled NEC
+parameter. A joint fit defaults to \code{"none"}; other fits with spanning group
+terms default to \code{"mixture"}.}
 }
 \value{
 A vector containing the estimated no-effect value, including upper
@@ -61,16 +71,74 @@ predicted over, that draw keeps its rank in the summary and is given no
 value, so an entry falling among such draws is the end of the prediction
 range rather than a quantile. Attribute \code{"censored_summary"} marks
 which entries those are and states how many draws lie beyond each end.
+
+Under the default \code{asymptote_observed = TRUE}, the \code{nec} prior is
+bounded at the lowest and highest concentrations tested. Where the data do
+not place the threshold inside that range, much of the posterior can lie
+near a bound, and a credible limit there is set by the prior. Where more
+than 7.5\% of the finite draws of a sampled NEC lie within the outer 5\% of
+its prior range at either end, a message says so and attribute
+\code{"prior_bound_summary"} holds a \code{\link[base]{data.frame}} with one
+row per bounded end. Its columns are the equation (\code{model}), its model
+weight (\code{wi}), \code{parameter}, \code{side}, the bound on the scale of
+the returned estimate (\code{bound}) and on the fitted scale
+(\code{fitted_bound}), and the number (\code{n_near}) and share
+(\code{share}) of \code{n_draws} finite draws within that 5\%. The window is
+measured on the fitted scale, as 5\% of the prior range, or of the
+prediction range where only one end is bounded. On a model set there is a
+row per sampled NEC equation, each from that equation's own draws, and
+\code{attr(, "weighted_share")} gives the model-weighted share at each end,
+which is the share the 7.5\% applies to. On a
+\code{\link{bayesnecgroupfit}} each level's record is kept, with a
+\code{level} column, on the table, and \code{attr(, "weighted_share")} is a
+list of those shares named by level, for the levels fitted as a model set.
+The estimate and its quantiles are
+unchanged. There is no record where the estimate is not a sampled NEC, as
+for an NSEC, a two-block fit with a smooth block or the combined estimate
+of a \code{\link{bayesnechurdlefit}}; where it is read per observed level;
+or with \code{posterior = TRUE} or \code{extrapolate}.
+\code{\link{curve_params}} gives the same record for every sampled
+\code{nec} and \code{ec50} parameter, whatever the share.
 }
 \description{
 Extracts the predicted NEC value as desired from an object of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
 \details{
-The NEC is a parameter in a threshold model (for example,
-see Fox 2010), and is a true measure
-of No-effect-concentration (the minimum concentration above which an effect
-is predicted to occur.
+The monotone threshold equations are \code{nec3param},
+\code{nec4param}, \code{neclin} and \code{necsigm}. In each, the sampled
+\code{nec} parameter is the last concentration before the fitted response
+declines from its control level (Fox 2010), and \code{nec} returns it as
+the NEC.
+
+The hormesis threshold equations are \code{nechorme}, \code{nechorme4},
+\code{neclinhorme}, \code{nechormepwr}, \code{nechorme4pwr} and
+\code{nechormepwr01}. In each, the \code{nec} parameter is the
+concentration at which the decline term starts. The fitted response there
+can be above the control, and where the slope of the stimulation term
+exceeds the initial rate of decline the curve continues to rise beyond it,
+so the parameter is not a no-effect concentration. \code{nec} returns the
+NSEC of these equations instead: the concentration at which the fitted
+curve, after any rise, falls below the lower \code{sig_val} quantile of the
+fitted control. This extends the NSEC of Fisher and Fox (2023), which was
+defined for monotone curves, to a hormetic curve. The \code{nec} parameter
+remains available through \code{\link{curve_params}}.
+
+Under a fitted group term whose levels span concentrations, the NEC is
+read for each observed level, including its deviation on the parameter.
+Terms whose levels each occur at one concentration are set to zero. The
+level of a spanning term observed at only one concentration is excluded from
+the estimate, with a message naming it. The default mixes the remaining
+observed levels by their observation counts;
+\code{pool = "none"} returns them separately.
+
+On a \code{\link{bayesnecjointfit}}, each level of the refit is mixed over
+its own observed group levels. A group term whose values occur in the data
+of more than one level, such as a batch in which two levels were both
+tested, is read at the same value for every level at each posterior draw,
+as often as their observation counts on that term allow. Terms they do not
+share are chosen for each level independently. The levels can therefore be
+contrasted draw by draw, as \code{\link{compare_posterior}} does.
 
 \bold{What is actually returned depends on the model set.} Despite the
 function name, \code{nec} returns a no-effect estimate of whichever type the
@@ -78,8 +146,11 @@ fitted model(s) support, following the convention set out in Fisher et al.
 (2023):
 
 \itemize{
-\item For a \code{\link{bayesnecfit}} holding a threshold (\code{nec}-type)
-model, the \bold{NEC}: the \code{nec} parameter itself.
+\item For a \code{\link{bayesnecfit}} holding a monotone threshold
+equation, the \bold{NEC}: the \code{nec} parameter itself.
+\item For a \code{\link{bayesnecfit}} holding a hormesis threshold
+equation, the \bold{NSEC} read off the fitted curve as for a smooth
+equation, below. This too is computed when the model is fitted.
 \item For a \code{\link{bayesnecfit}} holding a smooth (\code{ecx}-type)
 model, which has no threshold parameter, the \bold{NSEC} (Fisher and Fox
 2023) -- the concentration at which the fitted curve falls below a
@@ -87,20 +158,21 @@ reference taken from the \code{sig_val} quantile of the control
 posterior. This is computed when the model is fitted, using the
 \code{sig_val} passed to \code{\link{bnec}}.
 \item For a \code{\link{bayesmanecfit}} whose model set contains both
-kinds, the weighted posterior mixes NEC draws from the threshold models
-with NSEC draws from the smooth ones, in proportion to the model
-weights. The result is the model-averaged \bold{N(S)EC}, and a message is
-emitted to say so. It is not a pure NEC and should not be reported as
-one.
+kinds, the weighted posterior mixes sampled NEC draws from monotone
+threshold equations with NSEC draws from smooth and hormesis threshold
+equations, in proportion to the model weights. The result is the
+model-averaged \bold{N(S)EC}, and a message is emitted to say so. It is
+not a pure NEC and should not be reported as one.
 \item For a \code{\link{bayesnecjointfit}}, a
 \code{\link[base]{data.frame}} with one row per level of the grouping
 factor, the equation fitted at that level in a \code{model} column and
 the type of the estimate in an \code{ne_type} column. A composed joint
 refit fits one equation per level, so each level's estimate is a NEC or
 an NSEC and never a mixture of the two. \code{no_effect = FALSE}, the
-default, therefore reports the \code{nec} parameter and \code{NA} where
-the level's equation has none, and \code{no_effect = TRUE} reports a NEC
-at a threshold level and the NSEC of the fitted curve at a smooth one.
+default, reports a sampled NEC for a monotone threshold equation, a
+curve-read NSEC for a hormesis threshold equation and \code{NA} for a
+smooth equation. \code{no_effect = TRUE} also reports the NSEC of a
+smooth equation.
 The \code{ne_type} column is what a model-averaged N(S)EC cannot report.
 }
 
@@ -111,7 +183,7 @@ the joint refit \code{nec} returns an unlabelled vector. Use
 type.
 
 Where \code{crf()} transforms the predictor inline, as in
-\code{crf(log(concentration))}, the \code{nec} parameter is sampled on the
+\code{crf(log(concentration))}, a sampled \code{nec} parameter is on the
 transformed scale. Without \code{xform} it is returned on the recorded
 scale, a concentration, by the inverse of the transformation. The inverse
 is exact for \code{log}, \code{log10}, \code{log2}, \code{log1p},
@@ -162,23 +234,27 @@ component of the reported estimate samples a NEC. An NSEC is read off a
 fitted curve and a curve cannot be evaluated on an infinite grid, so where
 any component is an NSEC --- which includes the default \code{\link{bnec}}
 model set, because that set fits equations of both classes --- \code{TRUE}
-is an error naming the finite form. For a single fit the class is the one
-recorded in \code{ne_type}, which takes both blocks of a joint two-block
-fit into account. For a model-averaged set it is read from each equation's
-name, which is where \code{\link{summary}} reads the label it prints, so
-the two cannot disagree about what the set is.
+is an error naming the finite form. A hormesis threshold equation
+contributes an NSEC, so \code{TRUE} is refused for a fit or a set that
+contains one. For a single fit the class is the one recorded in
+\code{ne_type}, which takes both blocks of a joint two-block fit into
+account. For a model-averaged set it is the type recorded for each equation
+when the set was built, from which \code{\link{summary}} also takes the
+label it prints, so the two cannot disagree about what the set is.
 
 A finite limit applies to both classes, by a different route for each. The
 threshold components are compared against it, which requires no further
 computation because every draw of a sampled \code{nec} already has a value.
-The curve-read components are re-evaluated on a grid extended to it, through
-the \code{x_range} argument of \code{\link{nsec}}. That recomputes from the
-stored fit and needs no refit, but it does evaluate the curve once for each
-such equation, at a run time proportional to \code{resolution}. The
-re-evaluation reuses the number of grid points the fit stored unless
-\code{resolution} is given, so over a wider range the grid is proportionally
-coarser, and it reads its control at the lowest observed concentration, so
-its numbers can differ in the last digits from the stored summary.
+The curve-read components are re-evaluated by \code{\link{nsec}}, with its
+\code{extrapolate} argument, on the stored prediction range with points
+appended out to the limit. That recomputes from the stored fit and needs no
+refit, but it does evaluate the curve once for each such equation, at a run
+time proportional to the number of grid points. The re-evaluation reuses
+the \code{sig_val} the fit was built with unless \code{sig_val} is given,
+and the number of grid points the fit stored unless \code{resolution} is
+given. The appended points keep that grid's spacing, so a wider range adds
+points rather than coarsening the grid, and its numbers can differ in the
+last digits from the stored summary.
 
 Two requests re-evaluate nothing and return what \code{extrapolate = FALSE}
 returns: a limit equal to the current bounds, and any limit on a fit with no
@@ -206,9 +282,9 @@ default \code{asymptote_observed = TRUE} of \code{\link{bnec}}:
 user prior that sets a wider one. The lower bound at the lowest value tested
 applies under both settings and is reported by the other arm of the same
 message. And a curve-read
-component is measured from the control, so a lower limit below the lowest
-observed concentration extends the grid without extending the search, and
-those components stay censored at the control.
+component is measured from the control, so a lower limit below the control
+concentration does not extend its search, and a message states that the
+search begins at the control.
 }
 
 \examples{

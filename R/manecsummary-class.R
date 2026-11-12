@@ -4,7 +4,7 @@
 #' \code{\link[bayesnec:bayesnec-package]{bayesnec}} package are summarised
 #' as a \code{manecsummary} object, which contains the name of the
 #' non-linear models fitted, the family distribution used
-#' to fit all the models, the number of post-warm-up draws per model, a table
+#' to fit all the models, the number of draws in the model average, a table
 #' containing the model weights, the method to calculate the weights,
 #' whether this model is an ECx-type model
 #' (see details below), and the ECx summary values should the user decide
@@ -21,10 +21,13 @@
 #' the fitted non-linear models.
 #' @slot family A \code{\link[base]{list}} indicating the
 #' family distribution and link function used to fit all the models.
-#' @slot sample_size The number of post-warm-up draws each model in the set
-#' holds. Where the models hold different numbers, it is the smallest.
+#' @slot sample_size The number of draws in the model average, set to the
+#' smallest posterior draw count among the component models.
 #' @slot mod_weights A table containing the model weights.
 #' @slot mod_weights_method The method to calculate the weights.
+#' @slot mod_weights_leave_out What the criterion behind the weights left out:
+#' the name of a grouping, each of whose levels was left out whole, or
+#' \code{"observation"}.
 #' @slot ecx_mods A \code{\link[base]{logical}} indicating which \code{models}
 #' are ECx-type models.
 #' @slot nec_vals The model-averaged NEC values. Note that if model stack
@@ -34,6 +37,10 @@
 #' range rather than a quantile, and states how many draws lie beyond each end.
 #' The count is over the weighted draws, so it is the share of the
 #' model-averaged posterior that is censored and not the share of equations.
+#' Where more than 7.5% of the draws of the sampled NEC equations, weighted by
+#' model weight, lie within the outer 5% of their prior range, attribute
+#' \code{"prior_bound_summary"} gives the per-equation record
+#' \code{\link{nec}} describes and a printed note appears.
 #' @slot ecs A \code{\link[base]{list}} containing the ECx values
 #' should the user decide to calculate them (see the non-exported
 #' \code{bayesnec:::summary.bayesnecfit} help file for details). Different

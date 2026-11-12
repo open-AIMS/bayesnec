@@ -45,10 +45,11 @@ matching the grouped fit.
 \code{\link{nec}} adds two columns, because a composed refit fits one
 equation per level and only some equations estimate a \code{nec} parameter:
 \code{model} names the equation fitted at that level and \code{ne_type} the
-type of the estimate reported there. By default the estimate is the
-\code{nec} parameter, which is \code{NA} at a level whose equation has none;
-\code{nec(x, no_effect = TRUE)} reports instead the NSEC of that level's own
-fitted curve there, and labels the row \code{"NSEC"}. One equation per level
+type of the estimate reported there. By default the estimate is the sampled
+\code{nec} parameter for a monotone threshold equation, the curve-read NSEC
+for a hormesis threshold equation and \code{NA} for a smooth equation;
+\code{nec(x, no_effect = TRUE)} also returns the NSEC of a smooth equation.
+One equation per level
 is what makes that label possible: the model-averaged estimate of a
 \code{\link{bayesmanecfit}} mixes NEC and NSEC draws in proportion to the
 model weights and so has no single type to report.

@@ -68,7 +68,8 @@ articles:
       - example6
       - example7
       - example8
-  - title: A worked analysis
-    navbar: A worked analysis
+  - title: Worked analyses
+    navbar: Worked analyses
     contents:
       - example9
+      - example10

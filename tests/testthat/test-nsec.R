@@ -1,3 +1,10 @@
+test_that("nsec rejects fits from other packages", {
+  for (fit_class in c("brmsfit", "drc")) {
+    fit <- structure(list(), class = fit_class)
+    expect_error(nsec(fit), "no applicable method")
+  }
+})
+
 test_that("prob_vals warnings behave as expected", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
@@ -276,4 +283,34 @@ test_that("nsec_from_posterior puts the lower sig_val tail at the control", {
   # reports.
   expect_true(all(is.na(nsec_from_posterior(post, 0.01, x, x_control = x[1],
                                             control = post[, 1]))))
+})
+
+test_that("NSEC distinguishes a later effect from no effect after the control", {
+  x <- 0:3
+  post <- rbind(
+    away_no_effect = c(0.8, 0.9, 1, 1),
+    towards = c(0.8, 0.7, 0.6, 0.5),
+    away_then_crosses = c(0.8, 1, 0.7, 0.5),
+    flat = rep(0.8, 4)
+  )
+  out <- nsec_from_posterior(post, 0.9, x, x_control = 0,
+                             control = post[, 1])
+
+  expect_true(is.na(out[1]))
+  expect_false(attr(out, "below_range")[1])
+  expect_equal(unname(out[2]), 0)
+  expect_equal(unname(out[3]), 1 + 1 / 3)
+  expect_equal(unname(out[4]), 0)
+
+  restricted <- nsec_from_posterior(matrix(c(1, 0.95), nrow = 1), 0.9,
+                                     x_vec = 2:3, x_control = 0,
+                                     control = 0.8)
+  expect_true(is.na(restricted[1]))
+  expect_false(attr(restricted, "below_range")[1])
+
+  near_flat <- matrix(c(0.9 - 1e-10, 0.9 + 1e-10), nrow = 1)
+  almost_unchanged <- nsec_from_posterior(near_flat, 0.9, 0:1,
+                                           x_control = 0,
+                                           control = near_flat[1, 1])
+  expect_equal(unname(almost_unchanged[1]), 0)
 })

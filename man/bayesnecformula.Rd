@@ -122,6 +122,20 @@ combination of the two. \code{ogl(a + b)} is two separate terms,
 \code{(1 | a) + (1 | b)}, the same as \code{ogl(a) + ogl(b)}.
 \code{ogl(a*b)} also includes \code{(1 | a:b)}.
 
+The grouping inside \code{ogl()} and \code{pgl()} may also be a
+\code{\link[brms]{gr}} call. \code{pgl(gr(plate, by = toxicant))} fits a
+separate standard deviation of the plate deviations for each level of
+\code{toxicant}, which suits a grouping whose levels each belong to one
+level of \code{toxicant}. A \code{gr()} call on the right of the bar in a
+\code{(par | group)} term is not supported; use \code{pgl()} or
+\code{ogl()}.
+
+A grouping whose levels are each observed at a single concentration, such
+as the replicate vessels at each concentration, changes how the model
+weights are computed: each level is left out whole, rather than each
+observation. See the \code{loo_controls} argument and Details of
+\code{\link{bnec}}.
+
 \bold{The scale a group-level deviation is applied on}
 
 \pkg{brms} declares a group-level deviation unconstrained, and under the
@@ -344,9 +358,9 @@ has no family to validate and builds the formula unchecked.
 Because \code{\link{bnec}} fits on \code{link = "identity"}, which it
 assigns unless a link argument is written, \pkg{brms}
 writes the denominator multiplicatively on the response scale rather than as
-a log offset on the linear predictor, so the mean \emph{is} the rate and
-"top", "bot" and "nec" stay directly interpretable as counts per unit
-exposure. The prediction grid holds the denominator at 1, so a fitted curve,
+a log offset on the linear predictor, so the mean \emph{is} the rate,
+"top" and "bot" stay directly interpretable as counts per unit exposure, and
+"nec" stays a concentration. The prediction grid holds the denominator at 1, so a fitted curve,
 an \code{\link{ecx}} and an \code{\link{nsec}} are all read on the rate
 scale; plots put the observations on that same scale by dividing through.
 \code{offset} is deliberately not offered as an alternative --- under an
@@ -393,6 +407,11 @@ the bound has already been declared and moving it would restate it. A row
 declared censored at a value the family excludes --- left-censored at 0 under
 Gamma or Beta, right-censored at 1 under Beta --- is an error rather than a
 shift, because the censored likelihood is degenerate there.
+In a direct two-block \code{\link{bnec}} fit, left censoring of the total
+response includes the zero outcome. For a survivor known to have a positive
+response below the bound, \code{\link{bnec_hurdle}} records survival
+separately. \code{\link{bnec_joint}} keeps that distinction for a Gamma
+refit and refuses a zero-inflated Beta refit with left-censored survivors.
 
 \strong{NB:} \code{aterms} other than \code{trials()}, \code{weights()} and
 \code{cens()} are currently omitted from \code{\link{model.frame}} output. If

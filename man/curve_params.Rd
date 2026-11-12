@@ -39,15 +39,18 @@ and unused by the other two.}
 With \code{summary = TRUE}, a \code{\link[base]{data.frame}} with
 columns \code{model}, \code{wi}, \code{dpar}, \code{link}, \code{parameter},
 \code{Estimate}, \code{Q2.5} and \code{Q97.5}, ordered by decreasing
-\code{wi} and then by the parameter order given above.
+\code{wi} and then by the parameter order given above, and with the
+\code{"prior_bound_summary"} attribute described in Details. A
+\code{\link{bayesnecgroupfit}} adds a \code{level} column to that record.
 
 \code{Estimate} is the posterior median and the interval is equal-tailed,
 which is what \code{\link[brms]{fixef}(robust = TRUE)} reports for the same
-fit. For a single-block threshold fit the \code{nec} row is therefore the
-same number \code{\link{nec}} returns; for a two-block fit \code{nec()}
-returns the combined threshold rather than either block's, and for a
-\code{\link{bayesmanecfit}} it returns the model-averaged estimate, neither
-of which is a row here.
+fit. For a single-block monotone threshold fit the \code{nec} row is the
+same number \code{\link{nec}} returns. For a hormesis threshold fit
+\code{nec()} returns the NSEC read off the fitted curve, for a two-block
+fit it returns the combined threshold rather than either block's, and for
+a \code{\link{bayesmanecfit}} it returns the model-averaged estimate. None
+of these is a row here.
 
 \code{wi} is the model weight \code{\link{summary}} reports, under whichever
 method the set was weighted by --- pseudo-BMA unless \code{loo_controls}
@@ -118,6 +121,10 @@ model weight is reported beside each row instead, so a reader can see what
 share of the model average each curve holds, and no quantity is reported
 that the weights do not support. The model-averaged estimates are returned
 by \code{\link{nec}}, \code{\link{nsec}} and \code{\link{ecx}} on the set.
+For a hormesis threshold equation, the \code{nec} parameter is the
+concentration at which the decline term starts, and the curve can continue
+to rise beyond it. Its no-effect estimate is the NSEC, so the \code{nec}
+row here and \code{nec(fit)} answer different questions.
 
 \code{\link{show_params}} names the parameters of each equation without
 fitting anything; this function reports their estimates from a fit.
@@ -143,6 +150,23 @@ applied to them on the transformed scale, so \code{xform = identity}
 returns that scale. Every other parameter is a response level or a shape
 parameter and is not on the predictor axis at all, so it is returned as
 sampled.
+
+Under the default \code{asymptote_observed = TRUE}, the \code{nec} and
+\code{ec50} priors are both bounded at the lowest and highest
+concentrations tested. Where the data do not place the parameter inside
+that range, a credible limit near a bound is set by the prior. For every
+sampled \code{nec} and \code{ec50} row with a bounded prior, the table's
+attribute \code{"prior_bound_summary"} gives the number and share of draws
+within the outer 5\% of the prior range at each bounded end, with the bound
+on the scale of the row and on the fitted scale. These are the columns
+\code{\link{nec}} describes, and \code{model}, \code{dpar} and
+\code{parameter} match the rows of the table. A message names each
+parameter for which the share exceeds 7.5\%, after multiplying it by the
+equation's model weight, as \code{\link{nec}} does on a model set. The
+\code{ec50} parameter is not the estimate \code{\link{ecx}} returns with
+\code{ecx_val = 50}. That estimate is read off the fitted curve, and its
+own \code{"censored_summary"} describes draws whose curve does not cross
+within the prediction range.
 }
 \examples{
 library(bayesnec)

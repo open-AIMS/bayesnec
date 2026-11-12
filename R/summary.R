@@ -27,16 +27,19 @@
 #' model fits are not satisfactory with regards to their Rhats or their
 #' divergent transitions.
 #' 
-#' @details The summary method for both \code{\link{bayesnecfit}} and 
+#' @details The summary method for both \code{\link{bayesnecfit}} and
 #' \code{\link{bayesmanecfit}} also returns a no-effect toxicity
-#' estimate. Where the fitted model(s) are NEC models (threshold models,
-#' containing a step function) the no-effect estimate is a true 
-#' no-effect-concentration (NEC, see Fox 2010). Where the fitted model(s) are 
-#' smooth ECx models with no step function, the no-effect estimate is a 
-#' no-significant-effect-concentration (NSEC, see Fisher and Fox 2023). In the 
-#' case of a \code{\link{bayesmanecfit}} that contains a mixture of both NEC and
-#' ECx models, the no-effect estimate is a model averaged combination of the NEC
-#' and NSEC estimates, and is reported as the N(S)EC (see Fisher et al. 2023).
+#' estimate. For a monotone threshold equation (\code{nec3param},
+#' \code{nec4param}, \code{neclin} or \code{necsigm}) it is the sampled
+#' \code{nec} parameter, a no-effect-concentration (NEC, see Fox 2010). For a
+#' smooth ECx equation, and for a hormesis threshold equation
+#' (\code{nechorme}, \code{nechorme4}, \code{neclinhorme},
+#' \code{nechormepwr}, \code{nechorme4pwr} or \code{nechormepwr01}), it is
+#' a no-significant-effect-concentration read off the fitted curve (NSEC, see
+#' Fisher and Fox 2023); \code{\link{nec}} explains why. In the case of a
+#' \code{\link{bayesmanecfit}} that contains both kinds of equation, the
+#' no-effect estimate is a model averaged combination of the NEC and NSEC
+#' estimates, and is reported as the N(S)EC (see Fisher et al. 2023).
 #'
 #' With \code{ecx = TRUE}, each ECx row is computed by \code{\link{ecx}} over
 #' the prediction grid stored with the fit, which is the grid the no-effect
@@ -57,6 +60,11 @@
 #' \code{xform} supplied in \code{...} is applied to the stored draws and to
 #' the bound they are censored at instead, as \code{\link{nec}} applies it,
 #' so the no-effect row and the ECx rows are reported on one scale.
+#' Where more than 7.5% of the draws of a sampled NEC lie within the outer 5%
+#' of its prior range, the no-effect row has the \code{"prior_bound_summary"}
+#' attribute \code{\link{nec}} describes, on the scale of the row, and the
+#' printed summary gives the note \code{\link{nec}} gives. For a model set the
+#' 7.5% applies to the model-weighted share. The quantiles do not change.
 #'
 #' \code{posterior = TRUE} is refused. A summary reports each estimate as
 #' quantiles; the draws themselves are returned by \code{\link{nec}},
@@ -112,6 +120,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
   chk_numeric(ecx_vals)
   chk_number(divergence_cutoff)
   x <- object
+  warn_stale_observed_display(x)
+  warn_stale_ne_type(x)
   check_summary_ecx_posterior(list(...))
   # Resolve xform from the dots as ecx() matches them, so that the no-effect
   # row is on the scale of the ECx rows. See summary_ne_vals().
@@ -126,8 +136,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     ecs <- summary_ecx_rows(..., .fit = x, .ecx_vals = ecx_vals,
                             .stored_range = range(x$pred_vals$data$x))
   }
-  # Classify by the equation's parameters, as nec() does, not by its group or
-  # name.
+  # is_ecx names the equation class. A hormesis threshold equation has a nec
+  # parameter, but its no-effect estimate is an NSEC.
   is_ecx <- !has_nec_parameter(x$model, x$fit)
   ecx_mod <- NULL
   if (is_ecx) {
@@ -191,6 +201,8 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
   chk_number(fit_ratio_cutoff)
   chk_lgl(check_fit)
   x <- object
+  warn_stale_observed_display(x)
+  warn_stale_ne_type(x)
   # As in summary.bayesnecfit().
   check_summary_ecx_posterior(list(...))
   ne_xform <- summary_ecx_xform(list(...))
@@ -202,7 +214,6 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     ecs <- summary_ecx_rows(..., .fit = x, .ecx_vals = ecx_vals,
                             .stored_range = range(x$w_pred_vals$data$x))
   }
-  # As in summary.bayesnecfit(): the parameters, not group membership.
   no_nec <- !vapply(x$success_models, function(m) {
     has_nec_parameter(m, x$mod_fits[[m]]$fit)
   }, logical(1))
@@ -216,6 +227,7 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     sample_size = x$sample_size,
     mod_weights = clean_mod_weights(x),
     mod_weights_method = class(x$mod_stats$wi),
+    mod_weights_leave_out = weights_leave_out(x),
     ecx_mods = ecx_mods,
     nec_vals = clean_nec_vals(x, x$success_models, ecx_mods,
                               summary_ne_vals(x, ne_xform)),
@@ -397,9 +409,11 @@ summary_ne_vals <- function(x, xform) {
   check_xform(xform)
   stored <- if (is_bayesnecfit(x)) x$ne else x$w_ne
   map <- recorded_xform(x, xform)
+  prior_boundary <- flagged_prior_boundary(nec_prior_boundary(x, map))
   # Return the stored row itself, not a recomputation, so that a summary
   # of an untransformed fit prints exactly the row stored at fit time.
   if (identical(map, identity)) {
+    attr(stored, "prior_bound_summary") <- prior_boundary
     return(stored)
   }
   post <- if (is_bayesnecfit(x)) x$ne_posterior else x$w_ne_posterior
@@ -409,7 +423,9 @@ summary_ne_vals <- function(x, xform) {
   # not keep an attribute. A decreasing map swaps the end the draws are
   # censored at; xform_censoring() handles that, as it does for nec().
   attr(post, "censored") <- xform_censoring(cens, map)
-  estimates_summary(post)
+  out <- estimates_summary(post)
+  attr(out, "prior_bound_summary") <- prior_boundary
+  out
 }
 
 #' Which candidate models mis-state the control, by ratio
@@ -443,7 +459,8 @@ control_fit_issues <- function(x, cutoff) {
     return(NULL)
   }
   off <- function(r) !is.finite(r) | r > cutoff | r < 1 / cutoff
-  flagged <- off(d$mean_ratio) | off(d$sd_ratio)
+  # A group of one has no standard deviation, so only its mean is compared.
+  flagged <- off(d$mean_ratio) | (d$n > 1 & off(d$sd_ratio))
   out <- as.list(flagged)
   names(out) <- if (is.null(d$model)) x$success_models[1] else d$model
   out

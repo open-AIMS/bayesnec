@@ -241,6 +241,10 @@ knit_one <- function(f) {
     knitr::opts_chunk$set(cache = TRUE, autodep = TRUE,
                           cache.path = file.path(cache_root, base, ""))
   }
+  # knit() keeps going after a chunk error and writes the error into the .Rmd,
+  # where rmarkdown::render() would stop. Stop here too, so that a failed fit
+  # cannot ship as printed output.
+  knitr::opts_chunk$set(error = FALSE)
   started <- Sys.time()
   # Each vignette is knitted into an environment of its own. knit()'s default
   # is parent.frame(), which is this function's frame, so a chunk's objects

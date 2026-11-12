@@ -20,17 +20,19 @@ chamber, so the chambers hold five to eight readings each and the rows are
 not balanced. As with \code{\link{coral_colour}} a chamber sits at one
 concentration and admits only a displacement, and 54 chambers of several
 readings is the better conditioned of the two for a
-\code{ogl(chamber)} term.
+\code{ogl(chamber)} term. The model weights leave out each chamber whole,
+as for \code{\link{coral_colour}}.
 
 Chamber was numbered 1 to 3 within each climate-by-concentration cell in the
 source records rather than across the experiment, so \code{chamber} here
 combines the three to give a unique identifier.
 
 Yield is a proportion and 63 of the 414 readings are exactly 0, all of them
-at the higher concentrations where photosynthesis had stopped. These are
-measurements at a boundary rather than substitutions, and a \code{Beta}
-likelihood cannot represent them; \code{vignette("example6")} covers the
-options.
+at 9.6 and 29 \eqn{\mu}g/L. They are readings at the floor of the
+fluorometer: no reading lies between 0 and the smallest positive value,
+0.007, and a fragment read twice can give one 0 and one positive reading. A
+\code{Beta} likelihood cannot represent a 0, so \code{vignette("example4")}
+treats these readings as left-censored at the smallest positive value.
 
 The control concentration is reported as \code{0}, and the substitution the
 source file holds for it is not shipped, for the reason given under

@@ -7,14 +7,17 @@
 \method{ecx}{bayesnechurdlefit}(
   object,
   ecx_val = 10,
-  resolution = 200,
+  resolution = 500,
   posterior = FALSE,
   type = "absolute",
   x_range = NA,
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   which = "combined",
-  ...
+  ...,
+  pool = NULL,
+  x_control = "own",
+  extrapolate = FALSE
 )
 }
 \arguments{
@@ -29,9 +32,8 @@ Details.}
 \item{resolution}{The number of unique x values over which to find ECx.
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+change an interpolated crossing and increases prediction time.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
 posterior sample of calculated ECx values should be returned instead of
@@ -56,6 +58,36 @@ return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 \code{"growth"} or \code{"survival"}.}
 
 \item{...}{Additional arguments passed to methods.}
+
+\item{pool}{How observed group levels are combined. \code{"none"} returns
+per-level estimates. \code{"mixture"} gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw \emph{i} of the mixture comes from posterior iteration
+\emph{i}. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. \code{"mean_estimate"} averages the levels'
+estimates at each draw, and \code{"mean_curve"} estimates from their weighted
+mean curve. A joint fit defaults to \code{"none"}; other fits with spanning group
+terms default to \code{"mixture"}.}
+
+\item{x_control}{\code{"own"} reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+\code{x_control}. \code{"shared"} reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
+
+\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
+A finite upper limit or a pair of finite lower and upper limits extends the
+search grid and marks any unresolved draw as censored at that limit.
+Limits are on the recorded predictor scale. \code{TRUE} and limits that
+narrow the current range are refused. The original grid points and their
+spacing are retained when extension points are appended. The search begins
+at the control, so a lower limit extends it only where the prediction range
+begins above the control. For \code{type = "range"} the lowest response is
+taken over the prediction range before it is extended, so a limit beyond
+the data does not change the estimate.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and
@@ -68,6 +100,10 @@ Extracts the predicted ECx value from a \code{\link{bayesnechurdlefit}}
 The combined curve is the product of the growth curve and the
 survival curve. Because both decline, the combined ECx is always reached at
 or below either component's own ECx.
+For a group term spanning concentrations, each observed level pairs its
+growth and survival predictions before the endpoint is read. A level
+observed at one concentration is excluded. \code{pool} and
+\code{x_control} use the same rules as for a single fit.
 
 Without \code{x_range}, every ECx is read over the whole concentration
 series, the range the survival component is fitted over. The growth

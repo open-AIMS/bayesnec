@@ -36,23 +36,83 @@ is_bayesnechurdlefit <- function(x) {
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param resolution The number of unique predictor values to predict over.
 #' @param x_range A range of predictor values to predict over.
+#' @param x_control The control reading, as \code{ecx()} takes it.
+#' @param levels \code{TRUE} to mix the observed levels of a group term that
+#' spans the series, or \code{FALSE} for the population curve, with group
+#' deviations at zero, as the plotted band uses.
+#' @param grid_limits Limits from \code{curve_extrapolate_limits()} to extend
+#' the grid to, or \code{NULL}.
+#' @param x_values A grid to predict at, used as given. It overrides
+#' \code{resolution}, \code{x_range} and \code{grid_limits}.
 #' @details Draws are paired by row, which is valid because the two posteriors
 #' are independent. Where the fits hold different numbers of draws, both are
 #' truncated to the smaller.
 #'
-#' The control is the prediction at the lowest observed concentration,
+#' The control is the prediction at the control concentration,
 #' not the first column of the grid, so that \code{x_range} does not change
 #' the reference. It is computed here so that the control and the curve are
 #' truncated to the same draws.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{x}, \code{growth},
-#' \code{survival} and \code{combined}, and \code{control}, a list of the same
-#' three names holding one control value per draw.
+#' \code{survival} and \code{combined}; \code{control}, a list of the same
+#' three names holding one control value per draw; and \code{original}, a
+#' \code{\link[base]{logical}} vector marking the columns of the grid before
+#' \code{grid_limits} extended it.
 #'
 #' @importFrom brms posterior_epred
 #'
 #' @noRd
-hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
+hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
+                                   x_control = "own", levels = TRUE,
+                                   grid_limits = NULL, x_values = NULL) {
+  if (!is.null(x_values)) x_range <- range(x_values)
+  spec <- if (levels && is.null(object$observed_group)) {
+    observed_level_spec(object)
+  }
+  if (!is.null(spec)) {
+    if (is.na(x_range[1])) {
+      x_range <- c(min(observed_level_controls(object, spec)),
+                   max(unlist(spec$x)))
+    }
+    levels <- lapply(seq_len(nrow(spec$combinations)), function(i) {
+      hurdle_component_preds(observed_level_fit(object, spec, i),
+                             resolution = resolution, x_range = x_range,
+                             x_control = x_control, grid_limits = grid_limits,
+                             x_values = x_values)
+    })
+    n <- min(vapply(levels, function(x) nrow(x$combined), integer(1)))
+    owner <- observed_assignment(spec, n)
+    # Row d of each combined matrix holds draw d of the level it was given to.
+    combine <- function(name) {
+      out <- levels[[1]][[name]][seq_len(n), , drop = FALSE]
+      for (i in seq_along(levels)) {
+        take <- which(owner == i)
+        out[take, ] <- levels[[i]][[name]][take, , drop = FALSE]
+      }
+      out
+    }
+    controls <- function(name) {
+      out <- levels[[1]]$control[[name]][seq_len(n)]
+      for (i in seq_along(levels)) {
+        take <- which(owner == i)
+        out[take] <- levels[[i]]$control[[name]][take]
+      }
+      out
+    }
+    return(list(x = levels[[1]]$x, growth = combine("growth"),
+                survival = combine("survival"), combined = combine("combined"),
+                control = list(growth = controls("growth"),
+                               survival = controls("survival"),
+                               combined = controls("combined")),
+                original = levels[[1]]$original))
+  }
+  if (!is.null(object$observed_group) && is.na(x_range[1])) {
+    x_range <- level_read_span(object)
+  }
+  if (is.numeric(x_control)) {
+    control_reading <- resolve_x_control(object, x_control, x_range)
+    x_range <- control_reading$x_range
+  }
   # Default every curve to the survival fit's range, the whole concentration
   # series. The growth data stop at the last survivor, and an older fit stores
   # a growth grid that stops there too.
@@ -64,16 +124,38 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
     nd_s <- newdata_eval(object$survival, resolution = resolution,
                          x_range = x_range)
   }
+  base_x <- nd_s$x_vec
+  if (!is.null(x_values)) {
+    nd_s <- newdata_eval(object$survival, length(x_values),
+                         range(x_values), x_values = x_values)
+    base_x <- x_values
+  } else if (!is.null(grid_limits)) {
+    x_values <- extend_grid_values(nd_s$x_vec, grid_limits)
+    if (!identical(x_values, nd_s$x_vec)) {
+      nd_s <- newdata_eval(object$survival, length(x_values),
+                           range(x_values), x_values = x_values)
+    }
+  }
   # The survival fit carries a different response column (.alive), so each
   # component's newdata must be built from its own model frame.
-  nd_g <- newdata_eval(object$growth, resolution = resolution,
-                       x_range = x_range)
-  g <- posterior_epred(object$growth, newdata = nd_g$newdata, re_formula = NA)
+  nd_g <- newdata_eval(object$growth, resolution = length(nd_s$x_vec),
+                       x_range = range(nd_s$x_vec), x_values = nd_s$x_vec)
+  if (!is.null(object$observed_group)) {
+    for (v in names(object$observed_group)) {
+      nd_g$newdata[[v]] <- object$observed_group[[v]]
+      nd_s$newdata[[v]] <- object$observed_group[[v]]
+    }
+  }
+  re_formula <- if (is.null(object$re_formula)) NA else object$re_formula
+  g <- posterior_epred(object$growth, newdata = nd_g$newdata,
+                       re_formula = re_formula)
   s <- posterior_epred(object$survival, newdata = nd_s$newdata,
-                       re_formula = NA)
-  x_at <- control_x(object)
+                       re_formula = re_formula)
+  x_at <- if (is.numeric(x_control)) control_reading$value else
+    control_x(object)
   epred_part <- function(part) {
-    function(nd) posterior_epred(part, newdata = nd, re_formula = NA)
+    function(nd) posterior_epred(part, newdata = nd,
+                                re_formula = re_formula)
   }
   c_g <- control_posterior(object$growth, nd_g$newdata, epred_part(object$growth),
                            x_at = x_at)
@@ -85,7 +167,8 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
   c_g <- c_g[seq_len(n)]
   c_s <- c_s[seq_len(n)]
   list(x = nd_g$x_vec, growth = g, survival = s, combined = g * s,
-       control = list(growth = c_g, survival = c_s, combined = c_g * c_s))
+       control = list(growth = c_g, survival = c_s, combined = c_g * c_s),
+       original = original_columns(nd_g$x_vec, base_x))
 }
 
 #' @noRd
@@ -111,15 +194,17 @@ hurdle_check_which <- function(which) {
 #'
 #' The combined no-effect concentration is
 #' \code{pmin(ne_growth, ne_survival)} evaluated per posterior draw, on the
-#' scale the model was fitted on. Below both thresholds the growth curve sits
-#' at \code{top} and the survival curve at its own control value, so their
-#' product is flat; it departs that plateau at whichever threshold binds first.
-#' The minimum, and the rule for censored draws below, apply on that scale, and
-#' the result is then returned on the scale \code{xform} names. Under a
-#' decreasing transformation in \code{crf()}, such as \code{crf(I(-x))}, each
-#' curve is flat above its threshold on the recorded scale, so the combined
-#' value is the larger of the two recorded thresholds. An \code{xform} changes
-#' the scale the value is reported on, not which threshold it is.
+#' scale the model was fitted on. If both components use monotone threshold
+#' equations, their product is flat below both thresholds and departs that
+#' plateau at the smaller one. With a smooth or hormesis threshold equation,
+#' the minimum is a componentwise no-effect estimate; the NSEC of the combined
+#' response curve can differ. The minimum, and the rule for censored draws
+#' below, apply on the fitted scale, and the result is then returned on the
+#' scale \code{xform} names. Under a decreasing transformation in
+#' \code{crf()}, such as \code{crf(I(-x))}, the smaller fitted-scale value is
+#' the larger of the two recorded values.
+#' An \code{xform} changes the scale the value is reported on, not which
+#' component estimate determines it.
 #'
 #' A component draw beyond the top of its prediction range is known only to
 #' exceed that limit. Both components are predicted over the whole
@@ -135,26 +220,26 @@ hurdle_check_which <- function(which) {
 #' whenever growth is the more sensitive endpoint} --
 #' which it usually is, since a contaminant that kills has generally slowed
 #' growth at a lower concentration first. This is not a defect of the
-#' combination but a property of thresholds: a threshold marks where an effect
-#' \emph{begins}, and the combined effect begins as soon as either process
-#' does. Where the two components differ is in the \emph{magnitude} of effect
+#' combination: the minimum selects the more sensitive component's estimate.
+#' Where the two components differ is in the \emph{magnitude} of effect
 #' above that point, which is what \code{\link{ecx}} measures. Use
 #' \code{ecx(which = "combined")} rather than this function where the question
 #' is what the hurdle model adds over a survivors-only analysis.
 #'
-#' As for \code{\link{nec}} on any fit, what is returned is a NEC only where
-#' the underlying model(s) are threshold models. A component whose model set
-#' contains smooth (\code{ecx}-type) models contributes NSEC draws instead, and
-#' the combination is then an N(S)EC; a message is emitted in that case and
-#' \code{summary} labels each component. A component fitted to a single smooth
-#' equation, such as \code{ecx4param}, contributes the NSEC draws stored when it
-#' was fitted, although \code{nec()} refuses that equation fitted on its own
-#' with \code{\link{bnec}}. Only the component or components that \code{which}
-#' names are computed, so \code{which = "growth"} reads nothing from the
-#' survival component. \code{\link{nsec}} with
-#' \code{which = "combined"} is the alternative that reads a single value off
-#' the combined curve itself rather than taking the minimum of two component
-#' estimates, and it does not reduce to the growth value.
+#' As for \code{\link{nec}} on any fit, what is returned is a sampled NEC only
+#' where the underlying equations are monotone threshold models. A component
+#' whose model set contains smooth or hormesis threshold equations contributes
+#' NSEC draws instead. A combination of NEC and NSEC draws is labelled N(S)EC;
+#' a message is emitted and \code{summary} labels each component. A component
+#' fitted to a single smooth equation, such as \code{ecx4param}, contributes
+#' the NSEC draws stored when it was fitted, although \code{nec()} refuses
+#' that equation fitted on its own with \code{\link{bnec}}. Only the component
+#' or components that \code{which} names are computed, so
+#' \code{which = "growth"} reads nothing from the survival component.
+#' \code{\link{nsec}} with \code{which = "combined"} is the alternative that
+#' reads a single value off the combined curve itself rather than taking the
+#' minimum of two component estimates, and it does not reduce to the growth
+#' value.
 #'
 #' @return A vector containing the estimated no-effect value, including upper
 #' and lower credible interval bounds.
@@ -168,22 +253,40 @@ hurdle_check_which <- function(which) {
 nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   extrapolate = FALSE,
-                                  which = "combined", ...) {
+                                  which = "combined", ..., pool = NULL) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   check_no_effect_arg(list(...), object)
   chk_logical(posterior)
   which <- hurdle_check_which(which)
   check_xform(xform)
-  # Muffle the component censoring warnings; one is raised below for the
-  # vector returned. `extrapolate` goes to each component, which has its own
-  # prediction range, and a refusal is re-raised naming that component, since
-  # an older fit's growth range can stop short of the survival range.
+  if (is.null(object$observed_group)) {
+    spec <- observed_level_spec(object)
+    if (!is.null(spec)) {
+      result <- estimate_observed_levels(
+        object, spec, "nec",
+        function(level, control_value, range_override) {
+          nec(level, posterior = TRUE, xform = xform,
+              prob_vals = prob_vals, extrapolate = extrapolate,
+              which = which, pool = "none", ...)
+        }, pool, posterior, prob_vals
+      )
+      attr(result, "component") <- which
+      return(result)
+    }
+  }
+  # Check only the component or components that `which` reads.
+  warn_stale_ne_type(if (which == "combined") object else object[[which]])
+  # Muffle the component censoring and stale-estimate warnings, which are
+  # raised once for the whole fit. `extrapolate` goes to each component, which
+  # has its own prediction range, and a refusal is re-raised naming that
+  # component, since an older fit's growth range can stop short of the
+  # survival range.
   component_nec <- function(part, what) {
     call_it <- function() {
-      without_censored_warning(
+      without_stale_ne_warning(without_censored_warning(
         hurdle_component_ne(part, extrapolate = extrapolate, ...)
-      )
+      ))
     }
     # Relabel an error only where extrapolate was given; otherwise an unrelated
     # error would be blamed on it.
@@ -211,16 +314,15 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
     n <- min(length(g_post), length(s_post))
     # Keep the minimum on the fitted scale, where each curve is flat below its
     # threshold. Under a decreasing crf() it is the larger recorded threshold,
-    # which is where the product leaves its plateau.
+    # which is where the product leaves its plateau for monotone thresholds.
     combined <- combine_censored_min(g_post, s_post, n)
     out <- combined$values
     cens <- combined$censored
-    # Read each component's kind from ne_label(), not the "toxicity_estimate"
-    # attribute, which is "nec" whatever the equation. Match the NSEC labels
-    # only: a fit that recorded no ne_type has the label "no-effect estimate".
+    # Match the NSEC labels only: a fit that recorded no ne_type has the label
+    # "no-effect estimate".
     kinds <- c(ne_label(object$growth), ne_label(object$survival))
     if (any(kinds %in% c("NSEC", "N(S)EC"))) {
-      message("At least one component is an ecx-type (NSEC) estimate, so the",
+      message("At least one component is a curve-read NSEC estimate, so the",
               " combined value is approximate. See ?nec.bayesnechurdlefit.")
     }
   }
@@ -234,8 +336,10 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
   warn_censored_draws(out, "no-effect estimate", cens = cens)
   estimate <- summarise_censored(out, prob_vals, cens)
   names(estimate) <- clean_names(estimate)
-  attr(estimate, "toxicity_estimate") <- "nec"
-  attr(out, "toxicity_estimate") <- "nec"
+  parts <- if (which == "combined") c("growth", "survival") else which
+  label <- ne_estimate_label(unlist(lapply(object[parts], fit_ne_types)))
+  attr(estimate, "toxicity_estimate") <- label
+  attr(out, "toxicity_estimate") <- label
   attr(estimate, "component") <- which
   if (!posterior) estimate else out
 }
@@ -243,8 +347,9 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
 #' The no-effect draws one hurdle component contributes
 #'
 #' A component fitted to one smooth equation has no \code{nec} parameter, so
-#' \code{nec()} refuses it. It contributes its stored NSEC draws instead, as an
-#' equation of a model set does.
+#' \code{nec()} refuses it. It contributes its stored NSEC draws instead. A
+#' hormesis threshold equation also contributes its stored NSEC draws, rather
+#' than its \code{nec} parameter.
 #'
 #' @param part The \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}
 #' of one component.
@@ -256,7 +361,12 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
 #' @noRd
 hurdle_component_ne <- function(part, extrapolate, ...) {
   if (inherits(part, "bayesnecfit") &&
-        !has_nec_parameter(part$model, part$fit)) {
+        !sampled_nec_is_no_effect(part$model, part$fit)) {
+    if (!is.null(part$observed_group)) {
+      sig <- recorded_expand_args(list(part))$sig_val
+      return(nsec(part, sig_val = sig, posterior = TRUE,
+                  xform = identity, extrapolate = extrapolate, ...))
+    }
     return(necfit_ne(part, posterior = TRUE, xform = identity,
                      extrapolate = extrapolate, ...))
   }
@@ -275,6 +385,10 @@ hurdle_component_ne <- function(part, extrapolate, ...) {
 #' @details The combined curve is the product of the growth curve and the
 #' survival curve. Because both decline, the combined ECx is always reached at
 #' or below either component's own ECx.
+#' For a group term spanning concentrations, each observed level pairs its
+#' growth and survival predictions before the endpoint is read. A level
+#' observed at one concentration is excluded. \code{pool} and
+#' \code{x_control} use the same rules as for a single fit.
 #'
 #' Without \code{x_range}, every ECx is read over the whole concentration
 #' series, the range the survival component is fitted over. The growth
@@ -297,11 +411,12 @@ hurdle_component_ne <- function(part, extrapolate, ...) {
 #' @method ecx bayesnechurdlefit
 #'
 #' @export
-ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
+ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
                                   posterior = FALSE, type = "absolute",
                                   x_range = NA, xform = NULL,
                                   prob_vals = c(0.5, 0.025, 0.975),
-                                  which = "combined", ...) {
+                                  which = "combined", ..., pool = NULL,
+                                  x_control = "own", extrapolate = FALSE) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_numeric(ecx_val)
@@ -317,15 +432,47 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
   check_xform(xform)
+  if (is.null(object$observed_group)) {
+    spec <- observed_level_spec(object)
+    if (!is.null(spec)) {
+      result <- estimate_observed_levels(
+        object, spec, "ecx",
+        function(level, control_value, range_override) {
+          ecx(level, ecx_val = ecx_val, resolution = resolution,
+              posterior = TRUE, type = type, x_range = range_override,
+              extrapolate = extrapolate, xform = xform,
+              prob_vals = prob_vals, which = which,
+              pool = "none", x_control = control_value)
+        }, pool, posterior, prob_vals, x_control, x_range,
+        curve_args = list(ecx_val = ecx_val, resolution = resolution,
+                          type = type, extrapolate = extrapolate,
+                          xform = xform, prob_vals = prob_vals,
+                          which = which)
+      )
+      attr(result, "component") <- which
+      return(result)
+    }
+  }
   # Every curve, growth included, over the whole concentration series.
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range)
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "ECx")
+  preds <- if (is.null(lims)) {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control)
+  } else {
+    start <- curve_search_start(object, x_control)
+    report_curve_read_lower_limit(extrapolate, lims, start,
+                                  curve_start_label(object, x_control))
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control,
+                           grid_limits = ecx_grid_limits(lims, start))
+  }
   p_samples <- preds[[which]]
-  # Take the control from hurdle_component_preds(), at the lowest observed
+  # Take the control from hurdle_component_preds(), at the control
   # concentration. p_samples[, 1] would make every estimate depend on x_range.
   control <- preds$control[[which]]
   out <- ecx_from_posterior(p_samples, preds$x, ecx_val, type, control,
-                            NA_real_)
+                            NA_real_, preds$original)
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
   attr(out, "below_range") <- NULL

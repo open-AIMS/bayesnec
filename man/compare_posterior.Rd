@@ -3,6 +3,7 @@
 \name{compare_posterior.default}
 \alias{compare_posterior.default}
 \alias{compare_posterior.bayesnecgroupfit}
+\alias{compare_posterior.bayesnecjointfit}
 \alias{compare_posterior}
 \title{compare_posterior}
 \usage{
@@ -21,12 +22,25 @@
 
 \method{compare_posterior}{bayesnecgroupfit}(x, ...)
 
+\method{compare_posterior}{bayesnecjointfit}(
+  x,
+  comparison = "n(s)ec",
+  ecx_val = 10,
+  type = "absolute",
+  sig_val = 0.01,
+  resolution,
+  x_range = NA,
+  make_newdata = TRUE,
+  seed = 10,
+  ...
+)
+
 compare_posterior(x, ...)
 }
 \arguments{
-\item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
-\code{\link{bnec}}.}
+\item{x}{A named \code{\link[base]{list}} of \code{\link{bayesnecfit}}
+or \code{\link{bayesmanecfit}} objects, a \code{\link{bayesnecgroupfit}},
+or a \code{\link{bayesnecjointfit}}.}
 
 \item{comparison}{The posterior predictions to compare, takes values of
 "nec", "n(s)ec", "nsec", "ecx" or "fitted".}
@@ -46,9 +60,8 @@ significance of the predicted posterior values.}
 \item{resolution}{The number of unique x values over which to find ECx.
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+change an interpolated crossing and increases prediction time.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -76,14 +89,11 @@ after an odd number of preceding normal draws. Use R's default
 \code{\link[brms]{posterior_epred}}.}
 }
 \value{
-A named \code{\link[base]{list}} containing bootstrapped differences
-in posterior predictions of the \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
+A named \code{\link[base]{list}} containing posterior differences,
+probabilities and the draws for each fit or level. See Details.
 }
 \description{
-Extracts posterior predicted values from a list of class
-\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
-compares these via bootstrap re sampling.
+Compares posterior estimates from separate fits or levels of one joint refit.
 }
 \details{
 For a \code{\link{bayesnecgroupfit}} the comparison is across the
@@ -98,9 +108,53 @@ an ECx, or the fitted curve. A factor covariate analysis usually wants both,
 and they can disagree: two levels can favour the same model form while
 differing in where the threshold falls, and vice versa.
 
-The levels share no parameters, so the posteriors are independent and the
-pairwise probabilities are read directly, with no multiple-comparison
-adjustment implied.
+The levels are fitted to separate data and share no parameters, so the
+posteriors are independent and the pairwise probabilities are read directly,
+with no multiple-comparison adjustment implied.
+
+For a \code{\link{bayesnecjointfit}}, the levels are estimated in
+one posterior, and each difference is taken between the levels' values at
+the same posterior draw, so it keeps any dependence between them. Each
+level's estimate is computed over its own prediction range, as
+\code{\link{ecx}} computes it on a joint refit, whereas
+\code{\link{compare_estimates}} computes every fit over one range common
+to them all. The draws in \code{posterior_list} are those that
+\code{\link{ecx}}, \code{\link{nsec}} or \code{\link{nec}} return for the
+refit with \code{posterior = TRUE}.
+
+Where a group term spans concentrations, each level is read at its own
+observed group levels, as \code{\link{ecx}} reads it: each posterior draw
+is given to one observed group level, in proportion to its observation
+count. A group term is shared where one of its values, such as batch
+\code{"b1"}, occurs in the data of more than one level, and a shared term
+is read at the same value for every level at each draw. Where copper and
+zinc were tested in the same batches, for example, each draw compares them
+within one batch, as in a paired design. The levels are matched at every
+draw where their observation counts over the shared values are in the same
+proportions. Otherwise two levels are matched in the largest share of draws
+those counts allow, the sum over values of the smaller of the two levels'
+proportions, and the draws they cannot match are paired at random. With
+more than two levels, each value is matched over the levels that have it,
+so a level tested elsewhere does not reduce the matching of the others, but
+not every pair can always reach its largest share at once. Terms the levels
+do not share, such as plates that belong to one level, are chosen for each
+level independently, in proportion to its counts within the shared value.
+
+With \code{comparison = "fitted"}, every level is predicted over one grid
+spanning the levels' combined range, or at the rows of \code{newdata}: at
+the observed group levels where a group term spans concentrations, as
+\code{\link{ecx}} reads them, and on the population curve otherwise. The
+band of \code{\link{autoplot}} is the population curve in both cases. Only \code{newdata}, \code{ndraws} and \code{draw_ids} are
+taken through \code{...}, and \code{make_newdata = FALSE} requires
+\code{newdata}. \code{seed} changes the result only where \code{ndraws}
+selects the draws.
+
+The estimate comparisons take no further arguments through \code{...}, and
+refuse any that are supplied.
+
+\code{comparison = "nec"} requires a \code{nec} parameter at every level.
+Where a level fits a smooth equation, \code{"n(s)ec"} compares the
+no-effect estimate each level's equation supports.
 
 \code{type} is passed to \code{\link{ecx}} and takes the same four
 values, all measured from the control --- the predicted mean at the lowest
@@ -122,8 +176,9 @@ an additional data.frame via the \code{newdata} argument. For guidance
 on how to structure \code{newdata}, see for example
 \code{\link[brms]{posterior_epred}}.
 
-Every comparison other than "fitted" is made by
-\code{\link{compare_estimates}}, which describes the elements returned. A
+For separate fits, every comparison other than "fitted" is made by
+\code{\link{compare_estimates}}, which describes the elements returned.
+Joint-level estimates have the same output structure. A
 posterior draw that lies beyond the prediction range is not deleted from
 the comparison. Where the censoring leaves the sign of some paired
 differences unknown, \code{prob_diff} reports the probability as a lower
@@ -131,13 +186,47 @@ and an upper value, \code{prob_lower} and \code{prob_upper}, with the
 censored fraction of each posterior, and \code{prob} is \code{NA}. See the
 \emph{Censored estimates} section of \code{\link{compare_estimates}}.
 }
+\section{What the comparison estimates}{
+
+Where the posteriors being compared are independent, the paired differences
+approximate the posterior of the difference between the estimates. Fits to
+separate data that share no parameter, such as the levels of a
+\code{\link{bayesnecgroupfit}}, have independent posteriors. For such
+posteriors, pairing the draws by their index would approximate the same
+distribution, so the random permutation is one Monte Carlo pairing and is
+not required.
+
+Whether two estimates are independent depends on their joint posterior, not
+on the number of calls that fitted them. Two quantities that are dependent in
+one posterior, for example two levels of one fit that share a group-level
+term or a dispersion parameter, are contrasted by subtracting aligned draws
+(draw \emph{i} of each), which keeps their covariance. Pairing their draws
+at random removes that covariance. Depending on its sign, the difference
+posterior can then be wider or narrower, and \code{prob_diff} can move
+towards or away from 0.5. Conversely, the levels of a
+\code{\link{bnec_joint}} refit that share no parameter, as under its
+defaults, have independent posteriors although they are estimated in one fit.
+
+Where the fits share data or fitted components, the comparison is of a
+different kind. Two equations pulled from one \code{\link{bayesmanecfit}}
+with \code{\link{pull_out}}, as in the examples, are fitted to the same
+observations, and a model-averaged fit includes the draws of its own
+equations. The comparison then contrasts two estimates of one quantity from
+one dataset, pairing their draws as if they were independent, and
+\code{prob_diff} describes how far the two posteriors overlap, i.e. how much
+the estimate depends on the equation fitted. How far it can be read as a
+posterior probability is uncertain, because no joint posterior of the two
+estimates is defined.
+}
+
 \examples{
 \dontrun{
 library(bayesnec)
 data(manec_example)
 nec4param <- pull_out(manec_example, model = "nec4param")
 ecx4param <- pull_out(manec_example, model = "ecx4param")
-compare_posterior(list("n(s)ec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+compare_posterior(list("nec4param" = nec4param, "ecx4param" = ecx4param),
+                  ecx_val = 50)
 }
 
 }

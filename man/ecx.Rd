@@ -7,14 +7,17 @@
 ecx(
   object,
   ecx_val = 10,
-  resolution = 200,
+  resolution = 500,
   posterior = FALSE,
   type = "absolute",
   x_range = NA,
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
-  dpar = NULL
+  dpar = NULL,
+  pool = NULL,
+  x_control = "own",
+  extrapolate = FALSE
 )
 }
 \arguments{
@@ -30,9 +33,8 @@ Details.}
 \item{resolution}{The number of unique x values over which to find ECx.
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
-Increasing the resolution beyond the default of 200 changed the estimate by
-less than 0.01 percent on the fits tested, and increases the run time
-roughly in proportion.}
+The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+change an interpolated crossing and increases prediction time.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
 posterior sample of calculated ECx values should be returned instead of
@@ -73,6 +75,36 @@ measured towards the response block's asymptote and \code{"hu"} or
 equation has none. The combined curve, \code{dpar = NULL}, is refused under
 \code{type = "relative"}, because its asymptote is the product of the two
 blocks' asymptotes rather than a fitted parameter.}
+
+\item{pool}{How observed group levels are combined. \code{"none"} returns
+per-level estimates. \code{"mixture"} gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw \emph{i} of the mixture comes from posterior iteration
+\emph{i}. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. \code{"mean_estimate"} averages the levels'
+estimates at each draw, and \code{"mean_curve"} estimates from their weighted
+mean curve. A joint fit defaults to \code{"none"}; other fits with spanning group
+terms default to \code{"mixture"}.}
+
+\item{x_control}{\code{"own"} reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+\code{x_control}. \code{"shared"} reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
+
+\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
+A finite upper limit or a pair of finite lower and upper limits extends the
+search grid and marks any unresolved draw as censored at that limit.
+Limits are on the recorded predictor scale. \code{TRUE} and limits that
+narrow the current range are refused. The original grid points and their
+spacing are retained when extension points are appended. The search begins
+at the control, so a lower limit extends it only where the prediction range
+begins above the control. For \code{type = "range"} the lowest response is
+taken over the prediction range before it is extended, so a limit beyond
+the data does not change the estimate.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and
@@ -84,9 +116,10 @@ Extracts the predicted ECx value as desired from an object of class
 }
 \details{
 \bold{Every ECx is measured from the control.} The control is the
-predicted mean at the lowest concentration in the supplied predictor, taken
-per posterior draw. \code{type} names what the percentage is measured
-\emph{towards}:
+predicted mean at the control concentration, taken per posterior draw: the
+\code{x_control} stated in \code{\link{bnec}}, or else the lowest
+concentration in the supplied predictor. \code{type} names what the
+percentage is measured \emph{towards}:
 
 \itemize{
 \item \code{"absolute"} (the default) --- control to 0.
@@ -107,7 +140,7 @@ a percentage, and the x value at which the curve reaches it is returned.
 \code{"range"} is what \code{"relative"} computed in versions up to
 2.1.3, except that the span was taken from the maximum of the predicted
 curve rather than from the control. The two differ only for a curve whose
-maximum is not at the lowest concentration, which in practice means a
+maximum is not at the control concentration, which in practice means a
 hormetic one.
 
 Measuring from the control rather than from the maximum of the predicted
@@ -133,6 +166,23 @@ recorded scale without \code{xform}, and no inverse is involved. A supplied
 \code{xform} is applied to the ECx on the transformed scale, so
 \code{xform = identity} returns that scale and \code{xform = exp} on
 \code{crf(log(concentration))} returns the recorded scale again.
+
+With a fitted group term whose levels span concentrations, the control and
+curve are predicted for each observed level with its group deviations.
+Terms whose levels each occur at one concentration are set to zero. The
+level of a spanning term observed at only one concentration is excluded from
+the estimate, with a message naming it. The default estimate mixes the
+remaining observed levels by their observation counts;
+\code{pool = "none"} returns them separately. A grouped or joint fit already
+separates levels and defaults to \code{pool = "none"}.
+
+On a \code{\link{bayesnecjointfit}}, each level of the refit is mixed over
+its own observed group levels. A group term whose values occur in the data
+of more than one level, such as a batch in which two levels were both
+tested, is read at the same value for every level at each posterior draw,
+as often as their observation counts on that term allow. Terms they do not
+share are chosen for each level independently. The levels can therefore be
+contrasted draw by draw, as \code{\link{compare_posterior}} does.
 
 Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 \code{\link{compare_fitted}} do not require the same level of flexibility

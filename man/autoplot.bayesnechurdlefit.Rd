@@ -13,13 +13,18 @@
   x_range = NA,
   xform = NULL,
   xlab = "Predictor",
-  ylab = NULL
+  ylab = NULL,
+  point_alpha = 0.25,
+  x_scale = c("recorded", "fitted"),
+  nec = TRUE,
+  ecx = FALSE,
+  ecx_val = 10
 )
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
 
-\item{...}{Unused.}
+\item{...}{Unused. \code{dpar} is refused: select a curve with \code{which}.}
 
 \item{which}{Which curve(s) to return. See \code{\link{plot}}.}
 
@@ -38,6 +43,24 @@ grid is built on, and \code{xform} is not applied.}
 
 \item{ylab}{Y axis label. Defaults to \code{NULL}, which labels each panel
 by what it shows.}
+
+\item{point_alpha}{The opacity factor for the observation points, a single
+number from 0 to 1. It multiplies the existing opacity of the first colour of
+the current R palette. Defaults to 0.25.}
+
+\item{x_scale}{\code{"recorded"} (the default) or \code{"fitted"}.
+The fitted option returns the predictor on the scale transformed inside
+\code{crf()}, with breaks in attribute \code{"x_axis"} labelled in
+recorded units.}
+
+\item{nec}{Should the no-effect estimate and its credible limits be drawn
+on each panel? A bound is marked at the plotted range. Defaults to
+\code{TRUE}.}
+
+\item{ecx}{Should an ECx estimate and its credible limits be drawn on each
+panel? A bound is marked at the plotted range. Defaults to \code{FALSE}.}
+
+\item{ecx_val}{The percentage effect for \code{ecx}; defaults to 10.}
 }
 \value{
 A \code{\link[ggplot2]{ggplot}} object.

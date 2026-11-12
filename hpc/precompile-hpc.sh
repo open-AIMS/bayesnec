@@ -177,8 +177,18 @@ fi
 # and stage it under that name -- output that looks valid and is not. The
 # job-local library is shared in the same way. The array is submitted at %1, so
 # a full run is a long time to leave that window open.
-running=$(ssh -o BatchMode=yes "$HOST" "bash -lc 'module load slurm >/dev/null 2>&1; \
-  squeue -h -u \$USER -n bnec-precompile -o %A'" || true)
+# PRECOMPILE_ALONGSIDE=1 runs beside a queued job, but only in a directory and a
+# Stan cache of its own, because those two are what the refusal protects.
+if [ -n "${PRECOMPILE_ALONGSIDE:-}" ]; then
+  [ "$DEST" != "/export/scratch/${HOST%%@*}/bayesnec-precompile" ] &&
+    [ -n "${BAYESNEC_STAN_CACHE:-}" ] || {
+    echo "PRECOMPILE_ALONGSIDE needs its own DEST and BAYESNEC_STAN_CACHE." >&2
+    exit 1; }
+  running=""
+else
+  running=$(ssh -o BatchMode=yes "$HOST" "bash -lc 'module load slurm >/dev/null 2>&1; \
+    squeue -h -u \$USER -n bnec-precompile -o %A'" || true)
+fi
 if [ -n "$running" ]; then
   echo "a precompile job is already queued or running on $HOST:" >&2
   echo "  $(echo "$running" | tr '\n' ' ')" >&2
@@ -299,6 +309,9 @@ echo "==> submitting $n task(s)"
 if [ -n "${BAYESNEC_FIT_STORE:-}" ]; then
   echo "    fit store: $BAYESNEC_FIT_STORE"
   exports="$exports,BAYESNEC_FIT_STORE=$BAYESNEC_FIT_STORE"
+fi
+if [ -n "${BAYESNEC_STAN_CACHE:-}" ]; then
+  exports="$exports,BAYESNEC_STAN_CACHE=$BAYESNEC_STAN_CACHE"
 fi
 export_arg="--export=$exports"
 JOB=$(ssh "$HOST" "bash -lc 'cd $DEST && chmod +x hpc/run.precompile && \

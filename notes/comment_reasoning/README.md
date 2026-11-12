@@ -137,10 +137,10 @@ the tracked R files under `tests/testthat/`.
   observations. Their p-values near 0.82 motivated a ratio-based message;
   they do not establish that p-values always miss control misfit. The source
   now states the mean/SD ratios and their reciprocal cutoffs explicitly.
-- [`nsec.drc()`](../../R/nsec.R) retains its confidence-limit crossing
-  qualification and now states that the test suite does not exercise the
-  method against `drc` fits. The comment cleanup does not establish numerical
-  validation of that external method.
+- [PR #556](https://github.com/open-AIMS/bayesnec/pull/556) removed
+  `nsec.drc()`. Before removal, the method used a confidence-limit crossing,
+  and the test suite did not exercise it against `drc` fits. The earlier
+  comment review did not establish numerical validation of that method.
 
 ## Test fixtures and regression evidence
 

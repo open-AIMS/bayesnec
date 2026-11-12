@@ -161,10 +161,10 @@ joint_key <- function(cl, depends_on, fn_name = fit_fun_name(cl)) {
 ## models with no number changed. In exchange the value has to be raised by
 ## hand, by the change that does alter what example8 fits.
 ##
-## Added to this copy in bayesnec before the compendium's shim/fit_store_body.R
-## has it. Add it there before this file is next regenerated, or the
-## regeneration drops it.
-FIT_STORE_MIN_BAYESNEC <- "2.1.3.40"
+## First added to the copy in bayesnec (PR #432, #413), then to
+## shim/fit_store_body.R in the compendium, so that regenerating the copy
+## keeps it.
+FIT_STORE_MIN_BAYESNEC <- "2.1.3.44"
 
 ## Refuse a store whose MANIFEST records a bayesnec older than the minimum.
 ##
@@ -268,10 +268,48 @@ fit_store_shim <- function(fn_name, store) {
     # the earlier fit call in the vignette source, which is a different route to
     # the same string -- and two routes that agree is the property the whole
     # store rests on.
-    obj <- readRDS(path)
+    obj <- fit_store_rebuild_display(readRDS(path))
     attr(obj, "fit_store_key") <- key
     obj
   }
+}
+
+## Rebuild the stored values of a fit saved before either of two bayesnec
+## changes: bands and no-effect summaries read at the observed levels of a group
+## term that spans the series, and the NSEC as the no-effect estimate of a
+## hormesis threshold equation.
+##
+## amend() rebuilds both from the stored draws without sampling, so the object
+## holds the values bnec() now stores. A current fit is returned unchanged.
+fit_store_rebuild_display <- function(obj) {
+  ns <- asNamespace("bayesnec")
+  # A bayesnec version without a test has nothing of that kind to rebuild.
+  tests <- c("needs_observed_rebuild", "needs_ne_rebuild")
+  tests <- tests[vapply(tests, exists, logical(1), envir = ns,
+                        inherits = FALSE)]
+  if (!length(tests)) {
+    return(obj)
+  }
+  tests <- lapply(tests, get, envir = ns)
+  stale <- function(fit) {
+    any(vapply(tests, function(test) isTRUE(test(fit)), logical(1)))
+  }
+  rebuild <- function(fit) {
+    if (!inherits(fit, c("bayesmanecfit", "bayesnecfit")) || !stale(fit)) {
+      return(fit)
+    }
+    stored <- if (inherits(fit, "bayesmanecfit")) fit$w_pred_vals else
+      fit$pred_vals
+    message("fit store: rebuilding the stored display and no-effect values")
+    bayesnec::amend(fit, resolution = nrow(stored$data))
+  }
+  # A grouped fit holds only its level fits and their metadata, so rebuilding
+  # each level is what amend() on the grouped fit does.
+  if (inherits(obj, "bayesnecgroupfit")) {
+    obj$fits <- lapply(obj$fits, rebuild)
+    return(obj)
+  }
+  rebuild(obj)
 }
 
 ## The key of the fit a joint refit was handed.

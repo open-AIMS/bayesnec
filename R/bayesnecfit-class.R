@@ -25,19 +25,24 @@
 #' the data supplied to \code{\link{bnec}} that \code{brm()} omitted from its
 #' stored model frame. Rows are in fitted-data order. The element is absent
 #' when every supplied column was used by the fit.
-#' @slot pred_vals A \code{\link[base]{list}} with a single element
-#' \code{data}, a \code{\link[base]{data.frame}} of summary posterior
-#' predicted values over a grid set by \code{resolution} and \code{x_range}.
+#' @slot pred_vals A \code{\link[base]{list}} with \code{data}, a
+#' \code{\link[base]{data.frame}} of summary posterior predicted values over
+#' a grid set by \code{resolution} and \code{x_range}. Where a group term
+#' spans concentrations, the summaries describe the population curve, and the
+#' flags \code{observed_levels} and \code{band = "population"} record that
+#' the no-effect summaries read the observed levels and the band does not.
 #' Up to and including version 2.1.3.6 it also held \code{posterior}, the full
 #' \code{n_draws x resolution} matrix those summaries came from. That matrix
 #' dominated the size of a fitted object and is no longer stored; it is
 #' recomputed from \code{fit} where it is needed. To obtain it directly, use
 #' \code{posterior_epred(x, newdata = bnec_newdata(x, resolution = 1000),
-#' re_formula = NA)}. Objects saved before the change still carry it and are
-#' unaffected.
+#' re_formula = NA)}. A fit saved by an earlier development version without
+#' both flags retains its earlier values and gives a warning when they are
+#' displayed.
 #' @slot top The estimate for parameter "top" in the fitted model.
 #' @slot beta The estimate for parameter "beta" in the fitted model.
-#' @slot ne The estimated NEC.
+#' @slot ne The no-effect estimate, a NEC for a monotone threshold equation
+#' and an NSEC for a smooth or hormesis threshold equation.
 #' @slot f The estimate for parameter "f" in the fitted model, NA if
 #' absent for the fitted model type.
 #' @slot bot The estimate for parameter "bot" in the fitted model, NA if
@@ -51,13 +56,15 @@
 #' @slot dispersion An estimate of dispersion.
 #' @slot predicted_y The predicted values for the observed data.
 #' @slot residuals Residual values of the observed data from the fitted model.
-#' @slot ne_posterior A full posterior estimate of the NEC.
+#' @slot ne_posterior The posterior of that no-effect estimate.
 #' @slot ne_type A \code{\link[base]{character}} vector indicating the type of
-#' no-effect toxicity estimate. Where the fitted model is an NEC model
-#' (threshold model, containing a step function) the no-effect estimate is
-#' a true no-effect-concentration (\code{NEC}, see Fox 2010). Where the fitted
-#' model is a smooth ECx model with no step function, the no-effect estimate is
-#' a no-significant-effect-concentration (\code{NSEC}, see Fisher and Fox 2023).
+#' no-effect toxicity estimate. A monotone threshold equation contributes its
+#' sampled no-effect-concentration (\code{NEC}, see Fox 2010). A smooth or
+#' hormesis threshold equation contributes a curve-read
+#' no-significant-effect-concentration (\code{NSEC}, see Fisher and Fox 2023).
+#' A hormesis threshold equation still samples a \code{nec} parameter, the
+#' concentration at which its decline term starts; \code{\link{curve_params}}
+#' returns it.
 #'
 #' @seealso
 #'   \code{\link{bayesnec}},

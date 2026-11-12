@@ -117,12 +117,6 @@ test_that("a truncated nec prior is reported against the limit asked for", {
   )
 })
 
-test_that("extrapolate is refused where no prediction range is stored", {
-  expect_error(bayesnec:::check_no_extrapolate(5, "brmsfit"),
-               "Set the grid with x_range instead")
-  expect_true(bayesnec:::check_no_extrapolate(FALSE, "brmsfit"))
-})
-
 # Reuse stored fits without sampling. Cutting the grid to 0.9 puts every
 # nec4param draw above it, making released censoring visible.
 
@@ -260,6 +254,24 @@ test_that("a finite limit extends both halves of a mixed set", {
   expect_length(as.numeric(post), length(m$w_ne_posterior))
 })
 
+test_that("nec() on a mixed set reports a lower limit once", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  m <- truncated_manec_fit()
+  notes <- character()
+  withCallingHandlers(
+    suppressWarnings(nec(m, extrapolate = c(0.016, 3))),
+    message = function(msg) {
+      if (grepl("cannot begin below", conditionMessage(msg))) {
+        notes <<- c(notes, conditionMessage(msg))
+      }
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_length(notes, 1L)
+})
+
 test_that("a limit inside the stored grid is refused on a fit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
@@ -360,6 +372,20 @@ test_that("a lower limit below the control is accepted and reported", {
   expect_message(
     suppressWarnings(nsec(f, extrapolate = c(0.001, 5))),
     "search cannot begin below"
+  )
+})
+
+test_that("the lower-limit message names a recorded control", {
+  f <- suppressMessages(suppressWarnings(pull_out(manec_example,
+                                                  model = "ecx4param")))
+  expect_message(
+    suppressWarnings(nsec(f, extrapolate = c(0.001, 5), resolution = 50)),
+    "the lowest observed concentration"
+  )
+  f$call_args$x_control <- 0.01
+  expect_message(
+    suppressWarnings(nsec(f, extrapolate = c(0.001, 4), resolution = 50)),
+    "below 0.01, the recorded control concentration"
   )
 })
 
@@ -567,7 +593,9 @@ test_that("a supplied x_range is the range at both ends", {
   # stating the lower limit is never punished.
   expect_equal(as.numeric(single), as.numeric(pair), tolerance = 1e-12)
   direct <- suppressWarnings(nsec(f, x_range = c(0.5, 9)))
-  expect_equal(as.numeric(single), as.numeric(direct), tolerance = 1e-12)
+  # Direct x_range rebuilds a 500-point grid. Extrapolate keeps the original
+  # 500 points from 0.5 to 0.9, so interpolation can differ slightly.
+  expect_lt(max(abs(as.numeric(single) - as.numeric(direct))), 0.001)
   # With no x_range the stored grid still counts, which is what makes nec() and
   # nsec() refuse the same numbers.
   union <- bayesnec:::searched_or_stored_bounds(f, NA)

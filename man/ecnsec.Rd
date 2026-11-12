@@ -8,12 +8,15 @@ object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 ecnsec(
   object,
   nsec,
-  resolution = 200,
+  resolution = 500,
   x_range = NA,
   type = "absolute",
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
-  ...
+  ...,
+  pool = NULL,
+  x_control = "own",
+  extrapolate = FALSE
 )
 }
 \arguments{
@@ -26,7 +29,7 @@ percentage effect. A vector is refused, including the three values
 
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is
-the lowest response the curve predicts over the grid. The default of 200
+the lowest response the curve predicts over the grid. The default of 500
 matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
 \item{x_range}{A range of x values over which to predict the curve. An
@@ -44,6 +47,32 @@ return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
 
 \item{...}{Further arguments to pass to class specific methods.}
+
+\item{pool}{How observed group levels are combined. \code{"none"} returns
+per-level estimates. \code{"mixture"} gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw \emph{i} of the mixture comes from posterior iteration
+\emph{i}. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. \code{"mean_estimate"} averages the levels'
+estimates at each draw, and \code{"mean_curve"} estimates from their weighted
+mean curve. A joint fit defaults to \code{"none"}; other fits with spanning group
+terms default to \code{"mixture"}.}
+
+\item{x_control}{\code{"own"} reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+\code{x_control}. \code{"shared"} reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
+
+\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
+A single finite number extends the upper end; two finite numbers may
+extend both ends. The original grid points are retained. Limits are on
+the recorded predictor scale. \code{TRUE} and narrowing limits are refused.
+For \code{type = "range"} the lowest response is taken over the prediction
+range before it is extended.}
 }
 \value{
 A vector containing the estimated ECNSEC value, including upper and
@@ -60,8 +89,24 @@ the mean control response. See the detailed derivation in
 Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated
 effect size. This function estimates the effect of a given NSEC estimate.
 
+With a fitted group term whose levels span concentrations, the curve and
+control are predicted for each observed level with its group deviations.
+Terms whose levels each occur at one concentration are set to zero. The
+level of a spanning term observed at only one concentration is excluded from
+the estimate, with a message naming it. The default mixes the remaining
+observed levels by their observation counts;
+\code{pool = "none"} returns them separately.
+
+On a \code{\link{bayesnecjointfit}}, each level of the refit is mixed over
+its own observed group levels. A group term whose values occur in the data
+of more than one level, such as a batch in which two levels were both
+tested, is read at the same value for every level at each posterior draw,
+as often as their observation counts on that term allow. Terms they do not
+share are chosen for each level independently. The levels can therefore be
+contrasted draw by draw, as \code{\link{compare_posterior}} does.
+
 The effect is measured from the control --- the predicted mean at the
-lowest concentration in the supplied predictor, per posterior draw --- and
+control concentration, per posterior draw --- and
 \code{type} names what it is measured towards, exactly as in
 \code{\link{ecx}}: "absolute" (the default) towards 0, "relative" towards
 the equation's theoretical asymptote, "range" towards the lowest response
@@ -98,7 +143,8 @@ over: the observed range of the predictor, or \code{x_range} where one is
 supplied. An \code{nsec} outside that range once \code{xform} has been
 applied is refused with a message naming the range, rather than read off
 the curve extended past the data without a message. Supply an
-\code{x_range} that includes \code{nsec} to read the curve there. On a
+\code{x_range} or finite \code{extrapolate} that includes \code{nsec} to
+read the curve there. On a
 \code{\link{bayesnecjointfit}} each level is read over its own observed
 range, and the message names the level that refused \code{nsec}.
 }

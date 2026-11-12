@@ -70,16 +70,22 @@ print.necsummary <- function(x, ...) {
   if (x$is_ecx) {
     cat("NB: Model", x$model, "is an ECx model, thus",
         "the NEC estimate is an\n", "   NSEC surrogate.\n", sep = " ")
+  } else if (identical(x$ne_type, "NSEC")) {
+    cat("NB: The nec parameter of ", x$model, " marks where its decline\n",
+        "    term starts. The no-effect estimate is the NSEC read off the\n",
+        "    fitted curve; curve_params() returns the nec parameter.\n",
+        sep = "")
   } else if (identical(x$ne_type, "N(S)EC")) {
-    # Reachable only for a two-block fit whose blocks use different equation
-    # types, such as a threshold response block with a smooth survival block.
-    cat("NB: The two blocks of this fit use a threshold model on one and a\n",
-        "   smooth model on the other, so the combined estimate is a\n",
-        "   combination of a NEC and a NSEC.\n", sep = "")
+    # Reachable only for a two-block fit where one block samples its NEC and
+    # the other uses a smooth or hormesis threshold equation.
+    cat("NB: One block of this fit samples a NEC and the other is read off\n",
+        "    its curve, so the combined estimate is a combination of a NEC\n",
+        "    and an NSEC.\n", sep = "")
   }
   print_mat(x$nec_vals)
   print_censoring_note(attr(x$nec_vals, "censored_summary"),
                        rownames(x$nec_vals)[1])
+  print_nec_prior_boundary(attr(x$nec_vals, "prior_bound_summary"), x$model)
   if (!is.null(x$ecs)) {
     cat("\n\n")
     for (i in seq_along(x$ecs)) {
@@ -119,20 +125,22 @@ print.manecsummary <- function(x, ...) {
   cat(x$family$family, "\n")
   cat(x$family$links, "\n")
   cat("\n")
-  cat("Number of posterior draws per model: ", x$sample_size)
+  cat("Number of draws in model average: ", x$sample_size)
   cat("\n\n")
-  cat("Model weights (Method: ", x$mod_weights_method, "):\n", sep = "")
+  cat("Model weights (Method: ", x$mod_weights_method,
+      leave_out_label(x$mod_weights_leave_out), "):\n", sep = "")
   print_mat(x$mod_weights)
   cat("\n\n")
   neclab <- rownames(x$nec_vals)
   cat("Summary of weighted", neclab, "posterior estimates:\n", sep = " ")
   if (neclab == "N(S)EC") {
-    cat("NB: Model set contains a combination of ECx and NEC\n",
-        "    models, and is therefore a model averaged\n",
-        "    combination of NEC and NSEC estimates.\n", sep = "")
+    cat("NB: Model set combines sampled NEC and curve-read NSEC\n",
+        "    estimates in proportion to model weight.\n", sep = "")
   }
   print_mat(x$nec_vals)
   print_censoring_note(attr(x$nec_vals, "censored_summary"), neclab)
+  print_nec_prior_boundary(attr(x$nec_vals, "prior_bound_summary"),
+                           "model-averaged")
   cat("\n\n")
   if (!is.null(x$ecs)) {
     for (i in seq_along(x$ecs)) {

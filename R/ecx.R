@@ -15,9 +15,8 @@
 #' @param resolution The number of unique x values over which to find ECx.
 #' The crossing is located by linear interpolation between the two grid values
 #' that bracket it, so precision saturates well below the grid spacing.
-#' Increasing the resolution beyond the default of 200 changed the estimate by
-#' less than 0.01 percent on the fits tested, and increases the run time
-#' roughly in proportion.
+#' The default is 500 grid values, matching \pkg{toxval}. A finer grid can
+#' change an interpolated crossing and increases prediction time.
 #' @param posterior A \code{\link[base]{logical}} value indicating if the full
 #' posterior sample of calculated ECx values should be returned instead of
 #' just the median and 95 credible intervals.
@@ -27,6 +26,33 @@
 #' differ only where \code{crf()} transforms the predictor inline; see
 #' Details.
 #' @param x_range A range of x values over which to consider extracting ECx.
+#' @param extrapolate \code{FALSE}, the default, uses the prediction range.
+#' A finite upper limit or a pair of finite lower and upper limits extends the
+#' search grid and marks any unresolved draw as censored at that limit.
+#' Limits are on the recorded predictor scale. \code{TRUE} and limits that
+#' narrow the current range are refused. The original grid points and their
+#' spacing are retained when extension points are appended. The search begins
+#' at the control, so a lower limit extends it only where the prediction range
+#' begins above the control. For \code{type = "range"} the lowest response is
+#' taken over the prediction range before it is extended, so a limit beyond
+#' the data does not change the estimate.
+#' @param pool How observed group levels are combined. `"none"` returns
+#' per-level estimates. `"mixture"` gives each posterior draw to one level, in
+#' proportion to the levels' observation counts, and keeps it at its position,
+#' so that draw \emph{i} of the mixture comes from posterior iteration
+#' \emph{i}. Separate fits with different numbers of draws are instead each
+#' sampled over their full posterior. `"mean_estimate"` averages the levels'
+#' estimates at each draw, and `"mean_curve"` estimates from their weighted
+#' mean curve. A joint fit defaults to `"none"`; other fits with spanning group
+#' terms default to `"mixture"`.
+#' @param x_control `"own"` reads each level's control recorded at fitting, or
+#' its lowest observed concentration for an older fit or one fitted without
+#' \code{x_control}. `"shared"` reads the lowest control across levels;
+#' a single finite number specifies
+#' the concentration directly. A control below a level's observations
+#' extrapolates its curve, and gives a warning unless it is the control
+#' recorded at fitting. Level controls are recorded in the result's
+#' \code{x_control} attribute.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
@@ -51,9 +77,10 @@
 #' @param ... Additional arguments passed to methods.
 #'
 #' @details \bold{Every ECx is measured from the control.} The control is the
-#' predicted mean at the lowest concentration in the supplied predictor, taken
-#' per posterior draw. \code{type} names what the percentage is measured
-#' \emph{towards}:
+#' predicted mean at the control concentration, taken per posterior draw: the
+#' \code{x_control} stated in \code{\link{bnec}}, or else the lowest
+#' concentration in the supplied predictor. \code{type} names what the
+#' percentage is measured \emph{towards}:
 #'
 #' \itemize{
 #'   \item \code{"absolute"} (the default) --- control to 0.
@@ -74,7 +101,7 @@
 #' \code{"range"} is what \code{"relative"} computed in versions up to
 #' 2.1.3, except that the span was taken from the maximum of the predicted
 #' curve rather than from the control. The two differ only for a curve whose
-#' maximum is not at the lowest concentration, which in practice means a
+#' maximum is not at the control concentration, which in practice means a
 #' hormetic one.
 #'
 #' Measuring from the control rather than from the maximum of the predicted
@@ -101,6 +128,23 @@
 #' \code{xform = identity} returns that scale and \code{xform = exp} on
 #' \code{crf(log(concentration))} returns the recorded scale again.
 #' 
+#' With a fitted group term whose levels span concentrations, the control and
+#' curve are predicted for each observed level with its group deviations.
+#' Terms whose levels each occur at one concentration are set to zero. The
+#' level of a spanning term observed at only one concentration is excluded from
+#' the estimate, with a message naming it. The default estimate mixes the
+#' remaining observed levels by their observation counts;
+#' \code{pool = "none"} returns them separately. A grouped or joint fit already
+#' separates levels and defaults to \code{pool = "none"}.
+#'
+#' On a \code{\link{bayesnecjointfit}}, each level of the refit is mixed over
+#' its own observed group levels. A group term whose values occur in the data
+#' of more than one level, such as a batch in which two levels were both
+#' tested, is read at the same value for every level at each posterior draw,
+#' as often as their observation counts on that term allow. Terms they do not
+#' share are chosen for each level independently. The levels can therefore be
+#' contrasted draw by draw, as \code{\link{compare_posterior}} does.
+#'
 #' Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 #' \code{\link{compare_fitted}} do not require the same level of flexibility
 #' in the context of allowing argument \code{newdata}
@@ -188,10 +232,11 @@
 # Keep dpar on the generic, after `...` as in the methods. The methods are
 # @noRd, so the generic's usage is the only place it can appear, and R CMD
 # check warns about a documented argument missing from the usage.
-ecx <- function(object, ecx_val = 10, resolution = 200,
+ecx <- function(object, ecx_val = 10, resolution = 500,
                 posterior = FALSE, type = "absolute", x_range = NA,
                 xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
-                dpar = NULL) {
+                dpar = NULL, pool = NULL, x_control = "own",
+                extrapolate = FALSE) {
   UseMethod("ecx")
 }
 
@@ -209,11 +254,12 @@ ecx <- function(object, ecx_val = 10, resolution = 200,
 #' @noRd
 #'
 #' @export
-ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
+ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
                             posterior = FALSE, type = "absolute",
                             x_range = NA, xform = NULL,
                             prob_vals = c(0.5, 0.025, 0.975), ...,
-                            dpar = NULL) {
+                            dpar = NULL, pool = NULL,
+                            x_control = "own", extrapolate = FALSE) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_numeric(ecx_val)
@@ -229,6 +275,25 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
+  if (is.null(object$observed_group)) {
+    level_spec <- observed_level_spec(object)
+    if (!is.null(level_spec)) {
+      return(estimate_observed_levels(
+        object, level_spec, "ecx",
+        function(level, control_value, range_override) {
+          ecx(level, ecx_val = ecx_val, resolution = resolution,
+              posterior = TRUE, type = type, x_range = range_override,
+              extrapolate = extrapolate, xform = xform,
+              prob_vals = prob_vals, dpar = dpar,
+              pool = "none", x_control = control_value)
+        },
+        pool, posterior, prob_vals, x_control, x_range,
+        curve_args = list(ecx_val = ecx_val, resolution = resolution,
+                          type = type, xform = xform, prob_vals = prob_vals,
+                          dpar = dpar, extrapolate = extrapolate)
+      ))
+    }
+  }
   # Allow ecx_val > 100: with a positive control, "absolute" then targets a
   # negative response, as OECD TG 201 permits. An unreached target gives NA
   # for that draw, with the warning below.
@@ -242,8 +307,14 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
   # Do not refuse an absolute ECx for a gaussian response without a bot
   # parameter. Absolute measures towards 0 by design, and a gaussian mean that
   # declines towards 0 is consistent: the likelihood never tests the sign of y.
-  newdata_list <- newdata_eval(
-    object, resolution = resolution, x_range = x_range
+  control_reading <- resolve_x_control(object, x_control, x_range)
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "ECx")
+  report_curve_read_lower_limit(extrapolate, lims, control_reading$value,
+                                curve_start_label(object, x_control))
+  newdata_list <- extended_newdata_eval(
+    object, resolution, control_reading$x_range,
+    ecx_grid_limits(lims, control_reading$value)
   )
   # NULL gives a two-block fit's combined mean: positive-part mean times its
   # non-zero probability (1 - hu or 1 - zi). dpar selects one block; invert
@@ -251,16 +322,20 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
 
   # The closure applies the same dpar handling to the control prediction as to
   # the curve, so that both are read on one quantity.
-  epred_fun <- function(nd) joint_hurdle_epred(object, nd, dpar)
+  epred_fun <- function(nd) joint_hurdle_epred(
+    object, nd, dpar,
+    re_formula = if (is.null(object$re_formula)) NA else object$re_formula
+  )
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
-  control <- control_posterior(object, newdata_list$newdata, epred_fun)
+  control <- control_posterior(object, newdata_list$newdata, epred_fun,
+                               x_at = control_reading$value)
   asymptote <- ecx_asymptote(object, type, dpar)
   asymptote <- count_positive_asymptote(
     object, dpar, asymptote, newdata_list$newdata
   )
   ecx_out <- ecx_from_posterior(p_samples, x_vec, ecx_val, type, control,
-                                asymptote)
+                                asymptote, newdata_list$original)
   below <- attr(ecx_out, "below_range")
   above <- is.na(ecx_out) & !below
   attr(ecx_out, "below_range") <- NULL
@@ -350,11 +425,12 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 200,
 #' @noRd
 #'
 #' @export
-ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
+ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
                               posterior = FALSE, type = "absolute",
                               x_range = NA, xform = NULL,
                               prob_vals = c(0.5, 0.025, 0.975), ...,
-                              dpar = NULL) {
+                              dpar = NULL, pool = NULL,
+                              x_control = "own", extrapolate = FALSE) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_numeric(ecx_val)
@@ -370,6 +446,24 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
+  x_control <- model_set_control(object, x_control)
+  first <- object$mod_fits[[1]]
+  finish <- model_set_control_recorder(first, x_control)
+  if (identical(pool, "none") &&
+      !is.null(observed_level_spec(first))) {
+    return(finish(model_set_level_estimates(
+      object, "ecx",
+      function(f) ecx(f, ecx_val = ecx_val, resolution = resolution,
+                      posterior = TRUE, type = type, x_range = x_range,
+                      extrapolate = extrapolate, xform = xform,
+                      prob_vals = prob_vals, dpar = dpar,
+                      pool = "none", x_control = x_control),
+      posterior, prob_vals
+    )))
+  }
+  # Refuse a bad limit once for the set. Each equation reads the limit as
+  # given, and once_level_note() below prints its lower-limit message once.
+  curve_extrapolate_limits(extrapolate, object, x_range, x_control, "ECx")
   # Warn about the relative rename once for the call. sample_ecx() below calls
   # ecx() for each equation with type passed explicitly, which would otherwise
   # warn again for every equation.
@@ -384,11 +478,12 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
   # them, and would silently return a two-block fit's combined curve.
   sample_ecx <- function(x) {
     mod <- names(object$mod_fits)[x]
-    target <- suppressMessages(pull_out(object, model = mod))
+    target <- pull_equation(object, mod)
     out <- ecx(target, ecx_val = ecx_val, resolution = resolution,
                posterior = TRUE, type = type,
-               x_range = x_range, xform = xform, prob_vals = prob_vals,
-               dpar = dpar)
+               x_range = x_range, extrapolate = extrapolate,
+               xform = xform, prob_vals = prob_vals,
+               dpar = dpar, pool = pool, x_control = x_control)
     idx <- draw_index[[mod]]
     sample_out <- out[idx]
     # Subsetting drops the censoring record, so rebuild the part for these
@@ -398,11 +493,11 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
       subset_censoring(attr(out, "censored"), idx)
     sample_out
   }
-  to_iter <- seq_len(length(object$success_models))
-  ecx_parts <- lapply(to_iter, sample_ecx)
+  to_iter <- unname(which(lengths(draw_index[names(object$mod_fits)]) > 0L))
+  ecx_parts <- once_level_note(lapply(to_iter, sample_ecx))
   ecx_out <- unlist(lapply(ecx_parts, as.numeric))
   cens <- concat_censoring(lapply(ecx_parts, attr, "censored"),
-                           vapply(ecx_parts, length, integer(1)))
+                           vapply(ecx_parts, length, integer(1)), ecx_out)
   attr(ecx_out, "censored") <- cens
   ecx_estimate <- summarise_censored(ecx_out, prob_vals, cens)
   names(ecx_estimate) <- clean_names(ecx_estimate)
@@ -413,9 +508,9 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 200,
   attr(ecx_estimate, "toxicity_estimate") <- "ecx"
   attr(ecx_out, "toxicity_estimate") <-  "ecx"
   if (!posterior) {
-    ecx_estimate
+    finish(ecx_estimate)
   } else {
-    ecx_out
+    finish(ecx_out)
   }
 }
 
@@ -475,6 +570,33 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
       return(zero_block_asymptote(object, dpar))
     }
   }
+  if (!is.null(object$observed_group)) {
+    pforms <- names(object$fit$formula$pforms)
+    bot_par <- if ("bnecbot" %in% pforms) "bnecbot" else "bot"
+    if (bot_par %in% pforms) {
+      nd <- newdata_eval(object, resolution = 2,
+                         x_range = NA)$newdata[1, , drop = FALSE]
+      read_par <- function(par) as.numeric(brms::posterior_linpred(
+        object$fit, newdata = nd, nlpar = par,
+        re_formula = object$re_formula, transform = TRUE
+      )[, 1])
+      floor <- read_par(bot_par)
+      if ("ogl" %in% pforms) {
+        offset <- read_par("ogl")
+        kind <- ogl_transform_kind(object$model, object$fit$family)
+        floor <- switch(kind,
+                        log = floor * exp(offset),
+                        logit = floor * exp(offset) /
+                          (1 - floor + floor * exp(offset)),
+                        none = floor + offset)
+        if (identical(kind, "none") &&
+            !identical(object$fit$family$link, "identity")) {
+          floor <- object$fit$family$linkinv(floor)
+        }
+      }
+      return(floor)
+    }
+  }
   # A joint refit level names its coefficient b_bot_<group_var><level>, which
   # the b_bot_Intercept read below does not find. Without this branch such a
   # level would be measured towards 0 instead of bot, without an error.
@@ -517,6 +639,15 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
 #' @noRd
 zero_block_asymptote <- function(object, dpar) {
   par <- paste0(dpar, "bot")
+  if (!is.null(object$observed_group) &&
+      par %in% names(object$fit$formula$pforms)) {
+    nd <- newdata_eval(object, resolution = 2,
+                       x_range = NA)$newdata[1, , drop = FALSE]
+    return(as.numeric(brms::posterior_linpred(
+      object$fit, newdata = nd, nlpar = par,
+      re_formula = object$re_formula, transform = TRUE
+    )[, 1]))
+  }
   draws <- NULL
   if (inherits(object, "bayesnecjointlevel")) {
     draws <- joint_level_draws(object, par)
@@ -721,18 +852,33 @@ manec_asymptote <- function(object) {
 #' The x value at which each draw reaches its ECx target
 #'
 #' The reference for every type is the control, this draw's predicted mean at
-#' the lowest observed concentration.
+#' the control concentration.
 #'
+#' @param p_samples A draws by grid \code{\link[base]{matrix}} of predicted
+#' means.
+#' @param x_vec The grid, the columns of \code{p_samples}.
+#' @param ecx_val,type As \code{\link{ecx}} takes them.
+#' @param control The control posterior, one value per draw.
+#' @param asymptote The asymptote \code{type = "relative"} measures towards.
+#' @param original A \code{\link[base]{logical}} vector marking the columns of
+#' the grid before \code{extrapolate} extended it, or \code{NULL} for every
+#' column. \code{type = "range"} takes its lowest response over them, and
+#' \code{crossing_in_segments()} searches them as the unextended grid.
+#'
+#' @return A \code{\link[base]{numeric}} vector, one value per draw, with a
+#' \code{below_range} attribute marking the draws already past the target
+#' where the grid begins.
 #' @noRd
 ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
-                               asymptote) {
+                               asymptote, original = NULL) {
+  if (is.null(original)) original <- rep(TRUE, ncol(p_samples))
   n_draws <- nrow(p_samples)
   control <- rep_len(control, n_draws)
   asymptote <- rep_len(asymptote, n_draws)
   # Record which end of the range an NA comes from, as nsec_from_posterior()
   # does: the two ends are opposite statements about the estimate. A curve can
   # already be below the target where the grid begins when x_range starts above
-  # the lowest observed concentration, where the control is read.
+  # the control concentration, where the control is read.
   below_range <- logical(n_draws)
   out <- vapply(seq_len(n_draws), function(i) {
     y <- p_samples[i, ]
@@ -741,10 +887,10 @@ ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
       absolute = control[i] * (1 - ecx_val / 100),
       relative = control[i] - (control[i] - asymptote[i]) * (ecx_val / 100),
       range = control[i] -
-        (control[i] - min(y, na.rm = TRUE)) * (ecx_val / 100),
+        (control[i] - min(y[original], na.rm = TRUE)) * (ecx_val / 100),
       direct = ecx_val
     )
-    val <- crossing_x(y, target, x_vec)
+    val <- crossing_in_segments(y, target, x_vec, original)
     # With no crossing, mark a draw below range only if its first grid response
     # is at or below a target below the control. Classify every other missing
     # crossing at the upper end, whether outside the grid or absent altogether.
@@ -756,4 +902,41 @@ ecx_from_posterior <- function(p_samples, x_vec, ecx_val, type, control,
   }, numeric(1))
   attr(out, "below_range") <- below_range
   out
+}
+
+#' The first crossing of an ECx target on a grid that may be extended
+#'
+#' \code{crossing_x()} finds a root numerically over the whole grid it is
+#' given, so its result depends slightly on the grid's length. The original
+#' grid is therefore searched on its own, between the points added below it
+#' and those added above, so that a crossing inside it is the one found
+#' without the extension.
+#'
+#' @param y One predicted curve.
+#' @param target The response the curve is to reach.
+#' @param x_vec The grid \code{y} is predicted at.
+#' @param original A \code{\link[base]{logical}} vector marking the columns of
+#' the unextended grid.
+#'
+#' @return The crossing, or \code{NA} where the curve has reached the target
+#' at the start of the grid or does not reach it.
+#' @noRd
+crossing_in_segments <- function(y, target, x_vec, original) {
+  n <- length(y)
+  first <- min(which(original))
+  last <- max(which(original))
+  if (first == 1L && last == n) {
+    return(crossing_x(y, target, x_vec))
+  }
+  for (s in list(seq_len(first), first:last, last:n)) {
+    if (length(s) < 2L) next
+    # A segment already at or below the target where it starts has no crossing
+    # of its own, and the search stops, as crossing_x() stops at the start.
+    if (!is.na(y[s[1]]) && !is.na(target) && y[s[1]] <= target) {
+      return(NA_real_)
+    }
+    val <- crossing_x(y[s], target, x_vec[s])
+    if (!is.na(val)) return(val)
+  }
+  NA_real_
 }

@@ -72,8 +72,9 @@ pull_out <- function(manec, model, loo_controls, x_range = NULL,
               "this is ignored in pull_out. Use function ?amend first if your",
               "intention is to modify the model averaging specs.")
     }
-    # The set keeps its own weighting, so pass on the fitting arguments only.
-    supplied_loo <- loo_controls[intersect(names(loo_controls), "fitting")]
+    # The set keeps its own weighting, but reporting can be chosen again.
+    supplied_loo <- loo_controls[intersect(names(loo_controls),
+                                            c("fitting", "report_k"))]
   }
   dots <- list(...)
   expand_args <- recorded_expand_args(
@@ -123,11 +124,15 @@ pull_out <- function(manec, model, loo_controls, x_range = NULL,
     return(manec)
   }
   formulas <- lapply(fits[to_go], extract_formula)
-  mod_fits <- do.call(expand_manec, c(list(fits[to_go],
-                                           formula = formulas),
-                                      expand_call)) |>
-    suppressMessages() |>
-    suppressWarnings()
+  mod_fits <- withCallingHandlers(
+    do.call(expand_manec, c(list(fits[to_go], formula = formulas),
+                            expand_call)),
+    message = function(m) {
+      if (!inherits(m, "bayesnec_pareto_k_message")) {
+        invokeRestart("muffleMessage")
+      }
+    }
+  )
   message("Pulling out model(s): ", paste0(to_go, collapse = ", "))
   if (length(mod_fits) > 1) {
     out <- allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))

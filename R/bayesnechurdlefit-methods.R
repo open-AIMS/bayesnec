@@ -34,6 +34,9 @@ hurdle_no_combined <- function(what) {
 #' probability of survival, i.e. the expected response per individual
 #' \emph{exposed}. Draws are paired by row, which is valid because the two
 #' posteriors are independent -- see \code{\link{bnec_hurdle}}.
+#' Without \code{newdata}, a group term spanning concentrations is predicted
+#' for its observed levels and mixed by their observation counts. A level
+#' observed at one concentration is excluded.
 #'
 #' @return A \code{\link[base]{matrix}} with draws as rows and predictor
 #' values as columns.
@@ -257,6 +260,10 @@ hurdle_disp_placeholders <- function(newdata, object) {
 #' is reported as censored at its top where the curve has not reached the
 #' reference by the highest concentration tested. \code{extrapolate} extends
 #' that range. See \code{\link{ecx.bayesnechurdlefit}} for the reasoning.
+#' For a group term spanning concentrations, each observed level pairs its
+#' growth and survival predictions before the endpoint is read. A level
+#' observed at one concentration is excluded. \code{pool} and
+#' \code{x_control} use the same rules as for a single fit.
 #'
 #' @return A vector containing the estimated NSEC value and credible bounds.
 #'
@@ -266,33 +273,56 @@ hurdle_disp_placeholders <- function(newdata, object) {
 #' @method nsec bayesnechurdlefit
 #'
 #' @export
-nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
+nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
                                    x_range = NA,
                                    xform = NULL,
                                    prob_vals = c(0.5, 0.025, 0.975),
                                    extrapolate = FALSE, ...,
-                                   posterior = FALSE, which = "combined") {
+                                   posterior = FALSE, which = "combined",
+                                   pool = NULL, x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   chk_logical(posterior)
   which <- hurdle_check_which(which)
   check_xform(xform)
-  # As in nsec.bayesnecfit(), extrapolate sets the searched grid. It is
-  # measured against the whole concentration series.
-  lims <- extrapolate_limits(extrapolate,
-                             searched_or_stored_bounds(object, x_range),
-                             "NSEC")
-  if (!is.null(lims)) {
-    report_curve_read_lower_limit(object, lims)
-    x_range <- c(lims$lower, lims$upper)
+  if (is.null(object$observed_group)) {
+    spec <- observed_level_spec(object)
+    if (!is.null(spec)) {
+      result <- estimate_observed_levels(
+        object, spec, "nsec",
+        function(level, control_value, range_override) {
+          nsec(level, sig_val = sig_val, resolution = resolution,
+               x_range = range_override, xform = xform,
+               prob_vals = prob_vals, extrapolate = extrapolate,
+               posterior = TRUE, which = which, pool = "none",
+               x_control = control_value)
+        }, pool, posterior, prob_vals, x_control, x_range,
+        curve_args = list(sig_val = sig_val, resolution = resolution,
+                          xform = xform, prob_vals = prob_vals,
+                          extrapolate = extrapolate, which = which)
+      )
+      attr(result, "component") <- which
+      return(result)
+    }
   }
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range)
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "NSEC")
+  at <- curve_search_start(object, x_control)
+  report_curve_read_lower_limit(extrapolate, lims, at,
+                                curve_start_label(object, x_control))
+  preds <- if (is.null(lims)) {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control)
+  } else {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control,
+                           grid_limits = lims)
+  }
   p_samples <- preds[[which]]
-  # The control is read at the lowest observed concentration, not the first
-  # grid column, so x_range does not change the reference.
+  # The control is read at the control concentration, not the first grid
+  # column, so x_range does not change the reference.
   reference <- quantile(preds$control[[which]], sig_val)
-  out <- nsec_from_posterior(p_samples, reference, preds$x, control_x(object),
+  out <- nsec_from_posterior(p_samples, reference, preds$x, at,
                              preds$control[[which]])
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
@@ -398,6 +428,7 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
                                       ecx_vals = c(10, 50, 90)) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
+  warn_stale_ne_type(object)
   # The dots go to nec() and, with ecx = TRUE, to ecx(), so look for
   # posterior = TRUE as each of them will match it.
   check_summary_posterior(nec, c(list(which = "combined"), list(...)))
@@ -427,7 +458,7 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
   # nec_row() drops x_range, which cannot change a no-effect estimate read
   # from the stored posterior; it sets the grid of the ECx rows only.
   nec_row <- function(w, ..., x_range) {
-    suppressMessages(nec(object, which = w, ...))
+    without_stale_ne_warning(suppressMessages(nec(object, which = w, ...)))
   }
   nes <- lapply(c("combined", "growth", "survival"), function(w) {
     nec_row(w, ...)
@@ -504,9 +535,9 @@ print.hurdlesummary <- function(x, ...) {
   print_row_censoring_notes(attr(ne_mat, "censored_summary"),
                             rownames(ne_mat))
   if (any(x$ne_types != "NEC", na.rm = TRUE)) {
-    cat("\nNSEC values appear where a model set contains smooth (ECx) models,",
-        "which\ncarry no threshold parameter; N(S)EC is a model-averaged",
-        "combination\nof the two (Fisher et al. 2023).\n")
+    cat("\nNSEC values come from smooth or hormesis threshold equations;",
+        "N(S)EC\ncombines sampled NEC and curve-read NSEC estimates",
+        "(Fisher et al. 2023).\n")
   }
   if (!is.null(x$ecs)) {
     cat("\nECx estimates\n")
@@ -988,6 +1019,12 @@ hurdle_check_plot_which <- function(which) {
   match.arg(which, c("combined", "growth", "survival", "all"))
 }
 
+# The title of each curve, named by the `which` value that selects it. The
+# panels of a joint two-block fit use the same titles.
+hurdle_panel_names <- c(combined = "Response per individual exposed",
+                        growth = "Response of survivors",
+                        survival = "Probability of survival")
+
 #' Raw observed data underlying a \code{\link{bayesnechurdlefit}}
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
@@ -1018,7 +1055,7 @@ hurdle_raw_data <- function(object, recorded = FALSE) {
 #' @noRd
 hurdle_panel <- function(object, which, resolution, x_range) {
   preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range)
+                                  x_range = x_range, levels = FALSE)
   p <- preds[[which]]
   # On the recorded scale, as preds$x is.
   raw <- hurdle_raw_data(object, recorded = TRUE)
@@ -1035,10 +1072,7 @@ hurdle_panel <- function(object, which, resolution, x_range) {
        lo = apply(p, 2, quantile, 0.025),
        up = apply(p, 2, quantile, 0.975),
        raw = raw,
-       ylab = switch(which,
-                     combined = "Response per individual exposed",
-                     growth = "Response of survivors",
-                     survival = "Probability of survival"))
+       ylab = hurdle_panel_names[[which]])
 }
 
 #' The map the hurdle plots apply to the points and the curve
@@ -1061,10 +1095,9 @@ hurdle_axis_xform <- function(object, xform) {
 
 #' The xform a hurdle plot gives nec() for its no-effect line
 #'
-#' Where the predictor is transformed inline and the caller supplied no
-#' \code{xform}, or \code{identity}, \code{NULL}: \code{\link{nec}} then
-#' returns the recorded scale the axis is drawn on, as it does when called
-#' directly. Otherwise the caller's \code{xform}.
+#' Where the predictor is transformed inline, the plot ignores \code{xform}
+#' and draws the recorded scale. Give \code{nec()} \code{NULL} so its line
+#' uses that scale too. Otherwise use the caller's \code{xform}.
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param xform The function the caller supplied, or \code{NULL}.
@@ -1072,8 +1105,7 @@ hurdle_axis_xform <- function(object, xform) {
 #' @return A \code{\link[base]{function}}, or \code{NULL}.
 #' @noRd
 hurdle_ne_axis_map <- function(object, xform) {
-  if (!is.null(inline_x_transform(object)) &&
-        (is.null(xform) || identical(xform, identity))) {
+  if (!is.null(inline_x_transform(object))) {
     return(NULL)
   }
   xform
@@ -1092,8 +1124,7 @@ hurdle_ne_axis_map <- function(object, xform) {
 #' @param x_range A range of predictor values to plot over.
 #' @param xform \code{NULL}, the default, or a function to apply to the
 #' predictor where \code{crf()} does not transform it inline. Where it does,
-#' a function applied to the no-effect estimate on the transformed scale. See
-#' Details.
+#' the plot ignores \code{xform}. See Details.
 #' @param ylab Y axis label. Defaults to a label describing \code{which}.
 #' @param xlab X axis label.
 #'
@@ -1109,8 +1140,8 @@ hurdle_ne_axis_map <- function(object, xform) {
 #' no-effect line are drawn on the recorded scale, the scale the prediction
 #' grid is built on, as \code{\link{plot}} draws a \code{\link{bayesnecfit}}.
 #' The line is the estimate \code{\link{nec}} returns by default, which is on
-#' that scale. A supplied \code{xform} is applied to the estimate on the
-#' transformed scale instead, and not to the points or the curve.
+#' that scale. A supplied \code{xform} changes neither the line nor the points
+#' and curve on an inline-transformed fit.
 #'
 #' @return A plot.
 #'
@@ -1141,6 +1172,9 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
   }
   axis_x <- hurdle_axis_xform(x, xform)
   if (add_nec) {
+    # Check only the components the panels read.
+    warn_stale_ne_type(if (identical(panels, "growth") ||
+                             identical(panels, "survival")) x[[panels]] else x)
     ne_map <- hurdle_ne_axis_map(x, xform)
   }
   for (w in panels) {
@@ -1159,7 +1193,9 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
       # Give nec() the map rather than apply it to the summary, so that a
       # decreasing map keeps the interval and its censoring marks in order.
       # Suppress its messages, which describe the estimate, not the figure.
-      ne <- suppressMessages(nec(x, which = w, xform = ne_map))
+      ne <- without_stale_ne_warning(
+        suppressMessages(nec(x, which = w, xform = ne_map))
+      )
       abline(v = ne, col = "red", lty = c(1, 3, 3))
       legend("topright", bty = "n", lty = 1, col = "red",
              legend = paste0("N(S)EC: ", bound_prefix(ne, 1),
@@ -1180,7 +1216,11 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' predictor where \code{crf()} does not transform it inline. Where it does,
 #' the predictor is returned on the recorded scale, the scale the prediction
 #' grid is built on, and \code{xform} is not applied.
-#' @param ... Unused.
+#' @param x_scale \code{"recorded"} (the default) or \code{"fitted"}.
+#' The fitted option returns the predictor on the scale transformed inside
+#' \code{crf()}, with breaks in attribute \code{"x_axis"} labelled in
+#' recorded units.
+#' @param ... Unused. \code{dpar} is refused: select a curve with \code{which}.
 #' @param which Which curve(s) to return. See \code{\link{plot}}.
 #' @param resolution The number of unique predictor values.
 #' @param x_range A range of predictor values.
@@ -1193,19 +1233,55 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' @export
 ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                           xform = NULL, ...,
-                                          which = "combined",
-                                          resolution = 1000, x_range = NA) {
+                                          which = "combined", resolution = 1000,
+                                          x_range = NA,
+                                          x_scale = c("recorded", "fitted")) {
   which <- hurdle_check_plot_which(which)
+  check_xform(xform)
+  check_plot_dpar(list(...), x)
+  x_scale <- plot_x_scale(x, x_scale, xform)
   panels <- if (which == "all") {
     c("combined", "growth", "survival")
   } else {
     which
   }
   axis_x <- hurdle_axis_xform(x, xform)
+  if (x_scale == "fitted") {
+    grid <- plot_fitted_grid(x, resolution = resolution, x_range = x_range)
+    growth_grid <- newdata_eval(x$growth, resolution = resolution,
+                                x_range = range(grid$recorded))$newdata
+    x_var <- inline_x_transform(x)$variable
+    growth_grid[[x_var]] <- grid$recorded
+    g <- posterior_epred(x$growth, newdata = growth_grid, re_formula = NA)
+    s <- posterior_epred(x$survival, newdata = grid$newdata,
+                         re_formula = NA)
+    n <- min(nrow(g), nrow(s))
+    g <- g[seq_len(n), , drop = FALSE]
+    s <- s[seq_len(n), , drop = FALSE]
+    preds <- list(growth = g, survival = s, combined = g * s)
+    raw_all <- hurdle_raw_data(x, recorded = TRUE)
+  }
   curve <- list()
   raw <- list()
   for (w in panels) {
-    p <- hurdle_panel(x, w, resolution, x_range)
+    if (x_scale == "fitted") {
+      observed <- raw_all
+      if (w == "survival") {
+        obs <- survival_by_x(observed$x, observed$y)
+        observed <- data.frame(x = obs$x, y = obs$y)
+      } else if (w == "growth") {
+        observed <- observed[observed$y > 0, , drop = FALSE]
+      }
+      p <- list(x = grid$x,
+                est = apply(preds[[w]], 2, median),
+                lo = apply(preds[[w]], 2, quantile, 0.025),
+                up = apply(preds[[w]], 2, quantile, 0.975),
+                raw = observed,
+                ylab = hurdle_panel_names[[w]])
+      p$raw$x <- as.numeric(sub_x_transformation(p$raw$x, x$formula))
+    } else {
+      p <- hurdle_panel(x, w, resolution, x_range)
+    }
     curve[[w]] <- data.frame(panel = p$ylab, x = axis_x(p$x), y = p$est,
                              lo = p$lo, up = p$up)
     raw[[w]] <- data.frame(panel = p$ylab, x = axis_x(p$raw$x), y = p$raw$y)
@@ -1216,7 +1292,37 @@ ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   lev <- unique(curve$panel)
   curve$panel <- factor(curve$panel, levels = lev)
   raw$panel <- factor(raw$panel, levels = lev)
-  list(curve = curve, raw = raw)
+  out <- list(curve = curve, raw = raw)
+  if (x_scale == "fitted") {
+    attr(out, "x_axis") <- plot_x_axis(raw_all$x, x$formula)
+  }
+  out
+}
+
+hurdle_plot_estimate <- function(object, which, kind, xform, ecx_val) {
+  if (kind == "nec") {
+    return(suppressMessages(nec(object, which = which, xform = xform)))
+  }
+  suppressMessages(ecx(object, which = which, ecx_val = ecx_val,
+                       xform = xform))
+}
+
+hurdle_estimate_data <- function(object, panels, kind, xform, ecx_val,
+                                 panel_names, panel_levels) {
+  values <- lapply(panels, function(w) {
+    hurdle_plot_estimate(object, w, kind, xform, ecx_val)
+  })
+  bounds <- lapply(values, function(value) {
+    cens <- attr(value, "censored_summary")
+    if (is.null(cens)) rep("", length(value)) else cens$bound
+  })
+  bound <- unlist(bounds, use.names = FALSE)
+  line <- rep(c(1, 2, 2), length(panels))
+  line[bound != ""] <- 3
+  data.frame(panel = factor(rep(panel_names[panels], each = 3),
+                            levels = panel_levels),
+             estimate = as.numeric(unlist(values)), line = line,
+             bound = bound)
 }
 
 #' Creates a \pkg{ggplot2} plot of a \code{\link{bayesnechurdlefit}}
@@ -1225,9 +1331,18 @@ ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param CI Should credible intervals be drawn? Defaults to \code{TRUE}.
+#' @param nec Should the no-effect estimate and its credible limits be drawn
+#' on each panel? A bound is marked at the plotted range. Defaults to
+#' \code{TRUE}.
+#' @param ecx Should an ECx estimate and its credible limits be drawn on each
+#' panel? A bound is marked at the plotted range. Defaults to \code{FALSE}.
+#' @param ecx_val The percentage effect for \code{ecx}; defaults to 10.
 #' @param xlab X axis label.
 #' @param ylab Y axis label. Defaults to \code{NULL}, which labels each panel
 #' by what it shows.
+#' @param point_alpha The opacity factor for the observation points, a single
+#' number from 0 to 1. It multiplies the existing opacity of the first colour of
+#' the current R palette. Defaults to 0.25.
 #'
 #' @details As for \code{\link{plot}}, the default is the combined endpoint
 #' alone and \code{which = "all"} facets rather than overlays, because the
@@ -1246,10 +1361,20 @@ ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
                                        CI = TRUE, resolution = 1000,
                                        x_range = NA, xform = NULL,
-                                       xlab = "Predictor", ylab = NULL) {
+                                       xlab = "Predictor", ylab = NULL,
+                                       point_alpha = 0.25,
+                                       x_scale = c("recorded", "fitted"),
+                                       nec = TRUE, ecx = FALSE, ecx_val = 10) {
+  which <- hurdle_check_plot_which(which)
+  check_plot_dpar(list(...), object)
   chk_lgl(CI)
+  check_point_alpha(point_alpha)
+  chk_lgl(nec)
+  chk_lgl(ecx)
+  check_xform(xform)
+  x_scale <- plot_x_scale(object, x_scale, xform)
   dat <- ggbnec_data(object, which = which, resolution = resolution,
-                     x_range = x_range, xform = xform)
+                     x_range = x_range, xform = xform, x_scale = x_scale)
   p <- ggplot(dat$curve, aes(x = .data$x, y = .data$y))
   if (CI) {
     p <- p + geom_ribbon(aes(ymin = .data$lo, ymax = .data$up),
@@ -1257,7 +1382,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
   }
   p <- p +
     geom_point(data = dat$raw, aes(x = .data$x, y = .data$y),
-               colour = adjustcolor(1, alpha.f = 0.25), size = 1.6) +
+               colour = adjustcolor(1, alpha.f = point_alpha), size = 1.6) +
     geom_line(linewidth = 0.7) +
     labs(x = xlab, y = if (is.null(ylab)) NULL else ylab) +
     theme_classic()
@@ -1265,6 +1390,53 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
     p <- p + facet_wrap(vars(.data$panel), scales = "free_y")
   } else if (is.null(ylab)) {
     p <- p + labs(y = levels(dat$curve$panel)[1])
+  }
+  axis <- attr(dat, "x_axis")
+  if (!is.null(axis)) {
+    p <- p + scale_x_continuous(breaks = axis$breaks,
+                                labels = axis$labels)
+  }
+  panels <- if (which == "all") c("combined", "growth", "survival") else which
+  panel_names <- hurdle_panel_names
+  est_xform <- if (x_scale == "fitted") identity else
+    hurdle_ne_axis_map(object, xform)
+  if (nec) {
+    ne_data <- hurdle_estimate_data(object, panels, "nec", est_xform,
+                                    ecx_val, panel_names,
+                                    levels(dat$curve$panel))
+    p <- p + geom_vline(data = ne_data,
+                        aes(xintercept = .data$estimate,
+                            linetype = factor(.data$line)),
+                        colour = "grey50", linewidth = 0.5,
+                        show.legend = FALSE)
+    ne_bounds <- unique(ne_data[ne_data$bound != "",
+                                c("panel", "estimate", "bound")])
+    if (nrow(ne_bounds) > 0) {
+      p <- p + geom_text(data = ne_bounds,
+                         aes(x = .data$estimate, y = Inf,
+                             label = .data$bound),
+                         colour = "grey50", vjust = 1.2, size = 3,
+                         show.legend = FALSE)
+    }
+  }
+  if (ecx) {
+    ec_data <- hurdle_estimate_data(object, panels, "ecx", est_xform,
+                                    ecx_val, panel_names,
+                                    levels(dat$curve$panel))
+    p <- p + geom_vline(data = ec_data,
+                        aes(xintercept = .data$estimate,
+                            linetype = factor(.data$line)),
+                        colour = "dodgerblue4", linewidth = 0.5,
+                        show.legend = FALSE)
+    ec_bounds <- unique(ec_data[ec_data$bound != "",
+                                c("panel", "estimate", "bound")])
+    if (nrow(ec_bounds) > 0) {
+      p <- p + geom_text(data = ec_bounds,
+                         aes(x = .data$estimate, y = Inf,
+                             label = .data$bound),
+                         colour = "dodgerblue4", vjust = 2.5, size = 3,
+                         show.legend = FALSE)
+    }
   }
   p
 }
@@ -1303,6 +1475,10 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' message naming the range, for the combined, growth and survival curves
 #' alike and whether or not \code{x_range} is supplied. Supply an
 #' \code{x_range} that includes \code{nsec} to read the curve there.
+#' For a group term spanning concentrations, each observed level pairs its
+#' growth and survival predictions before the percentage is read. A level
+#' observed at one concentration is excluded. \code{pool} and
+#' \code{x_control} use the same rules as for a single fit.
 #'
 #' @return A vector of estimates.
 #'
@@ -1311,11 +1487,13 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' @method ecnsec bayesnechurdlefit
 #'
 #' @export
-ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
+ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
                                      x_range = NA,
                                      type = "absolute", xform = NULL,
                                      prob_vals = c(0.5, 0.025, 0.975), ...,
-                                     posterior = FALSE, which = "combined") {
+                                     posterior = FALSE, which = "combined",
+                                     pool = NULL, x_control = "own",
+                                     extrapolate = FALSE) {
   which <- hurdle_check_which(which)
   check_removed_args(list(...))
   # One value: the curve is interpolated at one point.
@@ -1350,21 +1528,53 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
       ), call = NULL)
     ))
   }
+  if (is.null(object$observed_group)) {
+    spec <- observed_level_spec(object)
+    if (!is.null(spec)) {
+      result <- estimate_observed_levels(
+        object, spec, "ecnsec",
+        function(level, control_value, range_override) {
+          ecnsec(level, nsec = nsec, resolution = resolution,
+                 x_range = range_override, extrapolate = extrapolate,
+                 type = type, xform = xform,
+                 prob_vals = prob_vals, posterior = TRUE, which = which,
+                 pool = "none", x_control = control_value)
+        }, pool, posterior, prob_vals, x_control, x_range,
+        curve_args = list(nsec = nsec, resolution = resolution,
+                          extrapolate = extrapolate,
+                          type = type, xform = xform, prob_vals = prob_vals,
+                          which = which)
+      )
+      attr(result, "component") <- which
+      return(result)
+    }
+  }
   nsec_use <- xform(nsec)
+  lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
+                                   "ECNSEC")
   # The grid ecx() and nsec() read, so that all three read one curve.
-  preds <- hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range)
+  preds <- if (is.null(lims)) {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control)
+  } else {
+    hurdle_component_preds(object, resolution = resolution,
+                           x_range = x_range, x_control = x_control,
+                           grid_limits = lims)
+  }
   # Check nsec against the grid the curve was predicted over, so that the range
   # refused and the range read cannot differ.
   check_ecnsec_range(object, nsec, nsec_use, range(preds$x), x_range, xform,
                      curve = paste("the", which, "curve"))
   p_samples <- preds[[which]]
   # The percentage effect at nsec, against the reference ecx() uses for the
-  # same type, with the control at the lowest observed concentration.
+  # same type, with the control at the control concentration.
   control <- preds$control[[which]]
-  floor_draws <- switch(type,
-                        absolute = 0,
-                        range = apply(p_samples, 1, min, na.rm = TRUE))
+  original <- if (is.null(preds$original)) TRUE else preds$original
+  floor_draws <- switch(
+    type,
+    absolute = 0,
+    range = apply(p_samples[, original, drop = FALSE], 1, min, na.rm = TRUE)
+  )
   at_nsec <- curve_draws_at(p_samples, preds$x, nsec_use)
   out <- (control - at_nsec) / (control - floor_draws) * 100
   estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)

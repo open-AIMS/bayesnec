@@ -164,16 +164,19 @@ joint_split <- function() {
 # uses the same subset of stored draws on each call.
 expand_record <- function(x_range = c(0.03, 4), resolution = 200,
                           sig_val = 0.05, fitting = list(draw_ids = 1:50),
-                          method = "pseudobma") {
+                          method = "pseudobma", leave_out = "group",
+                          refit = FALSE, report_k = TRUE) {
   list(x_range = x_range, resolution = resolution, sig_val = sig_val,
        loo_controls = list(fitting = fitting,
-                           weights = list(method = method)))
+                           weights = list(method = method),
+                           leave_out = leave_out, refit = refit,
+                           report_k = report_k))
 }
 
 # The record of a call that used every bnec() default.
-default_expand_record <- function() {
+default_expand_record <- function(leave_out = "group") {
   expand_record(x_range = NA, resolution = 1000, sig_val = 0.01,
-                fitting = list())
+                fitting = list(), leave_out = leave_out)
 }
 
 with_expand_record <- function(x, record = expand_record()) {
@@ -190,4 +193,54 @@ expanded_ecx4param <- function(record) {
     resolution = record$resolution, sig_val = record$sig_val,
     loo_controls = record$loo_controls, model = "ecx4param"
   )))
+}
+
+# Prior-bound records. Move draws or a stored prior bound without refitting;
+# the counts test the report, not a posterior a sampler would produce.
+near_bound_fit <- function(n_near, side = "upper", fit = nec4param,
+                           n = 100) {
+  bounds <- bayesnec:::ne_prior_bounds(fit$fit)
+  span <- bounds$ub - bounds$lb
+  edge <- if (side == "upper") bounds$ub - 0.01 * span else
+    bounds$lb + 0.01 * span
+  fit$ne_posterior <- c(rep(bounds$lb + 0.5 * span, n - n_near),
+                        rep(edge, n_near))
+  fit
+}
+
+# Set the upper bound of a parameter's stored prior just above its largest
+# draw, so that its highest draws lie within the outer 5% of the range.
+tighten_upper_bound <- function(fit, par) {
+  prior <- fit$prior
+  rows <- prior$nlpar == par & prior$class == "b" & nzchar(prior$ub)
+  draws <- brms::as_draws_df(fit)[[paste0("b_", par, "_Intercept")]]
+  prior$ub[rows] <- as.character(max(draws) + 0.001)
+  fit$prior <- prior
+  fit
+}
+
+# The share of a parameter's draws within the outer 5% below its upper bound.
+upper_bound_share <- function(fit, par) {
+  prior <- fit$prior
+  rows <- prior$nlpar == par & prior$class == "b" & nzchar(prior$ub)
+  lb <- as.numeric(prior$lb[rows])
+  ub <- as.numeric(prior$ub[rows])
+  draws <- brms::as_draws_df(fit)[[paste0("b_", par, "_Intercept")]]
+  mean(draws >= ub - 0.05 * (ub - lb) & draws <= ub)
+}
+
+# Collect the prior-bound notes and let every other message through.
+prior_bound_notes <- function(expr) {
+  notes <- character()
+  value <- withCallingHandlers(expr, bayesnec_prior_bound_note = function(m) {
+    notes <<- c(notes, conditionMessage(m))
+    invokeRestart("muffleMessage")
+  })
+  list(value = value, notes = notes)
+}
+
+# The table without its prior-bound record, to compare estimates alone.
+without_record <- function(x) {
+  attr(x, "prior_bound_summary") <- NULL
+  x
 }

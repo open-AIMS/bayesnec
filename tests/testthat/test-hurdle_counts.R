@@ -140,7 +140,8 @@ test_that("joint hurdle block predictions use the documented scales", {
   hu <- matrix(c(0.1, 0.7), nrow = 1)
   combined <- matrix(c(1.2, 0.8), nrow = 1)
   local_mocked_bindings(
-    posterior_epred = function(object, newdata, re_formula, dpar = NULL) {
+    posterior_epred = function(object, newdata, re_formula, dpar = NULL,
+                               draw_ids = NULL) {
       if (is.null(dpar)) combined else switch(dpar, mu = mu, shape = shape,
                                               hu = hu)
     },
@@ -438,7 +439,7 @@ test_that("model-averaged count asymptotes retain their draw pairing", {
   local_mocked_bindings(
     as_draws_df = function(x) data.frame(draw = seq_along(asymptote)),
     pull_draw_index = function(...) draw_index,
-    pull_out = function(object, model) parts[[model]],
+    pull_out = function(object, model, ...) parts[[model]],
     ecx_asymptote = function(object, type) asymptote,
     .package = "bayesnec"
   )

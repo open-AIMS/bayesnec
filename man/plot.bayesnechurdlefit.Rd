@@ -36,8 +36,7 @@
 
 \item{xform}{\code{NULL}, the default, or a function to apply to the
 predictor where \code{crf()} does not transform it inline. Where it does,
-a function applied to the no-effect estimate on the transformed scale. See
-Details.}
+the plot ignores \code{xform}. See Details.}
 
 \item{ylab}{Y axis label. Defaults to a label describing \code{which}.}
 
@@ -62,6 +61,6 @@ Where \code{crf()} transforms the predictor inline, as
 no-effect line are drawn on the recorded scale, the scale the prediction
 grid is built on, as \code{\link{plot}} draws a \code{\link{bayesnecfit}}.
 The line is the estimate \code{\link{nec}} returns by default, which is on
-that scale. A supplied \code{xform} is applied to the estimate on the
-transformed scale instead, and not to the points or the curve.
+that scale. A supplied \code{xform} changes neither the line nor the points
+and curve on an inline-transformed fit.
 }

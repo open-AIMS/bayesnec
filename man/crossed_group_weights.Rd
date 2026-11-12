@@ -17,7 +17,10 @@ answer whether the factor matters at all --- see Details.}
 A \code{\link[base]{list}} with the per-level weight vectors, the
 unrestricted best combination and its weight, the diagonal weights over the
 models common to every level, and --- if \code{pooled} was given --- the
-grouped-versus-pooled WAIC comparison.
+grouped-versus-pooled comparison. Its \code{criterion} is \code{"waic"},
+with \code{waic_grouped}, \code{waic_pooled} and \code{n_obs}, or
+\code{"looic"}, with \code{looic_grouped}, \code{looic_pooled},
+\code{n_groups} and \code{group}, the grouping left out.
 }
 \description{
 The weight of every combination of per-level models, and the two readings of
@@ -76,6 +79,16 @@ model-averaged --- in which case the difference is a point estimate with no
 uncertainty attached, which is worth remembering before reading much into a
 small one. Where the values are present the observations are additionally
 checked to line up before anything is computed.
+
+WAIC is computed for each observation, and under a group-level term whose
+levels are each observed at a single concentration it barely depends on the
+shape of the curve
+(see the \code{loo_controls} argument of \code{\link{bnec}}). Where every
+level, and the pooled fit, is a model set weighted by leaving out each level
+of the same grouping, the comparison is made on that score instead, as
+LOOIC (\code{-2} times the elpd), with the groups paired by name for
+\code{se_diff}. Where only some of them are, the comparison stays on WAIC,
+with a warning.
 
 Note this compares the \emph{best} model per level against the \emph{best}
 pooled model, not the model-averaged predictions of either. Model averaging

@@ -597,6 +597,43 @@ test_that("group_inits reads its indices from the model brms will build", {
   expect_false("b_ogl" %in% names(gi2))
 })
 
+test_that("group_inits gives a by term one sd column per level", {
+  # gr(g, by = h) declares sd_k as an M_k x Nby_k matrix in the Stan code.
+  set.seed(245)
+  d <- data.frame(x = runif(60, 0, 4), y = runif(60, 0.1, 0.9),
+                  tank = factor(rep(1:12, 5)),
+                  arm = factor(rep(c("A", "B", "C"), each = 4, times = 5)))
+  bf_by <- brms::bf(
+    y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)),
+    bot ~ 1 + (1 | gr(tank, by = arm)), top ~ 1 + (1 | tank), beta ~ 1,
+    nec ~ 1, nl = TRUE
+  )
+  pr <- brms::prior_string("student_t(3, 0, 0.08)", class = "sd")
+  gi <- bayesnec:::group_inits(bf_by, d, Beta(link = "identity"), pr)
+  sdata <- brms::make_standata(bf_by, d, family = Beta(link = "identity"))
+  by_k <- sub("^Nby_", "", grep("^Nby_", names(sdata), value = TRUE))
+  plain_k <- setdiff(sub("^M_", "", grep("^M_", names(sdata), value = TRUE)),
+                     by_k)
+  expect_length(by_k, 1)
+  expect_equal(dim(gi[[paste0("sd_", by_k)]]), c(1L, 3L))
+  expect_equal(dim(gi[[paste0("z_", by_k)]]), c(1L, 12L))
+  expect_equal(dim(gi[[paste0("sd_", plain_k)]]), 1L)
+})
+
+test_that("a gr() grouping in a bar term is refused with the pgl() route", {
+  d <- data.frame(x = runif(20), y = runif(20, 0.1, 0.9),
+                  tank = factor(rep(1:4, 5)), arm = factor(rep(1:2, 10)))
+  expect_error(
+    bnf(y ~ crf(x, "nec3param") + (nec | gr(tank, by = arm))) |>
+      check_formula(d),
+    "pgl\\(gr\\(plate, by = toxicant\\)\\)"
+  )
+  expect_no_error(
+    bnf(y ~ crf(x, "nec3param") + pgl(gr(tank, by = arm))) |>
+      check_formula(d)
+  )
+})
+
 test_that("sd_prior_scales reads the scale out of a generated prior", {
   pr <- brms::prior_string("student_t(3, 0, 0.0979)", class = "sd",
                            nlpar = "ogl") +

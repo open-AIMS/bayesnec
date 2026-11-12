@@ -42,6 +42,21 @@ model-averaging within each level, and returns a
 available from the per-level weights alone.
 }
 \details{
+\bold{Reading and pooling levels}
+
+\code{\link{ecx}}, \code{\link{nsec}}, \code{\link{nec}} and
+\code{\link{ecnsec}} return one row per fitted level by default. With
+\code{posterior = TRUE} and \code{pool = "none"}, they return a named list
+of per-level draws. \code{pool = "mixture"} combines levels in proportion
+to their observation counts; \code{"mean_estimate"} averages their
+estimates and \code{"mean_curve"} reads the estimate from their weighted
+mean curves. A NEC parameter has no curve to average, so \code{nec()} does
+not accept \code{"mean_curve"}. Each level uses the control recorded at
+fitting, or its own lowest observed concentration if none was stated.
+\code{x_control = "shared"} or a
+number reads all levels at one concentration and warns where this lies
+below a level's observations.
+
 \bold{Why the levels can be fitted separately}
 
 Factor levels partition the data disjointly and share no parameters, so the
@@ -96,10 +111,8 @@ sequence explicitly.
 No argument turns this on or off: the plan already holds that state, as it
 does for \code{\link{bnec}}.
 
-The worked treatment --- why the inner worker count needs \code{I()}, what a
-parallel grouped call does to compilation and to memory, and the warning a
-nested plan emits --- is in \code{vignette("example2")} under \emph{The
-levels of a grouped call}.
+A worked example, including the nested plan that drives both loops, is in
+\code{vignette("example8")} under \emph{Fitting the levels in parallel}.
 
 \bold{What a plan does and does not reproduce}
 

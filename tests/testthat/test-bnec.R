@@ -11,6 +11,24 @@ test_that("user-supplied `prior` is not captured by partial matching to `prior_t
                "argument \"data\" is missing")
 })
 
+test_that("bnec refuses malformed priors before fitting a model set", {
+  good <- brms::prior_string("beta(5, 1)", nlpar = "top")
+  inputs <- list("beta(5, 1)", data.frame(top = 1),
+                 list(nec3param = good, nec4param = 1))
+  for (prior in inputs) {
+    msg <- tryCatch(
+      bnec(y ~ crf(x, model = c("nec3param", "nec4param")),
+           data = nec_data, prior = prior),
+      error = conditionMessage
+    )
+    expect_match(msg, "Argument `prior` must be")
+    expect_false(grepl("None of the models fit successfully", msg))
+  }
+  expect_error(bnec(y ~ crf(x, model = "nec3param"), data = nec_data,
+                    prior = list(nec3param = 1)),
+               "element `nec3param` of class numeric")
+})
+
 test_that("predictor_scale is an explicit bnec argument (#317)", {
   expect_true("predictor_scale" %in% names(formals(bnec)))
   expect_error(
@@ -409,7 +427,8 @@ test_that("a set holding ecxflat mixes its NSEC draws into the N(S)EC (#419)", {
       invokeRestart("muffleMessage")
     }
   )
-  expect_true(any(grepl("contains smooth (ecx) models", msgs, fixed = TRUE)))
+  expect_true(any(grepl("combines sampled NEC and curve-read NSEC",
+                        msgs, fixed = TRUE)))
   expect_identical(summary(fit, check_fit = FALSE)$ecx_mods, "ecxflat")
   # Its segment of the model-averaged ECx is censored above in every draw, so
   # the share censored is at least its share of the draws.

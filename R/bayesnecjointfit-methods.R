@@ -18,11 +18,11 @@ joint_level_fit <- function(object, level) {
               model = model, group_var = object$group_var,
               level = level, levels = object$levels,
               level_spec = object$level_spec, retained_data = NULL,
-              level_x = joint_level_x(object, level))
+              level_x = joint_level_x(object, level),
+              x_control = recorded_x_control(object))
   out <- allot_class(out, c("bayesnecjointlevel", "bayesnecfit", "bnecfit"))
-  # A NULL ne_posterior is the record that this level has no nec parameter.
-  # Decide per level: a composed refit can mix threshold and smooth equations.
-  if (joint_level_is_threshold(object, level)) {
+  # Keep the sampled breakpoint only where it is also the no-effect estimate.
+  if (sampled_nec_is_no_effect(model)) {
     out$ne_posterior <- joint_level_draws(object, "nec", level)
     out$ne_type <- "NEC"
   } else {
@@ -232,7 +232,8 @@ bnec_newdata.bayesnecjointfit <- function(x, resolution = 100, x_range = NA) {
   check_args_newdata(resolution, x_range)
   prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
                   resolution = resolution,
-                  level_spec = joint_level_spec(x))$newdata
+                  level_spec = joint_level_spec(x),
+                  x_control = recorded_x_control(x))$newdata
 }
 
 #' @noRd
@@ -243,11 +244,12 @@ bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
   check_args_newdata(resolution, x_range)
   # Default to the level's own range, as bnec_group() gives each level.
   if (all(is.na(x_range)) && length(x$level_x)) {
-    x_range <- range(x$level_x)
+    x_range <- c(control_x(x), max(x$level_x))
   }
   prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
                   resolution = resolution,
-                  level_spec = joint_level_spec(x))$newdata
+                  level_spec = joint_level_spec(x),
+                  x_control = recorded_x_control(x))$newdata
 }
 
 #' Per-level toxicity estimates from a bayesnecjointfit
@@ -265,25 +267,60 @@ bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
 #' \code{\link[base]{list}} under \code{posterior = TRUE}.
 #'
 #' @noRd
-joint_estimate_table <- function(object, what, fun, ...) {
-  est <- lapply(object$levels, function(lev) {
-    fun(joint_level_fit(object, lev), ...)
+joint_estimate_table <- function(object, what, fun, ..., pool = "none",
+                                  nsec = NULL) {
+  if (is.null(pool)) pool <- "none"
+  pool <- validate_pool(pool, what)
+  fits <- lapply(object$levels, function(lev) joint_level_fit(object, lev))
+  names(fits) <- object$levels
+  dots <- shared_level_control(fits, list(...))
+  posterior <- isTRUE(dots$posterior)
+  finish <- if (identical(what, "nec")) identity else function(x) {
+    record_level_controls(x, level_control_values(fits, dots$x_control))
+  }
+  if (identical(pool, "mean_curve")) {
+    if (identical(what, "ecnsec")) dots$nsec <- nsec
+    return(finish(mean_curve_estimate(fits, as.numeric(table(factor(
+      joint_row_levels(object), levels = object$levels))), what, dots)))
+  }
+  if (!identical(pool, "none")) dots$posterior <- TRUE
+  est <- lapply(fits, function(f) {
+    do.call(fun, c(list(f), dots))
   })
   names(est) <- object$levels
-  if (isTRUE(list(...)$posterior)) {
-    return(est)
+  if (!identical(pool, "none")) {
+    weights <- as.numeric(table(factor(joint_row_levels(object),
+                                       levels = object$levels)))
+    pooled <- pool_estimate_draws(est, weights, pool)
+    if (posterior) return(finish(pooled))
+    probs <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else
+      dots$prob_vals
+    out <- summarise_censored(pooled, probs)
+    names(out) <- clean_names(out)
+    if (identical(what, "nsec") &&
+        !is.null(attr(pooled, "ecnsec_relativeP"))) {
+      attr(out, "ecnsec_relativeP") <- stats::quantile(
+        attr(pooled, "ecnsec_relativeP"), probs = probs, na.rm = TRUE
+      )
+    }
+    return(finish(out))
   }
-  estimate_table(est, object$levels, what)
+  if (posterior) {
+    return(finish(est))
+  }
+  finish(estimate_table(est, object$levels, what))
 }
 
 #' The no-effect estimate at every level of a composed joint refit
 #'
 #' Each level fits one equation, so its estimate is a NEC or an NSEC, never a
 #' mixture. Under \code{no_effect = FALSE} a level without a \code{nec}
-#' parameter returns \code{NA}; under \code{no_effect = TRUE} it returns
-#' \code{\link{nsec}} on that level. Do not use \code{expand_nec()}'s
-#' \code{nsec_off_curve()} here: it reads the control at the first grid column,
-#' so its answer would differ from \code{nsec()}.
+#' parameter returns \code{NA}, while a hormesis threshold equation returns
+#' its curve-read NSEC. Under \code{no_effect = TRUE}, a smooth equation also
+#' returns \code{\link{nsec}} on that level. Do not use \code{expand_nec()}'s
+#' \code{nsec_off_curve()} here: it reads the control at the lowest
+#' concentration of every level together, and \code{nsec()} at the level's own
+#' control concentration.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param no_effect A \code{\link[base]{logical}} value, see
@@ -297,7 +334,9 @@ joint_estimate_table <- function(object, what, fun, ...) {
 #' @importFrom stats quantile setNames
 #'
 #' @noRd
-joint_ne_table <- function(object, no_effect, ...) {
+joint_ne_table <- function(object, no_effect, ..., pool = "none") {
+  if (is.null(pool)) pool <- "none"
+  pool <- validate_pool(pool, "nec")
   dots <- list(...)
   prob_vals <- if (is.null(dots$prob_vals)) {
     c(0.5, 0.025, 0.975)
@@ -313,13 +352,16 @@ joint_ne_table <- function(object, no_effect, ...) {
          " in that order.", call. = FALSE)
   }
   posterior <- isTRUE(dots$posterior)
+  if (!identical(pool, "none")) dots$posterior <- TRUE
   levels <- object$levels
   models <- vapply(levels, joint_level_model, character(1), object = object,
                    USE.NAMES = FALSE)
   threshold <- vapply(levels, joint_level_is_threshold, logical(1),
                       object = object, USE.NAMES = FALSE)
+  sampled <- vapply(models, sampled_nec_is_no_effect, logical(1))
   ne_type <- rep(NA_character_, length(levels))
-  ne_type[threshold] <- "NEC"
+  ne_type[sampled] <- "NEC"
+  ne_type[threshold & !sampled] <- "NSEC"
   if (no_effect) {
     ne_type[!threshold] <- "NSEC"
   }
@@ -327,17 +369,30 @@ joint_ne_table <- function(object, no_effect, ...) {
   names(na_row) <- clean_names(na_row)
   est <- lapply(seq_along(levels), function(i) {
     lvl_fit <- joint_level_fit(object, levels[i])
-    if (threshold[i]) {
-      return(nec(lvl_fit, ...))
+    if (sampled[i]) {
+      return(do.call(nec, c(list(lvl_fit), dots)))
     }
-    if (no_effect) {
-      return(nsec(lvl_fit, ...))
+    if (threshold[i] || no_effect) {
+      return(do.call(nsec, c(list(lvl_fit), dots)))
     }
     # NA per draw, not NULL or zeros: a zero-length element drops out of a
     # vapply(), and zeros would read as an estimate at the origin.
     if (posterior) rep(NA_real_, ndraws(object$fit)) else na_row
   })
   names(est) <- levels
+  if (!identical(pool, "none")) {
+    if (any(!threshold) && !no_effect) {
+      stop("Pooling NEC values needs `no_effect = TRUE` when a level fits",
+           " a smooth equation.", call. = FALSE)
+    }
+    weights <- as.numeric(table(factor(joint_row_levels(object),
+                                       levels = levels)))
+    pooled <- pool_estimate_draws(est, weights, pool)
+    if (posterior) return(pooled)
+    out <- summarise_censored(pooled, prob_vals)
+    names(out) <- clean_names(out)
+    return(out)
+  }
   if (any(!threshold) && !no_effect) {
     # Worded to read the same for one level or for every level.
     message("No NEC is defined at ",
@@ -345,9 +400,9 @@ joint_ne_table <- function(object, no_effect, ...) {
                    collapse = ", "),
             ", where the equation fitted has no nec parameter, so those ",
             "estimates are NA. nec(x, no_effect = TRUE) returns the no-effect ",
-            "estimate each level's own equation does support -- the nec ",
-            "parameter for a threshold equation, the NSEC of the fitted curve ",
-            "for a smooth one -- labelled by type.")
+            "estimate each level's equation supports -- a sampled NEC for a ",
+            "monotone threshold equation, or the NSEC of a hormesis threshold ",
+            "or smooth curve -- labelled by type.")
   }
   if (posterior) {
     attr(est, "model") <- setNames(models, levels)
@@ -396,7 +451,7 @@ ecnsec.bayesnecjointfit <- function(object, nsec, ...) {
       names(out) <- clean_names(out)
     }
     out
-  }, ...)
+  }, ..., nsec = nsec)
 }
 
 #' The fitted curve at one level of a joint refit
@@ -416,11 +471,30 @@ ecnsec.bayesnecjointfit <- function(object, nsec, ...) {
 #' @importFrom stats fitted
 #' @noRd
 joint_level_curve <- function(object, level, resolution = 1000,
-                              x_range = NA) {
+                              x_range = NA,
+                              x_scale = c("recorded", "fitted")) {
   lvl_fit <- joint_level_fit(object, level)
+  if (is.na(x_range[1]) && length(lvl_fit$level_x)) {
+    x_range <- c(control_x(lvl_fit), max(lvl_fit$level_x))
+  }
   grid <- prediction_grid(object$fit, object$bayesnecformula,
                           x_range = x_range, resolution = resolution,
-                          level_spec = joint_level_spec(object, level))
+                          level_spec = joint_level_spec(object, level),
+                          x_control = recorded_x_control(object))
+  if (match.arg(x_scale) == "fitted") {
+    fitted_x <- as.numeric(sub_x_transformation(grid$x_seq,
+                                                object$bayesnecformula))
+    if (any(!is.finite(fitted_x)) ||
+        !(all(diff(fitted_x) > 0) || all(diff(fitted_x) < 0))) {
+      stop("The fitted predictor axis must be finite and strictly monotone.",
+           call. = FALSE)
+    }
+    x_seq <- seq(min(fitted_x), max(fitted_x), length.out = resolution)
+    inverse <- recorded_x_map(object$bayesnecformula, grid$x_seq,
+                              inline_x_transform(object))
+    grid$newdata[[grid$x_var]] <- as.numeric(inverse(x_seq))
+    grid$x_seq <- x_seq
+  }
   y <- fitted(lvl_fit, newdata = grid$newdata, robust = TRUE,
               re_formula = NA, scale = "response")
   data.frame(x = grid$x_seq, Estimate = y[, "Estimate"],
@@ -444,10 +518,18 @@ joint_level_curve <- function(object, level, resolution = 1000,
 #' @noRd
 joint_level_ne <- function(object, level, xform = identity) {
   lvl_fit <- joint_level_fit(object, level)
+  if (!is.null(observed_level_spec(lvl_fit)) &&
+      sampled_nec_is_no_effect(lvl_fit$model)) {
+    out <- suppressWarnings(suppressMessages(nec(lvl_fit, xform = xform)))
+    vals <- as.numeric(out)
+    names(vals) <- c("Estimate", "Q2.5", "Q97.5")
+    attr(vals, "censored_summary") <- attr(out, "censored_summary")
+    return(vals)
+  }
   if (!is.null(lvl_fit$ne_posterior)) {
     map <- recorded_xform(lvl_fit, xform)
     return(estimates_summary(map_draws(lvl_fit$ne_posterior, map,
-                                       what = "NEC")))
+                                       what = lvl_fit$ne_type)))
   }
   out <- suppressWarnings(suppressMessages(nsec(lvl_fit, xform = xform)))
   # Keep the censoring record, which as.numeric() drops; without it a censored
@@ -476,10 +558,18 @@ joint_level_ne <- function(object, level, xform = identity) {
 #'
 #' @export
 ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                         xform = NULL, ..., group = NULL) {
+                                         xform = NULL, ..., group = NULL,
+                                         x_scale = c("recorded", "fitted"),
+                                         which = "combined") {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
   check_xform(xform)
+  check_plot_single_curve(which, x)
+  check_plot_dpar(list(...), x)
+  if (add_ecx) {
+    check_plot_relative(list(...), x)
+  }
+  x_scale <- plot_x_scale(x, x_scale, xform)
   panel_group <- is.null(group) || identical(group, x$group_var)
   raw_group <- if (panel_group) NULL else group
   r_all <- prep_raw_data(x$fit, x$bayesnecformula, group = raw_group)
@@ -487,11 +577,11 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data,
                       run_par_checks = TRUE)
   # On the recorded axis with no xform, draw what the estimators return.
-  recorded <- plot_reads_recorded(bdat, xform)
+  recorded <- x_scale == "recorded" && plot_reads_recorded(bdat, xform)
   est_xform <- if (recorded) NULL else identity
   axis_xform <- if (is.null(xform)) identity else xform
   pieces <- lapply(x$levels, function(lev) {
-    curve <- joint_level_curve(x, lev)
+    curve <- joint_level_curve(x, lev, x_scale = x_scale)
     e_df <- data.frame(x_e = c(curve$x, rev(curve$x)),
                        y_e = c(curve$Estimate, rep(NA, nrow(curve))),
                        y_ci = c(curve$Q2.5, rev(curve$Q97.5)),
@@ -501,26 +591,38 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
       e_df$group <- r_df$group[rep(NA_integer_, nrow(e_df))]
     }
     out <- rbind(e_df, r_df)
+    if (x_scale == "fitted") {
+      out$x_r <- as.numeric(sub_x_transformation(out$x_r,
+                                                 x$bayesnecformula))
+    }
     if (!pop_var_is_transformed(bdat, "x_var")) {
       out <- out |>
         mutate(x_e = axis_xform(.data$x_e), x_r = axis_xform(.data$x_r))
     }
     if (add_nec) {
       ne_vals <- joint_level_ne(x, lev, est_xform)
-      if (!recorded) {
+      if (!recorded && x_scale != "fitted") {
         ne_vals <- to_axis_scale(ne_vals, bdat, x$bayesnecformula, curve$x,
                                  axis_xform)
       }
-      out <- bind_nec(out, ne_vals)
+      out <- bind_nec(out, ne_vals, if (x_scale == "fitted") {
+        fitted_axis_labels(ne_vals, x, r_all$x_r)
+      } else {
+        ne_vals
+      })
     }
     if (add_ecx) {
       ecx_vals <- plot_ecx(joint_level_fit(x, lev), x$fit$family$family,
                            list(...), est_xform)
-      if (!recorded) {
+      if (!recorded && x_scale != "fitted") {
         ecx_vals <- to_axis_scale(ecx_vals, bdat, x$bayesnecformula, curve$x,
                                   axis_xform)
       }
-      out <- bind_ecx(out, ecx_vals)
+      out <- bind_ecx(out, ecx_vals, if (x_scale == "fitted") {
+        fitted_axis_labels(ecx_vals, x, r_all$x_r)
+      } else {
+        ecx_vals
+      })
     }
     out$panel <- factor(rep(lev, nrow(out)), levels = x$levels)
     if (panel_group) {
@@ -540,6 +642,9 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
     attr(r_all, "group_fitted")
   }
   attr(out, "panel_var") <- x$group_var
+  if (x_scale == "fitted") {
+    attr(out, "x_axis") <- plot_x_axis(r_all$x_r, x$bayesnecformula)
+  }
   out
 }
 
@@ -555,13 +660,19 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @export
 autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                       xform = NULL, group = NULL,
-                                      group_aes = c("line", "colour")) {
+                                      group_aes = c("line", "colour"),
+                                      point_alpha = 1,
+                                      x_scale = c("recorded", "fitted"),
+                                      xlab = "Predictor", ylab = NULL) {
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
   check_xform(xform)
+  check_point_alpha(point_alpha)
+  x_scale <- plot_x_scale(object, x_scale, xform)
   dat <- ggbnec_data(object, add_nec = nec, add_ecx = ecx,
-                     xform = xform, group = group, ...)
+                     xform = xform, x_scale = x_scale, group = group, ...)
+  x_axis <- attr(dat, "x_axis")
   panel_labs <- paste0(object$group_var, " = ", object$levels)
   names(panel_labs) <- object$levels
   level <- as.character(dat$panel)
@@ -570,7 +681,11 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   # one panel and a smooth one in the next, and the annotation names what was
   # read off that panel's curve.
   lev_tag <- vapply(object$levels, function(l) {
-    if (joint_level_is_threshold(object, l)) "NEC" else "NSEC"
+    if (sampled_nec_is_no_effect(joint_level_model(object, l))) {
+      "NEC"
+    } else {
+      "NSEC"
+    }
   }, character(1))
   dat$tag <- unname(lev_tag[level])
   show_group <- !is.null(group) && !identical(group, object$group_var)
@@ -581,5 +696,7 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   }
   ggbnec(dat, nec = nec, ecx = ecx, group = show_group,
          group_aes = group_aes, group_label = group_label,
-         group_fitted = !identical(attr(dat, "group_fitted"), FALSE))
+         group_fitted = !identical(attr(dat, "group_fitted"), FALSE),
+         point_alpha = point_alpha, x_axis = x_axis, xlab = xlab,
+         ylab = plot_ylab(ylab, object))
 }

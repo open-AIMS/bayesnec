@@ -5,6 +5,8 @@
 #' compares these across a vector of fitted values.
 #'
 #' @inheritParams compare_posterior
+#' @param x A named \code{\link[base]{list}} of
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} objects.
 #' @param make_newdata Should the
 #' user allow the package to create \code{newdata} for predictions?
 #' If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
@@ -23,7 +25,7 @@
 #' 
 #' @seealso \code{\link{bnec}}
 #'
-#' @return A named \code{\link[base]{list}} containing bootstrapped differences
+#' @return A named \code{\link[base]{list}} containing paired differences
 #' in posterior predictions of the \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
 #'
@@ -39,29 +41,22 @@
 #' data(manec_example)
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
-#' compare_fitted(list("nec" = ecx4param, "ecx" = nec4param))
+#' compare_fitted(list("nec4param" = nec4param, "ecx4param" = ecx4param))
 #' }
 #'
 #' @section Reproducibility:
-#' The draws of each posterior are paired by a random permutation, so
-#' \code{prob_diff} and the difference intervals are a Monte Carlo
-#' approximation to the difference of two \bold{independent} posteriors, using
-#' \emph{n} of the \emph{n}^2 available pairs. The permutation is drawn under
+#' The draws of each posterior are put in a random order, a longer posterior
+#' being randomly subsampled to the length of the shortest, and are then paired
+#' by position. \code{prob_diff} and the difference intervals are therefore a
+#' Monte Carlo approximation that uses \emph{n} of the \emph{n}^2 available
+#' pairs. The permutation is drawn under
 #' \code{seed}, so two calls on the same fits return the same comparison and a
 #' \code{\link[base]{set.seed}} in the session has no effect on it. A different
 #' \code{seed} gives another realisation of the same approximation;
 #' where the approximation matters, compare a few and report the spread. The
 #' caller's random number state is restored afterwards.
 #'
-#' @section The independence assumption:
-#' The pairing is valid only where the posteriors being compared come from
-#' \bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
-#' of each comes from the same sweep of the sampler --- and permuting them
-#' destroys that pairing, which discards the correlation between the levels and
-#' widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
-#' and a real difference is under-detected, which is the wrong direction to err
-#' in. A within-fit contrast needs draw-wise differencing and must not be routed
-#' through this function. See #218 and #33.
+#' @inheritSection compare_estimates What the comparison estimates
 #'
 #' @export
 compare_fitted <- function(x, resolution = 50, x_range = NA,
@@ -96,14 +91,24 @@ compare_fitted <- function(x, resolution = 50, x_range = NA,
       m[sample(seq_len(nrow(m)), n_samples, replace = FALSE), ]
     }, n_samples = n_samples)
   })
+  compare_fitted_draws(posterior_list, r_posterior_list, x_vec)
+}
+
+#' Compare fitted curves after their posterior rows have been paired
+#' @param posterior_list Named posterior matrices.
+#' @param paired_draws Matrices in the order used for each comparison.
+#' @param x_vec The common prediction concentrations.
+#' @return The comparison output of \code{compare_fitted()}.
+#' @noRd
+compare_fitted_draws <- function(posterior_list, paired_draws, x_vec) {
   posterior_data <- posterior_list |>
       lapply(summarise_posterior, x_vec = x_vec) |>
       bind_rows(.id = "model") |>
       data.frame()
-  all_combn <- combn(names(x), 2, simplify = FALSE)
+  all_combn <- combn(names(posterior_list), 2, simplify = FALSE)
   diff_list <- lapply(all_combn, function(a, r_list) {
     r_list[[a[1]]] - r_list[[a[2]]]
-  }, r_list = r_posterior_list)
+  }, r_list = paired_draws)
   names(diff_list) <- sapply(all_combn, function(m) paste0(m[1], "-", m[2]))
   diff_data <- lapply(diff_list, function(m, x_vec) {
    out_diffs <- apply(m, 2, quantile, probs = c(0.5, 0.025, 0.975)) |>

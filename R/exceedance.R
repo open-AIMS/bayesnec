@@ -32,7 +32,7 @@
 #' \code{\link{nec}}, \code{\link{nsec}} or \code{\link{ecx}} reports for the
 #' same object and arguments. For a \code{\link{bayesmanecfit}} that is the
 #' model-averaged posterior, which under \code{"nec"} mixes NEC and NSEC draws
-#' where the model set contains smooth equations. For a
+#' where the model set contains smooth or hormesis threshold equations. For a
 #' \code{\link{bayesnechurdlefit}} it is the combined endpoint unless
 #' \code{which} names a component; under \code{"nec"} that is the combined
 #' no-effect concentration described in \code{\link{nec.bayesnechurdlefit}}.

@@ -8,14 +8,17 @@
 \method{ecnsec}{bayesnechurdlefit}(
   object,
   nsec,
-  resolution = 200,
+  resolution = 500,
   x_range = NA,
   type = "absolute",
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
   posterior = FALSE,
-  which = "combined"
+  which = "combined",
+  pool = NULL,
+  x_control = "own",
+  extrapolate = FALSE
 )
 }
 \arguments{
@@ -27,7 +30,7 @@ percentage effect. A vector is refused, including the three values
 
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is
-the lowest response the curve predicts over the grid. The default of 200
+the lowest response the curve predicts over the grid. The default of 500
 matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
 \item{x_range}{A range of x values over which to predict the curve. An
@@ -50,6 +53,32 @@ return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 
 \item{which}{Which curve to use: \code{"combined"} (the default),
 \code{"growth"} or \code{"survival"}.}
+
+\item{pool}{How observed group levels are combined. \code{"none"} returns
+per-level estimates. \code{"mixture"} gives each posterior draw to one level, in
+proportion to the levels' observation counts, and keeps it at its position,
+so that draw \emph{i} of the mixture comes from posterior iteration
+\emph{i}. Separate fits with different numbers of draws are instead each
+sampled over their full posterior. \code{"mean_estimate"} averages the levels'
+estimates at each draw, and \code{"mean_curve"} estimates from their weighted
+mean curve. A joint fit defaults to \code{"none"}; other fits with spanning group
+terms default to \code{"mixture"}.}
+
+\item{x_control}{\code{"own"} reads each level's control recorded at fitting, or
+its lowest observed concentration for an older fit or one fitted without
+\code{x_control}. \code{"shared"} reads the lowest control across levels;
+a single finite number specifies
+the concentration directly. A control below a level's observations
+extrapolates its curve, and gives a warning unless it is the control
+recorded at fitting. Level controls are recorded in the result's
+\code{x_control} attribute.}
+
+\item{extrapolate}{\code{FALSE}, the default, uses the prediction range.
+A single finite number extends the upper end; two finite numbers may
+extend both ends. The original grid points are retained. Limits are on
+the recorded predictor scale. \code{TRUE} and narrowing limits are refused.
+For \code{type = "range"} the lowest response is taken over the prediction
+range before it is extended.}
 }
 \value{
 A vector of estimates.
@@ -83,4 +112,8 @@ points either side of it. An \code{nsec} outside the range is refused with a
 message naming the range, for the combined, growth and survival curves
 alike and whether or not \code{x_range} is supplied. Supply an
 \code{x_range} that includes \code{nsec} to read the curve there.
+For a group term spanning concentrations, each observed level pairs its
+growth and survival predictions before the percentage is read. A level
+observed at one concentration is excluded. \code{pool} and
+\code{x_control} use the same rules as for a single fit.
 }

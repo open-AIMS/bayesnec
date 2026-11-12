@@ -19,7 +19,8 @@ bnec_joint(object, ...)
   ...,
   prior_type = NULL,
   asymptote_observed = NULL,
-  predictor_scale = NULL
+  predictor_scale = NULL,
+  x_control = NULL
 )
 
 \method{bnec_joint}{bayesnecgroupfit}(
@@ -30,7 +31,8 @@ bnec_joint(object, ...)
   ...,
   prior_type = NULL,
   asymptote_observed = NULL,
-  predictor_scale = NULL
+  predictor_scale = NULL,
+  x_control = NULL
 )
 }
 \arguments{
@@ -61,6 +63,9 @@ argument is overwritten by \code{model} either way.}
 \code{object} was fitted with, and to the \code{\link{bnec}} default where
 \code{object} does not record it, as a fit made by an earlier version of
 \pkg{bayesnec} does not. Each must be named in full.}
+
+\item{x_control}{The control concentration on the recorded predictor scale.
+Defaults to the value recorded by the factorised fit.}
 
 \item{disp_by_level}{A \code{\link[base]{logical}}. Should the family's
 dispersion parameter also take a separate value per level? Defaults to
@@ -106,12 +111,21 @@ The response variable, predictor and data are taken from \code{object}, and
 the family follows the growth component: \code{hurdle_gamma} where that was
 fitted as a Gamma, \code{zero_inflated_beta} where it was a Beta, and the
 corresponding count hurdle where it was Poisson or negative binomial.
+A left-censored survivor in a Gamma growth component is refitted as an
+interval from zero to its recorded bound. This conditions its response on
+known survival, as the factorised fit does. The recorded response stays
+positive in the returned data and in the package's checks and plots.
+The corresponding zero-inflated Beta joint refit is refused, because Stan
+fails to initialise when it evaluates the beta CDF at zero with sampled
+shape parameters. The factorised fit remains available. Supplying a
+\code{formula} without \code{cens()} instead fits those values as exact
+observations at their recorded bounds.
 For either class, the default priors are built with the
 \code{prior_type}, \code{asymptote_observed} and \code{predictor_scale}
 \code{object} was fitted with, unless those arguments are supplied. A grouped
 fit made with \code{asymptote_observed = FALSE} is therefore refitted under
-the same declaration. Nothing else transfers: priors, control arguments and
-the like are defaults again unless passed through \code{...}.
+the same declaration. The recorded control concentration is carried over;
+priors and brms control arguments are defaults again unless supplied.
 
 A \code{disp()} term in the formula held in \code{object} is kept, and in
 the joint model it applies to the dispersion parameter of the positive
@@ -130,9 +144,13 @@ sub-model.
 group-level term such as \code{ogl()} or \code{(nec | site)} pools the
 levels towards a common curve. Neither fits one model in which every level
 has its own curve parameters estimated together, which is what this route
-adds. That posterior supports a contrast between two levels conditional on
-everything they share, which differencing the independent posteriors of a
-\code{\link{bnec_group}} fit cannot.
+adds. Where the levels share a parameter, through a group-level term in
+\code{formula} or through \code{disp_by_level = FALSE}, their posteriors are
+dependent, and a contrast between two levels is taken between their draws
+from the same posterior iteration, as \code{\link{compare_posterior}} takes
+it. Under the defaults the levels share no parameter,
+so their posteriors are independent, as they are in a
+\code{\link{bnec_group}} fit.
 
 Each level is fitted the equation its own model weights favour, which is the
 \code{\link{bayesnecgroupfit}} analogue of what \code{\link{best_crossed}}

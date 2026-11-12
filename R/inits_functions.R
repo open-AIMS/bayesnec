@@ -664,7 +664,8 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
   # round draws only the slots still empty.
   draw <- function(n) {
     do.call(make_inits,
-            c(list(model, fct_args), modifyList(dots, list(chains = n))))
+            c(list(model, fct_args),
+              utils::modifyList(dots, list(chains = n))))
   }
   # Hold a constant equation to the support, not the band:
   # check_init_predictions() requires a declining curve with more than three
@@ -879,7 +880,14 @@ group_inits <- function(brms_bf, data, family, priors, group_spec = NULL) {
   for (k in sort(as.integer(sub("^M_", "", m_names)))) {
     n_terms <- sdata[[paste0("M_", k)]]
     n_levels <- sdata[[paste0("N_", k)]]
-    out[[paste0("sd_", k)]] <- as.array(rep(start_sd, n_terms))
+    # A gr(g, by = h) term declares sd_k as a matrix, one column per level
+    # of h, and a vector of the wrong shape stops every chain at initialisation.
+    n_by <- sdata[[paste0("Nby_", k)]]
+    out[[paste0("sd_", k)]] <- if (is.null(n_by)) {
+      as.array(rep(start_sd, n_terms))
+    } else {
+      matrix(start_sd, nrow = n_terms, ncol = n_by)
+    }
     out[[paste0("z_", k)]] <- matrix(0, nrow = n_terms, ncol = n_levels)
   }
   for (nm in group_zero_intercepts(group_spec, family)) {
@@ -955,13 +963,17 @@ add_level_defaults <- function(brm_args, level_spec, family, response,
                                predictor_scale = "auto",
                                init_supplied = FALSE,
                                prior_supplied = FALSE,
-                               asymptote_observed = TRUE) {
+                               asymptote_observed = TRUE,
+                               x_control = NULL,
+                               x_control_fitted = NULL) {
   n_lev <- length(level_spec$levels)
   if (isTRUE(level_spec$composed)) {
     brm_args <- compose_level_defaults(brm_args, level_spec, family, predictor,
                                        response, prior_type, predictor_scale,
                                        init_supplied, prior_supplied,
-                                       asymptote_observed = asymptote_observed)
+                                       asymptote_observed = asymptote_observed,
+                                       x_control = x_control,
+                                       x_control_fitted = x_control_fitted)
     return(add_level_disp_defaults(brm_args, level_spec, family, response,
                                    n_lev))
   }
@@ -1054,12 +1066,16 @@ add_level_disp_defaults <- function(brm_args, level_spec, family, response,
 compose_level_defaults <- function(brm_args, level_spec, family, predictor,
                                    response, prior_type, predictor_scale,
                                    init_supplied, prior_supplied,
-                                   asymptote_observed = TRUE) {
+                                   asymptote_observed = TRUE,
+                                   x_control = NULL,
+                                   x_control_fitted = NULL) {
   eqs <- unique(unlist(level_spec$models))
   per_eq <- lapply(eqs, function(m) {
     define_prior(m, family, predictor, response, prior_type = prior_type,
                  asymptote_observed = asymptote_observed,
-                 predictor_scale = predictor_scale)
+                 predictor_scale = predictor_scale,
+                 x_control = x_control,
+                 x_control_fitted = x_control_fitted)
   })
   names(per_eq) <- eqs
   if (!prior_supplied) {

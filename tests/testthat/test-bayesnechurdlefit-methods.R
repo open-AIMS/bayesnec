@@ -29,6 +29,14 @@ test_that("combined is the default for every curve method", {
   expect_equal(eval(formals(autoplot.bayesnechurdlefit)$which), "combined")
 })
 
+test_that("the plots of a factorised fit refuse dpar and name which", {
+  # Checked before the fit is read, so the mock reaches the refusal.
+  o <- mock_hurdle()
+  expect_error(autoplot(o, dpar = "mu"), "`which = \"growth\"`",
+               fixed = TRUE)
+  expect_error(ggbnec_data(o, dpar = "hu"), "not `dpar`", fixed = TRUE)
+})
+
 test_that("hurdle_raw_data recovers the response and a transformed predictor", {
   o <- mock_hurdle()
   d <- bayesnec:::hurdle_raw_data(o)
@@ -764,7 +772,7 @@ hurdle_preds_stub <- function(control_at, curve_at_grid_start) {
   x <- seq(1, 10, length.out = 10)
   g <- matrix(rep(seq(curve_at_grid_start, 0.1, length.out = 10), each = 4),
               nrow = 4)
-  function(object, resolution = 1000, x_range = NA) {
+  function(object, resolution = 1000, x_range = NA, x_control = "own") {
     list(x = x, growth = g, survival = g, combined = g,
          control = list(growth = rep(control_at, 4),
                         survival = rep(control_at, 4),
@@ -1486,8 +1494,6 @@ test_that("the hurdle legend marks a censored no-effect estimate", {
 # The NSEC message on the combined no-effect estimate.
 
 test_that("nec() says when the combined value includes NSEC draws", {
-  # Read each component's ne_type: the toxicity_estimate attribute can say
-  # nec even when the stored values include NSEC draws.
   approx_msgs <- function(expr) {
     msgs <- testthat::capture_messages(suppressWarnings(expr))
     grep("combined value is approximate", msgs, value = TRUE)
@@ -1510,6 +1516,24 @@ test_that("nec() says when the combined value includes NSEC draws", {
   unrecorded <- nec4param
   unrecorded$ne_type <- NULL
   expect_length(approx_msgs(nec(hurdle_pair(unrecorded, unrecorded))), 0)
+})
+
+test_that("nec() labels a hurdle estimate by the components it reads", {
+  label <- function(pair, ...) {
+    attr(suppressWarnings(suppressMessages(nec(pair, ...))),
+         "toxicity_estimate")
+  }
+  expect_identical(label(hurdle_pair()), "nec")
+  expect_identical(label(hurdle_pair(ecx4param, ecx4param)), "nsec")
+  pair <- hurdle_pair(survival = ecx4param)
+  expect_identical(label(pair), "n(s)ec")
+  expect_identical(label(pair, which = "growth"), "nec")
+  expect_identical(label(pair, which = "survival"), "nsec")
+  expect_identical(label(pair, posterior = TRUE), "n(s)ec")
+  # A component saved before ne_type was recorded is read by its parameters.
+  unrecorded <- nec4param
+  unrecorded$ne_type <- NULL
+  expect_identical(label(hurdle_pair(unrecorded, unrecorded)), "nec")
 })
 
 # Mock brm() and expansion so both component amend() calls complete
@@ -1646,7 +1670,8 @@ test_that("nec() computes only the component which names (#487)", {
   h <- hurdle_pair(survival = manec_example)
   expect_no_message(g <- nec(h, which = "growth"))
   expect_equal(as.numeric(g), as.numeric(nec(nec4param)))
-  expect_message(nec(h, which = "survival"), "weighted mixture of NEC and NSEC")
+  expect_message(nec(h, which = "survival"),
+                 "combines sampled NEC and curve-read NSEC")
 })
 
 # ---- An inline-transformed predictor in the hurdle plots ----------------------
@@ -1681,6 +1706,48 @@ test_that("the hurdle plot data put points and curve on one scale (#487)", {
   expect_equal(d_plain_log$curve$x, log(d_plain$curve$x))
 })
 
+test_that("autoplot draws hurdle observations at the opacity point_alpha sets", {
+  skip_on_cran()
+  obj <- hurdle_pair()
+  point_data <- function(p) {
+    i <- which(vapply(p$layers, function(layer) {
+      inherits(layer$geom, "GeomPoint")
+    }, logical(1)))
+    expect_length(i, 1)
+    out <- ggplot2::layer_data(p, i)
+    expect_gt(nrow(out), 0)
+    out
+  }
+  # The palette colour may already have transparency. adjustcolor multiplies
+  # its opacity, while a separate ggplot alpha would replace it.
+  def <- point_data(autoplot(obj, resolution = 20))
+  expect_identical(unique(def$colour),
+                   grDevices::adjustcolor(1, alpha.f = 0.25))
+  old_palette <- grDevices::palette()
+  on.exit(grDevices::palette(old_palette), add = TRUE)
+  for (first in c("red", "#FF000080", "transparent")) {
+    grDevices::palette(c(first, old_palette[-1]))
+    custom <- point_data(autoplot(obj, resolution = 20))
+    expect_identical(unique(custom$colour),
+                     grDevices::adjustcolor(1, alpha.f = 0.25))
+  }
+  grDevices::palette(old_palette)
+  set <- point_data(autoplot(obj, resolution = 20, point_alpha = 0.6))
+  expect_identical(unique(set$colour),
+                   grDevices::adjustcolor(1, alpha.f = 0.6))
+  all_panels <- point_data(autoplot(obj, which = "all", resolution = 20,
+                                    point_alpha = 1))
+  expect_length(unique(all_panels$PANEL), 3)
+  expect_identical(unique(all_panels$colour),
+                   grDevices::adjustcolor(1, alpha.f = 1))
+  expect_error(autoplot(obj, point_alpha = 1.5),
+               "`point_alpha` must be between 0 and 1, not 1.5.",
+               fixed = TRUE)
+  expect_error(autoplot(obj, point_alpha = NA_real_),
+               "`point_alpha` must be a number (non-missing numeric scalar).",
+               fixed = TRUE)
+})
+
 test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
@@ -1705,6 +1772,102 @@ test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)
   expect_identical(drawn$legend,
                    paste0("N(S)EC: ", signif(line[1], 2), " (",
                           signif(line[2], 2), "-", signif(line[3], 2), ")"))
+})
+
+test_that("hurdle estimate lines ignore xform on an inline-transformed axis", {
+  skip_on_cran()
+  object <- relabelled_pair(
+    bnf(y ~ crf(log(x + 1), model = "nec4param"))
+  )
+  expected <- as.numeric(suppressMessages(nec(object)))
+  base <- hurdle_legend(object, xform = exp, resolution = 30)
+  expect_equal(as.numeric(base$v[[1]]), expected)
+
+  plotted <- autoplot(object, xform = exp, resolution = 30)
+  line <- Filter(function(layer) inherits(layer$geom, "GeomVline"),
+                 plotted$layers)
+  expect_length(line, 1)
+  expect_equal(line[[1]]$data$estimate, expected)
+})
+
+test_that("hurdle annotation marks censored limits as bounds", {
+  skip_on_cran()
+  object <- censored_survival_pair()
+  plotted <- suppressWarnings(autoplot(object, which = "survival",
+                                       resolution = 30))
+  line <- Filter(function(layer) inherits(layer$geom, "GeomVline"),
+                 plotted$layers)
+  label <- Filter(function(layer) inherits(layer$geom, "GeomText"),
+                  plotted$layers)
+  expect_identical(line[[1]]$data$bound[3], ">=")
+  expect_identical(line[[1]]$data$line[3], 3)
+  expect_identical(label[[1]]$data$bound, ">=")
+  expect_s3_class(ggplot2::ggplot_build(plotted), "ggplot_built")
+
+  local_mocked_bindings(
+    ecx = function(...) {
+      value <- c(2, 1, 3)
+      attr(value, "censored_summary") <- list(bound = c("", "", "<="))
+      value
+    },
+    .package = "bayesnec"
+  )
+  ec_plot <- autoplot(object, which = "survival", resolution = 30,
+                      nec = FALSE, ecx = TRUE)
+  ec_line <- Filter(function(layer) inherits(layer$geom, "GeomVline"),
+                    ec_plot$layers)
+  ec_label <- Filter(function(layer) inherits(layer$geom, "GeomText"),
+                     ec_plot$layers)
+  expect_identical(ec_line[[1]]$data$bound[3], "<=")
+  expect_identical(ec_label[[1]]$data$bound, "<=")
+})
+
+test_that("a fitted hurdle axis draws both estimates in every panel", {
+  skip_on_cran()
+  object <- relabelled_pair(
+    bnf(y ~ crf(log(x + 0.001), model = "nec4param"))
+  )
+  dat <- ggbnec_data(object, which = "all", resolution = 30,
+                     x_scale = "fitted")
+  expect_equal(dat$raw$x[seq_len(nrow(object$data))],
+               log(object$data$x + 0.001))
+  for (panel in levels(dat$curve$panel)) {
+    curve_x <- dat$curve$x[dat$curve$panel == panel]
+    expect_equal(diff(curve_x), rep(diff(curve_x)[1], length(curve_x) - 1))
+  }
+  expect_true(length(attr(dat, "x_axis")$breaks) > 0)
+
+  local_mocked_bindings(
+    nec = function(object, which, xform, ...) {
+      expect_identical(xform, identity)
+      centre <- match(which, c("combined", "growth", "survival"))
+      c(centre, centre - 0.1, centre + 0.1)
+    },
+    ecx = function(object, which, ecx_val, xform, ...) {
+      expect_identical(xform, identity)
+      expect_equal(ecx_val, 10)
+      centre <- match(which, c("combined", "growth", "survival")) + 0.5
+      c(centre, centre - 0.1, centre + 0.1)
+    },
+    .package = "bayesnec"
+  )
+  p <- autoplot(object, which = "all", resolution = 30,
+                x_scale = "fitted", ecx = TRUE)
+  lines <- Filter(function(layer) inherits(layer$geom, "GeomVline"), p$layers)
+  expect_length(lines, 2)
+  expect_equal(nrow(lines[[1]]$data), 9)
+  expect_equal(nrow(lines[[2]]$data), 9)
+  expect_equal(as.numeric(table(lines[[1]]$data$panel)), c(3, 3, 3))
+
+  abbreviated <- autoplot(object, which = "a", resolution = 30,
+                           x_scale = "fitted", ecx = TRUE)
+  short_lines <- Filter(function(layer) inherits(layer$geom, "GeomVline"),
+                        abbreviated$layers)
+  expect_length(short_lines, 2)
+  expect_identical(as.character(short_lines[[1]]$data$panel),
+                   rep(levels(dat$curve$panel), each = 3))
+  expect_identical(as.character(short_lines[[2]]$data$panel),
+                   rep(levels(dat$curve$panel), each = 3))
 })
 
 test_that("the hurdle plot maps estimates over the stored prediction range", {
@@ -1781,7 +1944,7 @@ test_that("plot() on a hurdle fit prints no message from nec() (#506)", {
     msgs <<- c(msgs, conditionMessage(m))
     invokeRestart("muffleMessage")
   })
-  expect_true(any(grepl("weighted mixture of NEC and NSEC", msgs)))
+  expect_true(any(grepl("combines sampled NEC and curve-read NSEC", msgs)))
   expect_true(any(grepl("the combined value is approximate", msgs)))
   grDevices::pdf(NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
