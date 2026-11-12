@@ -449,15 +449,17 @@ test_that("mean_scale puts bot on the response scale", {
 test_that("a relative ECx under a log link measures towards exp(bot)", {
   skip_on_cran()
   skip_if_not_installed("rstan")
+  # Simulated from nec4param on the log scale, so the fit mixes well.
   set.seed(578)
-  x <- rep(c(0.1, 0.3, 1, 3, 10, 30, 100), each = 10)
-  mu <- 2 + 18 * exp(-0.15 * pmax(x - 2, 0))
-  y <- stats::rgamma(length(x), shape = 30, rate = 30 / mu)
+  x <- rep(c(0.1, 0.5, 1, 2, 4, 8, 16, 32), each = 8)
+  eta <- log(2) + (log(20) - log(2)) * exp(-0.3 * pmax(x - 2, 0))
+  y <- stats::rgamma(length(x), shape = 50, rate = 50 / exp(eta))
   fit <- suppressWarnings(suppressMessages(bnec(
     y ~ crf(x, "nec4param"), data = data.frame(x = x, y = y),
     family = Gamma(link = "log"), chains = 2, iter = 2000, seed = 578,
     refresh = 0
   )))
+  expect_lt(max(brms::rhat(fit$fit), na.rm = TRUE), 1.05)
   bot <- as.numeric(brms::as_draws_df(fit$fit)[["b_bot_Intercept"]])
   expect_equal(bayesnec:::ecx_asymptote(fit, "relative"), exp(bot))
   est <- suppressWarnings(ecx(fit, ecx_val = 50, type = "relative",
