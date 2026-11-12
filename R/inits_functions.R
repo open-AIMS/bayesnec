@@ -256,6 +256,45 @@ outside_prior_bounds <- function(value, prior_row) {
     (length(ub) == 1 && !is.na(ub) && value >= ub)
 }
 
+#' The largest argument an exp() in an initial curve may receive
+#'
+#' \code{exp()} overflows a double above \code{log(.Machine$double.xmax)},
+#' about 709.8, and Stan then cannot evaluate the gradient. The margin below
+#' that keeps a product with \code{exp()} finite as well.
+#' @noRd
+max_exp_argument <- 700
+
+#' Evaluate an initial curve and record the largest exp() argument
+#'
+#' The prediction functions are written as the Stan formulas are, so the
+#' arguments their \code{exp()} calls receive are those Stan evaluates at the
+#' initial values.
+#'
+#' @param init One chain's initial values.
+#' @param x The sorted predictor.
+#' @param pred_fct The prediction function of the equation.
+#' @param fct_args Its argument names, other than \code{x}.
+#'
+#' @return A \code{\link[base]{list}} with \code{preds}, the curve, and
+#' \code{largest}, the largest argument any \code{exp()} call received, or
+#' \code{-Inf} where there was none.
+#' @noRd
+exp_traced_predictions <- function(init, x, pred_fct, fct_args) {
+  largest <- -Inf
+  traced <- pred_fct
+  environment(traced) <- list2env(
+    list(exp = function(z) {
+      # Force z first: it holds the inner exp() calls, which update largest.
+      force(z)
+      largest <<- max(c(largest, z), na.rm = TRUE)
+      base::exp(z)
+    }),
+    parent = environment(pred_fct)
+  )
+  preds <- get_init_predictions(init, x, traced, fct_args)
+  list(preds = preds, largest = largest)
+}
+
 #' refine_inits
 #'
 #' For a single chain's init list that fails prediction checks, attempt to
@@ -727,7 +766,13 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
   support <- init_support(family)
   passes <- function(inits) {
     vapply(inits, function(init) {
-      preds <- get_init_predictions(init, x_sorted, pred_fct, fct_args)
+      evaluated <- exp_traced_predictions(init, x_sorted, pred_fct, fct_args)
+      # Stan cannot start where an exp() in the curve overflows: R returns a
+      # finite curve, but the gradient is Inf / Inf.
+      if (evaluated$largest >= max_exp_argument) {
+        return(FALSE)
+      }
+      preds <- evaluated$preds
       if (constant) {
         all(is.finite(preds)) && min(preds) > support[1] &&
           max(preds) < support[2]

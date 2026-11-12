@@ -1789,3 +1789,51 @@ test_that("add_brm_defaults passes the declaration to the search (#394)", {
     expect_identical(seen$declared, declared)
   }
 })
+
+# An exp() that overflows leaves the curve finite in R but the gradient
+# infinite in Stan, so the chain cannot start.
+
+test_that("the largest exp() argument of an initial curve is recorded", {
+  # Chain 4 of the seed-17 search on nec_data, which Stan could not start.
+  x <- sort(nec_data$x)
+  init <- list(b_beta = 6.723, b_top = 0.7253, b_bot = 0.4850,
+               b_ec50 = 1.1451)
+  for (m in c("ecx4param", "ecxwb1")) {
+    out <- bayesnec:::exp_traced_predictions(
+      init, x, get(paste0("pred_", m), asNamespace("bayesnec")), names(init)
+    )
+    expect_true(all(is.finite(out$preds)))
+    expect_gt(out$largest, 700)
+  }
+  out <- bayesnec:::exp_traced_predictions(
+    list(b_top = 1, b_bot = 0, b_beta = 0, b_nec = 1), x,
+    bayesnec:::pred_nec4param, c("b_top", "b_bot", "b_beta", "b_nec")
+  )
+  expect_lt(out$largest, 1)
+})
+
+test_that("the seed-17 search on nec_data gives initial values Stan can start", {
+  skip_on_cran()
+  inits <- list()
+  local_mocked_bindings(brm = function(...) {
+    inits[[length(inits) + 1]] <<- list(...)$init
+    stop("no sampling in this test")
+  })
+  try(suppressWarnings(suppressMessages(bnec(
+    y ~ crf(x, model = c("ecx4param", "ecxwb1")), data = nec_data,
+    seed = 17, chains = 4
+  ))), silent = TRUE)
+  expect_length(inits, 2)
+  x <- sort(nec_data$x)
+  for (k in seq_along(inits)) {
+    f <- get(paste0("pred_", c("ecx4param", "ecxwb1")[k]),
+             asNamespace("bayesnec"))
+    expect_length(inits[[k]], 4)
+    for (init in inits[[k]]) {
+      out <- bayesnec:::exp_traced_predictions(
+        init, x, f, setdiff(names(formals(f)), "x")
+      )
+      expect_lt(out$largest, 700)
+    }
+  }
+})
