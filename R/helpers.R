@@ -1991,7 +1991,12 @@ retain_shared_data <- function(object, fits) {
 #' @noRd
 #' @importFrom chk chk_numeric
 check_args_newdata <- function(resolution, x_range) {
-  chk_numeric(resolution)
+  if (!is.numeric(resolution) || length(resolution) != 1 ||
+      !is.finite(resolution) || resolution < 1 ||
+      resolution != round(resolution)) {
+    stop("Argument `resolution` must be a single whole number of at least 1,",
+         " the number of predictor values in the grid.", call. = FALSE)
+  }
   # The documented "not supplied" value, and the only NA accepted.
   if (length(x_range) == 1 && is.na(x_range)) {
     return(invisible(NULL))
@@ -2435,6 +2440,12 @@ check_resolution <- function(resolution) {
   if (resolution < 2) {
     stop("Argument `resolution` must be at least 2; a single grid point ",
          "defines no interval to read an estimate from.", call. = FALSE)
+  }
+  # check_args_newdata() refuses a fraction, and bnec() reaches it only after
+  # every model has been fitted.
+  if (resolution != round(resolution)) {
+    stop("Argument `resolution` must be a whole number, the number of grid ",
+         "points.", call. = FALSE)
   }
   invisible(NULL)
 }
