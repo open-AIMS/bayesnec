@@ -793,8 +793,9 @@ R.version.string
 
 `herbicide` was built from the data of @jones2003 by `data-raw/herbicide_data.R`,
 and `coral_colour` and `coral_pam` from the records behind @flores2021 by
-`data-raw/coral_diuron.R`. The source records for the coral data are not
-distributed with the package, although the scripts are, and the manual pages
-state what was derived and how.
+`data-raw/coral_diuron.R`. The scripts are in the `data-raw` folder of the package's GitHub repository
+(`open-AIMS/bayesnec`) and are not part of the installed package; the source
+records for the coral data are not distributed, and the manual pages state
+what was derived and how.
 
 # References
