@@ -82,3 +82,9 @@ test_that("pull_out() says which loo_controls elements it ignores", {
 test_that("pull_out() refuses a sig_val outside (0, 1) before rebuilding", {
   expect_error(pull_out(manec_example, "ecx4param", sig_val = 2), "sig_val")
 })
+
+test_that("pull_out refuses a joint refit", {
+  expect_error(pull_out(joint_split(), model = "nec4param"),
+               "pull_out() is not defined for a bayesnecjointfit",
+               fixed = TRUE)
+})

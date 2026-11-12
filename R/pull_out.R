@@ -62,6 +62,12 @@ pull_out <- function(manec, model, loo_controls, x_range = NULL,
          },
          ". See ?pull_out for the arguments it accepts.", call. = FALSE)
   }
+  if (inherits(manec, "bayesnecjointfit")) {
+    refuse_joint_method(manec, "pull_out()", paste(
+      "Choose the equation before the refit, with the model argument of",
+      "bnec_joint()."
+    ))
+  }
   check_expand_args(x_range, resolution, sig_val)
   # Not an S3 generic, so a hurdle fit has to be handled here; registering a
   # pull_out.bayesnechurdlefit method would be inert. Reduces both components
