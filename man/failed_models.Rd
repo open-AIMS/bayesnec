@@ -8,8 +8,9 @@ failed_models(object, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}},
-\code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}} as returned by
-\code{\link{bnec}}.}
+\code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
+\code{\link{bayesnecgroupfit}}, as returned by \code{\link{bnec}},
+\code{\link{bnec_hurdle}} or \code{\link{bnec_group}}.}
 
 \item{...}{Unused.}
 }
@@ -17,7 +18,9 @@ failed_models(object, ...)
 An object of class \code{bnecfailures}: a named
 \code{\link[base]{list}}, empty if every model fitted. For a
 \code{\link{bayesnechurdlefit}}, a \code{\link[base]{list}} of two such
-objects, one per component.
+objects, one per component. For a \code{\link{bayesnecgroupfit}}, a
+\code{\link[base]{list}} of such objects named by level, since each level
+is fitted by its own call to \code{\link{bnec}}.
 }
 \description{
 Returns the models that \code{\link{bnec}} or \code{\link{amend}} attempted
@@ -25,12 +28,11 @@ and could not fit, together with the priors and initial values that were
 used in the attempt.
 }
 \details{
-A model set fitted with \code{model = "all"} regularly loses a
-model or two, and the error scrolls past in the middle of a long run. What is
-needed to diagnose one is the prior and the starting values it was given, and
-both are constructed inside \code{\link{bnec}} rather than supplied by the
-user, so re-running the set was previously the only way to see them. They are
-now kept on the returned object.
+A model set fitted with many equations can lose one or two, and the
+error scrolls past in the middle of a long run. Diagnosing a failure needs
+the prior and the starting values the model was given, which
+\code{\link{bnec}} constructs rather than the user, so both are kept on the
+returned object.
 
 Each element is named for the model and holds \code{model}, the error
 \code{message}, the \code{prior} (an object of class
@@ -52,13 +54,14 @@ a model that failed before may have been dropped now, or is being retried
 there with different priors.
 
 A returned prior is directly usable, so the usual next step is to fit the
-failed model on its own with an adjusted version of it:
+failed model on its own with an adjusted version of it, naming the equation
+in \code{crf()}:
 
 \preformatted{
 f <- failed_models(fit)$nechormepwr
 f$message
 f$prior
-bnec(formula, data = data, model = "nechormepwr", prior = f$prior)
+bnec(y ~ crf(x, "nechormepwr"), data = data, prior = f$prior)
 }
 }
 \examples{
