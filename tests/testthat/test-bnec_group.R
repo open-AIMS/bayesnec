@@ -1007,7 +1007,8 @@ test_that("amend() names the level that cannot be amended", {
 })
 
 test_that("messages from the estimators and summary name their level", {
-  gf <- fake_group_fit()
+  # summary() reports only on an unconverged set, so the levels need one.
+  gf <- fake_group_fit(list(a = unconverged_manec(), b = unconverged_manec()))
   capture <- function(expr) {
     msgs <- character(0)
     withCallingHandlers(suppressWarnings(expr), message = function(m) {
