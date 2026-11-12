@@ -238,22 +238,25 @@ count_redraw <- function(n_redraws, max_redraws, model, prior_row) {
   n_redraws + 1
 }
 
-#' Whether a draw lies outside the bounds of its prior
+#' A test of whether a draw lies outside the bounds of one prior
 #'
-#' @param value A \code{\link[base]{numeric}} value.
 #' @param prior_row The one-row \code{\link[base]{data.frame}} of the prior.
 #'
 #' @details The bounds are exclusive, as in \code{make_inits()}. A blank or
-#' missing bound is absent.
+#' missing bound is absent. The bounds are read once, when the test is built.
 #'
-#' @return A \code{\link[base]{logical}} value.
+#' @return A function of one \code{\link[base]{numeric}} value that returns
+#' \code{TRUE} where the value lies outside the bounds.
 #'
 #' @noRd
-outside_prior_bounds <- function(value, prior_row) {
+prior_bounds_test <- function(prior_row) {
   lb <- suppressWarnings(as.numeric(prior_row$lb))
   ub <- suppressWarnings(as.numeric(prior_row$ub))
-  (length(lb) == 1 && !is.na(lb) && value <= lb) ||
-    (length(ub) == 1 && !is.na(ub) && value >= ub)
+  has_lb <- length(lb) == 1 && !is.na(lb)
+  has_ub <- length(ub) == 1 && !is.na(ub)
+  function(value) {
+    (has_lb && value <= lb) || (has_ub && value >= ub)
+  }
 }
 
 #' The largest argument an exp() in an initial curve may receive
@@ -353,11 +356,14 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
     fct_i <- prior_sampler(bits[1])
     v1 <- as.numeric(bits[2])
     v2 <- as.numeric(bits[3])
+    # Read the bounds once: indexing the data frame for every candidate is
+    # most of the search's time.
+    outside <- prior_bounds_test(priors[pr_row, ])
     for (k in seq_len(n_sub)) {
       candidate <- init
       new_val <- fct_i(1, v1, v2)
       # Stan refuses an initial value outside the prior's bounds.
-      if (outside_prior_bounds(new_val, priors[pr_row, ])) next
+      if (outside(new_val)) next
       if (priors$class[pr_row] == "b") {
         dim(new_val) <- 1
       }
