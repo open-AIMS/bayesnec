@@ -71,14 +71,15 @@ best_crossed <- function(object) {
 #' levels.
 #' @param model_survival An optional \code{\link[base]{character}} string naming
 #' the equation for the survival block. Defaults to the highest-weighted
-#' survival model in \code{object}. Hurdle fits only.
+#' survival model in \code{object}. Hurdle fits only; refused for a grouped
+#' fit.
 #' @param formula An optional \code{\link{bayesnecformula}} to fit instead of
 #' the one held in \code{object}. Supply this to add structure the factorised
 #' fit cannot carry, for example a group-level term. The \code{crf} model
 #' argument is overwritten by \code{model} either way.
 #' @param disp_by_level A \code{\link[base]{logical}}. Should the family's
 #' dispersion parameter also take a separate value per level? Defaults to
-#' \code{TRUE}. Grouped fits only.
+#' \code{TRUE}. Grouped fits only; refused for a hurdle fit.
 #' @param prior_type,asymptote_observed,predictor_scale The arguments of
 #' \code{\link{bnec}} that build the default priors. Each defaults to the value
 #' \code{object} was fitted with, and to the \code{\link{bnec}} default where
@@ -248,6 +249,8 @@ bnec_joint.bayesnechurdlefit <- function(object, model = NULL,
                                          asymptote_observed = NULL,
                                          predictor_scale = NULL,
                                          x_control = NULL) {
+  refuse_joint_arg(list(...), "disp_by_level", "bayesnecgroupfit",
+                   "bayesnechurdlefit")
   # These follow `...` so that `prior` passed for brm() is not matched to
   # `prior_type` by partial matching.
   prior_args <- recorded_prior_args(object$growth, prior_type,
@@ -339,6 +342,8 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
                                         predictor_scale = NULL,
                                         x_control = NULL) {
   chk_logical(disp_by_level)
+  refuse_joint_arg(list(...), "model_survival", "bayesnechurdlefit",
+                   "bayesnecgroupfit")
   # Every level is fitted by the same call, so the first records them all.
   prior_args <- recorded_prior_args(object$fits[[1]], prior_type,
                                     asymptote_observed, predictor_scale)
@@ -513,6 +518,27 @@ bnec_joint.bayesnecgroupfit <- function(object, model = NULL, formula = NULL,
               model_weight_share = share)
   attr(out, "bnec_version") <- joint_version_table(out, version_record())
   allot_class(out, c("bayesnecjointfit", "bnecfit"))
+}
+
+#' Refuse an argument of the other bnec_joint() method
+#'
+#' Each method passes \code{...} to \code{\link[brms]{brm}}, which fails on
+#' an argument it does not take only after sampling.
+#'
+#' @param dots The \code{...} of the calling method, as a list.
+#' @param arg The argument name to refuse.
+#' @param owner The class whose method takes \code{arg}.
+#' @param this The class of the object supplied.
+#'
+#' @return Invisibly \code{TRUE}, or an error.
+#'
+#' @noRd
+refuse_joint_arg <- function(dots, arg, owner, this) {
+  if (arg %in% names(dots)) {
+    stop("`", arg, "` applies to bnec_joint() on a ", owner, ", and this is",
+         " a ", this, ". Remove it.", call. = FALSE)
+  }
+  invisible(TRUE)
 }
 
 #' The equation each level of a grouped fit favours

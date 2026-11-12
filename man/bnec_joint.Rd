@@ -51,7 +51,8 @@ levels.}
 
 \item{model_survival}{An optional \code{\link[base]{character}} string naming
 the equation for the survival block. Defaults to the highest-weighted
-survival model in \code{object}. Hurdle fits only.}
+survival model in \code{object}. Hurdle fits only; refused for a grouped
+fit.}
 
 \item{formula}{An optional \code{\link{bayesnecformula}} to fit instead of
 the one held in \code{object}. Supply this to add structure the factorised
@@ -69,7 +70,7 @@ Defaults to the value recorded by the factorised fit.}
 
 \item{disp_by_level}{A \code{\link[base]{logical}}. Should the family's
 dispersion parameter also take a separate value per level? Defaults to
-\code{TRUE}. Grouped fits only.}
+\code{TRUE}. Grouped fits only; refused for a hurdle fit.}
 }
 \value{
 For a \code{\link{bayesnechurdlefit}}, an object of class

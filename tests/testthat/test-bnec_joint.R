@@ -475,6 +475,28 @@ test_that("a hurdle joint refit builds its priors as the hurdle fit did (#516)",
   expect_identical(seen$dots$prior_type, "regularizing")
 })
 
+test_that("each bnec_joint() method refuses the other's argument", {
+  # Passed on to brm(), either argument fails only after sampling.
+  o <- mock_disp_crossed(y ~ crf(x, c("nec3param", "ecx4param")), "Gamma")
+  captured <- capture_joint_call()
+  expect_error(bnec_joint(o, disp_by_level = FALSE),
+               paste0("`disp_by_level` applies to bnec_joint() on a",
+                      " bayesnecgroupfit, and this is a bayesnechurdlefit."),
+               fixed = TRUE)
+  expect_null(captured$formula)
+  suppressMessages(bnec_joint(o))
+  expect_false(is.null(captured$formula))
+  g <- spread_group_fit()
+  g$data$y <- c(0.9, 0.8, 0.5, 0.3)
+  reached <- capture_joint_fit()
+  expect_error(bnec_joint(g, model_survival = "nec3param"),
+               paste0("`model_survival` applies to bnec_joint() on a",
+                      " bayesnechurdlefit, and this is a bayesnecgroupfit."),
+               fixed = TRUE)
+  expect_null(reached$brm_args)
+  expect_error(suppressMessages(bnec_joint(g)), "fit reached")
+})
+
 test_that("fit_bayesnec() records the arguments that build the priors (#516)", {
   local_mocked_bindings(
     brm = function(...) structure(list(), class = "brmsfit"),
