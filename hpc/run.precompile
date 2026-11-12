@@ -230,6 +230,7 @@ singularity exec -B "$JOB":"$JOB" -B "$CACHE":"$CACHE" "${STORE_BIND[@]}" \
   --env BAYESNEC_FIT_STORE="${BAYESNEC_FIT_STORE:-}" \
   --env SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-4}" \
   --env BAYESNEC_VIGNETTE_WORKERS="${BAYESNEC_VIGNETTE_WORKERS:-}" \
+  --env BAYESNEC_QUANTISE_FIGURES="${BAYESNEC_QUANTISE_FIGURES:-}" \
   "$SIF" Rscript vignettes/precompile.R
 
 # Only reached when precompile.R exited zero, which it does not do when a chunk

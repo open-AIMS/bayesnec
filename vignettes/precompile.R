@@ -314,11 +314,13 @@ if (length(changed)) {
   # The package is built from these PNGs and embeds each one again in its html,
   # so palette quantisation here is what keeps the built package small.
   # magick is a maintainer dependency only; it is not in DESCRIPTION.
-  if (!requireNamespace("magick", quietly = TRUE)) {
+  # BAYESNEC_QUANTISE_FIGURES=false skips this; quantise the PNGs before release.
+  quantise <- !identical(Sys.getenv("BAYESNEC_QUANTISE_FIGURES"), "false")
+  if (quantise && !requireNamespace("magick", quietly = TRUE)) {
     stop("The magick package is needed to reduce the figure files. Install it ",
          "and re-run.", call. = FALSE)
   }
-  for (f in changed) {
+  for (f in changed[quantise]) {
     img <- magick::image_quantize(magick::image_read(f), max = 256,
                                   dither = FALSE)
     magick::image_write(img, f, format = "png8")

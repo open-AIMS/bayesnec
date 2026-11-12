@@ -313,6 +313,9 @@ fi
 if [ -n "${BAYESNEC_STAN_CACHE:-}" ]; then
   exports="$exports,BAYESNEC_STAN_CACHE=$BAYESNEC_STAN_CACHE"
 fi
+if [ -n "${BAYESNEC_QUANTISE_FIGURES:-}" ]; then
+  exports="$exports,BAYESNEC_QUANTISE_FIGURES=$BAYESNEC_QUANTISE_FIGURES"
+fi
 export_arg="--export=$exports"
 JOB=$(ssh "$HOST" "bash -lc 'cd $DEST && chmod +x hpc/run.precompile && \
   module load slurm >/dev/null 2>&1; \
