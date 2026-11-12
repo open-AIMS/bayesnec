@@ -68,8 +68,21 @@
 #' name reduced to letters and digits followed by \code{Lv} and its rank in the
 #' sorted level set. \code{print()} reports the tags.
 #'
-#' See \code{methods(class = "bayesnecjointfit")} for an overview of available
-#' methods.
+#' A joint refit has methods for \code{print()}, \code{\link{ecx}},
+#' \code{\link{nsec}}, \code{\link{nec}}, \code{\link{ecnsec}},
+#' \code{\link{exceedance}}, \code{\link{compare_posterior}},
+#' \code{\link{bnec_newdata}}, \code{\link{ggbnec_data}}, \code{autoplot()}
+#' and \code{\link{pull_brmsfit}}, which returns the
+#' \code{\link[brms]{brmsfit}}. The \pkg{brms} methods, such as
+#' \code{pp_check()} and \code{rhat()}, apply to that
+#' \code{\link[brms]{brmsfit}}, and a \code{newdata} grid passed to them must
+#' name the level of each row, as the grid \code{\link{bnec_newdata}} returns
+#' does. \code{summary()}, \code{plot()}, \code{fitted()}, \code{predict()},
+#' \code{posterior_epred()}, \code{posterior_predict()}, \code{pp_check()},
+#' \code{rhat()}, \code{\link{check_chains}}, \code{\link{check_priors}},
+#' \code{\link{check_fit}}, \code{\link{curve_params}}, \code{model.frame()},
+#' \code{formula()}, \code{update()} and \code{\link{amend}} stop on a joint
+#' refit with a message naming what to use instead.
 #'
 #' @slot fit The \code{\link[brms]{brmsfit}}.
 #' @slot model The equation fitted at every level, or \code{NA} where the

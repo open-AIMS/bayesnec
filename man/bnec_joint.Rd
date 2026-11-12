@@ -187,6 +187,14 @@ level. \code{\link{ecx}}, \code{\link{nsec}}, \code{\link{ecnsec}} and
 naming each level's equation and the type of its estimate. Each level is
 estimated on its own prediction grid, so the estimate for a level is read
 off that level's curve alone.
+
+The returned \code{\link{bayesnecjointfit}} also has methods for
+\code{print()}, \code{\link{compare_posterior}}, \code{\link{bnec_newdata}},
+\code{\link{ggbnec_data}} and \code{\link{pull_brmsfit}}, which returns the
+\code{\link[brms]{brmsfit}}. Other methods of a
+\code{\link{bayesnecgroupfit}}, such as \code{summary()},
+\code{\link{check_fit}} and \code{\link{amend}}, stop on it with a message
+naming what to use instead; \code{\link{bayesnecjointfit}} lists them.
 }
 \examples{
 \dontrun{
