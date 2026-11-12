@@ -283,7 +283,11 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   check_nsec_no_type(list(...))
-  chk_logical(posterior)
+  check_unused_dots(list(...), "nsec")
+  check_sig_val(sig_val)
+  check_resolution(resolution)
+  chk_flag(posterior)
+  if (!is.null(pool)) validate_pool(pool, "nsec")
   which <- hurdle_check_which(which)
   check_xform(xform)
   if (is.null(object$observed_group)) {
@@ -1540,6 +1544,10 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
                                      extrapolate = FALSE) {
   which <- hurdle_check_which(which)
   check_removed_args(list(...))
+  check_unused_dots(list(...), "ecnsec")
+  check_resolution(resolution)
+  chk_flag(posterior)
+  if (!is.null(pool)) validate_pool(pool, "ecnsec")
   # One value: the curve is interpolated at one point.
   chk_number(nsec)
   type <- validate_ecx_type(type, match.call())

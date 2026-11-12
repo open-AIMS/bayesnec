@@ -257,9 +257,16 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   check_no_effect_arg(list(...), object)
-  chk_logical(posterior)
+  check_unused_dots(list(...), "nec", nec_curve_args)
+  chk_flag(posterior)
   which <- hurdle_check_which(which)
   check_xform(xform)
+  if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
+      prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
+    stop("prob_vals must include central, lower and upper quantiles,",
+         " in that order.")
+  }
+  if (!is.null(pool)) validate_pool(pool, "nec")
   if (is.null(object$observed_group)) {
     spec <- observed_level_spec(object)
     if (!is.null(spec)) {
@@ -419,9 +426,11 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
                                   x_control = "own", extrapolate = FALSE) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
-  chk_numeric(ecx_val)
-  chk_numeric(resolution)
-  chk_logical(posterior)
+  check_unused_dots(list(...), "ecx")
+  chk_number(ecx_val)
+  check_resolution(resolution)
+  chk_flag(posterior)
+  if (!is.null(pool)) validate_pool(pool, "ecx")
   which <- hurdle_check_which(which)
   type <- validate_ecx_type(type, match.call())
   if (identical(type, "relative")) {

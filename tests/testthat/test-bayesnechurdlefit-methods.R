@@ -1209,6 +1209,24 @@ hurdle_pair <- function(growth = nec4param, survival = nec4param) {
             class = c("bayesnechurdlefit", "bnecfit"))
 }
 
+test_that("the hurdle estimators refuse arguments they cannot use", {
+  h <- hurdle_pair()
+  expect_error(nec(h, foo = 1), "nec() does not use `foo`", fixed = TRUE)
+  expect_error(nec(h, prob_vals = c(0.5, 0.9)), "prob_vals must include")
+  expect_error(nec(h, posterior = "yes"), "posterior")
+  expect_error(nec(h, pool = "bogus"), "`pool` must be one of")
+  expect_error(nsec(h, sig_val = 5), "strictly between 0 and 1")
+  expect_error(nsec(h, resolution = 1), "at least 2")
+  expect_error(nsec(h, foo = 1), "nsec() does not use `foo`", fixed = TRUE)
+  expect_error(nsec(h, type = "relative"), "no `type` argument")
+  expect_error(ecx(h, ecx_val = NA_real_), "ecx_val")
+  expect_error(ecx(h, resolution = 10.5), "whole number")
+  expect_error(ecx(h, foo = 1), "ecx() does not use `foo`", fixed = TRUE)
+  expect_error(ecnsec(h, nsec = 1, foo = 1), "ecnsec() does not use `foo`",
+               fixed = TRUE)
+  expect_error(ecnsec(h, nsec = 1, resolution = 0), "at least 2")
+})
+
 # ECNSEC outside the range, between grid points and under transformations.
 
 test_that("ecnsec refuses an nsec beyond the range on every hurdle curve", {
@@ -1608,7 +1626,7 @@ test_that("amend(add = ) reaches both components of a Gamma hurdle (#436)", {
 test_that("nec() and summary() read a component fitted to one smooth equation (#487)", {
   # nec() refuses ecx4param fitted on its own. As a hurdle component it
   # contributes the NSEC draws stored with it.
-  expect_error(nec(ecx4param), "nec is not a parameter in ecx model types.")
+  expect_error(nec(ecx4param), "has no nec parameter")
   stored <- as.numeric(ecx4param$ne_posterior)
   pairs <- list(both = hurdle_pair(ecx4param, ecx4param),
                 growth = hurdle_pair(growth = ecx4param),
