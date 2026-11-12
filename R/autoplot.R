@@ -11,7 +11,7 @@
 #' \code{\link{bayesnecjointfit}}.
 #' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
 #' @param nec Should NEC values be added to the plot? Defaults to TRUE.
-#' @param ecx Should ECx values be added to the plot? Defaults to FALSE..
+#' @param ecx Should ECx values be added to the plot? Defaults to FALSE.
 #' @param xform \code{NULL}, the default, or a function. See
 #' \code{\link{ggbnec_data}}.
 #' @param x_scale \code{"recorded"} (the default) draws the predictor as
@@ -750,7 +750,7 @@ plot_x_axis <- function(recorded, formula) {
   }
   ticks <- ticks[ticks >= min(observed) & ticks <= max(observed)]
   if (0 %in% observed) ticks <- c(0, ticks)
-  ticks <- sort(unique(ticks))
+  ticks <- add_end_ticks(sort(unique(ticks)), observed, formula)
   breaks <- as.numeric(sub_x_transformation(ticks, formula))
   keep <- is.finite(breaks)
   breaks <- breaks[keep]
@@ -759,6 +759,37 @@ plot_x_axis <- function(recorded, formula) {
   }, character(1))
   order <- order(breaks)
   list(breaks = breaks[order], labels = labels[order])
+}
+
+#' Label the lowest and highest tested concentrations on a fitted axis
+#'
+#' @param ticks The tick values chosen so far, on the recorded scale.
+#' @param observed The sorted distinct recorded predictor values.
+#' @param formula The fit's \code{\link{bayesnecformula}}.
+#'
+#' @details An end of the series is added unless an existing tick lies within
+#' a tenth of the axis span of it, measured on the fitted scale, where its
+#' label would overlap that tick's.
+#'
+#' @return The ticks, with the ends added where they fit.
+#'
+#' @noRd
+add_end_ticks <- function(ticks, observed, formula) {
+  at <- function(v) as.numeric(sub_x_transformation(v, formula))
+  fitted <- at(observed)
+  ok <- is.finite(fitted)
+  if (sum(ok) < 2) {
+    return(ticks)
+  }
+  span <- diff(range(fitted[ok]))
+  ends <- observed[ok][c(which.min(fitted[ok]), which.max(fitted[ok]))]
+  for (end in ends) {
+    gaps <- abs(at(ticks) - at(end))
+    if (!any(is.finite(gaps) & gaps < span / 10)) {
+      ticks <- c(ticks, end)
+    }
+  }
+  sort(unique(ticks))
 }
 
 #' Creates the data.frame for plotting with \code{\link{autoplot}}.

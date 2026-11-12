@@ -920,6 +920,17 @@ test_that("a fitted axis spaces an offset-log curve and labels the control", {
                            xform = exp), "cannot be combined")
 })
 
+test_that("a fitted axis labels the lowest and highest tested concentrations", {
+  f <- bayesnecformula(y ~ crf(log(x), model = "nec3param"))
+  axis <- bayesnec:::plot_x_axis(c(0.1, 0.3, 1, 3, 10, 30), f)
+  expect_true(all(c("0.1", "30") %in% axis$labels))
+  expect_equal(axis$breaks[axis$labels == "30"], log(30))
+  # An end beside an existing tick is not labelled: the two would overlap.
+  near <- bayesnec:::plot_x_axis(c(0.1, 0.3, 1, 3, 11), f)
+  expect_true("10" %in% near$labels)
+  expect_false("11" %in% near$labels)
+})
+
 test_that("a fitted axis labels its estimate lines in recorded units", {
   skip_on_cran()
   fit <- nec4param

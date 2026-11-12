@@ -81,7 +81,7 @@
 
 \item{nec}{Should NEC values be added to the plot? Defaults to TRUE.}
 
-\item{ecx}{Should ECx values be added to the plot? Defaults to FALSE..}
+\item{ecx}{Should ECx values be added to the plot? Defaults to FALSE.}
 
 \item{xform}{\code{NULL}, the default, or a function. See
 \code{\link{ggbnec_data}}.}
