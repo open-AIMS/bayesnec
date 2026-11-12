@@ -94,6 +94,14 @@ NULL
 #' 
 #' @return A \code{\link[base]{logical}}
 #'
+#' @examples
+#' library(bayesnec)
+#' data(manec_example)
+#' is_manecsummary(manec_example)
+#' \donttest{
+#' is_manecsummary(summary(manec_example))
+#' }
+#'
 #' @export
 is_manecsummary <- function(x) {
   inherits(x, "manecsummary")

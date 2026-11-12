@@ -535,6 +535,16 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
 #' @return A \code{\link[base]{matrix}} of weights, growth models in rows and
 #' survival models in columns.
 #'
+#' @examples
+#' \dontrun{
+#' library(bayesnec)
+#' data(nec_data)
+#' # code a few individuals as having died
+#' nec_data$y[nec_data$x > 2.5] <- 0
+#' fit <- bnec_hurdle(y ~ crf(x, c("nec3param", "ecx4param")), data = nec_data)
+#' crossed_weights(fit)
+#' }
+#'
 #' @export
 crossed_weights <- function(object) {
   if (!is_bayesnechurdlefit(object)) {

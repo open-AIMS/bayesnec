@@ -47,3 +47,15 @@ the input model object.
 \description{
 Extracts a range of statistics from a \code{\link{prebayesnecfit}} object.
 }
+\examples{
+\donttest{
+library(bayesnec)
+data(manec_example)
+# one equation of the packaged model set, before its statistics are added
+fit <- manec_example$mod_fits[["nec4param"]]
+nec_fit <- expand_nec(fit, fit$bayesnecformula, model = "nec4param",
+                      resolution = 50)
+nec_fit$ne
+}
+
+}

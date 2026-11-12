@@ -90,3 +90,14 @@ returned model set stores that data frame once if every available copy is
 identical. Different retained frames are reported and omitted because one
 frame cannot align observations for the whole set.
 }
+\examples{
+\donttest{
+library(bayesnec)
+data(manec_example)
+fits <- manec_example$mod_fits
+formulas <- lapply(fits, function(f) f$bayesnecformula)
+set_fit <- expand_manec(fits, formulas, resolution = 50)
+set_fit$mod_stats
+}
+
+}

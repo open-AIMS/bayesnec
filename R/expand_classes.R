@@ -12,6 +12,17 @@
 #' @return A \code{\link[base]{list}} of model statistical output derived from
 #' the input model object.
 #'
+#' @examples
+#' \donttest{
+#' library(bayesnec)
+#' data(manec_example)
+#' # one equation of the packaged model set, before its statistics are added
+#' fit <- manec_example$mod_fits[["nec4param"]]
+#' nec_fit <- expand_nec(fit, fit$bayesnecformula, model = "nec4param",
+#'                       resolution = 50)
+#' nec_fit$ne
+#' }
+#'
 #' @importFrom brms posterior_epred as_draws_df
 #' @importFrom stats quantile fitted residuals terms
 #' @importFrom chk chk_numeric
@@ -510,6 +521,16 @@ check_weight_controls <- function(weights) {
 #' @return A \code{\link[base]{list}} of model statistical output derived from
 #' the input model list. This includes \code{retained_data} when compatible
 #' retained columns were present on the input objects.
+#'
+#' @examples
+#' \donttest{
+#' library(bayesnec)
+#' data(manec_example)
+#' fits <- manec_example$mod_fits
+#' formulas <- lapply(fits, function(f) f$bayesnecformula)
+#' set_fit <- expand_manec(fits, formulas, resolution = 50)
+#' set_fit$mod_stats
+#' }
 #'
 #' @importFrom loo pseudobma_weights stacking_weights
 #' @importFrom stats quantile

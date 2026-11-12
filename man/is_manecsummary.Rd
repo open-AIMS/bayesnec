@@ -15,3 +15,12 @@ A \code{\link[base]{logical}}
 \description{
 Checks if argument is a \code{manecsummary} object
 }
+\examples{
+library(bayesnec)
+data(manec_example)
+is_manecsummary(manec_example)
+\donttest{
+is_manecsummary(summary(manec_example))
+}
+
+}
