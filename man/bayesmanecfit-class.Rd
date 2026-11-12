@@ -57,8 +57,8 @@ from the likelihood, as they do for a single \code{\link[brms]{brmsfit}}.}
 
 \item{\code{w_draw_seed}}{The seed that realised \code{w_draw_index}. Used only
 where the stored index cannot apply: when a caller thins to a different
-number of draws, and for objects saved before version 2.1.3.7, which carry
-neither field and fall back to a fixed seed.}
+number of draws, and for an object saved by an earlier version that carries
+neither field, which falls back to a fixed seed.}
 
 \item{\code{w_ne_posterior}}{The model-weighted posterior estimate of the no-effect
 toxicity estimate.}
@@ -73,12 +73,9 @@ data.}
 \code{\link[base]{data.frame}} of summary model-weighted
 posterior predicted values over a grid set by \code{resolution} and
 \code{x_range}, and the \code{observed_levels} and \code{band} flags
-described for \code{pred_vals} in \code{\link{bayesnecfit}}. Up to and including
-version 2.1.3.6 it also held
-\code{posterior}, the full \code{sample_size x resolution} matrix of
-weighted draws those summaries came from. Once the per-model matrices were
-dropped that one matrix dominated what remained, so it is no longer stored.
-To obtain it directly, use \code{posterior_epred(x, newdata =
+described for \code{pred_vals} in \code{\link{bayesnecfit}}. It does not
+hold the matrix of weighted draws those summaries came from. To obtain it,
+use \code{posterior_epred(x, newdata =
 bnec_newdata(x, resolution = 1000), re_formula = NA)}, which draws from the
 component models in the same weighted proportions where no group term
 spans concentrations. A fit saved before observed-level curves were stored

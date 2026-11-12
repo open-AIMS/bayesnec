@@ -42,14 +42,11 @@ a grid set by \code{resolution} and \code{x_range}. Where a group term
 spans concentrations, the summaries describe the population curve, and the
 flags \code{observed_levels} and \code{band = "population"} record that
 the no-effect summaries read the observed levels and the band does not.
-Up to and including version 2.1.3.6 it also held \code{posterior}, the full
-\code{n_draws x resolution} matrix those summaries came from. That matrix
-dominated the size of a fitted object and is no longer stored; it is
-recomputed from \code{fit} where it is needed. To obtain it directly, use
+It does not hold the matrix of draws those summaries came from, which is
+recomputed from \code{fit} where it is needed. To obtain it, use
 \code{posterior_epred(x, newdata = bnec_newdata(x, resolution = 1000),
-re_formula = NA)}. A fit saved by an earlier development version without
-both flags retains its earlier values and gives a warning when they are
-displayed.}
+re_formula = NA)}. A fit saved by an earlier version without both flags
+retains its earlier values and gives a warning when they are displayed.}
 
 \item{\code{top}}{The estimate for parameter "top" in the fitted model.}
 
