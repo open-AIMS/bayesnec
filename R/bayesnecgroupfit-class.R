@@ -377,6 +377,7 @@ ecx.bayesnecgroupfit <- function(object, ...) {
 #' @method nsec bayesnecgroupfit
 #' @export
 nsec.bayesnecgroupfit <- function(object, ...) {
+  check_nsec_no_type(list(...))
   group_estimate_table(object, "nsec", function(f, ...) nsec(f, ...), ...)
 }
 

@@ -123,6 +123,13 @@ test_that("hormesis_def is refused by name on nsec", {
                "hormesis_def has been removed")
 })
 
+test_that("nsec refuses the type argument of ecx", {
+  expect_error(nsec(nec4param, type = "relative"), "no `type` argument")
+  expect_error(nsec(manec_example, type = "absolute"), "no `type` argument")
+  joint <- joint_split()
+  expect_error(nsec(joint, type = "relative"), "no `type` argument")
+})
+
 test_that("ecnsec is the absolute percent effect at the nsec", {
   # ECNSEC uses the same control-to-zero percentage reference as default ECx:
   # (control - reference) / control * 100.

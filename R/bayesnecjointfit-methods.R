@@ -434,6 +434,7 @@ ecx.bayesnecjointfit <- function(object, ...) {
 #' @method nsec bayesnecjointfit
 #' @export
 nsec.bayesnecjointfit <- function(object, ...) {
+  check_nsec_no_type(list(...))
   joint_estimate_table(object, "nsec", function(f, ...) nsec(f, ...), ...)
 }
 

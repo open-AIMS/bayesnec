@@ -3052,6 +3052,24 @@ check_removed_args <- function(dots) {
   invisible(NULL)
 }
 
+#' Refuse the type argument of ecx() in a call to nsec()
+#'
+#' \code{nsec()} takes \code{...}, so a \code{type} copied from an
+#' \code{ecx()} call would otherwise be accepted and ignored.
+#'
+#' @param dots \code{list(...)} from the calling method.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_nsec_no_type <- function(dots) {
+  if ("type" %in% names(dots)) {
+    stop("nsec() has no `type` argument. An NSEC is the concentration at ",
+         "which the fitted curve falls below the sig_val quantile of the ",
+         "control. Use ecx() for an effect of a given type.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' Report the draws whose estimate is not identified
 #'
 #' A no-effect or ECx estimate is \code{NA} for any draw whose curve does not

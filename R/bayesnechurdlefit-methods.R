@@ -282,6 +282,7 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
                                    pool = NULL, x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
+  check_nsec_no_type(list(...))
   chk_logical(posterior)
   which <- hurdle_check_which(which)
   check_xform(xform)

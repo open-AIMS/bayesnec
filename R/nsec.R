@@ -284,6 +284,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
                              x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
+  check_nsec_no_type(list(...))
   chk_numeric(sig_val)
   chk_numeric(resolution)
   chk_logical(posterior)
@@ -438,6 +439,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
                                x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
+  check_nsec_no_type(list(...))
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")
   }
