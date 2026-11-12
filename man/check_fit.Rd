@@ -26,13 +26,15 @@ check_fit(x, group = NULL, ndraws = 1000, seed = 10, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or a
-\code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.}
+\code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, a
+\code{\link{bayesnechurdlefit}} returned by \code{\link{bnec_hurdle}}, or
+a \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.}
 
 \item{group}{A numeric, character or factor vector of the same length as the
-data giving the group each row belongs to, or a single numeric value giving
+data giving the group each row belongs to, or a single whole number giving
 the number of bins to cut the predictor
-into. If \code{NULL} (the default) the distinct values of the predictor are
+into. A vector with a missing value is refused. If \code{NULL} (the
+default) the distinct values of the predictor are
 used where they are replicated, and the predictor is binned otherwise, with a
 warning.
 For a \code{bayesnecgroupfit}, an explicit vector has one value per row of
@@ -83,6 +85,10 @@ the original \code{checkfit} table for each fitted level in \code{$fits}.
 Each table retains its attributes, including any stored Pareto diagnostics.
 \code{print()} labels and prints each level; \code{plot()} returns a named
 list of plots with one plot per fitted level.
+A \code{bayesnechurdlefit} returns a plain \code{\link[base]{list}} of
+such tables, named \code{growth}, \code{survival} and, unless
+\code{combined = FALSE}, \code{combined}. Plot each element separately, as
+in \code{plot(checks$growth)}.
 
 The separate \code{"pareto"} attribute is a
 data frame with one row per equation. It names the stored criterion used for
