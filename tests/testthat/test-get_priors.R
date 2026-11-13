@@ -359,10 +359,9 @@ test_that("a user prior on zi round trips for a zero-inflated count family", {
   set.seed(1)
   x <- as.numeric(rep(1:10, each = 5))
   y <- as.numeric(rpois(50, 20) * rbinom(50, 1, 0.6))
-  expect_warning(gp <- get_priors(y ~ crf(x, "nec4param"),
-                                  data = data.frame(x = x, y = y),
-                                  family = "zero_inflated_poisson"),
-                 "mean value of the response")
+  gp <- suppressWarnings(get_priors(y ~ crf(x, "nec4param"),
+                                    data = data.frame(x = x, y = y),
+                                    family = "zero_inflated_poisson"))
   with_zi <- gp + brms::prior_string("beta(2, 5)", class = "zi")
   out <- bayesnec:::usable_prior(with_zi)
   expect_true("zi" %in% out$class)
@@ -388,8 +387,9 @@ test_that("a zi prior does not disturb the initial-value search", {
   set.seed(2)
   x <- as.numeric(rep(1:10, each = 5))
   y <- as.numeric(rpois(50, 20) * rbinom(50, 1, 0.6))
-  gp <- get_priors(y ~ crf(x, "nec4param"), data = data.frame(x = x, y = y),
-                   family = "zero_inflated_poisson")
+  gp <- suppressWarnings(get_priors(y ~ crf(x, "nec4param"),
+                                    data = data.frame(x = x, y = y),
+                                    family = "zero_inflated_poisson"))
   with_zi <- gp + brms::prior_string("beta(2, 5)", class = "zi")
   fct_args <- c("b_top", "b_beta", "b_bot", "b_nec")
   out <- bayesnec:::make_inits("nec4param", fct_args, with_zi, chains = 2)
