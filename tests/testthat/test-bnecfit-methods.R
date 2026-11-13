@@ -721,3 +721,56 @@ test_that("update() computes the estimates with the arguments the set records", 
   expect_equal(range(out$w_pred_vals$data$x),
                range(manec_example$mod_fits[[1]]$fit$data$x))
 })
+
+test_that("unsupported fit methods refuse their concrete class", {
+  group <- structure(list(fits = list(a = nec4param, b = nec4param),
+                          levels = c("a", "b"), group_var = "site"),
+                     class = c("bayesnecgroupfit", "bnecfit"))
+  hurdle <- structure(list(growth = nec4param, survival = nec4param),
+                      class = c("bayesnechurdlefit", "bnecfit"))
+  joint <- joint_split()
+  fits <- list(nec4param, manec_example, hurdle, group, joint)
+  for (fit in fits) {
+    expect_error(check_formula(fit), paste0("class ", class(fit)[1]),
+                 fixed = TRUE)
+  }
+  for (fit in fits[c(1, 2, 5)]) {
+    expect_error(bnec_joint(fit), paste0("class ", class(fit)[1]),
+                 fixed = TRUE)
+  }
+  for (fit in fits[1:3]) {
+    expect_error(compare_posterior(fit), paste0("class ", class(fit)[1]),
+                 fixed = TRUE)
+  }
+  expect_error(c(joint, joint), "class bayesnecjointfit", fixed = TRUE)
+  expect_error(joint + joint, "class bayesnecjointfit", fixed = TRUE)
+  expect_error(nec4param + joint, "class bayesnecjointfit", fixed = TRUE)
+  expect_error(hurdle + nec4param,
+               "bayesnechurdlefit with class bayesnecfit", fixed = TRUE)
+})
+
+test_that("explicit ordinary methods retain parent result contracts", {
+  expect_s3_class(failed_models(nec4param), "bnecfailures")
+  expect_s3_class(failed_models(manec_example), "bnecfailures")
+  expect_s3_class(failed_models(joint_split()), "bnecfailures")
+  for (fit in list(nec4param, manec_example)) {
+    expect_identical(ecnsec(fit, nsec = 1.5),
+                     bayesnec:::ecnsec.bnecfit(fit, nsec = 1.5))
+    expect_identical(exceedance(fit, threshold = 2),
+                     bayesnec:::exceedance.bnecfit(fit, threshold = 2))
+  }
+})
+
+test_that("pull_prior keeps full priors in class-specific containers", {
+  group <- structure(list(fits = list(a = nec4param, b = manec_example),
+                          levels = c("a", "b"), group_var = "site"),
+                     class = c("bayesnecgroupfit", "bnecfit"))
+  hurdle <- structure(list(growth = nec4param, survival = manec_example),
+                      class = c("bayesnechurdlefit", "bnecfit"))
+  expect_s3_class(pull_prior(nec4param)[[1]], "brmsprior")
+  expect_named(pull_prior(manec_example), names(manec_example$mod_fits))
+  expect_named(pull_prior(group), c("a", "b"))
+  expect_named(pull_prior(hurdle), c("growth", "survival"))
+  expect_s3_class(pull_prior(joint_split())[[1]], "brmsprior")
+  expect_error(pull_prior(1L), "class integer")
+})
