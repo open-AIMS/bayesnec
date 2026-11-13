@@ -1,7 +1,5 @@
 ---
 title: "Comparisons and exceedance probabilities"
-output:
-  rmarkdown::html_vignette:
 bibliography: ../bayesnec.bib
 ---
 
@@ -16,7 +14,7 @@ knitr::opts_chunk$set(
   fig.asp = 0.8,
   out.width = "60%",
   fig.align = "center",
-  # png rather than pdf: this is an html_vignette, and an embedded pdf is
+  # png rather than pdf: this is an HTML page, and an embedded pdf is
   # rendered by the browser's pdf plugin, complete with its own toolbar and
   # scrollbars, instead of as an image.
   dev = "png",

@@ -1,7 +1,5 @@
 ---
 title: "Modelling growth data and other potentially negative response values"
-output:
-  rmarkdown::html_vignette:
 bibliography: ../bayesnec.bib
 ---
 

@@ -1,7 +1,5 @@
 ---
 title: "Comparing posterior predictions"
-output:
-  rmarkdown::html_vignette:
 bibliography: ../bayesnec.bib
 ---
 

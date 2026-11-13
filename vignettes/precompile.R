@@ -282,7 +282,7 @@ fig_state <- function() {
 # Move the figures one knit wrote into `dest`, the directory of its source ----
 # knitr writes figures to the working directory, the repository root, while the
 # .Rmd refers to them by a path relative to its own directory. Every vignette
-# and article is an html_vignette and so uses the png device: an embedded pdf is
+# and article is rendered to HTML and so uses the png device: an embedded pdf is
 # rendered by the browser's pdf plugin rather than as an image.
 place_figures <- function(before, dest) {
   after <- fig_state()

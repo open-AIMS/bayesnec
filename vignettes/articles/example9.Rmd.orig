@@ -1,7 +1,5 @@
 ---
 title: "A complete analysis workflow"
-output:
-  rmarkdown::html_vignette:
 bibliography: ../bayesnec.bib
 ---
 

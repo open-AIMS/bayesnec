@@ -1,7 +1,5 @@
 ---
 title: "Hormesis and the no-significant-effect concentration"
-output:
-  rmarkdown::html_vignette:
 bibliography: ../bayesnec.bib
 ---
 
