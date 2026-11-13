@@ -181,11 +181,15 @@ test_that("get_priors refuses arguments it would not use", {
                           foo = 1), "does not use `foo`")
 })
 
-test_that("get_priors names the remedy for a grouped fit and reads a joint one", {
-  grouped <- structure(list(fits = list(a = nec4param), group_var = "site"),
+test_that("get_priors reads grouped levels and a joint fit", {
+  grouped <- structure(list(fits = list(a = nec4param, b = nec4param),
+                            levels = c("a", "b"), group_var = "site"),
                        class = c("bayesnecgroupfit", "bnecfit"))
-  expect_error(get_priors(grouped),
-               "get_priors(grouped$fits[[\"a\"]])", fixed = TRUE)
+  grouped_priors <- get_priors(grouped)
+  expect_named(grouped_priors, c("a", "b"))
+  expect_identical(grouped_priors$a, get_priors(nec4param))
+  expect_identical(grouped_priors$b, get_priors(nec4param))
+  expect_error(get_priors(grouped, level = "c"), "level of a bayesnecgroupfit")
   # A joint refit is one brmsfit, so its priors are read as a single fit's.
   joint <- joint_split()
   expect_identical(get_priors(joint), get_priors(nec4param))
@@ -355,8 +359,10 @@ test_that("a user prior on zi round trips for a zero-inflated count family", {
   set.seed(1)
   x <- as.numeric(rep(1:10, each = 5))
   y <- as.numeric(rpois(50, 20) * rbinom(50, 1, 0.6))
-  gp <- get_priors(y ~ crf(x, "nec4param"), data = data.frame(x = x, y = y),
-                   family = "zero_inflated_poisson")
+  expect_warning(gp <- get_priors(y ~ crf(x, "nec4param"),
+                                  data = data.frame(x = x, y = y),
+                                  family = "zero_inflated_poisson"),
+                 "mean value of the response")
   with_zi <- gp + brms::prior_string("beta(2, 5)", class = "zi")
   out <- bayesnec:::usable_prior(with_zi)
   expect_true("zi" %in% out$class)
