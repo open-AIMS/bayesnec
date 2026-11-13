@@ -617,7 +617,7 @@ ggplot(subset(point_data, x > 0), aes(x = x, y = y)) +
 ```
 
 ```{r, echo = FALSE}
-# The study's metrics, transcribed from results/metrics_100iter.csv in the
+# The study's metrics, transcribed from results/metrics.csv in the
 # compendium at the commit named in Section 9. Every figure quoted in Sections
 # 5.3 to 5.5 is read from this table rather than typed into the prose. `width`
 # is the mean width of the 95% credible interval, on the concentration scale of
