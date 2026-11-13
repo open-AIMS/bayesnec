@@ -42,6 +42,9 @@ applicable, the group-level variables (attribute \code{"bnec_group"}).
 Elements of \code{"bnec_pop"} are named \code{"y_var"}, \code{"x_var"},
 \code{"trials_var"}, \code{"cens_var"}, \code{"cens_y2_var"} and
 \code{"rate_var"}, and only the ones the formula supplies are present.
+
+For a \code{bayesmanecfit}, the fitted data frame of the named
+equation.
 }
 \description{
 Retrieve data.frame used to fit models via \code{\link{bnec}}, or directly

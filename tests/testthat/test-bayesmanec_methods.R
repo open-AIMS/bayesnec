@@ -201,7 +201,10 @@ test_that("formula behaves as expected", {
                           "bayesnecformula")
   expect_s3_class(formula(manec_example, model = "ecx4param"),
                           "bayesnecformula")
-  expect_null(formula(manec_example, model = "ecxlin"))
+  expect_identical(formula(manec_example, model = "nec4param"),
+                   manec_example$mod_fits$nec4param$bayesnecformula)
+  expect_error(formula(manec_example, model = "ecxlin"),
+               "must name one fitted equation")
 })
 
 test_that("model.frame behaves as expected", {
@@ -215,6 +218,8 @@ test_that("model.frame behaves as expected", {
                   "data.frame")
   expect_s3_class(model.frame(manec_example, model = "ecx4param"),
                   "data.frame")
+  expect_identical(model.frame(manec_example, model = "nec4param"),
+                   model.frame(manec_example$mod_fits$nec4param$fit))
   expect_error(model.frame(manec_example, model = "ecxlin"))
 })
 

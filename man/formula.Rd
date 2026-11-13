@@ -20,6 +20,9 @@
 }
 \value{
 An object of class \code{\link{bayesnecformula}}.
+
+For a \code{bayesmanecfit}, the \code{bayesnecformula} stored
+for the named equation.
 }
 \description{
 Retrieve formulas from models fitted by \code{\link{bnec}}.
