@@ -486,18 +486,29 @@ the same call returns.
   `bayesnechurdlefit` it refits the pair `best_crossed()` names with the
   matching two-block family. For a `bayesnecgroupfit` it composes the equation
   each level favours into one model in which every curve parameter takes a
-  value per level, and returns a `bayesnecjointfit` with `nec()`, `nsec()`,
-  `ecx()`, `ecnsec()`, `exceedance()`, `compare_posterior()`, `autoplot()`,
-  `ggbnec_data()` and `print()` methods. With `disp_by_level = TRUE`, the
-  default, the dispersion parameter also takes a value per level. Each level
-  is read over its own concentrations, from the control recorded at fitting or
-  given as `bnec_joint(x_control = )`, or else from its lowest concentration.
-  `prior_type`, `asymptote_observed` and `predictor_scale` are taken from the
-  fit unless supplied, and an argument that applies only to the other kind of
-  fit is refused. `summary()`, `plot()`, `predict()`, `check_fit()`,
-  `pull_out()` and the other methods a joint refit does not support refuse
-  it with a message naming the alternative. See `?bnec_joint` and
-  `vignette("example8")` (#382, #388, #448, #500, #516, #557, #578).
+  value per level, and returns a `bayesnecjointfit`. With
+  `disp_by_level = TRUE`, the default, the dispersion parameter also takes a
+  value per level. Each level is read over its own concentrations, from the
+  control recorded at fitting or given as `bnec_joint(x_control = )`, or else
+  from its lowest concentration. `prior_type`, `asymptote_observed` and
+  `predictor_scale` are taken from the fit unless supplied, and an argument
+  that applies only to the other kind of fit is refused. See `?bnec_joint`
+  and `vignette("example8")` (#382, #388, #448, #500, #516, #557, #578).
+
+- A `bayesnecjointfit` has the methods of a `bayesnecfit`, and a method that
+  returns one result per fit returns one per level. `summary()` gives each
+  level's no-effect estimate, labelled NEC or NSEC, its ECx values and the
+  Bayesian R-squared of its rows. `plot()`, `pp_check()`, `check_chains()`
+  and `check_priors()` draw one panel or page per level. `rhat()`,
+  `check_fit()`, `check_sampling()`, `curve_params()`, `dispersion()`,
+  `formula()` and `model.frame()` return one element, row or table per
+  level, and `screen_models()` passes or stops the refit as a whole.
+  `fitted()`, `predict()`, `posterior_epred()` and `posterior_predict()`
+  predict the fitted rows of every level, or a `newdata` that names each
+  row's level. `group_level_sd()` reads the refit as one fit. `update()` refits the same model,
+  `get_priors()` returns its priors, and `pull_best()` returns it unchanged.
+  `amend()`, `pull_out()`, `c()` and `+` refuse it, because each of its
+  levels has one equation and it is not a model set (#578).
 
 - Where a factorised `Gamma` growth fit includes a left-censored survivor,
   `bnec_joint()` fits that row as an interval from zero to the recorded
