@@ -125,7 +125,7 @@ summary(exp_5)
 #>  Family: gaussian  
 #>   Links: mu = identity  
 #> 
-#> Number of posterior draws per model:  1600
+#> Number of draws in model average:  1600
 #> 
 #> Model weights (Method: pseudobma_bb_weights; each observation left out):
 #>             waic    elpd   wi
@@ -191,7 +191,7 @@ summary(exp_5)
 #> 1 model(s) failed to fit: ecxll5
 #> See ?failed_models for the priors and initial values used.
 #> 
-#> Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.
+#> Fitted by bayesnec 3.0.0, installed from a local source, which records no commit, under R 4.6.1.
 ```
 
 The `bayesmanecfit` object also contains all of the individual `brms` model fits, which can be extracted using the `pull_out` function. For example, we can pull out and plot the model **ecx4param**.
@@ -345,7 +345,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.624993 2.760964 4.167579 
+#> 3.624949 2.761094 4.167410 
 #> attr(,"resolution")
 #> [1] 500
 #> attr(,"ecx_val")
@@ -354,7 +354,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.082466 4.816782 5.348731 
+#> 5.082671 4.816799 5.348708 
 #> attr(,"resolution")
 #> [1] 500
 #> attr(,"ecx_val")
