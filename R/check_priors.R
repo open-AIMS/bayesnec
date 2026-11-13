@@ -9,13 +9,15 @@
 #' @param ask Should the user be asked to hit enter for next page? Defaults to
 #' \code{TRUE}. Only relevant if \code{object} is of class
 #' \code{\link{bayesmanecfit}}.
+#' @param ... Class-specific arguments, including \code{level} for a
+#' \code{bayesnecgroupfit}.
 #'
 #' @seealso \code{\link{bnec}}
 #'
 #' @return For a \code{\link{bayesnecfit}}, a \code{\link[ggplot2]{ggplot}} of
 #' the prior and posterior probability densities of each parameter. For a
-#' \code{\link{bayesmanecfit}}, one such plot per equation is printed, or
-#' written to \code{filename}, and \code{NULL} is returned invisibly.
+#' \code{\link{bayesmanecfit}}, a named list of plots by equation is returned
+#' invisibly after the plots are printed or written to \code{filename}.
 #'
 #' @examples
 #' \dontrun{
@@ -25,7 +27,7 @@
 #' }
 #'
 #' @export
-check_priors <- function(object, filename = NA, ask = TRUE) {
+check_priors <- function(object, filename = NA, ask = TRUE, ...) {
   UseMethod("check_priors")
 }
 
@@ -116,14 +118,17 @@ check_priors.bayesmanecfit <- function(object, filename = NA, ask = TRUE) {
     on.exit(devAskNewPage(default_ask), add = TRUE)
     devAskNewPage(ask = ask)
   }
-  for (m in seq_len(length(object$mod_fits))) {
-    out_plot <- check_priors(object = pull_out(object, model = names(object$mod_fits)[m])) +
-      ggtitle(names(object$mod_fits)[m])
+  plots <- lapply(names(object$mod_fits), function(model) {
+    fit <- object$mod_fits[[model]]$fit
+    out_plot <- prior_posterior_plot(fit, rownames(brms::fixef(fit))) +
+      ggtitle(model)
     print(out_plot)
-  }
+    out_plot
+  })
+  names(plots) <- names(object$mod_fits)
   if (!is.na(filename)) {
     dev.off(pdf_dev)
     message("Probability density plots saved to file ", filename, ".pdf")
   }
-  invisible(NULL)
+  invisible(plots)
 }

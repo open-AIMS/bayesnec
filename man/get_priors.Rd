@@ -25,13 +25,11 @@ get_priors(object, ...)
 \code{\link{bayesnechurdlefit}} as returned by \code{\link{bnec_hurdle}};
 or a \code{\link{bayesnecformula}}, a \code{\link[stats]{formula}} or a
 \code{\link[base]{character}} string that can be coerced to one. A grouped
-fit from \code{\link{bnec_group}} is refused: call \code{get_priors} on
-one of its levels, \code{fit$fits[[level]]}. A
+fit from \code{\link{bnec_group}} returns priors by level. A
 \code{\link{bayesnecjointfit}} from \code{\link{bnec_joint}} is accepted.}
 
-\item{...}{Not used. Any argument passed here is refused: a fitted object
-takes no further argument, and a formula takes only the arguments named
-below.}
+\item{...}{Class-specific arguments, including \code{level} for a grouped
+fit. Other arguments are refused by fitted objects.}
 
 \item{data}{A \code{\link[base]{data.frame}} containing the data referred to
 by the formula.}
@@ -71,7 +69,8 @@ For a single model, an object of class
 \code{\link[base]{list}} of them, one per model, named as
 \code{\link{bnec}} expects a named prior list to be. For a
 \code{\link{bayesnechurdlefit}}, a \code{\link[base]{list}} of two such
-objects, one per component. For a \code{\link{bayesnecjointfit}}, one
+objects, one per component. For a \code{\link{bayesnecgroupfit}}, a named
+list of these results by level. For a \code{\link{bayesnecjointfit}}, one
 \code{\link[brms]{brmsprior}}, because the levels share one fit. Where
 every level was fitted one equation, each prior covers that parameter at
 every level, and the object can be passed back to \code{\link{bnec_joint}}

@@ -10,7 +10,8 @@ pull_best(object, ...)
 \item{object}{An object of class \code{\link{bayesnecfit}},
 \code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}} as returned by
 \code{\link{bnec}}, or of class \code{\link{bayesnecjointfit}} as returned
-by \code{\link{bnec_joint}}.}
+by \code{\link{bnec_joint}}, or of class
+\code{\link{bayesnecgroupfit}} as returned by \code{\link{bnec_group}}.}
 
 \item{...}{Not used. Any argument supplied here is refused; see Details.}
 }
@@ -21,7 +22,10 @@ unchanged. For a \code{\link{bayesnechurdlefit}}, an object of the same class
 with each component reduced to its own highest-weighted model. For a
 \code{\link{bayesnecjointfit}}, \code{object} unchanged, because each level
 already has a single equation, the one its own model weights favoured
-when \code{\link{bnec_joint}} chose it.
+when \code{\link{bnec_joint}} chose it. For a
+\code{\link{bayesnecgroupfit}}, a named list of selected
+\code{\link{bayesnecfit}} objects by level, or one such fit when
+\code{level} names a level.
 }
 \description{
 Returns the candidate holding the most model weight in an object of class

@@ -9,12 +9,10 @@
 #' \code{\link{bayesnechurdlefit}} as returned by \code{\link{bnec_hurdle}};
 #' or a \code{\link{bayesnecformula}}, a \code{\link[stats]{formula}} or a
 #' \code{\link[base]{character}} string that can be coerced to one. A grouped
-#' fit from \code{\link{bnec_group}} is refused: call \code{get_priors} on
-#' one of its levels, \code{fit$fits[[level]]}. A
+#' fit from \code{\link{bnec_group}} returns priors by level. A
 #' \code{\link{bayesnecjointfit}} from \code{\link{bnec_joint}} is accepted.
-#' @param ... Not used. Any argument passed here is refused: a fitted object
-#' takes no further argument, and a formula takes only the arguments named
-#' below.
+#' @param ... Class-specific arguments, including \code{level} for a grouped
+#' fit. Other arguments are refused by fitted objects.
 #'
 #' @details Two entry points, answering two different questions.
 #'
@@ -87,7 +85,8 @@
 #' \code{\link[base]{list}} of them, one per model, named as
 #' \code{\link{bnec}} expects a named prior list to be. For a
 #' \code{\link{bayesnechurdlefit}}, a \code{\link[base]{list}} of two such
-#' objects, one per component. For a \code{\link{bayesnecjointfit}}, one
+#' objects, one per component. For a \code{\link{bayesnecgroupfit}}, a named
+#' list of these results by level. For a \code{\link{bayesnecjointfit}}, one
 #' \code{\link[brms]{brmsprior}}, because the levels share one fit. Where
 #' every level was fitted one equation, each prior covers that parameter at
 #' every level, and the object can be passed back to \code{\link{bnec_joint}}
@@ -114,12 +113,6 @@ get_priors <- function(object, ...) {
 #' @noRd
 #' @export
 get_priors.default <- function(object, ...) {
-  if (inherits(object, "bayesnecgroupfit")) {
-    stop("get_priors() has no method for a grouped fit, which holds one fit",
-         " per level of \"", object$group_var, "\". Call it on one level,",
-         " for example get_priors(", deparse1(substitute(object)),
-         "$fits[[\"", names(object$fits)[1], "\"]]).", call. = FALSE)
-  }
   stop("get_priors() takes an object fitted by bnec, or a formula and data.",
        " You supplied an object of class \"", class(object)[1], "\".",
        call. = FALSE)

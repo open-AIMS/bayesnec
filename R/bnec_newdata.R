@@ -9,6 +9,8 @@
 #' the number of x values over which to predict values.
 #' @param x_range A \code{\link[base]{numeric}} vector of length 2 indicating
 #' the range of x values over which to make predictions.
+#' @param ... Class-specific arguments, including \code{level} for a
+#' \code{bayesnecgroupfit}.
 #'
 #' @return A \code{\link[base]{data.frame}} to be used in predictions. For a
 #' \code{\link{bayesnecjointfit}} it holds \code{resolution} rows for each
@@ -39,7 +41,7 @@
 #' }
 #' 
 #' @export
-bnec_newdata <- function(x, resolution = 100, x_range = NA) {
+bnec_newdata <- function(x, resolution = 100, x_range = NA, ...) {
   UseMethod("bnec_newdata")
 }
 
