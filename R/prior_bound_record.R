@@ -357,15 +357,20 @@ print_nec_prior_boundary <- function(record, label) {
 #' @param model,wi,dpar The equation, its model weight and its block.
 #' @param grid_span As for \code{prior_bound_rows()}.
 #' @param map The function the parameters are returned through.
+#' @param nlpar_for A function of \code{prefix} and a parameter name returning
+#' the \pkg{brms} non-linear parameter its prior is set on.
 #'
 #' @return A \code{\link[base]{data.frame}}, or \code{NULL}.
 #' @noRd
 param_prior_boundary <- function(fit, draws, prefix, model, wi, dpar,
-                                 grid_span, map) {
+                                 grid_span, map,
+                                 nlpar_for = function(prefix, par) {
+                                   paste0(prefix, par)
+                                 }) {
   pars <- intersect(colnames(draws), x_scale_par_names())
   out <- do.call(rbind, lapply(pars, function(p) {
     rows <- prior_bound_rows(draws[, p],
-                             prior_par_bounds(fit, paste0(prefix, p)),
+                             prior_par_bounds(fit, nlpar_for(prefix, p)),
                              grid_span, map)
     if (is.null(rows)) {
       return(NULL)

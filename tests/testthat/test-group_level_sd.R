@@ -37,8 +37,12 @@ test_that("a fit with no group-level term gives an empty table and a message", {
   expect_equal(nrow(out), 0)
 })
 
-test_that("group_level_sd refuses an unsupported class and names VarCorr", {
-  expect_error(group_level_sd(joint_split()), "brms::VarCorr\\(x\\$fit\\)")
+test_that("group_level_sd reads a joint refit and refuses an unsupported class", {
+  # A joint refit is one brmsfit, read as a single fit is.
+  expect_message(out <- group_level_sd(joint_split()),
+                 "No equation of this fit has a group-level term")
+  expect_named(out, gl_sd_columns)
+  expect_equal(nrow(out), 0)
   expect_error(group_level_sd(list()), "requires a bayesnecfit")
 })
 

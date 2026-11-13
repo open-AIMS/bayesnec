@@ -63,9 +63,15 @@
 #' \code{level} column, rather than a list of tables, so that an equation which
 #' passes at one level and fails at another can be compared directly.
 #'
+#' A \code{\link{bayesnecjointfit}} gives the same table, with one row per
+#' level. The Rhat and ESS of a row are reduced over that level's own
+#' coefficients and the parameters the levels share, such as \code{lp__}.
+#' \code{n_divergent} is the count for the whole fit, because a divergent
+#' transition cannot be attributed to one level.
+#'
 #' @param x An object of class \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
-#' \code{\link{bayesnecgroupfit}}.
+#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}},
+#' \code{\link{bayesnecgroupfit}} or \code{\link{bayesnecjointfit}}.
 #' @param rhat_cutoff A \code{\link[base]{numeric}} vector of length 1.
 #' @param ess_cutoff A \code{\link[base]{numeric}} vector of length 1.
 #' @param divergence_cutoff A \code{\link[base]{numeric}} vector of length 1.
@@ -73,8 +79,8 @@
 #' @return A \code{\link[base]{data.frame}} with one row per candidate model and
 #' columns \code{model}, \code{max_rhat}, \code{min_ess}, \code{min_ess_ratio},
 #' \code{n_divergent} and \code{failed}. For a
-#' \code{\link{bayesnecgroupfit}}, the same table includes a leading
-#' \code{level} column. For a
+#' \code{\link{bayesnecgroupfit}} or a \code{\link{bayesnecjointfit}}, the
+#' same table includes a leading \code{level} column. For a
 #' \code{\link{bayesnechurdlefit}}, a named \code{\link[base]{list}} of two
 #' such tables --- \code{growth} and \code{survival} --- as
 #' \code{\link{rhat}} also returns for that class.
@@ -121,6 +127,10 @@ check_sampling <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
     rownames(out) <- NULL
     return(out)
   }
+  if (is_bayesnecjointfit(x)) {
+    return(joint_sampling_table(x, rhat_cutoff, ess_cutoff,
+                                divergence_cutoff))
+  }
   fits <- sampling_fits(x)
   rows <- lapply(names(fits), function(m) {
     sampling_row(fits[[m]], m, rhat_cutoff, ess_cutoff, divergence_cutoff)
@@ -159,12 +169,15 @@ sampling_fits <- function(x) {
 #' @param fit A \code{\link[brms]{brmsfit}}.
 #' @param model A \code{\link[base]{character}} string.
 #' @param rhat_cutoff,ess_cutoff,divergence_cutoff Thresholds.
+#' @param pars The variables to reduce Rhat and ESS over, or \code{NULL} for
+#' every variable of \code{fit}.
 #'
 #' @return A one-row \code{\link[base]{data.frame}}.
 #'
 #' @noRd
 sampling_row <- function(fit, model, rhat_cutoff, ess_cutoff,
-                         divergence_cutoff) {
+                         divergence_cutoff, pars = NULL) {
+  keep <- function(x) if (is.null(pars)) x else x[names(x) %in% pars]
   n_div <- count_divergent(fit)
   # Reduce both diagnostics through screenable_pars(), as rhat() does, so that
   # the screen and rhat() agree on what counts as a parameter. Over the raw
@@ -172,10 +185,10 @@ sampling_row <- function(fit, model, rhat_cutoff, ess_cutoff,
   # NA, which screen_models() would report as a drop it did not make.
   # neff_ratio() is min(ess_bulk, ess_tail) / ndraws, so multiplying back gives
   # the absolute minimum without a dependency on `posterior`.
-  ratio <- min_or_na(screenable_pars(neff_ratio(fit)))
+  ratio <- min_or_na(screenable_pars(keep(neff_ratio(fit))))
   n_draws <- ndraws(fit)
   min_ess <- ratio * n_draws
-  max_rhat <- max_or_na(screenable_pars(rhat(fit)))
+  max_rhat <- max_or_na(screenable_pars(keep(rhat(fit))))
   data.frame(
     model = model,
     max_rhat = max_rhat,
@@ -189,6 +202,31 @@ sampling_row <- function(fit, model, rhat_cutoff, ess_cutoff,
       isTRUE(n_div > divergence_cutoff),
     stringsAsFactors = FALSE
   )
+}
+
+#' The sampler diagnostics of each level of a joint refit
+#'
+#' @param x An object of class \code{\link{bayesnecjointfit}}.
+#' @param rhat_cutoff,ess_cutoff,divergence_cutoff Thresholds.
+#'
+#' @return The table \code{check_sampling()} returns for a
+#' \code{\link{bayesnecgroupfit}}, one row per level.
+#'
+#' @importFrom brms variables
+#' @noRd
+joint_sampling_table <- function(x, rhat_cutoff, ess_cutoff,
+                                 divergence_cutoff) {
+  vars <- variables(x$fit)
+  own <- lapply(x$levels, joint_level_vars, object = x, vars = vars)
+  shared <- setdiff(vars, unlist(own))
+  out <- do.call(rbind, Map(function(level, level_vars) {
+    cbind(data.frame(level = level, stringsAsFactors = FALSE),
+          sampling_row(x$fit, joint_level_model(x, level), rhat_cutoff,
+                       ess_cutoff, divergence_cutoff,
+                       pars = c(level_vars, shared)))
+  }, x$levels, own))
+  rownames(out) <- NULL
+  out
 }
 
 #' The number of divergent transitions after warmup in one brmsfit

@@ -87,4 +87,6 @@ test_that("pull_out refuses a joint refit", {
   expect_error(pull_out(joint_split(), model = "nec4param"),
                "pull_out() is not defined for a bayesnecjointfit",
                fixed = TRUE)
+  expect_error(pull_out(joint_split(), model = "nec4param"),
+               "no equation or level can be taken out of it", fixed = TRUE)
 })

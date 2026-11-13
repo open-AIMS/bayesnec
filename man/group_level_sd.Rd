@@ -8,8 +8,8 @@ group_level_sd(x)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}},
-\code{\link{bayesmanecfit}}, \code{\link{bayesnecgroupfit}} or
-\code{\link{bayesnechurdlefit}}.}
+\code{\link{bayesmanecfit}}, \code{\link{bayesnecgroupfit}},
+\code{\link{bayesnechurdlefit}} or \code{\link{bayesnecjointfit}}.}
 }
 \value{
 A \code{\link[base]{data.frame}} with one row per equation, grouping,
@@ -23,7 +23,10 @@ a table with no rows, and a message. For a \code{\link{bayesnecgroupfit}},
 the same table with a leading \code{level} column; each weight is from that
 level's own model set. For a \code{\link{bayesnechurdlefit}}, a
 named \code{\link[base]{list}} of two such tables, \code{growth} and
-\code{survival}.
+\code{survival}. For a \code{\link{bayesnecjointfit}}, one table for the
+fit, with \code{wi} 1: a group-level term of a joint refit is shared by
+every level, which \code{\link{bnec_joint}} allows only where every level
+is fitted one equation.
 }
 \description{
 Tabulates the group-level standard deviations of every equation of a fit,

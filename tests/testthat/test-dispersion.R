@@ -321,9 +321,32 @@ test_that("dispersion refuses a grouped fit and any other class", {
   )
   expect_error(dispersion(grouped), "lapply(fit$fits, dispersion)",
                fixed = TRUE)
-  joint <- structure(list(), class = c("bayesnecjointfit", "bnecfit"))
-  expect_error(dispersion(joint),
-               "not an object of class \"bayesnecjointfit\"", fixed = TRUE)
   expect_error(dispersion(list()), "not an object of class \"list\"",
                fixed = TRUE)
+})
+
+test_that("dispersion() on a joint refit gives one statistic per level", {
+  skip_on_cran()
+  fit <- poisson_fit()
+  # A joint refit read from one Poisson fit, split into two levels at x = 1.5.
+  j <- structure(list(fit = fit$fit, bayesnecformula = fit$bayesnecformula,
+                      model = "nec4param", group_var = "site",
+                      levels = c("low", "high"),
+                      level_spec = list(composed = FALSE)),
+                 class = c("bayesnecjointfit", "bnecfit"))
+  j$fit$data$site <- factor(ifelse(j$fit$data$x < 1.5, "low", "high"),
+                            levels = c("low", "high"))
+  out <- dispersion(j)
+  expect_named(out, c("low", "high"))
+  expect_length(out$high, brms::ndraws(fit$fit))
+  expect_false(isTRUE(all.equal(out$low, out$high)))
+  # Read over every row, the statistic is the fit's own, so splitting the rows
+  # changes nothing else.
+  expect_equal(one_fit_dispersion(fit, FALSE, 10,
+                                  rows = seq_len(nrow(fit$fit$data))),
+               dispersion(fit))
+  s <- dispersion(j, summary = TRUE)
+  expect_equal(rownames(s), c("low", "high"))
+  expect_named(s, c("Estimate", "Q2.5", "Q97.5", "P(>1)"))
+  expect_equal(s["high", "Estimate"], stats::median(out$high, na.rm = TRUE))
 })

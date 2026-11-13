@@ -87,6 +87,10 @@ they are supplied. The \code{\link{bnec}} defaults are used where
 \code{manec} records none, as an object fitted by an earlier version of
 \pkg{bayesnec} does not.
 
+A \code{\link{bayesnecjointfit}} is refused. It fits one equation per
+level in one posterior, so no equation or level can be taken out of it
+without refitting.
+
 Of \code{loo_controls}, only "fitting" and "report_k" are used. The models
 kept are scored and weighted as they were in \code{manec}, so "weights",
 "leave_out" and "refit" are ignored, with a message; use

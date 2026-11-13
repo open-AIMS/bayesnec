@@ -48,9 +48,18 @@
 #' sampler diagnostics. Existing differences caused by equations that failed
 #' to fit cannot be restored by screening.
 #'
+#' @section Joint refits:
+#'
+#' A \code{\link{bayesnecjointfit}} is screened one level at a time, on the
+#' table \code{\link{check_sampling}} returns. Each level has one equation in
+#' one posterior, so no level can be dropped. The refit is returned unchanged
+#' where every level passes, and the call stops, naming each level that
+#' failed, where any does, as it stops for a \code{\link{bayesnecfit}} that
+#' fails.
+#'
 #' @param x An object of class \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
-#' \code{\link{bayesnecgroupfit}}.
+#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}},
+#' \code{\link{bayesnecgroupfit}} or \code{\link{bayesnecjointfit}}.
 #' @inheritParams check_sampling
 #' @param group_action For a \code{\link{bayesnecgroupfit}}, either
 #' \code{"per_level"} to screen each independently fitted level separately, or
@@ -65,7 +74,8 @@
 #' \code{\link{bayesnecfit}}, as \code{\link{amend}} already does. A
 #' \code{\link{bayesnechurdlefit}} comes back as one, with each component
 #' screened. A \code{\link{bayesnecgroupfit}} comes back as one, with each
-#' element of \code{fits} replaced by its screened fit.
+#' element of \code{fits} replaced by its screened fit. A
+#' \code{\link{bayesnecjointfit}} that passes comes back unchanged.
 #'
 #' @seealso \code{\link{check_sampling}}, \code{\link{check_fit}},
 #' \code{\link{amend}}, \code{\link{pull_best}}
@@ -95,6 +105,10 @@ screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
       divergence_cutoff = divergence_cutoff, quiet = quiet,
       group_action = group_action
     ))
+  }
+  if (is_bayesnecjointfit(x)) {
+    return(screen_joint_levels(x, rhat_cutoff, ess_cutoff, divergence_cutoff,
+                               quiet))
   }
   tab <- check_sampling(x, rhat_cutoff = rhat_cutoff,
                         ess_cutoff = ess_cutoff,
@@ -135,6 +149,37 @@ screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
                    collapse = "\n"))
   }
   amend(x, drop = to_drop)
+}
+
+#' Screen the levels of a joint refit, which pass or fail together
+#'
+#' @param x A \code{\link{bayesnecjointfit}}.
+#' @inheritParams screen_models
+#'
+#' @return \code{x} unchanged, or an error naming each level that failed.
+#'
+#' @noRd
+screen_joint_levels <- function(x, rhat_cutoff, ess_cutoff, divergence_cutoff,
+                                quiet) {
+  tab <- check_sampling(x, rhat_cutoff = rhat_cutoff, ess_cutoff = ess_cutoff,
+                        divergence_cutoff = divergence_cutoff)
+  if (!any(tab$failed)) {
+    if (!quiet) {
+      message("All ", nrow(tab), " levels of the joint refit passed the",
+              " sampler screen (Rhat <= ", rhat_cutoff, ", ESS >= ",
+              ess_cutoff, ", divergences <= ", divergence_cutoff, ").")
+    }
+    return(x)
+  }
+  failed <- tab[tab$failed, , drop = FALSE]
+  failed$model <- paste0(failed$level, " (", failed$model, ")")
+  stop("A level of the joint refit failed the sampler screen. Each level has",
+       " one equation in one posterior, so no level can be dropped. Refit",
+       " with more iterations through update(), or inspect",
+       " check_sampling(x).\n",
+       paste0(screen_reasons(failed, rhat_cutoff, ess_cutoff,
+                             divergence_cutoff), collapse = "\n"),
+       call. = FALSE)
 }
 
 #' Screen the independently fitted levels of a bayesnecgroupfit
