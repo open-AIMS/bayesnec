@@ -367,6 +367,15 @@ the same call returns.
   the levels. It also has `print()`, `summary()`, `plot()`, `autoplot()`,
   `ggbnec_data()`, `amend()`, `compare_posterior()` and `failed_models()`
   methods, and `dispersion()` refuses it in favour of a call on each level.
+  `bnec_newdata()`, `fitted()`, `predict()`, `posterior_epred()`,
+  `posterior_predict()`, `pp_check()`, `rhat()`, `check_chains()`,
+  `check_priors()`, `pull_brmsfit()`, `pull_best()`, `get_priors()`,
+  `formula()` and `model.frame()` accept a checked `level` argument.
+  Without it, matrices, plots, priors and brms fits are named by level;
+  tables with matching columns include a `level` column. `update()` refits
+  every level, while `c()` and `+` combine matching grouped fits within
+  each level. `check_sampling()`, `group_level_sd()` and `pull_prior()`
+  also report results by level.
   With `family = NULL` the family is chosen once from the whole response. A
   numeric grouping column, fewer than two levels, or a level with fewer than
   four observations is refused before fitting. Each level's seed is derived
@@ -463,7 +472,9 @@ the same call returns.
   units with a non-zero response, and a `bernoulli` model for survival. It
   returns a `bayesnechurdlefit`, whose estimators, plots and predictions take
   `which = "combined"`, `"growth"` or `"survival"`. The combined NEC is the
-  per-draw minimum of the two components. A `disp()` term applies to the
+  per-draw minimum of the two components. `formula()` returns the growth
+  and survival formulas. Prediction methods pass draw selection and
+  `newdata` to both components. A `disp()` term applies to the
   growth component, and so does a `cens()` term where the growth family is
   continuous. `trials()` and `weights()` are refused, as are `binomial`,
   `beta_binomial`, zero-inflated count and two-block growth families.
@@ -497,8 +508,10 @@ the same call returns.
   and the article [Grouping and factor covariates](https://open-aims.github.io/bayesnec/articles/example8.html)
   (#382, #388, #448, #500, #516, #557, #578).
 
-- A `bayesnecjointfit` has the methods of a `bayesnecfit`, and a method that
-  returns one result per fit returns one per level. `summary()` gives each
+- A `bayesnecjointfit` has explicit methods for its shared posterior, and a
+  method that returns one result per fit returns one per level. Its internal
+  level adapter exposes the four toxicity estimators without inheriting the
+  ordinary-fit prediction and diagnostic methods. `summary()` gives each
   level's no-effect estimate, labelled NEC or NSEC, its ECx values and the
   Bayesian R-squared of its rows. `plot()`, `pp_check()`, `check_chains()`
   and `check_priors()` draw one panel or page per level. `rhat()`,
@@ -507,8 +520,10 @@ the same call returns.
   level, and `screen_models()` passes or stops the refit as a whole.
   `fitted()`, `predict()`, `posterior_epred()` and `posterior_predict()`
   predict the fitted rows of every level, or a `newdata` that names each
-  row's level. `group_level_sd()` reads the refit as one fit. `update()` refits the same model,
-  `get_priors()` returns its priors, and `pull_best()` returns it unchanged.
+  row's level; a request for one level uses only its rows and draws.
+  `group_level_sd()` reads the refit as one fit. `update()` refits the same
+  model, `get_priors()` returns its priors, `pull_prior()` returns its full
+  prior table, and `pull_best()` returns it unchanged.
   `amend()`, `pull_out()`, `c()` and `+` refuse it, because each of its
   levels has one equation and it is not a model set (#578).
 
