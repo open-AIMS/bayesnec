@@ -379,6 +379,8 @@ test_that("a model set fitted in parallel reproduces the sequential fit", {
   skip_if(!inherits(sequential, "bayesmanecfit"),
           paste("expected a bayesmanecfit from the two-model set, got",
                 paste(class(sequential), collapse = "/")))
+  skip_if(identical(Sys.getenv("BAYESNEC_SINGLE_STAN"), "true"),
+          "This machine permits one Stan fitting process at a time")
   parallel <- with_parallel_plan({
     skip_unless_worker_sees_internals()
     set_call()
