@@ -191,13 +191,14 @@ best_crossed <- function(object) {
 #' estimated on its own prediction grid, so the estimate for a level is read
 #' off that level's curve alone.
 #'
-#' The returned \code{\link{bayesnecjointfit}} also has methods for
-#' \code{print()}, \code{\link{compare_posterior}}, \code{\link{bnec_newdata}},
-#' \code{\link{ggbnec_data}} and \code{\link{pull_brmsfit}}, which returns the
-#' \code{\link[brms]{brmsfit}}. Other methods of a
-#' \code{\link{bayesnecgroupfit}}, such as \code{summary()},
-#' \code{\link{check_fit}} and \code{\link{amend}}, stop on it with a message
-#' naming what to use instead; \code{\link{bayesnecjointfit}} lists them.
+#' The returned \code{\link{bayesnecjointfit}} has the other methods of a
+#' \code{\link{bayesnecfit}} as well, such as \code{summary()},
+#' \code{plot()}, \code{\link{check_fit}}, \code{\link{rhat}} and
+#' \code{update()}, each returning one result per level where it returns one
+#' per fit; \code{\link{bayesnecjointfit}} lists them. \code{\link{amend}},
+#' \code{\link{pull_out}}, \code{c()} and \code{+} stop on it with a message
+#' naming what to use instead, because it holds one equation per level and no
+#' model set.
 #'
 #' @return For a \code{\link{bayesnechurdlefit}}, an object of class
 #' \code{\link{bayesnecfit}}; for a \code{\link{bayesnecgroupfit}}, an object

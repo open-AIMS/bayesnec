@@ -59,6 +59,13 @@
 c.bnecfit <- function(x, ...) {
   dots <- list(...)
   inputs <- c(list(x), dots)
+  if (any(vapply(inputs, is_bayesnecjointfit, logical(1)))) {
+    stop("c() and + combine fits of one curve to the same data into a",
+         " model set. A bayesnecjointfit fits a curve at each level of a",
+         " factor in one posterior, so it cannot join a set. To compare",
+         " equations, fit them as a set with bnec_group(), then refit the",
+         " equation each level favours with bnec_joint().", call. = FALSE)
+  }
   if (!all(c(is_bnecfit(x), sapply(dots, is_bnecfit)))) {
     stop("All objects must be an object fitted by bnec.")
   } else {

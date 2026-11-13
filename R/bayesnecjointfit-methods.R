@@ -732,12 +732,12 @@ pull_brmsfit.bayesnecjointfit <- function(object, ...) {
   object$fit
 }
 
-#' Refuse a method that a joint refit does not define
+#' Refuse a method that a joint refit cannot define
 #'
 #' Stops with a message naming what to use instead.
 #'
 #' @param x An object of class \code{\link{bayesnecjointfit}}.
-#' @param what The call refused, as \code{"summary()"}.
+#' @param what The call refused, as \code{"amend()"}.
 #' @param remedy A sentence naming what to use instead.
 #'
 #' @return Nothing; always an error.
@@ -750,149 +750,706 @@ refuse_joint_method <- function(x, what, remedy) {
        levels_of, " in one posterior. ", remedy, call. = FALSE)
 }
 
-joint_brms_remedy <- function(fun) {
-  paste0("Call ", fun, " on the brmsfit that pull_brmsfit(x) returns.")
-}
-
-joint_newdata_remedy <- function(fun) {
-  paste0(joint_brms_remedy(fun), " A newdata grid must name the level of",
-         " each row, as the grid from bnec_newdata(x) does.")
-}
-
+#' The coefficients one level of a joint refit holds alone
+#'
+#' @param object An object of class \code{\link{bayesnecjointfit}}.
+#' @param level One level of \code{object$group_var}.
+#' @param vars The variable names of the fit, as \code{brms::variables()}
+#' returns them.
+#'
+#' @details The level's curve parameters and, where the dispersion takes a
+#' value per level, its dispersion parameter. A parameter the levels share,
+#' such as a dispersion fitted once or a group-level term, belongs to no level.
+#'
+#' @return A \code{\link[base]{character}} vector of names in \code{vars},
+#' each with its \code{b_} prefix.
+#'
+#' @importFrom brms variables
 #' @noRd
-#' @method summary bayesnecjointfit
-#' @export
-summary.bayesnecjointfit <- function(object, ...) {
-  refuse_joint_method(object, "summary()", paste(
-    "Use print() for the equations and model weights, and ecx(), nsec(),",
-    "nec(), ecnsec() or exceedance() for estimates, which return one row",
-    "per level."
-  ))
+joint_level_vars <- function(object, level, vars = variables(object$fit)) {
+  curve_pars <- names(get(paste0("bf_", joint_level_model(object, level)))$pforms)
+  pars <- curve_pars
+  if (isTRUE(object$disp_by_level) && !is.null(object$family)) {
+    pars <- c(pars, disp_dpar(object$family))
+  }
+  tag <- object$level_spec$tags[[level]]
+  out <- vapply(pars, function(p) {
+    # A composed refit names each level's curve parameters with its tag, but
+    # writes the dispersion on the factor, as a dummy-coded refit does.
+    v <- if (!is.null(tag) && p %in% curve_pars) {
+      paste0("b_", p, tag, "_Intercept")
+    } else {
+      joint_level_coef(vars, p, object$group_var, object$levels, level)
+    }
+    if (is.null(v)) NA_character_ else v
+  }, character(1), USE.NAMES = FALSE)
+  out[!is.na(out) & out %in% vars]
 }
 
+#' The population-level parameters of a joint refit, one page per level
+#'
+#' @param object An object of class \code{\link{bayesnecjointfit}}.
+#'
+#' @return A named \code{\link[base]{list}}, one element per level that owns
+#' a row of \code{\link[brms]{fixef}}, and a last element \code{shared} where
+#' some row belongs to no level. Each element holds a \code{title} and the
+#' row names in \code{pars}.
+#'
+#' @importFrom brms fixef variables
 #' @noRd
-#' @method plot bayesnecjointfit
-#' @export
-plot.bayesnecjointfit <- function(x, y, ...) {
-  refuse_joint_method(x, "plot()",
-                      "Use autoplot(), which draws one panel per level.")
+joint_fixef_pages <- function(object) {
+  rows <- rownames(fixef(object$fit))
+  vars <- variables(object$fit)
+  pages <- lapply(object$levels, function(l) {
+    own <- sub("^b_", "", joint_level_vars(object, l, vars))
+    list(title = paste0(object$group_var, " = ", l, ": ",
+                        joint_level_model(object, l)),
+         pars = rows[rows %in% own])
+  })
+  names(pages) <- object$levels
+  shared <- setdiff(rows, unlist(lapply(pages, `[[`, "pars")))
+  if (length(shared) > 0) {
+    pages$shared <- list(title = "Parameters shared by every level",
+                         pars = shared)
+  }
+  pages[vapply(pages, function(p) length(p$pars) > 0, logical(1))]
+}
+
+#' Complete a newdata for a joint refit
+#'
+#' @param object An object of class \code{\link{bayesnecjointfit}}.
+#' @param newdata A \code{\link[base]{data.frame}}, or \code{NULL}.
+#'
+#' @details Each row names its level in the grouping column. Where the levels
+#' were fitted different equations, the indicator columns the composed mean
+#' reads are written from that column, so a grid written by hand needs only
+#' the predictor and the level.
+#'
+#' @return \code{NULL} where \code{newdata} is, and otherwise \code{newdata}
+#' with the grouping column a factor over the refit's levels and any
+#' indicator column added.
+#'
+#' @noRd
+joint_newdata <- function(object, newdata) {
+  if (is.null(newdata)) {
+    return(NULL)
+  }
+  if (!is.data.frame(newdata)) {
+    stop("`newdata` must be a data.frame.", call. = FALSE)
+  }
+  group_var <- object$group_var
+  if (!group_var %in% names(newdata)) {
+    stop("`newdata` has no column \"", group_var, "\". A joint refit",
+         " predicts each level from its own coefficients, so each row must",
+         " name its level; bnec_newdata(x) builds such a grid.",
+         call. = FALSE)
+  }
+  lev <- as.character(newdata[[group_var]])
+  unknown <- setdiff(unique(lev[!is.na(lev)]), object$levels)
+  if (anyNA(lev) || length(unknown) > 0) {
+    stop("Column \"", group_var, "\" of `newdata` must hold a level of the",
+         " joint refit (", paste0("\"", object$levels, "\"", collapse = ", "),
+         ") in every row", if (length(unknown) > 0) {
+           paste0("; it holds ", paste0("\"", unknown, "\"", collapse = ", "))
+         }, ".", call. = FALSE)
+  }
+  newdata[[group_var]] <- factor(lev, levels = object$levels)
+  inds <- object$level_spec$inds
+  for (l in names(inds)) {
+    newdata[[inds[[l]]]] <- as.numeric(lev == l)
+  }
+  newdata
 }
 
 #' @noRd
 #' @method fitted bayesnecjointfit
+#' @importFrom stats fitted
 #' @export
-fitted.bayesnecjointfit <- function(object, ...) {
-  refuse_joint_method(object, "fitted()", joint_newdata_remedy("fitted()"))
+fitted.bayesnecjointfit <- function(object, newdata = NULL, ...) {
+  fitted.bayesnecfit(object, newdata = joint_newdata(object, newdata), ...)
 }
 
 #' @noRd
 #' @method predict bayesnecjointfit
+#' @importFrom stats predict
 #' @export
-predict.bayesnecjointfit <- function(object, ...) {
-  refuse_joint_method(object, "predict()", joint_newdata_remedy("predict()"))
+predict.bayesnecjointfit <- function(object, newdata = NULL, ...) {
+  predict.bayesnecfit(object, newdata = joint_newdata(object, newdata), ...)
 }
 
 #' @noRd
 #' @method posterior_epred bayesnecjointfit
+#' @importFrom brms posterior_epred
 #' @export
-posterior_epred.bayesnecjointfit <- function(object, ...) {
-  refuse_joint_method(object, "posterior_epred()",
-                      joint_newdata_remedy("posterior_epred()"))
+posterior_epred.bayesnecjointfit <- function(object, newdata = NULL, ...) {
+  posterior_epred.bayesnecfit(object,
+                              newdata = joint_newdata(object, newdata), ...)
 }
 
 #' @noRd
 #' @method posterior_predict bayesnecjointfit
+#' @importFrom brms posterior_predict
 #' @export
-posterior_predict.bayesnecjointfit <- function(object, ...) {
-  refuse_joint_method(object, "posterior_predict()",
-                      joint_newdata_remedy("posterior_predict()"))
+posterior_predict.bayesnecjointfit <- function(object, newdata = NULL, ...) {
+  posterior_predict.bayesnecfit(object,
+                                newdata = joint_newdata(object, newdata), ...)
+}
+
+#' The fitted rows of each level of a joint refit
+#'
+#' @param object An object of class \code{\link{bayesnecjointfit}}.
+#'
+#' @return A named \code{\link[base]{list}} of row indices into
+#' \code{object$fit$data}, one element per level.
+#'
+#' @noRd
+joint_level_rows <- function(object) {
+  row_level <- joint_row_levels(object)
+  out <- lapply(object$levels, function(l) which(row_level == l))
+  names(out) <- object$levels
+  out
 }
 
 #' @noRd
 #' @method pp_check bayesnecjointfit
+#' @importFrom brms pp_check
+#' @importFrom ggplot2 ggtitle
 #' @export
 pp_check.bayesnecjointfit <- function(object, ...) {
-  refuse_joint_method(object, "pp_check()", joint_brms_remedy("pp_check()"))
+  if ("newdata" %in% ...names()) {
+    stop("pp_check() on a bayesnecjointfit checks each level against its own",
+         " rows, so it takes no `newdata`. Call brms::pp_check() on the",
+         " brmsfit that pull_brmsfit(x) returns to check other data.",
+         call. = FALSE)
+  }
+  d <- object$fit$data
+  rows <- joint_level_rows(object)
+  out <- lapply(object$levels, function(l) {
+    pp_check(object$fit, newdata = d[rows[[l]], , drop = FALSE], ...) +
+      ggtitle(paste0(object$group_var, " = ", l))
+  })
+  names(out) <- object$levels
+  out
 }
 
 #' @noRd
 #' @method rhat bayesnecjointfit
+#' @importFrom brms rhat variables
+#' @importFrom chk chk_number
 #' @export
-rhat.bayesnecjointfit <- function(x, ...) {
-  refuse_joint_method(x, "rhat()", joint_brms_remedy("rhat()"))
+rhat.bayesnecjointfit <- function(x, rhat_cutoff = 1.01, ...) {
+  chk_number(rhat_cutoff)
+  vals <- screenable_pars(rhat(x$fit))
+  vars <- variables(x$fit)
+  own <- lapply(x$levels, joint_level_vars, object = x, vars = vars)
+  # A parameter no level owns, lp__ among them, bears on every level.
+  shared <- setdiff(names(vals), unlist(own))
+  out <- lapply(own, function(v) {
+    level_vals <- clean_rhat_names(vals[c(intersect(v, names(vals)), shared)])
+    list(rhat_vals = level_vals,
+         failed = any(level_vals > rhat_cutoff, na.rm = TRUE))
+  })
+  names(out) <- x$levels
+  out
 }
 
 #' @noRd
 #' @method check_chains bayesnecjointfit
+#' @importFrom grDevices pdf dev.cur dev.list dev.off
+#' @importFrom chk chk_character
 #' @export
-check_chains.bayesnecjointfit <- function(x, ...) {
-  refuse_joint_method(x, "check_chains()", paste(
-    "Draw the chains with plot() on the brmsfit that pull_brmsfit(x)",
-    "returns."
-  ))
+check_chains.bayesnecjointfit <- function(x, filename = NA, ...) {
+  if (!is.na(filename)) {
+    chk_character(filename)
+    pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE)
+    pdf_dev <- dev.cur()
+    on.exit(if (pdf_dev %in% dev.list()) dev.off(pdf_dev), add = TRUE)
+  }
+  for (page in joint_fixef_pages(x)) {
+    plot_chains(x$fit, page$pars, page$title)
+  }
+  if (!is.na(filename)) {
+    dev.off(pdf_dev)
+    message("Chain plots saved to file ", filename, ".pdf")
+  }
+  invisible(NULL)
 }
 
 #' @noRd
 #' @method check_priors bayesnecjointfit
+#' @importFrom ggplot2 ggtitle
+#' @importFrom grDevices devAskNewPage pdf dev.cur dev.list dev.off
+#' @importFrom chk chk_character
 #' @export
-check_priors.bayesnecjointfit <- function(object, filename = NA,
-                                          ask = TRUE) {
-  refuse_joint_method(object, "check_priors()", paste(
-    "List the priors with brms::prior_summary() on the brmsfit that",
-    "pull_brmsfit(x) returns."
-  ))
+check_priors.bayesnecjointfit <- function(object, filename = NA, ask = TRUE) {
+  if (!is.na(filename)) {
+    chk_character(filename)
+  }
+  pages <- joint_fixef_pages(object)
+  plots <- lapply(pages, function(page) {
+    prior_posterior_plot(object$fit, page$pars) + ggtitle(page$title)
+  })
+  # Leave the devices as they were found, as the bayesmanecfit method does.
+  if (!is.na(filename)) {
+    pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE,
+        width = 12, height = 4)
+    pdf_dev <- dev.cur()
+    on.exit(if (pdf_dev %in% dev.list()) dev.off(pdf_dev), add = TRUE)
+  } else {
+    default_ask <- devAskNewPage()
+    on.exit(devAskNewPage(default_ask), add = TRUE)
+    devAskNewPage(ask = ask)
+  }
+  for (p in plots) {
+    print(p)
+  }
+  if (!is.na(filename)) {
+    dev.off(pdf_dev)
+    message("Probability density plots saved to file ", filename, ".pdf")
+  }
+  invisible(plots)
 }
 
 #' @noRd
 #' @method check_fit bayesnecjointfit
+#' @importFrom chk chk_number
+#' @importFrom stats model.frame
 #' @export
 check_fit.bayesnecjointfit <- function(x, group = NULL, ndraws = 1000,
                                        seed = 10, ...) {
-  refuse_joint_method(x, "check_fit()", paste(
-    "Check the sampler with rhat() and the fit with pp_check(), each called",
-    "on the brmsfit that pull_brmsfit(x) returns."
-  ))
+  chk_number(seed)
+  d <- x$fit$data
+  if (!is.null(group) && length(group) > 1L) {
+    if (!is.atomic(group) || !is.null(dim(group)) ||
+        length(group) != nrow(d) || anyNA(group)) {
+      stop("`group` must have one non-missing value per row of the data the",
+           " joint refit was fitted to (", nrow(d), " rows), in its order.",
+           call. = FALSE)
+    }
+  } else if (!is.null(group) &&
+             (length(group) != 1L || !is.numeric(group) || anyNA(group))) {
+    stop("`group` must be a numeric bin count or one value per fitted row.",
+         call. = FALSE)
+  }
+  pop <- attr(model.frame(x$bayesnecformula, data = d), "bnec_pop")
+  y <- d[[pop[["y_var"]]]]
+  predictor <- d[[pop[["x_var"]]]]
+  # One simulation for the whole fit, split by level below, so every level is
+  # read from the same draws.
+  sims <- check_fit_draws(x$fit, x$bayesnecformula, ndraws, seed)
+  cens <- check_fit_cens(x$fit)
+  mixture <- is_hurdle_family(x$fit$family)
+  rows <- joint_level_rows(x)
+  out <- lapply(x$levels, function(l) {
+    r <- rows[[l]]
+    with_level_label(l, {
+      grp <- check_fit_groups(predictor[r],
+                              if (length(group) > 1L) group[r] else group)
+      tab <- check_fit_stats(y[r], sims$yrep[, r, drop = FALSE], sims$mu[r],
+                             grp, mixture,
+                             cens = if (is.null(cens)) NULL else {
+                               lapply(cens, `[`, r)
+                             })
+      ctrl <- check_fit_control_groups(predictor[r], grp,
+                                       recorded_x_control(x))
+      tab$control <- tab$group %in% ctrl
+      attr(tab, "model") <- joint_level_model(x, l)
+      allot_class(tab, c("checkfit", "data.frame"))
+    })
+  })
+  names(out) <- x$levels
+  structure(list(fits = out, group_var = x$group_var),
+            class = "checkfit_group")
+}
+
+#' Draws of the curve parameters of one level of a joint refit
+#'
+#' @param object An object of class \code{\link{bayesnecjointfit}}.
+#' @param level One level of \code{object$group_var}.
+#' @param prefix The \pkg{brms} distributional parameter prefix, \code{""}
+#' for the mean block.
+#'
+#' @return A draws-by-parameter \code{\link[base]{matrix}} with columns named
+#' as \code{curve_par_names()} names them, as \code{curve_param_draws()}
+#' returns for an ordinary fit.
+#'
+#' @noRd
+joint_curve_draws <- function(object, level, prefix = "") {
+  pars <- curve_par_names()
+  cols <- lapply(pars, function(p) {
+    joint_level_draws(object, paste0(prefix, p), level)
+  })
+  keep <- !vapply(cols, is.null, logical(1))
+  out <- matrix(unlist(cols[keep]), ncol = sum(keep))
+  colnames(out) <- pars[keep]
+  out
 }
 
 #' @noRd
 #' @method curve_params bayesnecjointfit
+#' @importFrom chk chk_lgl
 #' @export
 curve_params.bayesnecjointfit <- function(object, summary = TRUE,
                                           xform = NULL, ...) {
-  refuse_joint_method(object, "curve_params()", paste(
-    "Each level's curve parameters are coefficients of the brmsfit that",
-    "pull_brmsfit(x) returns, named as print(x) describes."
-  ))
-}
-
-#' @noRd
-#' @method model.frame bayesnecjointfit
-#' @export
-model.frame.bayesnecjointfit <- function(formula, ...) {
-  refuse_joint_method(formula, "model.frame()", paste(
-    "The data the model was fitted to are in the brmsfit that",
-    "pull_brmsfit(x) returns, as its `data` element."
-  ))
+  chk_lgl(summary)
+  check_xform(xform)
+  report_scales(object, "joint refit")
+  out <- lapply(object$levels, function(l) {
+    lvl <- joint_level_fit(object, l)
+    tag <- object$level_spec$tags[[l]]
+    with_prior_bound_label(paste("Level", l), {
+      res <- one_fit_params(
+        object$fit, models = dpar_models(lvl), wi = 1, summary = summary,
+        xform = recorded_xform(lvl, xform),
+        grid_span = function() fitted_grid_span(lvl),
+        draws_for = function(prefix) joint_curve_draws(object, l, prefix),
+        nlpar_for = function(prefix, par) paste0(prefix, par, tag)
+      )
+      if (summary) {
+        report_param_prior_boundary(attr(res, "prior_bound_summary"))
+      }
+      res
+    })
+  })
+  names(out) <- object$levels
+  if (!summary) {
+    return(out)
+  }
+  record <- bind_prior_records(lapply(out, attr, "prior_bound_summary"),
+                               object$levels)
+  out <- do.call(rbind, lapply(seq_along(out), function(i) {
+    cbind(data.frame(level = object$levels[i], stringsAsFactors = FALSE),
+          out[[i]])
+  }))
+  rownames(out) <- NULL
+  attr(out, "prior_bound_summary") <- record
+  out
 }
 
 #' @noRd
 #' @method formula bayesnecjointfit
 #' @export
 formula.bayesnecjointfit <- function(x, ...) {
-  refuse_joint_method(x, "formula()", paste(
-    "The formula fitted is in the brmsfit that pull_brmsfit(x) returns, as",
-    "its `formula` element."
-  ))
+  out <- lapply(x$levels, function(l) {
+    swap_crf_model(x$bayesnecformula, joint_level_model(x, l))
+  })
+  names(out) <- x$levels
+  out
+}
+
+#' @noRd
+#' @method model.frame bayesnecjointfit
+#' @importFrom stats model.frame
+#' @export
+model.frame.bayesnecjointfit <- function(formula, ...) {
+  d <- model.frame(formula$fit)
+  rows <- joint_level_rows(formula)
+  lapply(rows, function(r) d[r, , drop = FALSE])
+}
+
+#' @noRd
+#' @method plot bayesnecjointfit
+#' @importFrom graphics par title
+#' @importFrom chk chk_lgl chk_character
+#' @importFrom stats model.frame
+#' @export
+plot.bayesnecjointfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
+                                  position_legend = "topright",
+                                  add_ec10 = FALSE, xform = NULL,
+                                  lxform = identity, jitter_x = FALSE,
+                                  jitter_y = FALSE, ylab = "Response",
+                                  xlab = "Predictor", xticks = NA) {
+  chk_lgl(CI)
+  chk_lgl(add_nec)
+  chk_lgl(add_ec10)
+  check_xform(xform)
+  if (!inherits(lxform, "function")) {
+    stop("lxform must be a function.")
+  }
+  chk_lgl(jitter_x)
+  chk_lgl(jitter_y)
+  chk_character(ylab)
+  chk_character(xlab)
+  legend_pos <- check_position_legend(position_legend)
+  family <- x$fit$family$family
+  d <- x$fit$data
+  bdat <- model.frame(x$bayesnecformula, data = d, run_par_checks = TRUE)
+  pop <- attr(bdat, "bnec_pop")
+  x_all <- d[[pop[["x_var"]]]]
+  y_all <- plotted_response(d, pop, family)
+  # As in plot.bayesnecfit(): on the recorded axis with no xform, draw what
+  # the estimators return.
+  recorded <- plot_reads_recorded(bdat, xform)
+  est_xform <- if (recorded) NULL else identity
+  axis_xform <- if (is.null(xform)) identity else xform
+  rows <- joint_level_rows(x)
+  n <- length(x$levels)
+  old <- par(mfrow = c(ceiling(n / 2), min(2, n)))
+  on.exit(par(old), add = TRUE)
+  for (lev in x$levels) {
+    curve <- joint_level_curve(x, lev)
+    x_dat <- x_all[rows[[lev]]]
+    x_vec <- curve$x
+    if (!pop_var_is_transformed(bdat, "x_var")) {
+      x_dat <- axis_xform(x_dat)
+      x_vec <- axis_xform(x_vec)
+    }
+    nec <- c(NA, NA, NA)
+    if (add_nec) {
+      nec <- joint_level_ne(x, lev, est_xform)
+      if (!recorded) {
+        nec <- to_axis_scale(nec, bdat, x$bayesnecformula, curve$x,
+                             axis_xform)
+      }
+    }
+    ec10 <- c(NA, NA, NA)
+    if (add_ec10) {
+      ec10 <- plot_ecx(joint_level_fit(x, lev), family, list(), est_xform)
+      if (!recorded) {
+        ec10 <- to_axis_scale(ec10, bdat, x$bayesnecformula, curve$x,
+                              axis_xform)
+      }
+    }
+    nec_tag <- if (sampled_nec_is_no_effect(joint_level_model(x, lev))) {
+      "NEC"
+    } else {
+      "NSEC"
+    }
+    draw_fit_panel(x_dat, y_all[rows[[lev]]], x_vec, curve, nec, ec10,
+                   nec_tag, ..., CI = CI, add_nec = add_nec,
+                   legend_pos = legend_pos, add_ec10 = add_ec10,
+                   lxform = lxform, jitter_x = jitter_x, jitter_y = jitter_y,
+                   ylab = ylab, xlab = xlab, xticks = xticks)
+    title(main = paste0(x$group_var, " = ", lev))
+  }
+  invisible(x)
+}
+
+#' The ECx rows of a summary of a joint refit
+#'
+#' @param ... The dots of the summary method, passed to \code{\link{ecx}}.
+#' @param .fit An object of class \code{\link{bayesnecjointfit}}.
+#' @param .ecx_vals The ECx targets.
+#'
+#' @return A named \code{\link[base]{list}} of the tables \code{\link{ecx}}
+#' returns, one per entry of \code{.ecx_vals}.
+#'
+#' @noRd
+joint_summary_ecx_rows <- function(..., .fit, .ecx_vals) {
+  # Dotted and after ..., so that an ecx_val meant for ecx() does not
+  # partially match them.
+  out <- lapply(.ecx_vals, function(v) ecx(.fit, ecx_val = v, ...))
+  names(out) <- paste0("EC", .ecx_vals)
+  out
+}
+
+#' @noRd
+#' @method summary bayesnecjointfit
+#' @importFrom brms bayes_R2
+#' @importFrom chk chk_lgl chk_numeric chk_number
+#' @export
+summary.bayesnecjointfit <- function(object, ..., ecx = FALSE,
+                                     ecx_vals = c(10, 50, 90),
+                                     rhat_cutoff = 1.01,
+                                     divergence_cutoff = 10) {
+  chk_lgl(ecx)
+  chk_numeric(ecx_vals)
+  chk_number(rhat_cutoff)
+  chk_number(divergence_cutoff)
+  check_summary_ecx_posterior(list(...))
+  ne_xform <- summary_ecx_xform(list(...))
+  ecs <- NULL
+  if (ecx) {
+    ecs <- joint_summary_ecx_rows(..., .fit = object, .ecx_vals = ecx_vals)
+  }
+  ne_args <- list(object, no_effect = TRUE)
+  if (!is.null(ne_xform)) {
+    ne_args$xform <- ne_xform
+  }
+  # The table labels each row NEC or NSEC, so nec()'s message adds nothing.
+  ne <- suppressMessages(do.call(nec, ne_args))
+  d <- object$fit$data
+  rows <- joint_level_rows(object)
+  bayesr2 <- do.call(rbind, lapply(rows, function(r) {
+    bayes_R2(object$fit, newdata = d[r, , drop = FALSE])
+  }))
+  rownames(bayesr2) <- object$levels
+  fit <- object$fit
+  divergences <- if (!is.null(fit$algorithm) &&
+                     !identical(fit$algorithm, "sampling")) {
+    NA_real_
+  } else {
+    count_divergent(fit)
+  }
+  models <- vapply(object$levels, joint_level_model, character(1),
+                   object = object, USE.NAMES = FALSE)
+  out <- list(
+    brmssummary = cleaned_brms_summary(fit),
+    models = stats::setNames(models, object$levels),
+    group_var = object$group_var,
+    family = object$family,
+    disp_by_level = object$disp_by_level,
+    ne = ne,
+    ecs = ecs,
+    bayesr2 = bayesr2,
+    divergences = divergences,
+    divergence_cutoff = divergence_cutoff,
+    rhat_issues = lapply(rhat(object, rhat_cutoff = rhat_cutoff), "[[",
+                         "failed"),
+    rhat_cutoff = rhat_cutoff,
+    bnec_version = bnec_version(object)
+  )
+  allot_class(out, "jointsummary")
+}
+
+#' Print one row per level of an estimator table
+#'
+#' @param tab A table as \code{\link{nec}} or \code{\link{ecx}} returns for a
+#' \code{\link{bayesnecjointfit}}.
+#' @param labels The row labels.
+#'
+#' @return \code{TRUE} where an entry is a bound of the prediction range
+#' rather than a quantile, invisibly.
+#'
+#' @noRd
+print_level_table <- function(tab, labels) {
+  bounds <- grep("^bound_", names(tab), value = TRUE)
+  values <- sub("^bound_", "", bounds)
+  mat <- as.matrix(tab[, values, drop = FALSE])
+  rownames(mat) <- labels
+  marks <- lapply(seq_len(nrow(tab)), function(i) {
+    list(bound = unname(unlist(tab[i, bounds])))
+  })
+  attr(mat, "censored_summary") <- marks
+  print_mat(mat)
+  invisible(any(nzchar(unlist(tab[, bounds]))))
+}
+
+#' @noRd
+#' @method print jointsummary
+#' @export
+print.jointsummary <- function(x, ...) {
+  cat("Object of class bayesnecjointfit\n\n")
+  if (length(unique(x$models)) == 1) {
+    cat("  equation          :", unname(x$models[[1]]), "\n")
+  } else {
+    cat("  equations         :",
+        paste0(names(x$models), " = ", x$models, collapse = ", "), "\n")
+  }
+  cat("  grouping variable :", x$group_var, "\n")
+  cat("  family            :", x$family$family,
+      paste0("(link = ", x$family$link, ")"), "\n")
+  cat("  dispersion        :",
+      if (isTRUE(x$disp_by_level)) "per level" else "shared", "\n\n")
+  print(x$brmssummary)
+  cat("\nDivergent transitions after warmup: ", x$divergences, "\n", sep = "")
+  cat("\n\nNo-effect toxicity estimates\n")
+  bounded <- print_level_table(x$ne, paste0(x$ne$level, ": ", x$ne$model,
+                                            " (", x$ne$ne_type, ")"))
+  if (any(x$ne$ne_type == "NSEC")) {
+    cat("NB: An NEC is the sampled nec parameter of a monotone threshold\n",
+        "    equation. An NSEC is read off the fitted curve of a smooth or\n",
+        "    hormesis threshold equation (Fisher et al. 2023).\n", sep = "")
+  }
+  if (!is.null(x$ecs)) {
+    cat("\nECx estimates\n")
+    for (nm in names(x$ecs)) {
+      tab <- x$ecs[[nm]]
+      bounded <- print_level_table(tab, paste0(tab$level, " ", nm)) ||
+        bounded
+    }
+  }
+  if (bounded) {
+    cat("NB: An entry marked >= or <= is the end of that level's prediction\n",
+        "    range, not a quantile.\n", sep = "")
+  }
+  cat("\nBayesian R2 estimates, from each level's own rows:\n")
+  print_mat(x$bayesr2)
+  cat("\n")
+  print_version(x$bnec_version)
+  rhat_bad <- names(x$rhat_issues)[which(unlist(x$rhat_issues))]
+  div_bad <- isTRUE(x$divergences > x$divergence_cutoff)
+  if (length(rhat_bad) > 0 || div_bad) {
+    msg <- character(0)
+    if (length(rhat_bad) > 0) {
+      msg <- c(msg, paste0("Rhat > ", x$rhat_cutoff, " (no convergence) at ",
+                           paste0("\"", rhat_bad, "\"", collapse = ", "),
+                           "; see rhat()."))
+    }
+    if (div_bad) {
+      msg <- c(msg, paste0(x$divergences, " divergent transitions after",
+                           " warmup, more than ", x$divergence_cutoff, "."))
+    }
+    warning(paste(msg, collapse = "\n"), "\nConsider refitting with more",
+            " iterations or a larger adapt_delta, passed to update() as",
+            " control = list(adapt_delta = ...).", call. = FALSE)
+  }
+  invisible(x)
 }
 
 #' @noRd
 #' @method update bayesnecjointfit
+#' @importFrom stats update
 #' @export
-update.bayesnecjointfit <- function(object, ...) {
-  refuse_joint_method(object, "update()", paste(
-    "To change the refit, call bnec_joint() again on the bnec_group() fit",
-    "with the arguments to change; for new data, fit bnec_group() first."
-  ))
+update.bayesnecjointfit <- function(object, newdata = NULL, recompile = NULL,
+                                    ...) {
+  dots <- list(...)
+  if ("family" %in% names(dots)) {
+    stop("update() on a bayesnecjointfit keeps the family it was fitted",
+         " with, because its priors were built for that family. To fit",
+         " another, fit the levels with bnec_group() under that family and",
+         " refit with bnec_joint().", call. = FALSE)
+  }
+  if ("formula." %in% names(dots)) {
+    stop("update() on a bayesnecjointfit keeps its formula. To fit another,",
+         " pass it to bnec_joint() as `formula`.", call. = FALSE)
+  }
+  stored <- intersect(names(dots), c("x_range", "resolution", "sig_val",
+                                     "loo_controls", "force_fit"))
+  if (length(stored) > 0) {
+    stop(paste0("`", stored, "`", collapse = ", "), " cannot be passed to",
+         " update() on a bayesnecjointfit, which stores no estimate to",
+         " rebuild and no model set to weight. ecx(), nsec() and nec() take",
+         " x_range, resolution and sig_val when called.", call. = FALSE)
+  }
+  declared <- intersect(names(dots), c("prior_type", "asymptote_observed",
+                                       "predictor_scale"))
+  if (length(declared) > 0) {
+    stop(paste0("`", declared, "`", collapse = ", "), " builds the default",
+         " priors, which update() reuses. Pass it to bnec_joint() on the",
+         " bnec_group() fit to refit with priors built from it.",
+         call. = FALSE)
+  }
+  if (!is.null(newdata)) {
+    newdata <- joint_newdata(object, newdata)
+    absent <- setdiff(object$levels,
+                      as.character(newdata[[object$group_var]]))
+    if (length(absent) > 0) {
+      stop("`newdata` has no row at ",
+           paste0("\"", absent, "\"", collapse = ", "), ". The joint refit",
+           " estimates coefficients for every level, and a level without",
+           " data would be estimated from its prior alone.", call. = FALSE)
+    }
+    # Check the response against the family as bnec() does, and correct a
+    # value at an excluded boundary before brms sees it.
+    newdata <- check_update_data(
+      list(list(fit = object$fit, bayesnecformula = object$bayesnecformula)),
+      newdata, on_fit = FALSE
+    )$data
+  }
+  fit_old <- object$fit
+  # Build a call rather than forward `...`, and keep newdata a symbol, so that
+  # brms records the name of the data as update.bnecfit() leaves it.
+  upd_call <- as.call(c(quote(update), quote(fit_old),
+                        list(formula. = NULL, newdata = quote(newdata),
+                             recompile = quote(recompile)), dots))
+  object$fit <- eval(upd_call)
+  if (!is.null(newdata)) {
+    object$data <- newdata
+  }
+  attr(object, "bnec_version") <- joint_version_table(object,
+                                                      version_record())
+  object
 }
 
 #' @noRd
@@ -904,7 +1461,11 @@ amend.bayesnecjointfit <- function(object, drop, add, loo_controls,
                                    asymptote_observed = NULL, timeout = Inf,
                                    predictor_scale = NULL) {
   refuse_joint_method(object, "amend()", paste(
-    "To change the equations, amend() the bnec_group() fit and refit it with",
-    "bnec_joint()."
+    "It holds one equation per level and no model set, so there is no",
+    "equation to add or drop and no model weight to recompute, and it stores",
+    "no estimate for x_range, resolution or sig_val to rebuild: ecx(), nsec()",
+    "and nec() take those when called. To change the equations, amend() the",
+    "bnec_group() fit and refit it with bnec_joint(); to refit with other",
+    "sampler settings or data, use update()."
   ))
 }

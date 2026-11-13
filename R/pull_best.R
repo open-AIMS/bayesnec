@@ -7,7 +7,8 @@
 #'
 #' @param object An object of class \code{\link{bayesnecfit}},
 #' \code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}} as returned by
-#' \code{\link{bnec}}.
+#' \code{\link{bnec}}, or of class \code{\link{bayesnecjointfit}} as returned
+#' by \code{\link{bnec_joint}}.
 #' @param ... Not used. Any argument supplied here is refused; see Details.
 #'
 #' @details The highest-weighted candidate contributes most to the
@@ -36,7 +37,10 @@
 #' @return For a \code{\link{bayesmanecfit}}, an object of class
 #' \code{\link{bayesnecfit}}. For a \code{\link{bayesnecfit}}, \code{object}
 #' unchanged. For a \code{\link{bayesnechurdlefit}}, an object of the same class
-#' with each component reduced to its own highest-weighted model.
+#' with each component reduced to its own highest-weighted model. For a
+#' \code{\link{bayesnecjointfit}}, \code{object} unchanged, because each level
+#' already holds a single equation, the one its own model weights favoured
+#' when \code{\link{bnec_joint}} chose it.
 #'
 #' @seealso \code{\link{pull_out}}, \code{\link{screen_models}},
 #' \code{\link{check_fit}}, \code{\link{summary}}
@@ -89,6 +93,17 @@ pull_best.bayesnecfit <- function(object, ...) {
   # that the record of the selection does not depend on the branch.
   message("This fit holds the single model ", object$model,
           "; returning it unchanged.")
+  object
+}
+
+#' @noRd
+#' @export
+pull_best.bayesnecjointfit <- function(object, ...) {
+  models <- vapply(object$levels, joint_level_model, character(1),
+                   object = object, USE.NAMES = FALSE)
+  message("This joint refit holds one equation per level (",
+          paste0(object$levels, " = ", models, collapse = ", "),
+          "); returning it unchanged.")
   object
 }
 

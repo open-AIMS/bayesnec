@@ -26,9 +26,8 @@ get_priors(object, ...)
 or a \code{\link{bayesnecformula}}, a \code{\link[stats]{formula}} or a
 \code{\link[base]{character}} string that can be coerced to one. A grouped
 fit from \code{\link{bnec_group}} is refused: call \code{get_priors} on
-one of its levels, \code{fit$fits[[level]]}. A joint fit from
-\code{\link{bnec_joint}} is refused as well; its priors can be read with
-\code{\link[brms]{prior_summary}} on \code{fit$fit}.}
+one of its levels, \code{fit$fits[[level]]}. A
+\code{\link{bayesnecjointfit}} from \code{\link{bnec_joint}} is accepted.}
 
 \item{...}{Not used. Any argument passed here is refused: a fitted object
 takes no further argument, and a formula takes only the arguments named
@@ -72,7 +71,13 @@ For a single model, an object of class
 \code{\link[base]{list}} of them, one per model, named as
 \code{\link{bnec}} expects a named prior list to be. For a
 \code{\link{bayesnechurdlefit}}, a \code{\link[base]{list}} of two such
-objects, one per component.
+objects, one per component. For a \code{\link{bayesnecjointfit}}, one
+\code{\link[brms]{brmsprior}}, because the levels share one fit. Where
+every level was fitted one equation, each prior covers that parameter at
+every level, and the object can be passed back to \code{\link{bnec_joint}}
+through \code{prior}. Where the levels were fitted different equations, it
+names each level's own parameters, as \code{print()} on the fit describes,
+and \code{\link{bnec_joint}} does not accept it.
 }
 \description{
 Returns priors in the form \code{\link{bnec}} accepts them, either from a fit

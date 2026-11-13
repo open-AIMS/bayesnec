@@ -10,9 +10,8 @@
 #' or a \code{\link{bayesnecformula}}, a \code{\link[stats]{formula}} or a
 #' \code{\link[base]{character}} string that can be coerced to one. A grouped
 #' fit from \code{\link{bnec_group}} is refused: call \code{get_priors} on
-#' one of its levels, \code{fit$fits[[level]]}. A joint fit from
-#' \code{\link{bnec_joint}} is refused as well; its priors can be read with
-#' \code{\link[brms]{prior_summary}} on \code{fit$fit}.
+#' one of its levels, \code{fit$fits[[level]]}. A
+#' \code{\link{bayesnecjointfit}} from \code{\link{bnec_joint}} is accepted.
 #' @param ... Not used. Any argument passed here is refused: a fitted object
 #' takes no further argument, and a formula takes only the arguments named
 #' below.
@@ -88,7 +87,13 @@
 #' \code{\link[base]{list}} of them, one per model, named as
 #' \code{\link{bnec}} expects a named prior list to be. For a
 #' \code{\link{bayesnechurdlefit}}, a \code{\link[base]{list}} of two such
-#' objects, one per component.
+#' objects, one per component. For a \code{\link{bayesnecjointfit}}, one
+#' \code{\link[brms]{brmsprior}}, because the levels share one fit. Where
+#' every level was fitted one equation, each prior covers that parameter at
+#' every level, and the object can be passed back to \code{\link{bnec_joint}}
+#' through \code{prior}. Where the levels were fitted different equations, it
+#' names each level's own parameters, as \code{print()} on the fit describes,
+#' and \code{\link{bnec_joint}} does not accept it.
 #'
 #' @seealso \code{\link{bnec}}, \code{\link{pull_prior}},
 #' \code{\link{check_priors}}, \code{\link{show_params}}
@@ -115,11 +120,6 @@ get_priors.default <- function(object, ...) {
          " for example get_priors(", deparse1(substitute(object)),
          "$fits[[\"", names(object$fits)[1], "\"]]).", call. = FALSE)
   }
-  if (inherits(object, "bayesnecjointfit")) {
-    stop("get_priors() has no method for a joint fit from bnec_joint(). Read",
-         " the priors it used with brms::prior_summary(",
-         deparse1(substitute(object)), "$fit).", call. = FALSE)
-  }
   stop("get_priors() takes an object fitted by bnec, or a formula and data.",
        " You supplied an object of class \"", class(object)[1], "\".",
        call. = FALSE)
@@ -128,6 +128,13 @@ get_priors.default <- function(object, ...) {
 #' @noRd
 #' @export
 get_priors.bayesnecfit <- function(object, ...) {
+  refuse_fit_dots(...)
+  usable_prior(object$fit$prior)
+}
+
+#' @noRd
+#' @export
+get_priors.bayesnecjointfit <- function(object, ...) {
   refuse_fit_dots(...)
   usable_prior(object$fit$prior)
 }
