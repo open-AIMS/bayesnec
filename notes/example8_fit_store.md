@@ -131,7 +131,7 @@ BAYESNEC_FIT_STORE=/path/to/grouping-structures/store \
 ```
 
 `precompile.R` refuses the variable where more than one vignette is named. The
-render writes `vignettes/example8.Rmd` and its figures into the working tree;
+render writes `vignettes/articles/example8.Rmd` and its figures into the working tree;
 for a measurement rather than a release, discard them afterwards with
 `git checkout -- vignettes/`. On the cluster the same render is
 `BAYESNEC_FIT_STORE=/export/scratch/$USER/grouping-structures/store

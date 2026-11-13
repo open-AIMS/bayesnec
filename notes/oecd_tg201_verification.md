@@ -58,7 +58,7 @@ risk assessment (§8 Q4, Q9).
 
 ## 1. Claim-by-claim verdict
 
-The paragraph under review, verbatim from `vignettes/example6.Rmd.orig`:
+The paragraph under review, verbatim from `vignettes/articles/example6.Rmd.orig`:
 
 > The regulatory standard does not floor. OECD TG 201 defines the growth endpoint
 > as average specific growth rate, `µ = (ln X_j − ln X_i)/(t_j − t_i)`, which
@@ -397,8 +397,8 @@ in full is a modelling decision requiring the justification above.
 
 ## 6. Proposed replacement prose
 
-Drop-in for the paragraph at `vignettes/example6.Rmd.orig:1033-1038` (and the
-identical text at `vignettes/example6.Rmd:1358`). Prose-only, so no re-render
+Drop-in for the paragraph at `vignettes/articles/example6.Rmd.orig:1033-1038` (and the
+identical text at `vignettes/articles/example6.Rmd:1358`). Prose-only, so no re-render
 needed.
 
 > The regulatory standard says not to floor, and says why. OECD TG 201
