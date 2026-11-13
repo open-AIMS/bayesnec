@@ -35,7 +35,8 @@ are applied instead.}
 
 \item{probs}{The percentiles to be computed.}
 
-\item{...}{Unused.}
+\item{...}{Passed to each component posterior method, including
+\code{ndraws} and \code{draw_ids}.}
 }
 \value{
 A \code{\link[base]{matrix}}.

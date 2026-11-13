@@ -10,6 +10,8 @@
   which = "combined",
   resolution = 1000,
   x_range = NA,
+  newdata = NULL,
+  re_formula = NA,
   ...
 )
 }
@@ -23,7 +25,8 @@
 
 \item{x_range}{A range of predictor values to predict over.}
 
-\item{...}{Unused.}
+\item{...}{Passed to each component posterior method, including
+\code{ndraws} and \code{draw_ids}.}
 }
 \value{
 A \code{\link[base]{matrix}}.

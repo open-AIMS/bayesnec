@@ -28,7 +28,9 @@ hurdle_no_combined <- function(what) {
 #' @param x_range A range of predictor values to predict over.
 #' @param newdata An optional \code{\link[base]{data.frame}} of predictor
 #' values. When supplied, \code{resolution} and \code{x_range} are ignored.
-#' @param ... Unused.
+#' @param re_formula Optional group-effects setting passed to both components.
+#' @param ... Passed to each component posterior method, including
+#' \code{ndraws} and \code{draw_ids}.
 #'
 #' @details The combined curve is the product of the growth curve and the
 #' probability of survival, i.e. the expected response per individual
@@ -48,16 +50,21 @@ hurdle_no_combined <- function(what) {
 #' @export
 posterior_epred.bayesnechurdlefit <- function(object, which = "combined",
                                               resolution = 1000, x_range = NA,
-                                              newdata = NULL, ...) {
+                                              newdata = NULL,
+                                              re_formula = NULL, ...) {
   which <- hurdle_check_which(which)
   if (is.null(newdata)) {
     return(hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range)[[which]])
+                                  x_range = x_range,
+                                  re_formula = re_formula, ...)[[which]])
   }
   # Use a supplied grid as given: a caller such as compare_fitted() pairs its
   # columns with its own x vector. Both components share the predictor term.
-  g <- posterior_epred(object$growth, newdata = newdata, re_formula = NA)
-  s <- posterior_epred(object$survival, newdata = newdata, re_formula = NA)
+  re_formula <- if (is.null(re_formula)) NA else re_formula
+  g <- posterior_epred(object$growth, newdata = newdata,
+                       re_formula = re_formula, ...)
+  s <- posterior_epred(object$survival, newdata = newdata,
+                       re_formula = re_formula, ...)
   n <- min(nrow(g), nrow(s))
   g <- g[seq_len(n), , drop = FALSE]
   s <- s[seq_len(n), , drop = FALSE]
@@ -93,7 +100,7 @@ fitted.bayesnechurdlefit <- function(object, which = "combined",
   chk_lgl(robust)
   chk_numeric(probs)
   preds <- posterior_epred(object, which = which, resolution = resolution,
-                           x_range = x_range)
+                           x_range = x_range, ...)
   if (!summary) {
     return(preds)
   }
@@ -123,19 +130,30 @@ fitted.bayesnechurdlefit <- function(object, which = "combined",
 #' @export
 posterior_predict.bayesnechurdlefit <- function(object, which = "combined",
                                                 resolution = 1000,
-                                                x_range = NA, ...) {
+                                                x_range = NA, newdata = NULL,
+                                                re_formula = NA, ...) {
   which <- hurdle_check_which(which)
-  nd <- hurdle_newdata_pair(object, resolution = resolution, x_range = x_range)
+  nd <- if (is.null(newdata)) {
+    hurdle_newdata_pair(object, resolution = resolution, x_range = x_range)
+  } else {
+    if (!is.data.frame(newdata)) {
+      stop("newdata for a bayesnechurdlefit must be a data frame.",
+           call. = FALSE)
+    }
+    list(growth = newdata, survival = newdata)
+  }
   if (which == "growth") {
     return(posterior_predict(object$growth, newdata = nd$growth,
-                             re_formula = NA))
+                             re_formula = re_formula, ...))
   }
   if (which == "survival") {
     return(posterior_predict(object$survival, newdata = nd$survival,
-                             re_formula = NA))
+                             re_formula = re_formula, ...))
   }
-  g <- posterior_predict(object$growth, newdata = nd$growth, re_formula = NA)
-  s <- posterior_epred(object$survival, newdata = nd$survival, re_formula = NA)
+  g <- posterior_predict(object$growth, newdata = nd$growth,
+                         re_formula = re_formula, ...)
+  s <- posterior_epred(object$survival, newdata = nd$survival,
+                       re_formula = re_formula, ...)
   n <- min(nrow(g), nrow(s))
   g <- g[seq_len(n), , drop = FALSE]
   s <- s[seq_len(n), , drop = FALSE]
@@ -162,7 +180,7 @@ predict.bayesnechurdlefit <- function(object, which = "combined",
                                       probs = c(0.025, 0.975), ...) {
   chk_lgl(summary)
   preds <- posterior_predict(object, which = which, resolution = resolution,
-                             x_range = x_range)
+                             x_range = x_range, ...)
   if (!summary) {
     return(preds)
   }
@@ -653,6 +671,21 @@ check_priors.bayesnechurdlefit <- function(object, filename = NA,
 model.frame.bayesnechurdlefit <- function(formula, ...) {
   list(growth = model.frame(formula$growth, ...),
        survival = model.frame(formula$survival, ...))
+}
+
+#' Formulas of both hurdle components
+#'
+#' @param x A \code{bayesnechurdlefit}.
+#' @param ... Passed to each component's formula method.
+#' @param model One equation in each component, or \code{NULL} for all.
+#' @return A named list with \code{growth} and \code{survival}. Each entry
+#' is a \code{bayesnecformula} for a single fit, or a named list of those
+#' formulas by equation for a model set.
+#' @method formula bayesnechurdlefit
+#' @export
+formula.bayesnechurdlefit <- function(x, ..., model = NULL) {
+  list(growth = group_model_method(x$growth, model, stats::formula, ...),
+       survival = group_model_method(x$survival, model, stats::formula, ...))
 }
 
 
