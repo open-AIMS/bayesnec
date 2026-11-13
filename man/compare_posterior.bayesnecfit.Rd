@@ -18,11 +18,11 @@
 \item{...}{Unused.}
 }
 \value{
-An error naming \code{bayesnecfit}; supply a list of fits.
+An error naming \code{bayesnecfit}; supply a named list of fits.
 
-An error naming \code{bayesmanecfit}; supply a list of fits.
+An error naming \code{bayesmanecfit}; supply a named list of fits.
 
-An error naming \code{bayesnechurdlefit}; supply a list of fits.
+An error naming \code{bayesnechurdlefit}; supply a named list of fits.
 }
 \description{
 Refuse posterior comparison on one ordinary fit

@@ -70,30 +70,30 @@ check_formula.bayesnecjointfit <- function(formula, ...) {
 #'
 #' @param x A \code{bayesnecfit}.
 #' @param ... Unused.
-#' @return An error naming \code{bayesnecfit}; supply a list of fits.
+#' @return An error naming \code{bayesnecfit}; supply a named list of fits.
 #' @method compare_posterior bayesnecfit
 #' @export
 compare_posterior.bayesnecfit <- function(x, ...) {
   refuse_fit_method("compare_posterior", x,
-                    "Pass a list of fits to compare_posterior().")
+                    "Pass a named list of fits to compare_posterior().")
 }
 
 #' @rdname compare_posterior.bayesnecfit
-#' @return An error naming \code{bayesmanecfit}; supply a list of fits.
+#' @return An error naming \code{bayesmanecfit}; supply a named list of fits.
 #' @method compare_posterior bayesmanecfit
 #' @export
 compare_posterior.bayesmanecfit <- function(x, ...) {
   refuse_fit_method("compare_posterior", x,
-                    "Pass a list of fits to compare_posterior().")
+                    "Pass a named list of fits to compare_posterior().")
 }
 
 #' @rdname compare_posterior.bayesnecfit
-#' @return An error naming \code{bayesnechurdlefit}; supply a list of fits.
+#' @return An error naming \code{bayesnechurdlefit}; supply a named list of fits.
 #' @method compare_posterior bayesnechurdlefit
 #' @export
 compare_posterior.bayesnechurdlefit <- function(x, ...) {
   refuse_fit_method("compare_posterior", x,
-                    "Pass a list of fits to compare_posterior().")
+                    "Pass a named list of fits to compare_posterior().")
 }
 
 #' Refuse a joint refit without separate level fits
