@@ -260,7 +260,7 @@ summary_f
 #> The combined endpoint is the expected response per individual exposed,
 #> i.e. growth * survival. Use which = to select a component.
 #> 
-#> Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.
+#> Fitted by bayesnec 3.0.0, installed from a local source, which records no commit, under R 4.6.1.
 ```
 
 
