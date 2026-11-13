@@ -678,3 +678,37 @@ merges. The result, and whether `toxval` is to follow, is recorded on a
 model weights alters the fitted object, from which `toxval` also computes its
 estimates, and a new message or refusal changes no returned value. This
 replaces D11's rule that every fix is recorded.
+
+## D47 — The release is 3.0.0 (#582)
+
+RF, 2026-11-12: `predev` is released as 3.0.0, not 2.2.0, because the change
+since 2.1.3.1 includes breaking changes (D45, the removal of `nsec()` for
+`brmsfit` and `drc` objects, and changed estimates for the same call). The
+version is raised in the release-render step, before the pull request from
+`predev` into `dev`.
+
+## D48 — A joint refit has the methods of an ordinary fit
+
+RF, 2026-11-13: every method an ordinary `bayesnecfit` has is given to a
+`bayesnecjointfit`, reversing a ruling made during the release review that
+inherited methods would refuse a joint refit. The methods reuse the per-level
+view through which the estimators already read a joint refit. A generic that
+cannot apply to one brmsfit with several levels refuses with its reason.
+
+## D49 — Four vignettes ship with the package
+
+RF, 2026-11-13: `example1`, `example2`, `example2b` and `example3` ship as
+vignettes, because they are the closest to true vignettes. `example4` to
+`example10` become pkgdown articles, which the website builds and the package
+tarball does not contain. This brings the tarball within CRAN's 5 MB guidance.
+The shipped vignettes and help pages link to the articles by their website
+address, which resolves only once the 3.0.0 site is published, so the CRAN
+submission follows the site's deployment.
+
+## D50 — Hurdle, grouped and joint fitting stay separate functions
+
+RF, 2026-11-13: `bnec_hurdle()`, `bnec_group()` and `bnec_joint()` stay
+separate exported functions rather than becoming arguments of `bnec()`. Making
+them arguments would be a cleaner design, but it would make `?bnec`, already
+long, harder to read, and in 3.0.0 it would require refitting the `example8`
+fit store, whose units are keyed on the fitting call.
