@@ -338,31 +338,17 @@ Once this fit returns, the modelling vignettes can be followed, beginning with
 The Windows failures described above, and the measurements quoted with them (the
 49 MB archive, the download that failed at R's default timeout and completed in
 4.9 minutes at `timeout = 1800`, the OneDrive build failure, and the `tbb.dll`
-linked against a superseded Rtools), are taken from the software setup module of
-the concentration-response modelling course
-(<https://github.com/open-AIMS/cr_modelling_training>, commit `9d05595`). That
-module records what was observed on fresh Windows machines during 2026, and
-these are the course's measurements, not this package's.
+linked against a superseded Rtools), were observed when `cmdstanr` and CmdStan
+were installed on new Windows machines during 2026.
 
-All statements here about `cmdstanr` behaviour were read from `cmdstanr` 0.9.0
-under R 4.6.1, and none of them is a course measurement. They are: the
-environment variable read by `cmdstanr:::cmdstanr_initialize()`, and its
-fallback to `~/.cmdstan`; the resolution of a `CMDSTAN` directory that is not
-itself an installation to the newest `cmdstan-*` inside it, and the absence of
-that resolution from `set_cmdstan_path()`; the Rtools version returned by
-`cmdstanr:::rtools4x_version()`; the text of three of the messages quoted above
-(i.e. the toolchain success, the missing Rtools, and the directory assertion);
-the assertion by `install_cmdstan()` that a supplied directory exists, instead
-of creating it; the forwarding of `fix = TRUE` by `check_cmdstan_toolchain()` to
-the branch that repairs problems instead of only reporting them; and the
-`timeout` argument being passed to `build_cmdstan()` and `build_example()`,
-while the download runs through `utils::download.file()` and so honours
-`options(timeout)`.
+The statements about the behaviour of `cmdstanr` (e.g. where it looks for
+CmdStan, which Rtools it expects for a given version of R, and the text of the
+messages quoted above) were read from `cmdstanr` 0.9.0 under R 4.6.1, and other
+versions may behave differently.
 
-The Linux route was checked on 2026-09-11 by running the course's verification
-script end to end, with R 4.6.1, `brms` 2.23.0, `cmdstanr` 0.9.0 and CmdStan
-2.39.0. This check has two limitations: it was run under WSL2 Debian and not on
-a native installation, and the machine was already configured, so it confirms
-that the end state works but does not test the instructions for reaching it.
+The Linux route was checked on 2026-09-11 with R 4.6.1, `brms` 2.23.0,
+`cmdstanr` 0.9.0 and CmdStan 2.39.0. However, the machine was already
+configured, so this check confirms that the end state works but does not test
+the instructions for reaching it.
 
 # References
