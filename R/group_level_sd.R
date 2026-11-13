@@ -6,8 +6,8 @@
 #' \code{\link{summary}} does not report them.
 #'
 #' @param x An object of class \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}}, \code{\link{bayesnecgroupfit}} or
-#' \code{\link{bayesnechurdlefit}}.
+#' \code{\link{bayesmanecfit}}, \code{\link{bayesnecgroupfit}},
+#' \code{\link{bayesnechurdlefit}} or \code{\link{bayesnecjointfit}}.
 #'
 #' @details Each equation of a model set estimates its own group-level
 #' standard deviations. Read each one against the weight of the equation it
@@ -42,7 +42,10 @@
 #' the same table with a leading \code{level} column; each weight is from that
 #' level's own model set. For a \code{\link{bayesnechurdlefit}}, a
 #' named \code{\link[base]{list}} of two such tables, \code{growth} and
-#' \code{survival}.
+#' \code{survival}. For a \code{\link{bayesnecjointfit}}, one table for the
+#' fit, with \code{wi} 1: a group-level term of a joint refit is shared by
+#' every level, which \code{\link{bnec_joint}} allows only where every level
+#' is fitted one equation.
 #'
 #' @seealso \code{\link[brms]{VarCorr}}, \code{\link{check_sampling}},
 #' \code{\link{dispersion}}, \code{\link{pull_out}}
@@ -101,14 +104,14 @@ gl_sd_table <- function(x) {
     models <- x$success_models
     fits <- lapply(models, function(m) x$mod_fits[[m]]$fit)
     wi <- x$mod_stats[models, "wi"]
-  } else if (is_bayesnecfit(x)) {
+  } else if (is_bayesnecfit(x) || is_bayesnecjointfit(x)) {
     models <- x$model
     fits <- list(pull_brmsfit(x))
     wi <- 1
   } else {
     stop("group_level_sd requires a bayesnecfit, a bayesmanecfit, a",
-         " bayesnecgroupfit or a bayesnechurdlefit. For a bayesnecjointfit,",
-         " use brms::VarCorr(x$fit).", call. = FALSE)
+         " bayesnecgroupfit, a bayesnechurdlefit or a bayesnecjointfit.",
+         call. = FALSE)
   }
   rows <- Map(gl_sd_rows, fits, models, wi)
   out <- do.call(rbind, c(list(gl_sd_empty()), rows))

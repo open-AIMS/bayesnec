@@ -8,8 +8,8 @@ check_sampling(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}},
-\code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
-\code{\link{bayesnecgroupfit}}.}
+\code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}},
+\code{\link{bayesnecgroupfit}} or \code{\link{bayesnecjointfit}}.}
 
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
@@ -21,8 +21,8 @@ check_sampling(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
 A \code{\link[base]{data.frame}} with one row per candidate model and
 columns \code{model}, \code{max_rhat}, \code{min_ess}, \code{min_ess_ratio},
 \code{n_divergent} and \code{failed}. For a
-\code{\link{bayesnecgroupfit}}, the same table includes a leading
-\code{level} column. For a
+\code{\link{bayesnecgroupfit}} or a \code{\link{bayesnecjointfit}}, the
+same table includes a leading \code{level} column. For a
 \code{\link{bayesnechurdlefit}}, a named \code{\link[base]{list}} of two
 such tables --- \code{growth} and \code{survival} --- as
 \code{\link{rhat}} also returns for that class.
@@ -98,6 +98,12 @@ A \code{\link{bayesnecgroupfit}} is diagnosed one level at a time because
 its levels were fitted independently. The result is one table with a
 \code{level} column, rather than a list of tables, so that an equation which
 passes at one level and fails at another can be compared directly.
+
+A \code{\link{bayesnecjointfit}} gives the same table, with one row per
+level. The Rhat and ESS of a row are reduced over that level's own
+coefficients and the parameters the levels share, such as \code{lp__}.
+\code{n_divergent} is the count for the whole fit, because a divergent
+transition cannot be attributed to one level.
 }
 
 \examples{

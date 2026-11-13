@@ -8,7 +8,8 @@ dispersion(model, summary = FALSE, seed = 10)
 }
 \arguments{
 \item{model}{An object of class \code{\link{bayesnecfit}},
-\code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}}. The
+\code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
+\code{\link{bayesnecjointfit}}. The
 statistic is defined for the \code{\link[stats]{poisson}} and
 \code{\link[stats]{binomial}} families. A \code{\link{bayesnecgroupfit}}
 is refused: call \code{dispersion()} on the fit of each level, as in
@@ -40,7 +41,10 @@ is empty, \code{numeric()}. For a \code{\link{bayesmanecfit}},
 \code{summary = TRUE} returns a data frame with one row per equation, with
 \code{NA} for an equation whose family is not supported. For a
 \code{\link{bayesnechurdlefit}}, a \code{\link[base]{list}} with elements
-\code{growth} and \code{survival}, each the result for that component.
+\code{growth} and \code{survival}, each the result for that component. For
+a \code{\link{bayesnecjointfit}}, the result a
+\code{\link{bayesmanecfit}} gives, with one element or row per level, each
+computed over that level's rows from one simulation of the whole fit.
 }
 \description{
 Calculates a posterior dispersion metric.

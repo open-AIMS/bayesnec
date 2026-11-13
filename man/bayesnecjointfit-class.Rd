@@ -122,10 +122,10 @@ equation no level fitted.}
 A joint refit has the methods of a \code{\link{bayesnecfit}}. A method
 that returns one result per fit returns one per level here, and a method
 that describes the sampler or the data describes the one
-\code{\link[brms]{brmsfit}} holding every level.
+\code{\link[brms]{brmsfit}} fitted to every level.
 
 \itemize{
-\item \code{summary()} reports the equations, the \pkg{brms} summary and
+\item \code{summary()} gives the equations, the \pkg{brms} summary and
 the divergent transitions of the fit. It then gives one row per level for
 the no-effect estimate, labelled NEC or NSEC as
 \code{nec(x, no_effect = TRUE)} labels it, for each ECx asked for with
@@ -145,13 +145,19 @@ different equations, the indicator columns the model reads are added
 from that column.
 \item \code{pp_check()} returns a named list of one check per level,
 each made against that level's own rows.
-\item \code{\link{rhat}} returns one element per level, holding the Rhat
+\item \code{\link{rhat}} returns one element per level, with the Rhat
 of that level's coefficients and of the parameters the levels share,
 such as \code{lp__}, with the verdict against \code{rhat_cutoff}.
 \item \code{\link{check_chains}} and \code{\link{check_priors}} draw one
 page per level, and a last page for any population-level parameter the
 levels share. \code{\link{check_priors}} also returns the plots
 invisibly, as a named list.
+\item \code{\link{check_sampling}} returns one row per level, and
+\code{\link{screen_models}} returns the refit unchanged where every level
+passes and stops where any fails, since no level can be dropped.
+\code{\link{dispersion}} returns one statistic per level, and
+\code{\link{group_level_sd}} the group-level standard deviations of the
+fit.
 \item \code{\link{check_fit}} returns the \code{checkfit_group} object a
 \code{\link{bayesnecgroupfit}} returns, with one table per level, all
 read from one simulation. An explicit \code{group} has one value per
@@ -167,7 +173,7 @@ The \pkg{brms} formula and data of the whole fit are those of the
 \code{\link[brms]{brmsfit}} that \code{\link{pull_brmsfit}} returns.
 \item \code{\link{get_priors}} returns the priors the fit used.
 \item \code{\link{pull_best}} returns the fit unchanged, since each
-level already holds one equation. \code{\link{failed_models}} returns an
+level already has one equation. \code{\link{failed_models}} returns an
 empty record, since a joint refit that fails stops with an error.
 \item \code{update()} refits the same model with other \pkg{brms}
 arguments, such as \code{iter} or \code{control}, or to
@@ -182,12 +188,12 @@ Details.
 }
 
 \code{\link{amend}}, \code{\link{pull_out}}, \code{c()} and \code{+}
-stop with a message. A joint refit holds one equation per level and no
-model set, so it has no equation to add or drop, no level can be taken out
-of it without refitting, and it cannot join a set of fits to the same
-data. To change the equations, amend the \code{\link{bnec_group}} fit and
-refit it, or fit one equation at every level with the \code{model}
-argument of \code{\link{bnec_joint}}.
+stop with a message. Each level of a joint refit has one equation, and the
+refit is not a model set, so it has no equation to add or drop, no level
+can be taken out of it without refitting, and it cannot join a set of fits
+to the same data. To change the equations, amend the
+\code{\link{bnec_group}} fit and refit it, or fit one equation at every
+level with the \code{model} argument of \code{\link{bnec_joint}}.
 }
 
 \seealso{

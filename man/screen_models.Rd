@@ -15,8 +15,8 @@ screen_models(
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}},
-\code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
-\code{\link{bayesnecgroupfit}}.}
+\code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}},
+\code{\link{bayesnecgroupfit}} or \code{\link{bayesnecjointfit}}.}
 
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
@@ -39,7 +39,8 @@ The object with failing candidates removed. A
 \code{\link{bayesnecfit}}, as \code{\link{amend}} already does. A
 \code{\link{bayesnechurdlefit}} comes back as one, with each component
 screened. A \code{\link{bayesnecgroupfit}} comes back as one, with each
-element of \code{fits} replaced by its screened fit.
+element of \code{fits} replaced by its screened fit. A
+\code{\link{bayesnecjointfit}} that passes comes back unchanged.
 }
 \description{
 Runs \code{\link{check_sampling}}, drops every candidate that failed, and
@@ -96,6 +97,17 @@ where it is present when it fails at any level. This keeps an initially
 common candidate set aligned, but discards fits which passed their own
 sampler diagnostics. Existing differences caused by equations that failed
 to fit cannot be restored by screening.
+}
+
+\section{Joint refits}{
+
+
+A \code{\link{bayesnecjointfit}} is screened one level at a time, on the
+table \code{\link{check_sampling}} returns. Each level has one equation in
+one posterior, so no level can be dropped. The refit is returned unchanged
+where every level passes, and the call stops, naming each level that
+failed, where any does, as it stops for a \code{\link{bayesnecfit}} that
+fails.
 }
 
 \examples{

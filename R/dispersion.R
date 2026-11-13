@@ -3,7 +3,8 @@
 #' Calculates a posterior dispersion metric.
 #'
 #' @param model An object of class \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}}. The
+#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
+#' \code{\link{bayesnecjointfit}}. The
 #' statistic is defined for the \code{\link[stats]{poisson}} and
 #' \code{\link[stats]{binomial}} families. A \code{\link{bayesnecgroupfit}}
 #' is refused: call \code{dispersion()} on the fit of each level, as in
@@ -36,7 +37,10 @@
 #' \code{summary = TRUE} returns a data frame with one row per equation, with
 #' \code{NA} for an equation whose family is not supported. For a
 #' \code{\link{bayesnechurdlefit}}, a \code{\link[base]{list}} with elements
-#' \code{growth} and \code{survival}, each the result for that component.
+#' \code{growth} and \code{survival}, each the result for that component. For
+#' a \code{\link{bayesnecjointfit}}, the result a
+#' \code{\link{bayesmanecfit}} gives, with one element or row per level, each
+#' computed over that level's rows from one simulation of the whole fit.
 #'
 #' @details The statistic is the ratio of the observed to the simulated Pearson
 #' residual sum of squares, whose null value is 1. With \code{summary = TRUE}
@@ -109,15 +113,18 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
          " level. Call it on the fit of each level, as in",
          " lapply(fit$fits, dispersion).", call. = FALSE)
   }
+  if (is_bayesnecjointfit(model)) {
+    return(joint_dispersion(model, summary, seed))
+  }
   # expand_nec() passes a prebayesnecfit, the stored form of one equation, or
   # a plain list holding the brmsfit of one.
   one_equation <- is.list(model) && !inherits(model, "bnecfit") &&
     inherits(model$fit, "brmsfit")
   if (!inherits(model, c("bayesnecfit", "bayesmanecfit", "bayesnechurdlefit",
                          "prebayesnecfit")) && !one_equation) {
-    stop("dispersion() applies to a bayesnecfit, bayesmanecfit or",
-         " bayesnechurdlefit, not an object of class \"", class(model)[1],
-         "\".", call. = FALSE)
+    stop("dispersion() applies to a bayesnecfit, bayesmanecfit,",
+         " bayesnechurdlefit or bayesnecjointfit, not an object of class \"",
+         class(model)[1], "\".", call. = FALSE)
   }
   # Not an S3 generic, so a hurdle fit has to be handled here. It has two
   # underlying brmsfits and no combined analogue, so one result per component.
@@ -144,6 +151,24 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
     })
     return(as.data.frame(do.call(rbind, out), check.names = FALSE))
   }
+  one_fit_dispersion(model, summary, seed)
+}
+
+#' The dispersion statistic of one equation's brmsfit
+#'
+#' @param model A \code{\link{bayesnecfit}}, a \code{prebayesnecfit}, or a
+#' \code{\link[base]{list}} holding \code{fit}, \code{bayesnecformula} and
+#' \code{model}.
+#' @param summary,seed As for \code{\link{dispersion}}.
+#' @param rows Row indices of the fitted data to compute the statistic over,
+#' or \code{NULL} for every row. The posterior is simulated over every row
+#' either way, so each subset of one fit reads the same draws.
+#'
+#' @return As \code{\link{dispersion}} returns for a \code{\link{bayesnecfit}}.
+#'
+#' @importFrom brms standata posterior_linpred posterior_predict
+#' @noRd
+one_fit_dispersion <- function(model, summary, seed, rows = NULL) {
   # Keep the equation's name for the messages, since expand_nec() calls this
   # once per equation.
   mod_name <- model$model
@@ -194,9 +219,16 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
       }
       var_out[i, ] <- prd_var_y
     }
+    labels <- rownames(model$data)
+    if (!is.null(rows)) {
+      obs_y <- obs_y[rows]
+      prd_out <- prd_out[, rows, drop = FALSE]
+      ppd_out <- ppd_out[, rows, drop = FALSE]
+      var_out <- var_out[, rows, drop = FALSE]
+      labels <- labels[rows]
+    }
     disp <- pearson_dispersion(obs_y, prd_out, ppd_out, var_out,
-                               labels = rownames(model$data),
-                               model_name = mod_name)
+                               labels = labels, model_name = mod_name)
     if (all(is.na(disp))) {
       # Reached when no draw retains an observation. The usual cause is that
       # every observation has zero variance and is reproduced exactly, but the
@@ -218,6 +250,38 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
   } else {
     numeric()
   }
+}
+
+#' The dispersion statistic of each level of a joint refit
+#'
+#' @param model An object of class \code{\link{bayesnecjointfit}}.
+#' @param summary,seed As for \code{\link{dispersion}}.
+#'
+#' @return As \code{\link{dispersion}} returns for a
+#' \code{\link{bayesmanecfit}}, with one element or row per level.
+#'
+#' @noRd
+joint_dispersion <- function(model, summary, seed) {
+  rows <- joint_level_rows(model)
+  out <- lapply(model$levels, function(l) {
+    level_fit <- list(fit = model$fit, bayesnecformula = model$bayesnecformula,
+                      model = paste0(joint_level_model(model, l), " (",
+                                     model$group_var, " = ", l, ")"))
+    one_fit_dispersion(level_fit, summary, seed, rows = rows[[l]])
+  })
+  names(out) <- model$levels
+  if (!summary) {
+    return(out)
+  }
+  summary_names <- c("Estimate", "Q2.5", "Q97.5", "P(>1)")
+  out <- lapply(out, function(x) {
+    if (length(x) == 0) {
+      stats::setNames(rep(NA_real_, length(summary_names)), summary_names)
+    } else {
+      x
+    }
+  })
+  as.data.frame(do.call(rbind, out), check.names = FALSE)
 }
 
 #' Pearson residual dispersion ratio, with degenerate observations handled
