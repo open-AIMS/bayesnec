@@ -111,26 +111,31 @@ check_sampling <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
   chk_number(rhat_cutoff)
   chk_number(ess_cutoff)
   chk_number(divergence_cutoff)
-  if (is_bayesnechurdlefit(x)) {
-    return(hurdle_delegate(x, check_sampling, rhat_cutoff = rhat_cutoff,
-                           ess_cutoff = ess_cutoff,
-                           divergence_cutoff = divergence_cutoff))
-  }
-  if (is_bayesnecgroupfit(x)) {
-    tabs <- group_lapply(
-      x, check_sampling, rhat_cutoff = rhat_cutoff,
-      ess_cutoff = ess_cutoff, divergence_cutoff = divergence_cutoff
-    )
-    out <- do.call(rbind, Map(function(tab, level) {
-      cbind(data.frame(level = level, stringsAsFactors = FALSE), tab)
-    }, tabs, x$levels))
-    rownames(out) <- NULL
-    return(out)
-  }
-  if (is_bayesnecjointfit(x)) {
-    return(joint_sampling_table(x, rhat_cutoff, ess_cutoff,
-                                divergence_cutoff))
-  }
+  UseMethod("check_sampling")
+}
+
+#' @rdname check_sampling
+#' @return A one-row sampler diagnostic table for this fit.
+#' @export
+check_sampling.bayesnecfit <- function(x, rhat_cutoff = 1.01,
+                                      ess_cutoff = 400,
+                                      divergence_cutoff = 10) {
+  check_sampling_rows(x, rhat_cutoff, ess_cutoff, divergence_cutoff)
+}
+
+#' @rdname check_sampling
+#' @return A sampler diagnostic table with one row per candidate model.
+#' @export
+check_sampling.bayesmanecfit <- check_sampling.bayesnecfit
+
+#' Assemble sampler rows for ordinary fits
+#'
+#' @param x An ordinary fit or model set.
+#' @param rhat_cutoff,ess_cutoff,divergence_cutoff Diagnostic thresholds.
+#' @return One row per candidate model.
+#' @noRd
+check_sampling_rows <- function(x, rhat_cutoff, ess_cutoff,
+                                divergence_cutoff) {
   fits <- sampling_fits(x)
   rows <- lapply(names(fits), function(m) {
     sampling_row(fits[[m]], m, rhat_cutoff, ess_cutoff, divergence_cutoff)
@@ -138,6 +143,51 @@ check_sampling <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
   out <- do.call(rbind, rows)
   rownames(out) <- NULL
   out
+}
+
+#' @rdname check_sampling
+#' @return A named list of growth and survival diagnostic tables.
+#' @export
+check_sampling.bayesnechurdlefit <- function(x, rhat_cutoff = 1.01,
+                                            ess_cutoff = 400,
+                                            divergence_cutoff = 10) {
+  hurdle_delegate(x, check_sampling, rhat_cutoff = rhat_cutoff,
+                  ess_cutoff = ess_cutoff,
+                  divergence_cutoff = divergence_cutoff)
+}
+
+#' @rdname check_sampling
+#' @return A diagnostic table with one row per candidate and level.
+#' @export
+check_sampling.bayesnecgroupfit <- function(x, rhat_cutoff = 1.01,
+                                           ess_cutoff = 400,
+                                           divergence_cutoff = 10) {
+  tabs <- group_lapply(x, check_sampling, rhat_cutoff = rhat_cutoff,
+                       ess_cutoff = ess_cutoff,
+                       divergence_cutoff = divergence_cutoff)
+  out <- do.call(rbind, Map(function(tab, level) {
+    cbind(data.frame(level = level, stringsAsFactors = FALSE), tab)
+  }, tabs, x$levels))
+  rownames(out) <- NULL
+  out
+}
+
+#' @rdname check_sampling
+#' @return A diagnostic table with one row per joint level.
+#' @export
+check_sampling.bayesnecjointfit <- function(x, rhat_cutoff = 1.01,
+                                           ess_cutoff = 400,
+                                           divergence_cutoff = 10) {
+  joint_sampling_table(x, rhat_cutoff, ess_cutoff, divergence_cutoff)
+}
+
+#' @rdname check_sampling
+#' @return An error naming the unsupported class.
+#' @export
+check_sampling.default <- function(x, ...) {
+  stop("check_sampling requires a bayesnecfit, a bayesmanecfit, a",
+       " bayesnechurdlefit, a bayesnecgroupfit or a bayesnecjointfit; got ",
+       class(x)[1], ".", call. = FALSE)
 }
 
 #' The candidate brmsfits of a fit, named by model

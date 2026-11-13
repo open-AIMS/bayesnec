@@ -2,9 +2,27 @@
 % Please edit documentation in R/group_level_sd.R
 \name{group_level_sd}
 \alias{group_level_sd}
+\alias{group_level_sd.bayesnecfit}
+\alias{group_level_sd.bayesmanecfit}
+\alias{group_level_sd.bayesnecjointfit}
+\alias{group_level_sd.bayesnechurdlefit}
+\alias{group_level_sd.bayesnecgroupfit}
+\alias{group_level_sd.default}
 \title{Group-level standard deviations of each equation}
 \usage{
 group_level_sd(x)
+
+\method{group_level_sd}{bayesnecfit}(x)
+
+\method{group_level_sd}{bayesmanecfit}(x)
+
+\method{group_level_sd}{bayesnecjointfit}(x)
+
+\method{group_level_sd}{bayesnechurdlefit}(x)
+
+\method{group_level_sd}{bayesnecgroupfit}(x)
+
+\method{group_level_sd}{default}(x)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}},
@@ -27,6 +45,18 @@ named \code{\link[base]{list}} of two such tables, \code{growth} and
 fit, with \code{wi} 1: a group-level term of a joint refit is shared by
 every level, which \code{\link{bnec_joint}} allows only where every level
 is fitted one equation.
+
+The diagnostic data frame for this single fit.
+
+The diagnostic data frame with model weights for this set.
+
+The diagnostic data frame for the joint fit.
+
+A named list of growth and survival diagnostic tables.
+
+A diagnostic data frame with a leading level column.
+
+An error naming the unsupported class.
 }
 \description{
 Tabulates the group-level standard deviations of every equation of a fit,

@@ -129,3 +129,10 @@ test_that("a hurdle fit gives one table per component", {
   expect_equal(out$growth, group_level_sd(fit))
   expect_equal(nrow(out$survival), 0)
 })
+test_that("group-level diagnostics dispatch on each concrete fit class", {
+  classes <- c("bayesnecfit", "bayesmanecfit", "bayesnechurdlefit",
+               "bayesnecgroupfit", "bayesnecjointfit")
+  for (class in classes) {
+    expect_true(is.function(getS3method("group_level_sd", class)))
+  }
+})

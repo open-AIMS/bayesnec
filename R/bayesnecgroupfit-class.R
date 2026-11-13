@@ -382,6 +382,8 @@ estimate_marks <- function(est, nms, levels, what) {
   out
 }
 
+#' @return The \code{bayesnecgroupfit}, invisibly, after printing its
+#' level labels and equation names.
 #' @noRd
 #' @method print bayesnecgroupfit
 #' @export
@@ -390,22 +392,34 @@ print.bayesnecgroupfit <- function(x, ...) {
   cat("  grouping variable :", x$group_var, "\n")
   cat("  family            :", x$family$family,
       paste0("(link = ", x$family$link, ")"), "\n\n")
-  mods <- function(f) {
-    if (inherits(f, "bayesmanecfit")) {
-      paste0(length(f$mod_fits), " models: ",
-             paste0(names(f$mod_fits), collapse = ", "))
-    } else {
-      f$model
-    }
-  }
   for (i in seq_along(x$levels)) {
     cat(sprintf("  %-14s (n = %3d) : %s\n", x$levels[i], x$n[i],
-                mods(x$fits[[i]])))
+                group_model_label(x$fits[[i]])))
   }
   cat("\nEach level is a complete fit in its own right; use nec(), ecx() for\n",
       "per-level estimates and crossed_group_weights() for the model weights\n",
       "across levels.\n", sep = "")
   invisible(x)
+}
+
+#' Label the equations fitted at one grouped level
+#'
+#' @param fit An ordinary fit or model set.
+#' @return A character label for the printed group summary.
+#' @noRd
+group_model_label <- function(fit) UseMethod("group_model_label")
+
+#' @return The fitted equation name for a single fit.
+#' @noRd
+#' @export
+group_model_label.bayesnecfit <- function(fit) fit$model
+
+#' @return The number and names of a model set's equations.
+#' @noRd
+#' @export
+group_model_label.bayesmanecfit <- function(fit) {
+  paste0(length(fit$mod_fits), " models: ",
+         paste(names(fit$mod_fits), collapse = ", "))
 }
 
 #' @noRd

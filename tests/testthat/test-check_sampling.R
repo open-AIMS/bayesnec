@@ -323,3 +323,10 @@ test_that("quiet suppresses the message but not the screening", {
   )
   expect_s3_class(out, "bayesmanecfit")
 })
+test_that("sampler diagnostics dispatch on each concrete fit class", {
+  classes <- c("bayesnecfit", "bayesmanecfit", "bayesnechurdlefit",
+               "bayesnecgroupfit", "bayesnecjointfit")
+  for (class in classes) {
+    expect_true(is.function(getS3method("check_sampling", class)))
+  }
+})

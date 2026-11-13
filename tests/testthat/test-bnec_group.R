@@ -1161,6 +1161,8 @@ test_that("grouped update visits each level and combination checks data", {
   other$data$x[1] <- other$data$x[1] + 1
   expect_error(c(g, other), "different data")
   expect_error(c(g, nec4param), "bayesnecfit")
+  expect_error(g + nec4param, "bayesnecgroupfit with class bayesnecfit")
+  expect_error(nec4param + g, "bayesnecgroupfit with class bayesnecfit")
 })
 
 test_that("grouped fits combine their models within each level", {
@@ -1173,4 +1175,11 @@ test_that("grouped fits combine their models within each level", {
                          "bayesmanecfit")))
   plus <- suppressMessages(suppressWarnings(a + b))
   expect_named(plus$fits, a$levels)
+})
+
+test_that("grouped print labels each level's stored model type", {
+  g <- fake_group_fit(list(a = nec4param, b = manec_example))
+  lines <- capture.output(print(g))
+  expect_true(any(grepl("a.*nec4param", lines)))
+  expect_true(any(grepl("b.*2 models: nec4param, ecx4param", lines)))
 })
