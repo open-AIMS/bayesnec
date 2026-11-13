@@ -1540,59 +1540,77 @@ test_that("a joint level's grid and control value are its own", {
 
 # Methods a joint refit defines and refuses. joint_split() needs no sampling.
 
-test_that("every inherited generic has a joint method", {
+test_that("every generic of a bayesnecfit has a joint method", {
   # Without one, the bnecfit or default method runs on a list that is not a
   # fit and fails without naming the cause.
-  s3 <- c("print", "summary", "plot", "autoplot", "ggbnec_data", "predict",
-          "fitted", "posterior_epred", "posterior_predict", "pp_check",
-          "nsec", "nec", "ecx", "ecnsec", "exceedance", "compare_posterior",
-          "rhat", "check_chains", "check_priors", "check_fit",
-          "curve_params", "model.frame", "formula", "pull_brmsfit",
-          "bnec_newdata", "update", "amend")
-  for (g in s3) {
-    expect_true(!is.null(getS3method(g, "bayesnecjointfit", optional = TRUE)),
-                label = paste0(g, ".bayesnecjointfit"))
-  }
+  s3 <- getNamespaceInfo(asNamespace("bayesnec"), "S3methods")
+  plain <- unique(s3[s3[, 2] == "bayesnecfit", 1])
+  joint <- unique(s3[s3[, 2] == "bayesnecjointfit", 1])
+  expect_equal(setdiff(plain, joint), character(0))
+  expect_false(is.null(getS3method("print", "jointsummary", optional = TRUE)))
 })
 
-test_that("a joint refit refuses the methods it does not define", {
+test_that("a joint refit refuses amend, pull_out, c and +, saying why", {
   j <- joint_split()
-  calls <- list(
-    summary = function() summary(j),
-    plot = function() plot(j),
-    fitted = function() fitted(j),
-    predict = function() predict(j),
-    posterior_epred = function() posterior_epred(j),
-    posterior_predict = function() posterior_predict(j),
-    pp_check = function() pp_check(j),
-    rhat = function() rhat(j),
-    check_chains = function() check_chains(j),
-    check_priors = function() check_priors(j),
-    check_fit = function() check_fit(j),
-    curve_params = function() curve_params(j),
-    model.frame = function() model.frame(j),
-    formula = function() formula(j),
-    update = function() update(j),
-    amend = function() amend(j, add = "nec3param")
-  )
-  for (g in names(calls)) {
-    expect_error(calls[[g]](),
-                 paste0(g, "() is not defined for a bayesnecjointfit, which",
-                        " fits every level of \"site\" in one posterior."),
-                 fixed = TRUE, label = g)
-  }
-  # Each names what to use instead.
-  expect_error(summary(j), "ecx(), nsec(),", fixed = TRUE)
-  expect_error(plot(j), "Use autoplot()", fixed = TRUE)
-  expect_error(posterior_epred(j), "as the grid from bnec_newdata(x) does",
+  expect_error(amend(j, add = "nec3param"),
+               paste0("amend() is not defined for a bayesnecjointfit, which",
+                      " fits every level of \"site\" in one posterior."),
                fixed = TRUE)
-  expect_error(rhat(j), "the brmsfit that pull_brmsfit(x) returns",
-               fixed = TRUE)
-  expect_error(update(j), "call bnec_joint() again", fixed = TRUE)
+  expect_error(amend(j, x_range = c(0, 1)),
+               "nec() take those when called", fixed = TRUE)
   expect_error(amend(j, add = "nec3param"), "amend() the bnec_group() fit",
                fixed = TRUE)
-  # The remedy the refusals name returns the fit itself.
+  expect_error(pull_out(j, model = "nec4param"),
+               "pass it to bnec_joint() as `model`", fixed = TRUE)
+  # Refused whichever side of the call the joint refit is on.
+  expect_error(c(j, nec4param), "cannot join a set", fixed = TRUE)
+  expect_error(c(nec4param, j), "cannot join a set", fixed = TRUE)
+  expect_error(nec4param + j, "cannot join a set", fixed = TRUE)
+})
+
+test_that("the joint methods that read no draws describe the one fit", {
+  j <- joint_split()
   expect_identical(pull_brmsfit(j), j$fit)
+  # One brmsfit, so one set of priors, as get_priors() reads them from it.
+  expect_identical(get_priors(j), get_priors(nec4param))
+  expect_message(pull_best(j), "(low = nec4param, high = nec4param)",
+                 fixed = TRUE)
+  expect_identical(suppressMessages(pull_best(j)), j)
+  expect_s3_class(failed_models(j), "bnecfailures")
+  expect_length(failed_models(j), 0L)
+  f <- formula(j)
+  expect_named(f, c("low", "high"))
+  expect_s3_class(f$high, "bayesnecformula")
+  expect_equal(get_model_from_formula(f$high), "nec4param")
+})
+
+test_that("a joint newdata names its level, and update() keeps the model", {
+  j <- joint_split()
+  expect_error(fitted(j, newdata = data.frame(x = 1)),
+               "`newdata` has no column \"site\"", fixed = TRUE)
+  expect_error(predict(j, newdata = data.frame(x = 1, site = "mid")),
+               "it holds \"mid\"", fixed = TRUE)
+  expect_error(posterior_epred(j, newdata = data.frame(x = 1, site = NA)),
+               "in every row", fixed = TRUE)
+  expect_null(joint_newdata(j, NULL))
+  # A composed refit reads an indicator column per level, written here from
+  # the level column, so a grid written by hand needs only x and the level.
+  j$level_spec$inds <- list(low = "bnecindlowLv2", high = "bnecindhighLv1")
+  nd <- joint_newdata(j, data.frame(x = c(1, 2), site = c("high", "low")))
+  expect_equal(levels(nd$site), c("low", "high"))
+  expect_equal(nd$bnecindlowLv2, c(0, 1))
+  expect_equal(nd$bnecindhighLv1, c(1, 0))
+  # Each is refused before brms is reached.
+  expect_error(update(j, family = Beta()), "keeps the family", fixed = TRUE)
+  expect_error(update(j, formula. = ~ .), "keeps its formula", fixed = TRUE)
+  expect_error(update(j, x_range = c(0, 1)), "`x_range` cannot be passed",
+               fixed = TRUE)
+  expect_error(update(j, prior_type = "regularizing"),
+               "builds the default priors", fixed = TRUE)
+  expect_error(update(j, newdata = j$data[j$data$site == "low", ]),
+               "has no row at \"high\"", fixed = TRUE)
+  expect_error(pp_check(j, newdata = j$data), "takes no `newdata`",
+               fixed = TRUE)
 })
 
 test_that("`which` on a joint refit is refused by the joint class", {
@@ -1639,4 +1657,241 @@ test_that("print() on a joint refit reports its equations and weights", {
   expect_match(out, "dispersion        : per level", fixed = TRUE)
   expect_match(out, "low = lowLv2, high = highLv1", fixed = TRUE)
   expect_no_match(out, "summed weight", fixed = TRUE)
+})
+
+# The methods a joint refit shares with a bayesnecfit, on the fitted refits.
+
+test_that("summary() of a joint refit gives the estimator rows per level", {
+  skip_on_cran()
+  for (f in list(joint_gate_fixture(), composed_gate_fixture())) {
+    j <- f$joint
+    s <- suppressWarnings(suppressMessages(
+      summary(j, ecx = TRUE, ecx_vals = c(10, 50))
+    ))
+    expect_s3_class(s, "jointsummary")
+    # The rows are the estimator tables themselves, so they cannot disagree.
+    expect_equal(s$ne, suppressWarnings(suppressMessages(
+      nec(j, no_effect = TRUE)
+    )))
+    expect_equal(s$ecs$EC50, suppressWarnings(suppressMessages(
+      ecx(j, ecx_val = 50)
+    )))
+    expect_equal(rownames(s$bayesr2), j$levels)
+    expect_true(all(s$bayesr2[, "Estimate"] > 0 & s$bayesr2[, "Estimate"] < 1))
+    expect_named(s$rhat_issues, j$levels)
+    expect_equal(s$divergences,
+                 sum(brms::nuts_params(j$fit, pars = "divergent__")$Value))
+    out <- paste(capture.output(print(s)), collapse = "\n")
+    expect_match(out, "a: nec3param (NEC)", fixed = TRUE)
+    expect_match(out, "b EC50", fixed = TRUE)
+  }
+  # The composed fixture fits a smooth equation at b, read as an NSEC.
+  expect_match(out, "b: ecx4param (NSEC)", fixed = TRUE)
+  expect_match(out, "equations         : a = nec3param, b = ecx4param",
+               fixed = TRUE)
+  expect_match(out, "An NSEC is read off the fitted curve", fixed = TRUE)
+  # print() warns of a level that fails the Rhat cutoff.
+  bad <- suppressWarnings(suppressMessages(summary(j, rhat_cutoff = 0.5)))
+  expect_warning(capture.output(print(bad)), "Rhat > 0.5", fixed = TRUE)
+})
+
+test_that("plot() of a joint refit draws each level's own panel", {
+  skip_on_cran()
+  f <- composed_gate_fixture()
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_no_error(suppressMessages(plot(f$joint, add_ec10 = TRUE)))
+  panels <- list()
+  local_mocked_bindings(
+    draw_fit_panel = function(x_dat, y_dat, x_vec, curve, nec, ec10,
+                              nec_tag, ...) {
+      panels[[length(panels) + 1]] <<- list(n = length(y_dat), tag = nec_tag,
+                                            nec = nec)
+      graphics::plot.new()
+    }
+  )
+  suppressMessages(plot(f$joint))
+  expect_length(panels, 2L)
+  expect_equal(vapply(panels, `[[`, character(1), "tag"), c("NEC", "NSEC"))
+  expect_equal(vapply(panels, `[[`, integer(1), "n"),
+               rep(nrow(nec_data), 2))
+  # Each annotation is the no-effect estimate nec() returns at that level.
+  ne <- suppressWarnings(suppressMessages(nec(f$joint, no_effect = TRUE)))
+  for (i in 1:2) {
+    expect_equal(unname(as.numeric(panels[[i]]$nec)),
+                 unname(unlist(ne[i, c("Q50", "Q2.5", "Q97.5")])))
+  }
+})
+
+test_that("the joint predictions are those of the fit at each row's level", {
+  skip_on_cran()
+  f <- composed_gate_fixture()
+  j <- f$joint
+  # Without newdata, the fitted rows of every level, as for a bayesnecfit.
+  expect_equal(fitted(j), fitted(j$fit))
+  expect_equal(dim(predict(j)), c(nrow(j$fit$data), 4L))
+  # A grid written by hand names the level; the indicators are added to it.
+  nd <- data.frame(x = c(0.5, 2), site = c("b", "a"))
+  expect_equal(posterior_epred(j, newdata = nd),
+               brms::posterior_epred(j$fit, newdata = joint_newdata(j, nd)))
+  grid <- bnec_newdata(j, resolution = 4)
+  expect_equal(fitted(j, newdata = grid), fitted(j$fit, newdata = grid))
+  expect_equal(dim(posterior_predict(j, newdata = nd)),
+               c(brms::ndraws(j$fit), 2L))
+})
+
+test_that("pp_check() on a joint refit checks each level on its own rows", {
+  skip_on_cran()
+  f <- joint_gate_fixture()
+  pp <- suppressMessages(pp_check(f$joint, ndraws = 10))
+  expect_named(pp, c("a", "b"))
+  expect_s3_class(pp$b, "ggplot")
+  expect_equal(pp$b$labels$title, "site = b")
+})
+
+test_that("rhat() on a joint refit reports each level's own coefficients", {
+  skip_on_cran()
+  r <- rhat(joint_gate_fixture()$joint)
+  expect_named(r, c("a", "b"))
+  expect_true(all(c("top_sitea", "beta_sitea", "nec_sitea", "phi_sitea",
+                    "lp__") %in% names(r$a$rhat_vals)))
+  expect_false(any(grepl("siteb", names(r$a$rhat_vals))))
+  expect_false(r$a$failed)
+  expect_true(rhat(joint_gate_fixture()$joint, rhat_cutoff = 0.5)$b$failed)
+  rc <- rhat(composed_gate_fixture()$joint)
+  expect_true("necaLv1" %in% names(rc$a$rhat_vals))
+  expect_false("ec50bLv2" %in% names(rc$a$rhat_vals))
+  expect_true("ec50bLv2" %in% names(rc$b$rhat_vals))
+})
+
+test_that("check_chains() and check_priors() draw a page per level", {
+  skip_on_cran()
+  j <- composed_gate_fixture()$joint
+  pages <- joint_fixef_pages(j)
+  expect_named(pages, c("a", "b"))
+  expect_setequal(pages$a$pars, c("topaLv1_Intercept", "betaaLv1_Intercept",
+                                  "necaLv1_Intercept", "phi_sitea"))
+  # Every population-level parameter is on exactly one page.
+  expect_setequal(unlist(lapply(pages, `[[`, "pars"), use.names = FALSE),
+                  rownames(brms::fixef(j$fit)))
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_no_error(check_chains(j))
+  plots <- check_priors(j, ask = FALSE)
+  expect_named(plots, c("a", "b"))
+  expect_s3_class(plots$b, "ggplot")
+  expect_setequal(unique(plots$b$data$ind),
+                  c("botbLv2", "ec50bLv2", "topbLv2", "betabLv2", "phi_siteb"))
+  # Each coefficient's prior draws are drawn beside its posterior.
+  expect_setequal(unique(plots$b$data$Type), c("Prior", "Posterior"))
+})
+
+test_that("check_fit() on a joint refit gives one table per level", {
+  skip_on_cran()
+  f <- joint_gate_fixture()
+  j <- f$joint
+  checked <- collect_warnings(check_fit(j, ndraws = 100))
+  # Each level's unreplicated predictor is binned, and the warning names it.
+  expect_match(checked$warnings[1], "^Level a: The predictor has unreplicated")
+  expect_match(checked$warnings[2], "^Level b: The predictor has unreplicated")
+  cf <- checked$value
+  expect_s3_class(cf, "checkfit_group")
+  expect_named(cf$fits, c("a", "b"))
+  expect_s3_class(cf$fits$a, "checkfit")
+  expect_equal(sum(cf$fits$a$n), nrow(nec_data))
+  expect_equal(attr(cf$fits$b, "model"), "nec3param")
+  # Level b's response is level a's scaled by 0.6, and its table shows that.
+  expect_equal(cf$fits$b$obs_mean, 0.6 * cf$fits$a$obs_mean,
+               tolerance = 0.05)
+  # One value per fitted row is split by level.
+  grp <- rep(seq_len(5), length.out = nrow(j$fit$data))
+  expect_equal(nrow(check_fit(j, group = grp, ndraws = 50)$fits$a), 5L)
+  expect_error(check_fit(j, group = 1:3), "one non-missing value per row")
+})
+
+test_that("curve_params() on a joint refit gives each level's equation", {
+  skip_on_cran()
+  j <- composed_gate_fixture()$joint
+  cp <- suppressMessages(curve_params(j))
+  expect_equal(names(cp)[1], "level")
+  expect_equal(cp$parameter[cp$level == "a"], c("top", "beta", "nec"))
+  expect_equal(cp$parameter[cp$level == "b"], c("top", "bot", "beta", "ec50"))
+  expect_equal(unique(cp$model[cp$level == "b"]), "ecx4param")
+  expect_true(all(cp$wi == 1))
+  # The nec row of a threshold level is the number nec() returns there.
+  expect_equal(cp$Estimate[cp$level == "a" & cp$parameter == "nec"],
+               suppressMessages(nec(j))$Q50[1])
+  # The draws are the level's own coefficients.
+  d <- curve_params(j, summary = FALSE)
+  expect_named(d, c("a", "b"))
+  expect_equal(unname(d$b$ecx4param[, "ec50"]),
+               brms::as_draws_df(j$fit, variable = "b_ec50bLv2_Intercept")$
+                 b_ec50bLv2_Intercept)
+  g <- joint_gate_fixture()$joint
+  cg <- suppressMessages(curve_params(g))
+  expect_equal(cg$Estimate[cg$level == "b" & cg$parameter == "top"],
+               stats::median(brms::as_draws_df(g$fit, variable = "b_top_siteb")$
+                               b_top_siteb))
+})
+
+test_that("formula() and model.frame() on a joint refit split by level", {
+  skip_on_cran()
+  f <- composed_gate_fixture()
+  j <- f$joint
+  fo <- formula(j)
+  expect_named(fo, c("a", "b"))
+  expect_equal(get_model_from_formula(fo$a), "nec3param")
+  expect_equal(get_model_from_formula(fo$b), "ecx4param")
+  mf <- model.frame(j)
+  expect_named(mf, c("a", "b"))
+  expect_equal(nrow(mf$a) + nrow(mf$b), nrow(j$fit$data))
+  expect_true(all(mf$b$bnecindbLv2 == 1))
+  expect_equal(mf$a$x, f$data$x[f$data$site == "a"])
+})
+
+test_that("update() refits a joint refit and keeps its levels", {
+  skip_on_cran()
+  f <- joint_gate_fixture()
+  j <- f$joint
+  brm_opts <- list(iter = 300, warmup = 150, chains = 2, seed = 3,
+                   refresh = 0)
+  u <- suppressWarnings(suppressMessages(do.call(update, c(list(j),
+                                                           brm_opts))))
+  expect_s3_class(u, "bayesnecjointfit")
+  expect_equal(brms::ndraws(u$fit), 300)
+  expect_equal(u$levels, j$levels)
+  expect_identical(u$data, j$data)
+  # New data refit the same model, and level b's coefficients follow them.
+  nd <- f$data
+  b <- nd$site == "b"
+  nd$y[b] <- pmin(nd$y[b] * 1.3, 0.999)
+  u2 <- suppressWarnings(suppressMessages(do.call(update, c(
+    list(j, newdata = nd), brm_opts
+  ))))
+  expect_equal(u2$fit$data$y, nd$y)
+  expect_equal(levels(u2$data$site), c("a", "b"))
+  top_b <- function(x) {
+    stats::median(brms::as_draws_df(x$fit, variable = "b_top_siteb")$
+                    b_top_siteb)
+  }
+  expect_gt(top_b(u2), top_b(j) * 1.2)
+})
+
+test_that("check_sampling() and screen_models() read a joint refit per level", {
+  skip_on_cran()
+  j <- joint_gate_fixture()$joint
+  tab <- check_sampling(j)
+  expect_equal(tab$level, c("a", "b"))
+  expect_equal(tab$model, c("nec3param", "nec3param"))
+  # Each row reduces over the parameters rhat() reports for that level.
+  expect_equal(tab$max_rhat[2], max(rhat(j)$b$rhat_vals))
+  expect_equal(tab$n_divergent,
+               rep(sum(brms::nuts_params(j$fit, pars = "divergent__")$Value),
+                   2))
+  expect_message(out <- screen_models(j),
+                 "All 2 levels of the joint refit passed", fixed = TRUE)
+  expect_identical(out, j)
+  # No level can be dropped, so a failure stops with each level named.
+  expect_error(screen_models(j, rhat_cutoff = 0.5),
+               "  -  b (nec3param): Rhat", fixed = TRUE)
 })

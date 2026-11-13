@@ -181,14 +181,15 @@ test_that("get_priors refuses arguments it would not use", {
                           foo = 1), "does not use `foo`")
 })
 
-test_that("get_priors names the remedy for a grouped or a joint fit", {
+test_that("get_priors names the remedy for a grouped fit and reads a joint one", {
   grouped <- structure(list(fits = list(a = nec4param), group_var = "site"),
                        class = c("bayesnecgroupfit", "bnecfit"))
   expect_error(get_priors(grouped),
                "get_priors(grouped$fits[[\"a\"]])", fixed = TRUE)
-  joint <- structure(list(), class = c("bayesnecjointfit", "bnecfit"))
-  expect_error(get_priors(joint), "brms::prior_summary(joint$fit)",
-               fixed = TRUE)
+  # A joint refit is one brmsfit, so its priors are read as a single fit's.
+  joint <- joint_split()
+  expect_identical(get_priors(joint), get_priors(nec4param))
+  expect_error(get_priors(joint, foo = 1))
 })
 
 test_that("a disp variance function's priors come back with the curve's", {
