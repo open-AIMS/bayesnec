@@ -348,8 +348,8 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
 #' @param curve A \code{\link[base]{data.frame}} with columns
 #' \code{Estimate}, \code{Q2.5} and \code{Q97.5}, one row per entry of
 #' \code{x_vec}.
-#' @param nec,ec10 The annotated estimates, each a vector of three that can
-#' carry a \code{"censored_summary"} attribute.
+#' @param nec,ec10 The annotated estimates, each a vector of three, with a
+#' \code{"censored_summary"} attribute where an entry is a bound.
 #' @param nec_tag The label of the no-effect estimate, such as \code{"NEC"}.
 #' @param ... Passed to \code{\link[graphics]{plot}}.
 #' @param CI,add_nec,legend_pos,add_ec10,lxform,jitter_x,jitter_y,ylab,xlab,xticks
