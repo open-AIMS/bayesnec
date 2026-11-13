@@ -485,7 +485,7 @@ NULL
 #'
 #' The design is three climate scenarios by six diuron concentrations by three
 #' chambers: 54 chambers. Yield was read repeatedly on the fragments in each
-#' chamber, so the chambers hold five to eight readings each and the rows are
+#' chamber, so the chambers hold six to eight readings each and the rows are
 #' not balanced. As with \code{\link{coral_colour}} a chamber sits at one
 #' concentration and admits only a displacement, and 54 chambers of several
 #' readings is the better conditioned of the two for a
