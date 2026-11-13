@@ -557,7 +557,7 @@ brms::loo_compare(brms::loo(pull_brmsfit(disp_const)),
                   brms::loo(pull_brmsfit(disp_power)))
 ```
 
-The model with the variance function has the higher expected log predictive density (the constant-dispersion model has an `elpd_diff` of −25.7, with a standard error of 5.4).
+The model with the variance function has the higher expected log predictive density (the constant-dispersion model has an `elpd_diff` of −25.9, with a standard error of 5.4).
 
 The estimated exponent should be interpreted through the family. `disp("power")` models the dispersion parameter, which for a `Gamma` is `shape`, and the implied standard deviation is proportional to $\mu^{1 - c_1/2}$ (see the table in `?bayesnecformula`). The value used to simulate the data, $\mu^{0.4}$, therefore corresponds to $c_1 = 1.2$:
 
@@ -565,7 +565,7 @@ The estimated exponent should be interpreted through the family. `disp("power")`
 brms::fixef(pull_brmsfit(disp_power))[c("c0_Intercept", "c1_Intercept"), ]
 ```
 
-The estimate of 1.30 (95% interval 0.94 to 1.68) includes this value. A value of zero would correspond to the constant-dispersion model (i.e. the constant coefficient of variation a `Gamma` already implies). The default prior bounds `c1` to the range 0 to 2 for a `Gamma` response, from a constant coefficient of variation to a constant variance, so a posterior concentrated at 0 would show that the data do not support the variance function, whereas one well inside the range reflects the data and not the bound.
+The estimate of 1.30 (95% interval 0.93 to 1.68) includes this value. A value of zero would correspond to the constant-dispersion model (i.e. the constant coefficient of variation a `Gamma` already implies). The default prior bounds `c1` to the range 0 to 2 for a `Gamma` response, from a constant coefficient of variation to a constant variance, so a posterior concentrated at 0 would show that the data do not support the variance function, whereas one well inside the range reflects the data and not the bound.
 
 Finally, for the third check (lack of fit in the mean), we calculate the departure of the fitted curve from the observed mean at each concentration, in units of the within-concentration replicate standard deviation. Values of a few standard deviations or more would indicate a problem with the mean model that a variance function would conceal and not resolve.
 

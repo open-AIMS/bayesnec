@@ -215,7 +215,7 @@ summary(exp_1)
 #> R2     0.81      0.00 0.80  0.82
 #> 
 #> 
-#> Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.
+#> Fitted by bayesnec 3.0.0, installed from a local source, which records no commit, under R 4.6.1.
 ```
 
 Note the Rhat values in this example are one, indicating convergence.
@@ -282,7 +282,7 @@ Now that we have a better fit to these data, we can interpret the results. The e
 ``` r
 summary(exp(exp_1b$ne_posterior))
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   18.06   65.26   78.59   76.11   87.95  191.89
+#>   18.95   66.46   78.62   75.67   87.69  199.08
 ```
 
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
@@ -290,8 +290,8 @@ EC*x* estimates can also be obtained from the *NEC* model fit, using the functio
 
 ``` r
 ecx(exp_1b, xform = exp)
-#>       Q50      Q2.5     Q97.5 
-#>  82.90958  44.27604 106.79866 
+#>      Q50     Q2.5    Q97.5 
+#> 83.08672 45.11669 98.84357 
 #> attr(,"resolution")
 #> [1] 500
 #> attr(,"ecx_val")
@@ -320,32 +320,32 @@ summary(exp_1b)
 #> 
 #> Regression Coefficients:
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.13      0.05     0.03     0.24 1.00     2134     3083
-#> top      0.84      0.03     0.77     0.88 1.00     1277     1570
-#> beta     0.84      0.68    -0.17     3.41 1.01      477      170
-#> nec      4.36      0.20     3.66     4.66 1.01      486      182
+#> bot      0.13      0.05     0.03     0.23 1.00     2689     2725
+#> top      0.84      0.03     0.78     0.88 1.00     2517     2874
+#> beta     0.84      0.65    -0.17     3.05 1.01      600      197
+#> nec      4.36      0.19     3.68     4.58 1.01      676      243
 #> 
 #> Further Distributional Parameters:
 #>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> phi     5.29      1.21     3.26     8.28 1.00     1832     3452
+#> phi     5.39      1.25     3.29     8.20 1.00     2563     3237
 #> 
 #> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
-#> Divergent transitions after warmup: 14
+#> Divergent transitions after warmup: 8
 #> 
 #> 
-#>     Estimate  Q2.5  Q97.5
-#> NEC    78.59 38.98 106.03
+#>     Estimate  Q2.5 Q97.5
+#> NEC    78.62 39.74 97.77
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>    Estimate Est.Error Q2.5 Q97.5
-#> R2     0.76      0.04 0.66  0.81
+#> R2     0.77      0.04 0.68  0.81
 #> 
 #> 
-#> Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.
+#> Fitted by bayesnec 3.0.0, installed from a local source, which records no commit, under R 4.6.1.
 ```
 
 ### Beta data
@@ -613,14 +613,14 @@ summary(exp_4)
 #> 
 #> Regression Coefficients:
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.98      0.05     0.88     1.07 1.00     4057     4441
-#> top      2.44      0.01     2.41     2.46 1.00     6760     5215
-#> beta     0.65      0.10     0.45     0.84 1.00     3674     4223
-#> nec      1.50      0.02     1.46     1.54 1.00     4335     4845
+#> bot      0.98      0.05     0.88     1.07 1.00     3991     3848
+#> top      2.44      0.01     2.41     2.46 1.00     6902     5416
+#> beta     0.65      0.09     0.46     0.84 1.00     3431     3624
+#> nec      1.50      0.02     1.46     1.54 1.00     4082     4469
 #> 
 #> Further Distributional Parameters:
 #>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape   515.06     74.50   379.72   680.88 1.00     6939     5087
+#> shape   518.18     72.22   387.88   680.87 1.00     6066     5485
 #> 
 #> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -638,7 +638,7 @@ summary(exp_4)
 #> R2     0.95      0.00 0.94  0.95
 #> 
 #> 
-#> Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.
+#> Fitted by bayesnec 3.0.0, installed from a local source, which records no commit, under R 4.6.1.
 ```
 
 In this case our model has converged really well.
@@ -801,10 +801,10 @@ brms::loo_compare(brms::loo(pull_brmsfit(disp_const)),
                   brms::loo(pull_brmsfit(disp_power)))
 #>                     model elpd_diff se_diff p_worse diag_diff diag_elpd
 #>  pull_brmsfit(disp_power)       0.0     0.0      NA                    
-#>  pull_brmsfit(disp_const)     -25.7     5.4    1.00   N < 100
+#>  pull_brmsfit(disp_const)     -25.9     5.4    1.00   N < 100
 ```
 
-The model with the variance function has the higher expected log predictive density (the constant-dispersion model has an `elpd_diff` of −25.7, with a standard error of 5.4).
+The model with the variance function has the higher expected log predictive density (the constant-dispersion model has an `elpd_diff` of −25.9, with a standard error of 5.4).
 
 The estimated exponent should be interpreted through the family. `disp("power")` models the dispersion parameter, which for a `Gamma` is `shape`, and the implied standard deviation is proportional to $\mu^{1 - c_1/2}$ (see the table in `?bayesnecformula`). The value used to simulate the data, $\mu^{0.4}$, therefore corresponds to $c_1 = 1.2$:
 
@@ -812,11 +812,11 @@ The estimated exponent should be interpreted through the family. `disp("power")`
 ``` r
 brms::fixef(pull_brmsfit(disp_power))[c("c0_Intercept", "c1_Intercept"), ]
 #>              Estimate Est.Error      Q2.5    Q97.5
-#> c0_Intercept 6.388394 0.1880252 6.0057172 6.748074
-#> c1_Intercept 1.297472 0.1896581 0.9396347 1.681931
+#> c0_Intercept 6.389423 0.1854461 6.0194156 6.745592
+#> c1_Intercept 1.298821 0.1923104 0.9302386 1.684234
 ```
 
-The estimate of 1.30 (95% interval 0.94 to 1.68) includes this value. A value of zero would correspond to the constant-dispersion model (i.e. the constant coefficient of variation a `Gamma` already implies). The default prior bounds `c1` to the range 0 to 2 for a `Gamma` response, from a constant coefficient of variation to a constant variance, so a posterior concentrated at 0 would show that the data do not support the variance function, whereas one well inside the range reflects the data and not the bound.
+The estimate of 1.30 (95% interval 0.93 to 1.68) includes this value. A value of zero would correspond to the constant-dispersion model (i.e. the constant coefficient of variation a `Gamma` already implies). The default prior bounds `c1` to the range 0 to 2 for a `Gamma` response, from a constant coefficient of variation to a constant variance, so a posterior concentrated at 0 would show that the data do not support the variance function, whereas one well inside the range reflects the data and not the bound.
 
 Finally, for the third check (lack of fit in the mean), we calculate the departure of the fitted curve from the observed mean at each concentration, in units of the within-concentration replicate standard deviation. Values of a few standard deviations or more would indicate a problem with the mean model that a variance function would conceal and not resolve.
 
@@ -905,12 +905,12 @@ tox <- function(fit, label) {
 }
 rbind(tox(disp_const, "constant dispersion"), tox(disp_power, "disp(\"power\")"))
 #>                 model estimate median lower upper width
-#> 1 constant dispersion     ec10   1.85  1.55  2.19  0.64
-#> 2 constant dispersion     ec50   7.18  6.66  7.71  1.05
-#> 3 constant dispersion     nsec   0.91  0.39  1.25  0.86
-#> 4       disp("power")     ec10   1.74  1.55  1.94  0.39
-#> 5       disp("power")     ec50   7.10  6.77  7.44  0.67
-#> 6       disp("power")     nsec   0.55  0.21  0.75  0.54
+#> 1 constant dispersion     ec10   1.85  1.55  2.19  0.65
+#> 2 constant dispersion     ec50   7.18  6.66  7.71  1.06
+#> 3 constant dispersion     nsec   0.92  0.41  1.26  0.85
+#> 4       disp("power")     ec10   1.74  1.56  1.95  0.39
+#> 5       disp("power")     ec50   7.09  6.78  7.43  0.65
+#> 6       disp("power")     nsec   0.54  0.21  0.74  0.53
 ```
 
 The intervals of all three estimates are narrower under the variance function, but only the `nsec` median changes appreciably, declining by about two fifths, whereas the `ecx` medians change by a few per cent. The explanation is what each estimate is referenced against, which follows from the reweighting performed by the variance function. Under constant dispersion, all observations are given one coefficient of variation. Under `disp("power")`, the tightly grouped control replicates are given more weight and the variable high-concentration replicates less, and this is visible in the precision of the curve parameters themselves:
@@ -924,10 +924,10 @@ round(cbind(
   power = brms::fixef(pull_brmsfit(disp_power))[curve_pars, "Est.Error"]
 ), 4)
 #>                constant  power
-#> top_Intercept    0.2540 0.1265
-#> bot_Intercept    0.0618 0.0964
-#> beta_Intercept   0.0455 0.0349
-#> ec50_Intercept   0.0396 0.0262
+#> top_Intercept    0.2554 0.1235
+#> bot_Intercept    0.0625 0.0954
+#> beta_Intercept   0.0463 0.0350
+#> ec50_Intercept   0.0401 0.0256
 ```
 
 Under `disp("power")`, `top` (which is determined by the control end of the curve) is estimated about twice as precisely, `beta` and `ec50` somewhat more precisely, and `bot` (which is determined by the high-concentration end) less precisely. `ecx` depends on the curve as a whole (with `type = "absolute"`, the default, on where the curve declines to a given percentage of its own fitted maximum), so its estimate reflects the better-determined shape. In contrast, `nsec` is referenced against the control, as the concentration at which the curve drops below a lower quantile of the *control* posterior. The constant-dispersion fit overstates the spread of the control replicates, which places that quantile lower and the `nsec` at a higher concentration.
