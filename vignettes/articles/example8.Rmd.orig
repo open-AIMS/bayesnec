@@ -1258,19 +1258,9 @@ parameter for `plate` and one for `conc_group`. The table below gives the SDs
 of the joint refit beside those of `ecxll5` in each level of `fits_tox`.
 
 ```{r sd-joint, echo = FALSE}
-vc_joint <- brms::VarCorr(fits_tox_joint$fit, summary = FALSE)
-# brms names the SD of a by term <parameter>_Intercept:<by variable><level>.
-by_tag <- paste0(":", fits_tox_joint$group_var)
-sd_joint <- do.call(rbind, lapply(names(vc_joint), function(g) {
-  d <- vc_joint[[g]]$sd
-  per_level <- grepl(by_tag, colnames(d), fixed = TRUE)
-  data.frame(group = g, parameter = sub("_Intercept.*$", "", colnames(d)),
-             level = ifelse(per_level, sub(paste0("^.*", by_tag), "",
-                                           colnames(d)), NA),
-             Estimate = apply(d, 2, median),
-             Q2.5 = apply(d, 2, quantile, probs = 0.025),
-             Q97.5 = apply(d, 2, quantile, probs = 0.975), row.names = NULL)
-}))
+sd_joint <- group_level_sd(fits_tox_joint)
+# `by` reads <variable>=<level>, and is empty for a deviation both metals share.
+sd_joint$level <- ifelse(nzchar(sd_joint$by), sub("^.*=", "", sd_joint$by), NA)
 sd_joint <- sd_joint[order(match(sd_joint$group, unique(sd_joint$group)),
                            match(sd_joint$parameter, unique(sd_joint$parameter)),
                            sd_joint$level), ]
