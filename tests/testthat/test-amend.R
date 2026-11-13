@@ -885,7 +885,7 @@ test_that("update records supplied settings on a fit saved without a call", {
   )
   obj <- amend_fixture(validate_family("gaussian"))
   ctrl <- list(adapt_delta = 0.97, max_treedepth = 12)
-  updated <- update.bnecfit(obj, control = ctrl, seed = 19)
+  updated <- update.bayesnecfit(obj, control = ctrl, seed = 19)
   expect_identical(updated$call_args,
                    list(model_survival = NULL, control = ctrl, seed = 19))
   amended <- fit_inputs(amend(updated, add = "nec4param"))
@@ -893,10 +893,10 @@ test_that("update records supplied settings on a fit saved without a call", {
   expect_identical(amended$calls[[1]]$control, ctrl)
   expect_identical(amended$calls[[1]]$seed, 19)
 
-  unchanged <- update.bnecfit(obj)
+  unchanged <- update.bayesnecfit(obj)
   expect_identical(unchanged$call_args,
                    list(model_survival = NULL, control = NULL, seed = NULL))
-  reset <- update.bnecfit(updated, seed = NULL)
+  reset <- update.bayesnecfit(updated, seed = NULL)
   expect_null(reset$call_args$seed)
   expect_identical(reset$call_args$control, ctrl)
 })
@@ -922,7 +922,7 @@ test_that("update recovers a legacy set's shared survival equation", {
     )
     obj$mod_fits[[model]] <- fit
   }
-  updated <- update.bnecfit(obj, seed = 19)
+  updated <- update.bayesmanecfit(obj, seed = 19)
   for (fit in updated$mod_fits) {
     expect_identical(fit$call_args,
                      list(model_survival = "nec4param", control = NULL,
