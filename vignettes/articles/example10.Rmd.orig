@@ -1,12 +1,6 @@
 ---
 title: "Hormesis and the no-significant-effect concentration"
-output:
-  rmarkdown::html_vignette:
-vignette: >
-  %\VignetteIndexEntry{Hormesis and the no-significant-effect concentration}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
-bibliography: bayesnec.bib
+bibliography: ../bayesnec.bib
 ---
 
 ```{r setup, include=FALSE}

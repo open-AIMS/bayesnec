@@ -77,8 +77,10 @@ NULL
 #' these data are used to illustrate.
 #'
 #' This dataset exists to demonstrate the hurdle concentration-response models
-#' (see \code{\link{bnec_hurdle}} and \code{vignette("example6")}). Exposure
-#' both suppresses growth in the snails that live and kills others, so an
+#' (see \code{\link{bnec_hurdle}} and the article
+#' \emph{Hurdle and zero-inflated concentration-response models}
+#' at \url{https://open-aims.github.io/bayesnec/articles/example6.html}).
+#' Exposure both suppresses growth in the snails that live and kills others, so an
 #' analysis of the survivors alone silently conditions on survival.
 #'
 #' \bold{Mortality is recorded as a zero growth value}, with \code{alive}
@@ -94,7 +96,9 @@ NULL
 #' obtained by referencing each individual to a baseline mean rather than to
 #' its own starting size, and that referencing carries enough error to put a
 #' strongly suppressed individual below zero. They are retained rather than
-#' floored because flooring is the practice \code{vignette("example6")} argues
+#' floored because flooring is the practice that the article
+#' \emph{Hurdle and zero-inflated concentration-response models}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example6.html}) argues
 #' against; a Gamma fit requires handling them explicitly.
 #'
 #' \bold{Contaminant B is the most severely affected test.} Only 63 of the 284
@@ -184,7 +188,10 @@ NULL
 #' the same test --- so a culture that was lost entirely is recorded as
 #' \emph{less} affected than one that was merely declining. Correcting it in
 #' the shipped data would remove the example, and substitution at a boundary is
-#' the practice \code{vignette("example6")} argues against.
+#' the practice that the article
+#' \emph{Hurdle and zero-inflated concentration-response models}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example6.html}) argues
+#' against.
 #'
 #' \bold{The two species grow on very different scales,} which is why they were
 #' run over different exposure durations --- seven days for
@@ -255,8 +262,10 @@ NULL
 #' separate endpoint is scored. The analysis code accompanying the paper is at
 #' \url{https://github.com/open-AIMS/Lum31-tox-assays}.
 #'
-#' This dataset exists to demonstrate group-level terms (see
-#' \code{vignette("example8")}). Its design supplies replication at three
+#' This dataset exists to demonstrate group-level terms (see the article
+#' \emph{Grouping and factor covariates}
+#' at \url{https://open-aims.github.io/bayesnec/articles/example8.html}).
+#' Its design supplies replication at three
 #' nested scales --- four wells within a concentration (\code{conc_group}), 33
 #' plates each spanning a whole dilution series (\code{plate}), and two
 #' toxicants read at two exposure times --- so the same data support a
@@ -305,7 +314,9 @@ NULL
 #' March batches. The published analysis removes this by dividing each plate by
 #' the median of its four control wells; a group-level term on the control
 #' parameter estimates the same per-plate factor and propagates its
-#' uncertainty, which is what \code{vignette("example8")} compares.
+#' uncertainty, which is what the article
+#' \emph{Grouping and factor covariates}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example8.html}) compares.
 #'
 #' The columns are as follows:
 #'
@@ -370,8 +381,12 @@ NULL
 #' \eqn{\mu}g/L, at which the corals died before they could be photographed.
 #' A chamber sits at one concentration, so it spans no part of the
 #' concentration-response curve and admits only a displacement --- the
-#' within-concentration structure \code{vignette("example8")} demonstrates.
-#' \code{vignette("example4")} fits it with \code{ogl(chamber)}. The model weights of a set fitted with that term leave
+#' within-concentration structure that the article
+#' \emph{Grouping and factor covariates}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example8.html}) demonstrates. The article
+#' \emph{Comparisons and exceedance probabilities}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example4.html}) fits it
+#' with \code{ogl(chamber)}. The model weights of a set fitted with that term leave
 #' out each chamber whole; see the \code{loo_controls} argument of
 #' \code{\link{bnec}}.
 #'
@@ -387,13 +402,18 @@ NULL
 #' values in the two pixel columns together, and \code{proportion} is exactly
 #' its complement. The fragment that sets the largest value therefore has an
 #' \code{intensity} of 1 and a \code{proportion} of 0, a boundary a
-#' \code{Beta} likelihood cannot represent. See
-#' \code{vignette("example6")} for what to do with a value on a boundary.
+#' \code{Beta} likelihood cannot represent. See the article
+#' \emph{Hurdle and zero-inflated concentration-response models}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example6.html}) for what to
+#' do with a value on a boundary.
 #'
 #' The control concentration is reported as \code{0}. The source file also
 #' holds a column substituting \code{0.1} for it so that a log predictor can be
 #' taken; that substitution is not shipped, because substituting at a boundary
-#' is the practice \code{vignette("example6")} argues against and a user who
+#' is the practice that the article
+#' \emph{Hurdle and zero-inflated concentration-response models}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example6.html}) argues
+#' against, and a user who
 #' wants it can make it and say so.
 #'
 #' The columns are as follows:
@@ -413,7 +433,9 @@ NULL
 #' \item{intensity}{Derived colour intensity on the unit interval (dbl).
 #'   Exactly one observation is 1.}
 #' \item{proportion}{\code{1 - intensity} (dbl), the response used in
-#'   \code{vignette("example4")}. Exactly one observation is 0.}
+#'   the article \emph{Comparisons and exceedance probabilities}
+#'   (\url{https://open-aims.github.io/bayesnec/articles/example4.html}).
+#'   Exactly one observation is 0.}
 #' }
 #'
 #' @name coral_colour
@@ -456,8 +478,10 @@ NULL
 #' at 9.6 and 29 \eqn{\mu}g/L. They are readings at the floor of the
 #' fluorometer: no reading lies between 0 and the smallest positive value,
 #' 0.007, and a fragment read twice can give one 0 and one positive reading. A
-#' \code{Beta} likelihood cannot represent a 0, so \code{vignette("example4")}
-#' treats these readings as left-censored at the smallest positive value.
+#' \code{Beta} likelihood cannot represent a 0, so the article
+#' \emph{Comparisons and exceedance probabilities}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example4.html}) treats
+#' these readings as left-censored at the smallest positive value.
 #'
 #' The control concentration is reported as \code{0}, and the substitution the
 #' source file holds for it is not shipped, for the reason given under

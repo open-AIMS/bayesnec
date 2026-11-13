@@ -374,7 +374,8 @@ the same call returns.
   from a `seed` passed through `...`, or else from the session's random number
   stream, and is stored in `level_seeds`. Under a `future` plan the levels or
   the equations take the workers, whichever needs fewer rounds. See
-  `?bnec_group` and `vignette("example8")` (#33, #338, #557).
+  `?bnec_group` and the article
+  [Grouping and factor covariates](https://open-aims.github.io/bayesnec/articles/example8.html) (#33, #338, #557).
 
 - `check_fit()` on a `bayesnecgroupfit` checks each level and returns a
   `checkfit_group` object, with `print()` and `plot()` methods (#562, #563).
@@ -472,7 +473,8 @@ the same call returns.
   no-effect estimate and its credible limits, and the ECx when `ecx = TRUE`,
   and `plot()` labels each estimate NEC, NSEC or N(S)EC. Its `ggbnec_data()`
   and `autoplot()` refuse `add_nec` and `add_ecx`. See `?bnec_hurdle` and
-  `vignette("example6")` (#188, #249, #412, #415, #547).
+  the article [Hurdle and zero-inflated concentration-response models](https://open-aims.github.io/bayesnec/articles/example6.html)
+  (#188, #249, #412, #415, #547).
 
 - `bnec_hurdle()` fits count survivors, with a `poisson` or `negbinomial`
   growth family, by a zero-truncated likelihood, which needs brms 2.23.2 or
@@ -493,7 +495,8 @@ the same call returns.
   from its lowest concentration. `prior_type`, `asymptote_observed` and
   `predictor_scale` are taken from the fit unless supplied, and an argument
   that applies only to the other kind of fit is refused. See `?bnec_joint`
-  and `vignette("example8")` (#382, #388, #448, #500, #516, #557, #578).
+  and the article [Grouping and factor covariates](https://open-aims.github.io/bayesnec/articles/example8.html)
+  (#382, #388, #448, #500, #516, #557, #578).
 
 - A `bayesnecjointfit` has the methods of a `bayesnecfit`, and a method that
   returns one result per fit returns one per level. `summary()` gives each
@@ -661,7 +664,8 @@ the same call returns.
   mean is refused under a link other than the identity, as is a `disp(~x)`
   term whose values are not finite. On `hurdle_gamma`, `zero_inflated_beta`
   and `hurdle_negbinomial` it models the positive block. See `?bnec` and
-  `vignette("example9")` (#191, #397, #410, #443, #468, #472).
+  the article [A complete analysis workflow](https://open-aims.github.io/bayesnec/articles/example9.html)
+  (#191, #397, #410, #443, #468, #472).
 
 - `dispersion()` accepts a model set, returning a named list of draws, or
   with `summary = TRUE` one row per equation, and a `bayesnechurdlefit`, for
@@ -889,23 +893,27 @@ the same call returns.
 
 ## Documentation and vignettes
 
-- `vignette("example6")`, "Hurdle and zero-inflated concentration-response
-  models", is new and fits `nassarius` with `bnec_hurdle()` and the
+- `example1`, `example2`, `example2b` and `example3` remain vignettes and are
+  installed with the package. The other worked examples, including `example4`
+  and `example5`, which were vignettes in 2.1.3.1, are now articles on the
+  package website (<https://open-aims.github.io/bayesnec/articles/>) and are
+  not installed, so `vignette("example4")` and `vignette("example5")` no longer
+  find them.
+
+- The article [Hurdle and zero-inflated concentration-response models](https://open-aims.github.io/bayesnec/articles/example6.html) is new and fits `nassarius` with `bnec_hurdle()` and the
   two-block families (#175).
 
-- `vignette("example7")`, "Modelling growth data and other potentially
-  negative response values", is new. It compares approaches on simulated
+- The article [Modelling growth data and other potentially negative response values](https://open-aims.github.io/bayesnec/articles/example7.html) is new. It compares approaches on simulated
   growth data and then fits `alga` (#193).
 
-- `vignette("example8")`, "Grouping and factor covariates", is new. It fits
+- The article [Grouping and factor covariates](https://open-aims.github.io/bayesnec/articles/example8.html) is new. It fits
   `lum31` with group-level terms, `bnec_group()` and `bnec_joint()` (#33).
 
-- `vignette("example9")`, "A complete analysis workflow", is new. It takes
+- The article [A complete analysis workflow](https://open-aims.github.io/bayesnec/articles/example9.html) is new. It takes
   one `lum31` zinc plate read at 15 minutes from data to estimates, fitting
   `model = "all"` with `ogl(conc_group)` and `disp("power")` (#219, #367).
 
-- `vignette("example10")`, "Hormesis and the no-significant-effect
-  concentration", is new. It sets out the candidate no-effect estimates of a
+- The article [Hormesis and the no-significant-effect concentration](https://open-aims.github.io/bayesnec/articles/example10.html) is new. It sets out the candidate no-effect estimates of a
   hormetic curve and fits the hormesis equations to published data,
   including the lettuce series of van Ewijk and Hoekstra (1993), which
   bayesnec now distributes as `inst/extdata/hormesis_lettuce_1993.csv`
@@ -915,13 +923,15 @@ the same call returns.
   priors, the choice between `prior_type` sets, fixing a parameter, and
   priors in models with group-level terms.
 
-- `vignette("example4")`, "Comparing posterior predictions", is rewritten on
+- The article [Comparisons and exceedance probabilities](https://open-aims.github.io/bayesnec/articles/example4.html),
+  formerly the vignette "Comparing posterior predictions", is rewritten on
   published data. It compares the seven herbicides of `herbicide`, and the
   three climate scenarios of `coral_colour` and `coral_pam`, in place of
-  simulated data (#534).
+  simulated data, and uses `exceedance()` to compare the N(S)EC of each
+  herbicide with a guideline value for diuron (#534).
 
-- `vignette("example5")` is rewritten as "Installation and setup", and
-  `vignette("example1")`, `vignette("example2")` and the README refer to it
+- `example5` is rewritten as the article [Installation and setup](https://open-aims.github.io/bayesnec/articles/example5.html),
+  and `vignette("example1")`, `vignette("example2")` and the README refer to it
   (#342).
 
 - `vignette("example1")` gains sections on the scale of the predictor, counts

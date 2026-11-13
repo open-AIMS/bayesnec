@@ -16,8 +16,10 @@ separate endpoint is scored. The analysis code accompanying the paper is at
 \url{https://github.com/open-AIMS/Lum31-tox-assays}.
 }
 \details{
-This dataset exists to demonstrate group-level terms (see
-\code{vignette("example8")}). Its design supplies replication at three
+This dataset exists to demonstrate group-level terms (see the article
+\emph{Grouping and factor covariates}
+at \url{https://open-aims.github.io/bayesnec/articles/example8.html}).
+Its design supplies replication at three
 nested scales --- four wells within a concentration (\code{conc_group}), 33
 plates each spanning a whole dilution series (\code{plate}), and two
 toxicants read at two exposure times --- so the same data support a
@@ -66,7 +68,9 @@ plates read on the same day, and the October batch sits 4.6-fold below the
 March batches. The published analysis removes this by dividing each plate by
 the median of its four control wells; a group-level term on the control
 parameter estimates the same per-plate factor and propagates its
-uncertainty, which is what \code{vignette("example8")} compares.
+uncertainty, which is what the article
+\emph{Grouping and factor covariates}
+(\url{https://open-aims.github.io/bayesnec/articles/example8.html}) compares.
 
 The columns are as follows:
 

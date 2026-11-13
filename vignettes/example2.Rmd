@@ -15,8 +15,8 @@ bibliography: bayesnec.bib
 [e2]: example2.html
 [e2b]: example2b.html
 [e3]: example3.html
-[e4]: example4.html
-[e5]: example5.html
+[e4]: https://open-aims.github.io/bayesnec/articles/example4.html
+[e5]: https://open-aims.github.io/bayesnec/articles/example5.html
 
 # `bayesnec`
 
@@ -373,7 +373,7 @@ NECvals
 #> 3.527155 3.130124 4.108291
 ```
 
-Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Comparing posterior predictions][e4] vignette.
+Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Comparisons and exceedance probabilities][e4] article.
 
 ### Putting it all together
 
@@ -438,7 +438,7 @@ The socket layer that `multisession` depends on is outside the control of R, and
 
 ### The Stan backend
 
-Under a forked plan, we recommend the `cmdstanr` backend. The default backend, `rstan`, compiles each model in the temporary directory of the session, which a forked worker shares with the process it was forked from. When thirteen models were compiled at once in eight forked workers, all thirteen failed with `cannot open the connection` from `stanc`. In contrast, a `multisession` worker is a separate R session with its own temporary directory, so compilation under `rstan` does not collide there. `cmdstanr` names each compiled program after a hash of its Stan code and keeps it in a cache directory, so that concurrent compiles of different models do not collide, and a repeated run reuses the programs already built. To select it, set `options(brms.backend = "cmdstanr")`, which is the setting used to build the vignettes of this package. Note that `cmdstanr` is not on CRAN and is not a dependency of `bayesnec` (see the [Installation and setup][e5] vignette, or [its own installation instructions](https://mc-stan.org/cmdstanr/), if you do not already have it installed).
+Under a forked plan, we recommend the `cmdstanr` backend. The default backend, `rstan`, compiles each model in the temporary directory of the session, which a forked worker shares with the process it was forked from. When thirteen models were compiled at once in eight forked workers, all thirteen failed with `cannot open the connection` from `stanc`. In contrast, a `multisession` worker is a separate R session with its own temporary directory, so compilation under `rstan` does not collide there. `cmdstanr` names each compiled program after a hash of its Stan code and keeps it in a cache directory, so that concurrent compiles of different models do not collide, and a repeated run reuses the programs already built. To select it, set `options(brms.backend = "cmdstanr")`, which is the setting used to build the vignettes of this package. Note that `cmdstanr` is not on CRAN and is not a dependency of `bayesnec` (see the [Installation and setup][e5] article, or [its own installation instructions](https://mc-stan.org/cmdstanr/), if you do not already have it installed).
 
 Two models in two forked workers did not collide, whereas thirteen models in eight forked workers did, so a small trial does not reveal this problem, and the two-model check described under *Choosing a plan* does not test for it. The shared temporary directory is consistent with this failure but was not isolated as its cause (eight compilers running at once also use eight times the memory), and the failure was seen on only one machine.
 

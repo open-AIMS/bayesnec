@@ -1,15 +1,19 @@
 ---
 title: "Installation and setup"
-output:
-  rmarkdown::html_vignette:
-vignette: >
-  %\VignetteIndexEntry{Installation and setup}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
-bibliography: bayesnec.bib
+bibliography: ../bayesnec.bib
 ---
 
-
+```{r setup, include = FALSE}
+stopifnot(require(knitr))
+# Nothing here is evaluated. Every chunk is code the reader runs on their own
+# machine, and evaluating any of it records the build machine's paths and
+# compiler output. Set eval here so that a chunk added later inherits it.
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
 
 [e1]: example1.html
 
@@ -94,8 +98,7 @@ below.
 `cmdstanr` is not on CRAN, so it is installed from the Stan project's own
 repository:
 
-
-``` r
+```{r install_cmdstanr}
 install.packages("cmdstanr",
                  repos = c("https://stan-dev.r-universe.dev",
                            getOption("repos")))
@@ -104,8 +107,7 @@ install.packages("cmdstanr",
 `bayesnec` and the remaining packages are installed from CRAN, and installing
 `bayesnec` also installs `brms`:
 
-
-``` r
+```{r install_bayesnec}
 install.packages("bayesnec")
 ```
 
@@ -115,16 +117,14 @@ Before installing CmdStan, confirm that the compiler is configured. On a current
 Rtools this check passes without making any change, and `fix = TRUE` repairs the
 problems it can, instead of only reporting them.
 
-
-``` r
+```{r toolchain_fix}
 cmdstanr::check_cmdstan_toolchain(fix = TRUE)
 ```
 
 Then install CmdStan with the code below, which sets three things, each of which
 has been observed to stop a fresh installation on Windows.
 
-
-``` r
+```{r install_cmdstan}
 dir.create("C:/cmdstan")           # install_cmdstan() does not create it
 options(timeout = 1800)            # R's default of 60 seconds is too short
 cmdstanr::install_cmdstan(dir = "C:/cmdstan")
@@ -188,8 +188,7 @@ The back end is set by an option, not by an environment variable, so on all
 platforms it belongs in `.Rprofile`, where it does not have to be set again in
 each session:
 
-
-``` r
+```{r backend}
 options(brms.backend = "cmdstanr")
 ```
 
@@ -199,8 +198,7 @@ options(brms.backend = "cmdstanr")
 
 Where `install_cmdstan()` fails, run it again with these arguments.
 
-
-``` r
+```{r reinstall}
 cmdstanr::install_cmdstan(overwrite = TRUE, quiet = FALSE, dir = "C:/cmdstan")
 ```
 
@@ -221,8 +219,7 @@ under Rtools44 requires libraries that Rtools45 does not provide; the model
 still compiles, but each chain then exits immediately with
 `STATUS_DLL_NOT_FOUND`. Rebuilding CmdStan resolves the problem.
 
-
-``` r
+```{r rebuild}
 cmdstanr::install_cmdstan(overwrite = TRUE, dir = "C:/cmdstan")
 ```
 
@@ -292,8 +289,7 @@ does on Windows.
 The installation is verified with two checks. Run them in order, because the
 first inspects the toolchain and the second uses it.
 
-
-``` r
+```{r verify_toolchain}
 cmdstanr::check_cmdstan_toolchain()
 cmdstanr::cmdstan_version()
 ```
@@ -312,8 +308,7 @@ The second check fits a model. It is the decisive check, because it exercises
 the whole path (`bnec()` calls `brms::brm()`, `brm()` writes a Stan program,
 CmdStan compiles it, and the compiled program samples).
 
-
-``` r
+```{r verify_fit}
 library(bayesnec)
 data(nec_data)
 
@@ -342,31 +337,17 @@ Once this fit returns, the modelling vignettes can be followed, beginning with
 The Windows failures described above, and the measurements quoted with them (the
 49 MB archive, the download that failed at R's default timeout and completed in
 4.9 minutes at `timeout = 1800`, the OneDrive build failure, and the `tbb.dll`
-linked against a superseded Rtools), are taken from the software setup module of
-the concentration-response modelling course
-(<https://github.com/open-AIMS/cr_modelling_training>, commit `9d05595`). That
-module records what was observed on fresh Windows machines during 2026, and
-these are the course's measurements, not this package's.
+linked against a superseded Rtools), were observed when `cmdstanr` and CmdStan
+were installed on new Windows machines during 2026.
 
-All statements here about `cmdstanr` behaviour were read from `cmdstanr` 0.9.0
-under R 4.6.1, and none of them is a course measurement. They are: the
-environment variable read by `cmdstanr:::cmdstanr_initialize()`, and its
-fallback to `~/.cmdstan`; the resolution of a `CMDSTAN` directory that is not
-itself an installation to the newest `cmdstan-*` inside it, and the absence of
-that resolution from `set_cmdstan_path()`; the Rtools version returned by
-`cmdstanr:::rtools4x_version()`; the text of three of the messages quoted above
-(i.e. the toolchain success, the missing Rtools, and the directory assertion);
-the assertion by `install_cmdstan()` that a supplied directory exists, instead
-of creating it; the forwarding of `fix = TRUE` by `check_cmdstan_toolchain()` to
-the branch that repairs problems instead of only reporting them; and the
-`timeout` argument being passed to `build_cmdstan()` and `build_example()`,
-while the download runs through `utils::download.file()` and so honours
-`options(timeout)`.
+The statements about the behaviour of `cmdstanr` (e.g. where it looks for
+CmdStan, which Rtools it expects for a given version of R, and the text of the
+messages quoted above) were read from `cmdstanr` 0.9.0 under R 4.6.1, and other
+versions may behave differently.
 
-The Linux route was checked on 2026-09-11 by running the course's verification
-script end to end, with R 4.6.1, `brms` 2.23.0, `cmdstanr` 0.9.0 and CmdStan
-2.39.0. This check has two limitations: it was run under WSL2 Debian and not on
-a native installation, and the machine was already configured, so it confirms
-that the end state works but does not test the instructions for reaching it.
+The Linux route was checked on 2026-09-11 with R 4.6.1, `brms` 2.23.0,
+`cmdstanr` 0.9.0 and CmdStan 2.39.0. However, the machine was already
+configured, so this check confirms that the end state works but does not test
+the instructions for reaching it.
 
 # References

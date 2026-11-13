@@ -32,9 +32,9 @@ knitr::opts_chunk$set(
 
 [e1]: example1.html
 [e2b]: example2b.html
-[e7]: example7.html
-[e8]: example8.html
-[e9]: example9.html
+[e7]: https://open-aims.github.io/bayesnec/articles/example7.html
+[e8]: https://open-aims.github.io/bayesnec/articles/example8.html
+[e9]: https://open-aims.github.io/bayesnec/articles/example9.html
 
 ## Overview
 
@@ -311,7 +311,7 @@ fixed_prior$prior[fixed_prior$nlpar == "top"] <- "beta(50, 50)"
 
 ### Fixing an asymptote on control-normalised data
 
-A response divided by its control mean has a maximum of 1 by construction, and it is common to fix `top` at 1 for such data. We recommend against this, for a reason in addition to the two given above. Normalising to an *estimated* control mean already discards the sampling variability of the divisor. Fixing the asymptote afterwards then hides that loss, because the intervals it narrows are the ones that were already too narrow. `bnec` gives a message when it detects a normalised response. The alternative is to model the raw response and read the decline relative to the fitted control (see the "Preparing the response" section of the [Single model usage][e1] vignette, and `?bnec`). The [Modelling growth data and other potentially negative response values][e7] vignette applies the same reasoning to growth rates.
+A response divided by its control mean has a maximum of 1 by construction, and it is common to fix `top` at 1 for such data. We recommend against this, for a reason in addition to the two given above. Normalising to an *estimated* control mean already discards the sampling variability of the divisor. Fixing the asymptote afterwards then hides that loss, because the intervals it narrows are the ones that were already too narrow. `bnec` gives a message when it detects a normalised response. The alternative is to model the raw response and read the decline relative to the fitted control (see the "Preparing the response" section of the [Single model usage][e1] vignette, and `?bnec`). The [Modelling growth data and other potentially negative response values][e7] article applies the same reasoning to growth rates.
 
 ## Priors in grouped models
 
@@ -321,7 +321,7 @@ A group-level deviation cannot be bounded in the way the default priors bound th
 
 This has one consequence for a user supplying their own priors. Where a group-level term on **top** or **bot** would be transformed, a prior on that parameter that does not bound it to the range on which the mean is defined is refused, because the multiplicative form is only defined inside that range.
 
-When a group-level term is included, `bnec()` sets `control = list(adapt_delta = 0.99)` for **neclin**, **ecxlin** and the eight hormesis equations (including **neclinhorme**), on any family that restricts the range of the mean on the scale of its link (e.g. every family except `gaussian` on the `"identity"` link). For these equations a group-level term can still take the mean outside its support. The setting generally reduces the rate of divergent transitions substantially without removing them, and **such a fit should always be checked for divergent transitions**. An `adapt_delta` supplied by the user is left unchanged. See the [Grouping and factor covariates][e8] vignette for fitting models with group-level terms.
+When a group-level term is included, `bnec()` sets `control = list(adapt_delta = 0.99)` for **neclin**, **ecxlin** and the eight hormesis equations (including **neclinhorme**), on any family that restricts the range of the mean on the scale of its link (e.g. every family except `gaussian` on the `"identity"` link). For these equations a group-level term can still take the mean outside its support. The setting generally reduces the rate of divergent transitions substantially without removing them, and **such a fit should always be checked for divergent transitions**. An `adapt_delta` supplied by the user is left unchanged. See the [Grouping and factor covariates][e8] article for fitting models with group-level terms.
 
 ## Technical detail
 

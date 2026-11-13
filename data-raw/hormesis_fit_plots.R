@@ -231,7 +231,7 @@ marine_plot <- case_plot(
   fill = "#A9CAD5", line = "#245D73", x_fun = identity,
   x_scale = ggplot2::scale_x_continuous()
 )
-ggplot2::ggsave("vignettes/vignette-fig-example10-marine-fits.png", marine_plot,
+ggplot2::ggsave("vignettes/articles/vignette-fig-example10-marine-fits.png", marine_plot,
                 width = 9, height = 6.8, dpi = 150)
 
 lettuce_means <- stats::aggregate(weight ~ conc, lettuce, mean)
@@ -246,7 +246,7 @@ lettuce_plot <- case_plot(
     labels = sort(unique(lettuce$conc))
   )
 )
-ggplot2::ggsave("vignettes/vignette-fig-example10-lettuce-fit.png", lettuce_plot,
+ggplot2::ggsave("vignettes/articles/vignette-fig-example10-lettuce-fit.png", lettuce_plot,
                 width = 9, height = 6.8, dpi = 150)
 
 print(rbind(marine$summary, lettuce_out$summary), digits = 3)

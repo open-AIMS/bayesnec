@@ -1,18 +1,13 @@
 ---
 title: "Hurdle and zero-inflated concentration-response models"
-output:
-  rmarkdown::html_vignette:
-vignette: >
-  %\VignetteIndexEntry{Hurdle and zero-inflated concentration-response models}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
-bibliography: bayesnec.bib
+bibliography: ../bayesnec.bib
 ---
 
 
 
 [e1]: example1.html
 [e2]: example2.html
+[e4]: example4.html
 
 # Overview
 
@@ -1032,10 +1027,10 @@ concentrations, because conditioning on `y > 0` truncates precisely the smallest
 values.
 
 Each of these zeros is instead a value known only to lie in `[0, 0.005)`, i.e.
-a censored observation (see the Censoring section of `vignette("example1")`).
+a censored observation (see the Censoring section of [Single model usage][e1]).
 The default `bayesnec` behaviour of nudging zeros to `min(y[y > 0]) / 10` is
 crude, but defensible in this case, because 0.001 falls inside the true
-interval. The herbicide fits of `vignette("example4")` treat these zeros as
+interval. The herbicide fits of [Comparisons and exceedance probabilities][e4] treat these zeros as
 left-censored at 0.005 instead.
 
 The diagnostic for this case is a comparison of the gap between zero and the

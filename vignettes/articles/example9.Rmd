@@ -1,12 +1,6 @@
 ---
 title: "A complete analysis workflow"
-output:
-  rmarkdown::html_vignette:
-vignette: >
-  %\VignetteIndexEntry{A complete analysis workflow}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
-bibliography: bayesnec.bib
+bibliography: ../bayesnec.bib
 ---
 
 

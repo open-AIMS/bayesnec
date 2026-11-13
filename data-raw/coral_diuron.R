@@ -40,7 +40,7 @@ stopifnot(
 
 # `Diuron.` substitutes 0.1 for the zero control so that a log predictor can be
 # taken. The recorded 0 is shipped instead: substituting at a boundary is the
-# practice vignette("example6") argues against, and a user who wants the
+# practice the example6 article argues against, and a user who wants the
 # substitution can make it and say so.
 stopifnot(all(cc$Diuron[cc$Diuron > 0] == cc$Diuron.[cc$Diuron > 0]),
           all(cc$Diuron.[cc$Diuron == 0] == 0.1))

@@ -151,7 +151,10 @@ jobs:
             sel="$suffix"
           fi
 
-          available=$(cd vignettes && ls -1 *.Rmd.orig | sed 's/\.Rmd\.orig$//')
+          # Vignettes are in vignettes/ and pkgdown articles in
+          # vignettes/articles/; both are named by their stem.
+          available=$(for f in vignettes/*.Rmd.orig vignettes/articles/*.Rmd.orig; do
+            if [ -f "$f" ]; then basename "$f" .Rmd.orig; fi; done)
           if [ -n "$sel" ]; then
             chosen=""
             for v in $(printf '%s' "$sel" | tr ',' ' '); do
@@ -401,13 +404,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .precompile_held
-          for f in vignettes/*.Rmd.orig; do
+          shopt -s nullglob
+          for f in vignettes/*.Rmd.orig vignettes/articles/*.Rmd.orig; do
             b=$(basename "$f" .Rmd.orig)
             if [ "$b" != "${{ matrix.vignette }}" ]; then
               mv "$f" .precompile_held/
             fi
           done
-          ls -1 vignettes/*.Rmd.orig
+          ls -1 vignettes/*.Rmd.orig vignettes/articles/*.Rmd.orig
 
       - name: Precompile ${{ matrix.vignette }}
         id: precompile
