@@ -27,7 +27,7 @@
 #' \code{manec} records none, as an object fitted by an earlier version of
 #' \pkg{bayesnec} does not.
 #'
-#' A \code{\link{bayesnecjointfit}} is refused. It holds one equation per
+#' A \code{\link{bayesnecjointfit}} is refused. It fits one equation per
 #' level in one posterior, so no equation or level can be taken out of it
 #' without refitting.
 #'
@@ -68,7 +68,7 @@ pull_out <- function(manec, model, loo_controls, x_range = NULL,
   }
   if (inherits(manec, "bayesnecjointfit")) {
     refuse_joint_method(manec, "pull_out()", paste(
-      "It holds one equation per level, and no equation or level can be",
+      "Each of its levels has one equation, and no equation or level can be",
       "taken out of it without refitting. To fit one equation at every",
       "level, pass it to bnec_joint() as `model`; to fit one level alone,",
       "call bnec() on that level's rows."

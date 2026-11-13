@@ -20,7 +20,7 @@ For a \code{\link{bayesmanecfit}}, an object of class
 unchanged. For a \code{\link{bayesnechurdlefit}}, an object of the same class
 with each component reduced to its own highest-weighted model. For a
 \code{\link{bayesnecjointfit}}, \code{object} unchanged, because each level
-already holds a single equation, the one its own model weights favoured
+already has a single equation, the one its own model weights favoured
 when \code{\link{bnec_joint}} chose it.
 }
 \description{

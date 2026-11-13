@@ -39,7 +39,7 @@
 #' unchanged. For a \code{\link{bayesnechurdlefit}}, an object of the same class
 #' with each component reduced to its own highest-weighted model. For a
 #' \code{\link{bayesnecjointfit}}, \code{object} unchanged, because each level
-#' already holds a single equation, the one its own model weights favoured
+#' already has a single equation, the one its own model weights favoured
 #' when \code{\link{bnec_joint}} chose it.
 #'
 #' @seealso \code{\link{pull_out}}, \code{\link{screen_models}},
@@ -101,7 +101,7 @@ pull_best.bayesnecfit <- function(object, ...) {
 pull_best.bayesnecjointfit <- function(object, ...) {
   models <- vapply(object$levels, joint_level_model, character(1),
                    object = object, USE.NAMES = FALSE)
-  message("This joint refit holds one equation per level (",
+  message("Each level of this joint refit has one equation (",
           paste0(object$levels, " = ", models, collapse = ", "),
           "); returning it unchanged.")
   object

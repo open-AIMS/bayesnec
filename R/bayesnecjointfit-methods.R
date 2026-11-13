@@ -750,7 +750,7 @@ refuse_joint_method <- function(x, what, remedy) {
        levels_of, " in one posterior. ", remedy, call. = FALSE)
 }
 
-#' The coefficients one level of a joint refit holds alone
+#' The coefficients that belong to one level of a joint refit alone
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param level One level of \code{object$group_var}.
@@ -767,7 +767,8 @@ refuse_joint_method <- function(x, what, remedy) {
 #' @importFrom brms variables
 #' @noRd
 joint_level_vars <- function(object, level, vars = variables(object$fit)) {
-  curve_pars <- names(get(paste0("bf_", joint_level_model(object, level)))$pforms)
+  model <- joint_level_model(object, level)
+  curve_pars <- names(get(paste0("bf_", model))$pforms)
   pars <- curve_pars
   if (isTRUE(object$disp_by_level) && !is.null(object$family)) {
     pars <- c(pars, disp_dpar(object$family))
@@ -792,7 +793,7 @@ joint_level_vars <- function(object, level, vars = variables(object$fit)) {
 #'
 #' @return A named \code{\link[base]{list}}, one element per level that owns
 #' a row of \code{\link[brms]{fixef}}, and a last element \code{shared} where
-#' some row belongs to no level. Each element holds a \code{title} and the
+#' some row belongs to no level. Each element has a \code{title} and the
 #' row names in \code{pars}.
 #'
 #' @importFrom brms fixef variables
@@ -942,7 +943,7 @@ rhat.bayesnecjointfit <- function(x, rhat_cutoff = 1.01, ...) {
   vals <- screenable_pars(rhat(x$fit))
   vars <- variables(x$fit)
   own <- lapply(x$levels, joint_level_vars, object = x, vars = vars)
-  # A parameter no level owns, lp__ among them, bears on every level.
+  # Give every level the parameters no level owns, lp__ among them.
   shared <- setdiff(names(vals), unlist(own))
   out <- lapply(own, function(v) {
     level_vals <- clean_rhat_names(vals[c(intersect(v, names(vals)), shared)])
@@ -1461,10 +1462,11 @@ amend.bayesnecjointfit <- function(object, drop, add, loo_controls,
                                    asymptote_observed = NULL, timeout = Inf,
                                    predictor_scale = NULL) {
   refuse_joint_method(object, "amend()", paste(
-    "It holds one equation per level and no model set, so there is no",
-    "equation to add or drop and no model weight to recompute, and it stores",
-    "no estimate for x_range, resolution or sig_val to rebuild: ecx(), nsec()",
-    "and nec() take those when called. To change the equations, amend() the",
+    "Each of its levels has one equation and it is not a model set, so",
+    "there is no equation to add or drop and no model weight to recompute,",
+    "and it stores no estimate for x_range, resolution or sig_val to",
+    "rebuild: ecx(), nsec() and nec() take those when called. To change the",
+    "equations, amend() the",
     "bnec_group() fit and refit it with bnec_joint(); to refit with other",
     "sampler settings or data, use update()."
   ))

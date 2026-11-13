@@ -197,8 +197,8 @@ best_crossed <- function(object) {
 #' \code{update()}, each returning one result per level where it returns one
 #' per fit; \code{\link{bayesnecjointfit}} lists them. \code{\link{amend}},
 #' \code{\link{pull_out}}, \code{c()} and \code{+} stop on it with a message
-#' naming what to use instead, because it holds one equation per level and no
-#' model set.
+#' naming what to use instead, because each of its levels has one equation
+#' and it is not a model set.
 #'
 #' @return For a \code{\link{bayesnechurdlefit}}, an object of class
 #' \code{\link{bayesnecfit}}; for a \code{\link{bayesnecgroupfit}}, an object
