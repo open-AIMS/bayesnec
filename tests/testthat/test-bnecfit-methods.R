@@ -500,7 +500,7 @@ test_that("update returns a bayesnecfit when only one model survives", {
   assign("update.brmsfit", stub, envir = tbl)
   # try(silent = FALSE) in the refit loop prints the stub's stop to stderr.
   invisible(capture.output(
-    upd <- suppressMessages(update(manec_example)),
+    upd <- suppressWarnings(suppressMessages(update(manec_example))),
     type = "message"
   ))
   expect_s3_class(upd, "bayesnecfit")
