@@ -81,7 +81,7 @@ ecnsec.bayesnecjointlevel <- function(object, ...) ecnsec.bnecfit(object, ...)
 #' @noRd
 estimator_epred <- function(object, newdata, ...) {
   if (!inherits(object, "bayesnecjointlevel")) {
-    return(brms::posterior_epred(object, newdata = newdata, ...))
+    return(posterior_epred(object, newdata = newdata, ...))
   }
   check_newdata_disp(object$bayesnecformula, newdata)
   factorised_count_epred(object$fit, object$bayesnecformula,
