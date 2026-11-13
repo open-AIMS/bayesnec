@@ -25,6 +25,11 @@
 
 \item{x_range}{A range of predictor values to predict over.}
 
+\item{newdata}{An optional \code{\link[base]{data.frame}} of predictor
+values. When supplied, \code{resolution} and \code{x_range} are ignored.}
+
+\item{re_formula}{Optional group-effects setting passed to both components.}
+
 \item{...}{Passed to each component posterior method, including
 \code{ndraws} and \code{draw_ids}.}
 }

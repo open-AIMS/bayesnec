@@ -128,12 +128,14 @@ group_prediction_data <- function(newdata, level, levels) {
 #' @param resolution Number of grid rows per level.
 #' @param x_range Optional predictor range.
 #' @param level One level, or \code{NULL} for all levels.
+#' @param ... Unused; other arguments are refused.
 #' @return A data frame for one level, or a data frame with a leading
 #' \code{level} column when all grids share a schema; otherwise a named list.
 #' @method bnec_newdata bayesnecgroupfit
 #' @export
 bnec_newdata.bayesnecgroupfit <- function(x, resolution = 100, x_range = NA,
-                                          level = NULL) {
+                                          level = NULL, ...) {
+  check_unused_dots(list(...), "bnec_newdata")
   out <- group_method(x, level, function(fit, lev) {
     bnec_newdata(fit, resolution = resolution, x_range = x_range)
   })

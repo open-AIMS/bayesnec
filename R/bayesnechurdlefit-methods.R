@@ -112,7 +112,7 @@ fitted.bayesnechurdlefit <- function(object, which = "combined",
 #' Generates posterior draws of the response for a
 #' \code{\link{bayesnechurdlefit}}
 #'
-#' @inheritParams fitted.bayesnechurdlefit
+#' @inheritParams posterior_epred.bayesnechurdlefit
 #'
 #' @details For \code{which = "combined"} this simulates from the two-part
 #' process itself rather than summarising a mean curve: a survival outcome is
@@ -222,6 +222,7 @@ hurdle_newdata_pair <- function(object, resolution = 1000, x_range = NA) {
 #' @param x An object of class \code{\link{bayesnechurdlefit}}.
 #' @param resolution The number of unique predictor values.
 #' @param x_range A range of predictor values.
+#' @param ... Unused; other arguments are refused.
 #'
 #' @return A \code{\link[base]{data.frame}}.
 #'
@@ -229,7 +230,8 @@ hurdle_newdata_pair <- function(object, resolution = 1000, x_range = NA) {
 #'
 #' @export
 bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
-                                           x_range = NA) {
+                                           x_range = NA, ...) {
+  check_unused_dots(list(...), "bnec_newdata")
   object <- x
   # Taken from the survival component, which sees every row and therefore the
   # full exposed predictor range; the growth component stops short of any
@@ -642,6 +644,7 @@ check_chains.bayesnechurdlefit <- function(x, ...) {
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param filename Optional filename to save plots to.
 #' @param ask Should the user be prompted between plots?
+#' @param ... Unused; other arguments are refused.
 #'
 #' @return A named \code{\link[base]{list}}.
 #'
@@ -649,7 +652,8 @@ check_chains.bayesnechurdlefit <- function(x, ...) {
 #'
 #' @export
 check_priors.bayesnechurdlefit <- function(object, filename = NA,
-                                           ask = TRUE) {
+                                           ask = TRUE, ...) {
+  check_unused_dots(list(...), "check_priors")
   message(hurdle_no_combined("check_priors"))
   hurdle_delegate(object, check_priors, filename = filename, ask = ask)
 }

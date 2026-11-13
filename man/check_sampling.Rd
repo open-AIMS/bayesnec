@@ -34,6 +34,8 @@ check_sampling(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
 \item{ess_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
 \item{divergence_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
+
+\item{...}{Unused by the default method, which names unsupported classes.}
 }
 \value{
 A \code{\link[base]{data.frame}} with one row per candidate model and

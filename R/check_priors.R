@@ -48,7 +48,8 @@ check_priors <- function(object, filename = NA, ask = TRUE, ...) {
 #' @noRd
 #'
 #' @export
-check_priors.bayesnecfit <- function(object, filename = NA, ask = TRUE) {
+check_priors.bayesnecfit <- function(object, filename = NA, ask = TRUE, ...) {
+  check_unused_dots(list(...), "check_priors")
   if (!is.na(filename)) {
     chk_character(filename)
   }
@@ -102,7 +103,9 @@ prior_posterior_plot <- function(brms_fit, all_pars) {
 #' @noRd
 #'
 #' @export
-check_priors.bayesmanecfit <- function(object, filename = NA, ask = TRUE) {
+check_priors.bayesmanecfit <- function(object, filename = NA, ask = TRUE,
+                                      ...) {
+  check_unused_dots(list(...), "check_priors")
   if (!is.na(filename)) {
     chk_character(filename)
   }

@@ -21,10 +21,12 @@ the range of x values over which to make predictions.}
 \code{bayesnecgroupfit}.}
 }
 \value{
-A \code{\link[base]{data.frame}} to be used in predictions. For a
-\code{\link{bayesnecjointfit}} it holds \code{resolution} rows for each
-level of the grouping factor, in a column of that name, with the level
-varying slowest; every other class gives \code{resolution} rows.
+A \code{\link[base]{data.frame}} to be used in predictions.
+Ordinary and hurdle fits give \code{resolution} rows. A
+\code{bayesnecjointfit} gives that many rows per level, with the level
+varying slowest. A \code{bayesnecgroupfit} gives one grid per level, as a
+data frame with a leading \code{level} column when schemas match or a
+named list otherwise. Selecting one grouped level gives one data frame.
 
 Where the formula has a \code{disp(~...)} term naming a column other than
 the predictor, the data frame holds that column at one fixed value, the

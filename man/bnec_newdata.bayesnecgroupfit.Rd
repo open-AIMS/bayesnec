@@ -4,7 +4,7 @@
 \alias{bnec_newdata.bayesnecgroupfit}
 \title{Predictor grids for a grouped fit}
 \usage{
-\method{bnec_newdata}{bayesnecgroupfit}(x, resolution = 100, x_range = NA, level = NULL)
+\method{bnec_newdata}{bayesnecgroupfit}(x, resolution = 100, x_range = NA, level = NULL, ...)
 }
 \arguments{
 \item{x}{A \code{bayesnecgroupfit}.}
@@ -14,6 +14,8 @@
 \item{x_range}{Optional predictor range.}
 
 \item{level}{One level, or \code{NULL} for all levels.}
+
+\item{...}{Unused; other arguments are refused.}
 }
 \value{
 A data frame for one level, or a data frame with a leading

@@ -282,10 +282,13 @@ joint_level_spec <- function(object, predict_levels = NULL) {
        predict_levels = predict_levels, inds = object$level_spec$inds)
 }
 
+#' @return A predictor grid with rows for every joint level.
 #' @noRd
 #' @method bnec_newdata bayesnecjointfit
 #' @export
-bnec_newdata.bayesnecjointfit <- function(x, resolution = 100, x_range = NA) {
+bnec_newdata.bayesnecjointfit <- function(x, resolution = 100, x_range = NA,
+                                          ...) {
+  check_unused_dots(list(...), "bnec_newdata")
   check_args_newdata(resolution, x_range)
   prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
                   resolution = resolution,
@@ -293,11 +296,13 @@ bnec_newdata.bayesnecjointfit <- function(x, resolution = 100, x_range = NA) {
                   x_control = recorded_x_control(x))$newdata
 }
 
+#' @return A predictor grid containing only this adapter's level.
 #' @noRd
 #' @method bnec_newdata bayesnecjointlevel
 #' @export
 bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
-                                            x_range = NA) {
+                                            x_range = NA, ...) {
+  check_unused_dots(list(...), "bnec_newdata")
   check_args_newdata(resolution, x_range)
   # Default to the level's own range, as bnec_group() gives each level.
   if (all(is.na(x_range)) && length(x$level_x)) {
@@ -1033,13 +1038,16 @@ check_chains.bayesnecjointfit <- function(x, filename = NA, ...) {
   invisible(NULL)
 }
 
+#' @return Invisibly, a named list of plots for the joint levels.
 #' @noRd
 #' @method check_priors bayesnecjointfit
 #' @importFrom ggplot2 ggtitle
 #' @importFrom grDevices devAskNewPage pdf dev.cur dev.list dev.off
 #' @importFrom chk chk_character
 #' @export
-check_priors.bayesnecjointfit <- function(object, filename = NA, ask = TRUE) {
+check_priors.bayesnecjointfit <- function(object, filename = NA, ask = TRUE,
+                                         ...) {
+  check_unused_dots(list(...), "check_priors")
   if (!is.na(filename)) {
     chk_character(filename)
   }

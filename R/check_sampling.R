@@ -75,6 +75,7 @@
 #' @param rhat_cutoff A \code{\link[base]{numeric}} vector of length 1.
 #' @param ess_cutoff A \code{\link[base]{numeric}} vector of length 1.
 #' @param divergence_cutoff A \code{\link[base]{numeric}} vector of length 1.
+#' @param ... Unused by the default method, which names unsupported classes.
 #'
 #' @return A \code{\link[base]{data.frame}} with one row per candidate model and
 #' columns \code{model}, \code{max_rhat}, \code{min_ess}, \code{min_ess_ratio},
