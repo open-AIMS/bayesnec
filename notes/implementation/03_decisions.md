@@ -725,3 +725,14 @@ names: `update()` refits every level, and `c()` and `+` combine two grouped
 fits of the same data and levels into a model set at each level. The internal
 view of one level of a joint refit exposes only the estimators. Estimates
 returned by `ecx()`, `nsec()`, `nec()` and `ecnsec()` do not change.
+
+## D52 — A censored posterior draw is returned as an infinite value
+
+RF, 2026-11-13: with `posterior = TRUE`, `ecx()`, `nsec()`, `nec()` and
+`ecnsec()` return a draw censored above the search range as `Inf` and one
+censored below it as `-Inf`, in place of `NA`, keeping `attr(, "censored")`.
+An infinite draw keeps its rank, so `quantile()` and `sort()` treat it
+correctly without special handling, whereas an `NA` invites `na.rm = TRUE`,
+which drops the censored draws and biases the estimate low. `toxval` already
+returns an unresolved draw as `Inf`. Summaries and comparisons, which read the
+censoring record, return the same values as before.
