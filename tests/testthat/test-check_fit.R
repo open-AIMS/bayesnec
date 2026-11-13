@@ -289,7 +289,13 @@ test_that("the Pareto section is separate from concentration rows", {
 test_that("model-set checks read stored fits without recalculating criteria", {
   skip_on_cran()
   local_mocked_bindings(pull_out = function(...) stop("recalculated"))
-  expect_no_error(check_fit(manec_example, group = 3, ndraws = 20))
+  set_table <- check_fit(manec_example, group = 3, ndraws = 20)
+  single <- check_fit(nec4param, group = 3, ndraws = 20)
+  own <- set_table[set_table$model == "nec4param", , drop = FALSE]
+  for (column in names(single)) {
+    expect_equal(unname(own[[column]]), unname(single[[column]]))
+  }
+  expect_s3_class(attr(set_table, "pareto"), "data.frame")
 })
 
 test_that("stored grouped scores retain corrected and failed refit IDs", {

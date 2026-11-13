@@ -105,6 +105,12 @@ Pareto k assesses the approximation to a leave-one-out score. It does not
 assess sampler convergence or the posterior predictive discrepancies in the
 concentration-level table. Grouped scores use the package's 0.7 cutoff;
 observation-wise scores use the applicable \pkg{loo} cutoff.
+
+A \code{checkfit} table for this single fit, with model and
+Pareto diagnostic attributes.
+
+A \code{checkfit} table with one row block per model and
+columns for model weights, with Pareto diagnostics as an attribute.
 }
 \description{
 Reports, per group of the predictor, the observed location and scale of the
