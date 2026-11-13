@@ -2,32 +2,10 @@
 title: "Hurdle and zero-inflated concentration-response models"
 output:
   rmarkdown::html_vignette:
-vignette: >
-  %\VignetteIndexEntry{Hurdle and zero-inflated concentration-response models}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
-bibliography: bayesnec.bib
+bibliography: ../bayesnec.bib
 ---
 
-```{r setup, include = FALSE}
-stopifnot(require(knitr))
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  warning = FALSE,
-  message = FALSE,
-  fig.path = "vignette-fig-exmp6-",
-  fig.asp = 0.8,
-  out.width = "60%",
-  fig.align = "center",
-  # png rather than the pdf the other vignettes use: this is an html_vignette,
-  # and an embedded pdf is rendered by the browser's pdf plugin, complete with
-  # its own toolbar and scrollbars, instead of as an image.
-  dev = "png",
-  dpi = 100,
-  eval = identical(Sys.getenv("NOT_CRAN"), "true")
-)
-```
+
 
 [e1]: example1.html
 [e2]: example2.html
@@ -88,7 +66,8 @@ response families* for proportions and counts).
 
 To run this vignette we also need
 
-```{r, warning = FALSE, message = FALSE}
+
+``` r
 library(bayesnec)
 library(ggplot2)
 library(dplyr)
@@ -101,10 +80,11 @@ marine snail *Nassarius dorsatus* [@trenfield2016], with one row per snail that
 entered the experiment. A snail that died is recorded with `alive = 0` and a
 growth of zero. The contaminants are anonymised as A–D and the dose units are
 not stated. Here we use the test of contaminant D, in which
-`r sum(nassarius$contaminant == "D" & nassarius$alive == 0)` of the
-`r sum(nassarius$contaminant == "D")` snails died.
+45 of the
+372 snails died.
 
-```{r nassarius-data}
+
+``` r
 data(nassarius)
 snails <- nassarius |>
   filter(contaminant == "D") |>
@@ -114,7 +94,7 @@ snails <- nassarius |>
 Each snail that entered the test must be present in the data, with the dead
 recorded as zeros. A fit to data from which the dead have been omitted describes
 a smaller experiment with less mortality. In this test,
-`r with(nassarius, sum(contaminant == "D" & record %in% c("absent_tank", "absent_dose")))`
+36
 of the deaths were snails absent from the source records, and were reinstated
 from the test design (the `record` column gives the trace of each death; see
 *Deaths recorded by omission*).
@@ -129,7 +109,8 @@ is written in the formula, `bayesnec` returns the estimates and plots on the
 dose scale (see the [Single model usage][e1] vignette). The figures below draw
 dose on this log scale, with the control one decade below the lowest dose.
 
-```{r dose-axis}
+
+``` r
 off <- 1e-4
 dose_axis <- scale_x_continuous(
   "Dose", breaks = log(c(0, 0.001, 0.01, 0.1, 1, 10) + off),
@@ -137,7 +118,8 @@ dose_axis <- scale_x_continuous(
 )
 ```
 
-```{r nassarius-plot, fig.width = 6, fig.asp = 0.6, fig.cap = "Growth of the snails in the test of contaminant D. A death is recorded as a growth of zero. Points are jittered horizontally."}
+
+``` r
 ggplot(snails, aes(x = log(dose + off), y = growth, colour = alive == 0)) +
   geom_point(alpha = 0.5,
              position = position_jitter(width = 0.1, height = 0, seed = 1)) +
@@ -148,26 +130,23 @@ ggplot(snails, aes(x = log(dose + off), y = growth, colour = alive == 0)) +
   theme_classic()
 ```
 
-```{r nassarius-summary, include = FALSE}
-growth_at <- function(d) {
-  round(mean(snails$growth[snails$alive == 1 & snails$dose == d]), 1)
-}
-dead_at <- function(d) sum(snails$alive == 0 & snails$dose == d)
-survival_at <- function(d) round(mean(snails$alive[snails$dose == d]), 2)
-top_survivor <- max(snails$dose[snails$alive == 1])
-early <- snails$alive == 0 & snails$dose < 10
-```
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp6-nassarius-plot-1.png" alt="Growth of the snails in the test of contaminant D. A death is recorded as a growth of zero. Points are jittered horizontally." width="60%" />
+<p class="caption">Growth of the snails in the test of contaminant D. A death is recorded as a growth of zero. Points are jittered horizontally.</p>
+</div>
 
-Growth declines gradually across the series, from a mean of `r growth_at(0)`
-in the controls to `r growth_at(1)` at a dose of 1 and `r growth_at(15)` at
-`r top_survivor`, the highest dose at which any snail survived (figure above).
+
+
+Growth declines gradually across the series, from a mean of 21.4
+in the controls to 14.1 at a dose of 1 and 6.8 at
+15, the highest dose at which any snail survived (figure above).
 Mortality, in contrast, is concentrated at the top of the series. At doses below
-10, `r sum(early)` snails died, spread over
-`r length(unique(snails$dose[early]))` doses with no trend with dose, whereas
-`r dead_at(10)` died at 10, `r dead_at(15)` of the `r sum(snails$dose == 15)` at
-15, and all `r sum(snails$dose == 20)` at 20. These deaths appear as zeros along
+10, 6 snails died, spread over
+3 doses with no trend with dose, whereas
+2 died at 10, 13 of the 24 at
+15, and all 24 at 20. These deaths appear as zeros along
 the bottom of the plot. No survivor has a growth at or below zero (the smallest
-is `r signif(min(snails$growth[snails$alive == 1]), 2)`), so the growth of the
+is 1.9), so the growth of the
 survivors can be fitted with a Gamma distribution as recorded.
 
 # The factorised route
@@ -183,7 +162,7 @@ joint route*.
 Each component can be given its own equation: `crf()` names the equation for
 growth, and `model_survival` the equation for survival. We begin with one
 equation for each. Growth declines gradually from the lowest doses and is still
-declining at `r top_survivor` (figure above), and we give it the smooth equation
+declining at 15 (figure above), and we give it the smooth equation
 `ecxll3`, a three-parameter log-logistic equation that falls to zero without
 estimating a lower asymptote. Survival, in contrast, changes little up to a dose
 of 10 before it falls to zero, and we give it the threshold equation
@@ -191,7 +170,8 @@ of 10 before it falls to zero, and we give it the threshold equation
 other also show an NEC and an NSEC side by side (see *Endpoints of the
 factorised fit*).
 
-```{r fit-factorised, results = "hide"}
+
+``` r
 # bayesnec does not set cores; unless mc.cores is set, brms then runs the
 # chains one after another. adapt_delta is raised for the reason given below.
 fit_f <- bnec_hurdle(
@@ -207,33 +187,34 @@ As for any `bayesnec` fit, the sampler diagnostics should be checked before the
 estimates are used (see the [Multi model usage][e2] vignette).
 `check_sampling()` returns them for each component.
 
-```{r sampling-factorised}
+
+``` r
 sampling_f <- check_sampling(fit_f)
 sampling_f
+#> $growth
+#>    model max_rhat  min_ess min_ess_ratio n_divergent failed
+#> 1 ecxll3 1.002435 2521.702     0.3152127           0  FALSE
+#> 
+#> $survival
+#>       model max_rhat  min_ess min_ess_ratio n_divergent failed
+#> 1 nec3param 1.005095 476.2915    0.05953644          10  FALSE
 ```
 
-```{r sampling-factorised-note, include = FALSE}
-sampling_f_note <- if (any(sampling_f$growth$failed,
-                           sampling_f$survival$failed)) {
-  "at least one component fails a check, so the estimates below should be read with that caveat"
-} else {
-  "both components pass every check"
-}
-```
+
 
 We raise `adapt_delta` from its default of 0.8 to 0.999 for all the `nassarius`
 fits because of the survival data at the top of the series. Survival changes
-little from the control to a dose of 10, and then falls to `r survival_at(15)`
-at 15 and `r survival_at(20)` at 20. Because survival at 15 is about half its
-control value of `r survival_at(0)`, these data locate the decline at about 15
+little from the control to a dose of 10, and then falls to 0.46
+at 15 and 0 at 20. Because survival at 15 is about half its
+control value of 1, these data locate the decline at about 15
 but do not limit how steeply it falls: a curve that drops abruptly at 15 fits
 them about as well as one that falls steadily from 10 to 20. The sampler is
 therefore likely to have difficulty where it explores those steep curves, and
 the raised setting reduces the step size it uses there. `bnec_hurdle()` passes
 these settings to both components, so growth is fitted with them too. With
-these settings the growth component produced `r sampling_f$growth$n_divergent`
+these settings the growth component produced 0
 divergent transitions and the survival component
-`r sampling_f$survival$n_divergent`, and `r sampling_f_note` (table above). The
+10, and both components pass every check (table above). The
 settings can reduce the number of divergent transitions, but they cannot limit
 the steepness of the decline. That requires a further dose between 10 and 15 or
 between 15 and 20, or an informative prior on the rate of decline of the
@@ -248,51 +229,42 @@ decline from the fitted control value (table below). `nec()`, `nsec()` and
 `ecx()` select one endpoint through their `which` argument, with the combined
 endpoint as the default.
 
-```{r summary-factorised}
+
+``` r
 summary_f <- summary(fit_f, ecx = TRUE, ecx_vals = c(10, 50))
 summary_f
+#> Object of class bayesnechurdlefit
+#> 
+#>    372 individuals exposed; 45 recorded as zero ( 12.1% )
+#> 
+#>   growth   : Gamma -- ecxll3 
+#>   survival : bernoulli -- nec3param 
+#> 
+#> No-effect toxicity estimates
+#>                     Q50  Q2.5 Q97.5
+#> combined (N(S)EC)  0.03  0.01  0.09
+#> growth (NSEC)      0.03  0.01  0.09
+#> survival (NEC)    14.23 10.65 14.94
+#> 
+#> NSEC values come from smooth or hormesis threshold equations; N(S)EC
+#> combines sampled NEC and curve-read NSEC estimates (Fisher et al. 2023).
+#> 
+#> ECx estimates
+#>                 Q50  Q2.5 Q97.5
+#> combined ec10  0.08  0.03  0.32
+#> combined ec50  7.64  5.11 11.10
+#> growth ec10    0.08  0.03  0.32
+#> growth ec50    7.64  5.11 11.13
+#> survival ec10 14.34 10.99 14.94
+#> survival ec50 14.90 13.10 15.29
+#> 
+#> The combined endpoint is the expected response per individual exposed,
+#> i.e. growth * survival. Use which = to select a component.
+#> 
+#> Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.
 ```
 
-```{r text-helper, include = FALSE}
-# Two significant figures for the numbers quoted in the text, keeping a
-# trailing zero (1.0, not 1).
-sig2 <- function(x) {
-  sub("\\.$", "", formatC(x, digits = 2, format = "fg", flag = "#"))
-}
 
-# The tested doses either side of a set of estimates.
-dose_bracket <- function(x) {
-  doses <- sort(unique(snails$dose))
-  c(max(doses[doses <= min(x)]), min(doses[doses >= max(x)]))
-}
-estimates_of <- function(endpoint) {
-  c(summary_f$ne[[endpoint]][[1]], summary_f$ecs[[endpoint]]$ec10[[1]],
-    summary_f$ecs[[endpoint]]$ec50[[1]])
-}
-growth_bracket <- dose_bracket(estimates_of("growth"))
-survival_bracket <- dose_bracket(estimates_of("survival"))
-
-ec_of <- function(endpoint, level) summary_f$ecs[[endpoint]][[level]][[1]]
-same_ec <- vapply(c("ec10", "ec50"), function(v) {
-  sig2(ec_of("combined", v)) == sig2(ec_of("growth", v))
-}, logical(1))
-combined_ec_text <- if (all(same_ec)) {
-  paste0("the EC10 and EC50 take their growth values (",
-         sig2(ec_of("combined", "ec10")), " and ",
-         sig2(ec_of("combined", "ec50")), ")")
-} else if (same_ec[["ec10"]]) {
-  paste0("the EC10 takes its growth value (", sig2(ec_of("combined", "ec10")),
-         "), whereas the EC50 (", sig2(ec_of("combined", "ec50")),
-         ") is below the growth EC50, because survival has begun to fall by ",
-         "that dose")
-} else {
-  paste0("the EC10 and EC50 (", sig2(ec_of("combined", "ec10")), " and ",
-         sig2(ec_of("combined", "ec50")), ") are below their growth values, ",
-         "because survival has begun to fall by those doses")
-}
-ne_growth <- summary_f$ne$growth[[1]]
-ne_combined <- summary_f$ne$combined[[1]]
-```
 
 `autoplot(fit_f, which = "all")` draws the three curves against the recorded
 dose, on which the ten lowest doses fall within the first twentieth of the
@@ -301,28 +273,34 @@ observations on the scale of the fit, `log(dose + 0.001 / 10)`, and labels the
 axis in dose, including the control at zero. It also marks the no-effect
 estimate of each endpoint, and with `ecx = TRUE` the EC10 (figure below).
 
-```{r plot-factorised, fig.width = 10, fig.asp = 0.4, out.width = "100%", fig.cap = "The combined endpoint (response per individual exposed), growth (response of survivors) and survival of the factorised fit, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate and its credible limits; blue lines mark the EC10 and its limits. The deaths are the zeros along the bottom of the combined panel, and they are absent from the growth panel. The survival panel shows the proportion surviving at each dose."}
+
+``` r
 autoplot(fit_f, which = "all", x_scale = "fitted", ecx = TRUE, xlab = "Dose")
 ```
 
-The growth estimates are between the doses of `r growth_bracket[1]` and
-`r growth_bracket[2]`, because growth declines gradually over much of the
-series, whereas the survival estimates are between `r survival_bracket[1]` and
-`r survival_bracket[2]`, over which survival falls from
-`r survival_at(survival_bracket[1])` to `r survival_at(survival_bracket[2])`
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp6-plot-factorised-1.png" alt="The combined endpoint (response per individual exposed), growth (response of survivors) and survival of the factorised fit, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate and its credible limits; blue lines mark the EC10 and its limits. The deaths are the zeros along the bottom of the combined panel, and they are absent from the growth panel. The survival panel shows the proportion surviving at each dose." width="100%" />
+<p class="caption">The combined endpoint (response per individual exposed), growth (response of survivors) and survival of the factorised fit, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate and its credible limits; blue lines mark the EC10 and its limits. The deaths are the zeros along the bottom of the combined panel, and they are absent from the growth panel. The survival panel shows the proportion surviving at each dose.</p>
+</div>
+
+The growth estimates are between the doses of 0.02 and
+10, because growth declines gradually over much of the
+series, whereas the survival estimates are between 10 and
+15, over which survival falls from
+0.92 to 0.46
 (table and figure above). For example, the EC50 is
-`r sig2(summary_f$ecs$growth$ec50[[1]])` for growth and
-`r sig2(summary_f$ecs$survival$ec50[[1]])` for survival. On the combined
-curve, however, `r combined_ec_text`, and the combined curve follows the growth
-curve up to the survival NEC (`r sig2(summary_f$ne$survival[[1]])`) before it
+7.6 for growth and
+15 for survival. On the combined
+curve, however, the EC10 and EC50 take their growth values (0.083 and 7.6), and the combined curve follows the growth
+curve up to the survival NEC (14) before it
 falls to zero with survival. The no-effect estimates are of two kinds, because
 `nec3param` estimates a threshold and `ecxll3` does not. `summary()` therefore
 labels the growth estimate an NSEC [@fisherfox2023], the survival estimate an
 NEC, and the combined estimate, which is the smaller of the growth and survival
 estimates in each posterior draw, an N(S)EC [@fisher2023ieam]. The combined
-estimate (`r sig2(ne_combined)`) is
-`r if (abs(ne_combined / ne_growth - 1) < 0.1) "close to" else "below"` the
-growth NSEC (`r sig2(ne_growth)`), for the reason given below.
+estimate (0.035) is
+close to the
+growth NSEC (0.035), for the reason given below.
 
 This pattern follows from the definition of the combined curve as the product of
 the growth and survival curves. Below the dose at which survival begins to fall,
@@ -338,18 +316,14 @@ contaminant that kills has generally slowed growth at a lower dose first, and it
 follows from what a threshold is (the dose at which an effect *begins*): the
 combined effect begins as soon as either process does.
 
-```{r response-scale, include = FALSE}
-at_15 <- data.frame(dose = 15)
-growth_15 <- median(posterior_epred(fit_f, which = "growth", newdata = at_15))
-combined_15 <- median(posterior_epred(fit_f, newdata = at_15))
-```
+
 
 Above the dose at which survival falls, however, the combined curve drops well
 below the growth curve, and the difference is largest on the response scale. At
-a dose of 15, for example, where `r sum(snails$alive == 1 & snails$dose == 15)`
-of the `r sum(snails$dose == 15)` snails survived, the median growth of
-survivors is `r sig2(growth_15)`, whereas the expected growth per snail exposed
-is `r sig2(combined_15)`. These numbers answer different
+a dose of 15, for example, where 11
+of the 24 snails survived, the median growth of
+survivors is 8.8, whereas the expected growth per snail exposed
+is 3.7. These numbers answer different
 questions, and which is appropriate depends on whether the assessment concerns
 the individuals that survive or the population that was exposed.
 
@@ -371,14 +345,15 @@ The factorised route makes the full crossed comparison available, in which each
 growth equation is paired with each survival equation. We fit the `"decline"`
 group to both components. `model_survival` can name a different set for
 survival, but neither curve is constrained in advance by these data: growth of
-the survivors is observed only up to a dose of `r top_survivor`, so it may or may
+the survivors is observed only up to a dose of 15, so it may or may
 not level off above zero, and survival falls to zero, which an equation that
 estimates a lower asymptote can also describe. `bnec()` drops three equations of
 the group from each component: `neclin` and `ecxlin`, which are not valid for a
 Gamma or Bernoulli response under the identity link, and `ecxsigm`, which it
 does not fit to a negative predictor such as `log(dose + 0.0001)`.
 
-```{r fit-manec, results = "hide"}
+
+``` r
 # The pseudo-BMA weights use a Bayesian bootstrap, which draws from R's random
 # number stream.
 set.seed(10)
@@ -392,31 +367,47 @@ fit_m <- bnec_hurdle(growth ~ crf(log(dose + 0.001 / 10), model = "decline"),
 `check_sampling()` gives the sampler diagnostics for each equation of the growth
 and survival sets (table below).
 
-```{r sampling-manec}
+
+``` r
 sampling_m <- check_sampling(fit_m)
 sampling_m
+#> $growth
+#>        model max_rhat  min_ess min_ess_ratio n_divergent failed
+#> 1  nec3param 1.002629 1823.844     0.2279805           0  FALSE
+#> 2  nec4param 1.002323 2032.782     0.2540978           0  FALSE
+#> 3     ecxexp 1.001427 3224.339     0.4030424           0  FALSE
+#> 4  ecx4param 1.002173 2520.494     0.3150618           0  FALSE
+#> 5     ecxwb1 1.001704 1758.125     0.2197656           0  FALSE
+#> 6     ecxwb2 1.001461 3002.143     0.3752678           0  FALSE
+#> 7   ecxwb1p3 1.001153 1993.339     0.2491674           0  FALSE
+#> 8   ecxwb2p3 1.001604 2307.141     0.2883926           0  FALSE
+#> 9     ecxll5 1.002470 1349.681     0.1687101           0  FALSE
+#> 10    ecxll4 1.001674 2268.232     0.2835289           0  FALSE
+#> 11    ecxll3 1.002435 2521.702     0.3152127           0  FALSE
+#> 12   ecxflat 1.001778 2548.752     0.3185940           0  FALSE
+#> 
+#> $survival
+#>        model max_rhat    min_ess min_ess_ratio n_divergent failed
+#> 1  nec3param 1.005095  476.29149   0.059536436          10  FALSE
+#> 2  nec4param 1.002213 1112.19432   0.139024290          18   TRUE
+#> 3     ecxexp 1.078749   35.33660   0.004417075        6886   TRUE
+#> 4  ecx4param 1.002185 1814.41538   0.226801922         911   TRUE
+#> 5     ecxwb1 1.001495 1499.57394   0.187446743           9  FALSE
+#> 6     ecxwb2 1.003233 1402.65127   0.175331409        1065   TRUE
+#> 7   ecxwb1p3 1.013816   51.72488   0.006465610         120   TRUE
+#> 8   ecxwb2p3 1.003284 1091.15806   0.136394758        1124   TRUE
+#> 9     ecxll5 1.008609  643.30677   0.080413347        1001   TRUE
+#> 10    ecxll4 1.001835  467.40989   0.058426237          23   TRUE
+#> 11    ecxll3 1.002536 1834.76340   0.229345425           0  FALSE
+#> 12   ecxflat 1.004722 1612.38942   0.201548678           0  FALSE
 ```
 
-```{r sampling-names, include = FALSE}
-# For example "2 of the 6 growth equations (`nec4param` and `ecxwb1`)".
-failed_text <- function(tab, component) {
-  set <- paste(nrow(tab), component, "equations")
-  if (!any(tab$failed)) {
-    return(paste("none of the", set))
-  }
-  failed <- paste0("`", tab$model[tab$failed], "`")
-  if (length(failed) > 1) {
-    failed <- paste(paste(failed[-length(failed)], collapse = ", "), "and",
-                    failed[length(failed)])
-  }
-  paste0(sum(tab$failed), " of the ", set, " (", failed, ")")
-}
-```
 
-In this fit, `r failed_text(sampling_m$growth, "growth")` and
-`r failed_text(sampling_m$survival, "survival")` fail at least one check (table
+
+In this fit, none of the 12 growth equations and
+8 of the 12 survival equations (`nec4param`, `ecxexp`, `ecx4param`, `ecxwb2`, `ecxwb1p3`, `ecxwb2p3`, `ecxll5` and `ecxll4`) fail at least one check (table
 above).
-`r if (any(sampling_m$survival$failed)) "The survival failures are likely to follow from the design, because the data do not limit how steeply survival falls at 15 (see *The factorised route*)." else ""`
+The survival failures are likely to follow from the design, because the data do not limit how steeply survival falls at 15 (see *The factorised route*).
 A combination of a growth and a survival equation should contribute to the
 model average only where both equations sampled properly. `screen_models()`
 applies the thresholds of `check_sampling()` to each component of a hurdle fit
@@ -426,7 +417,8 @@ product of a growth weight and a survival weight (see below), a combination that
 includes a dropped equation is removed from the crossed table, which is
 equivalent to giving it a weight of zero.
 
-```{r screen-manec}
+
+``` r
 set.seed(10)
 fit_ms <- screen_models(fit_m)
 ```
@@ -440,55 +432,32 @@ growth and survival fits, without fitting each pair. This identity is specific t
 pseudo-BMA weights, the `bayesnec` default, because stacking optimises a
 different objective whose solution is not in general a product of this kind.
 
-```{r crossed-weights}
+
+``` r
 crossed_ms <- crossed_weights(fit_ms)
 round(crossed_ms, 2)
+#>            survival
+#> growth      nec3param ecxwb1 ecxll3 ecxflat
+#>   nec3param      0.00   0.00   0.00       0
+#>   nec4param      0.00   0.00   0.00       0
+#>   ecxexp         0.00   0.00   0.00       0
+#>   ecx4param      0.02   0.01   0.02       0
+#>   ecxwb1         0.05   0.02   0.07       0
+#>   ecxwb2         0.01   0.00   0.01       0
+#>   ecxwb1p3       0.19   0.09   0.26       0
+#>   ecxwb2p3       0.01   0.00   0.01       0
+#>   ecxll5         0.01   0.01   0.02       0
+#>   ecxll4         0.02   0.01   0.03       0
+#>   ecxll3         0.05   0.02   0.06       0
+#>   ecxflat        0.00   0.00   0.00       0
 ```
 
-```{r crossed-top, include = FALSE}
-growth_weights <- rowSums(crossed_ms)
-smooth_weight <- sum(growth_weights[grepl("^ecx", names(growth_weights))])
-smooth_text <- if (1 - smooth_weight < 0.005) {
-  threshold <- paste0("`", grep("^nec", names(growth_weights), value = TRUE),
-                      "`")
-  paste0("less than 0.01 to the threshold equations (",
-         paste(threshold, collapse = " and "), ")")
-} else {
-  paste(sprintf("%.2f", smooth_weight), "to the smooth equations together")
-}
-crossed_m <- crossed_weights(fit_m)
-before_note <- function(before, tab, component) {
-  failed <- tab$model[tab$failed]
-  if (length(failed) == 0) {
-    return(paste0("No ", component, " equation failed a check, so ",
-                  "`screen_models()` returns the ", component,
-                  " weights unchanged."))
-  }
-  paste0("Before screening, the ", component, " equations that failed a check ",
-         "were given ", sprintf("%.2f", sum(before[failed])), " of the ",
-         component, " weight, and `screen_models()` drops them from the ",
-         "average.")
-}
-growth_before_note <- before_note(rowSums(crossed_m), sampling_m$growth,
-                                  "growth")
-survival_before_note <- before_note(colSums(crossed_m), sampling_m$survival,
-                                    "survival")
-survival_note <- if (ncol(crossed_ms) == 1) {
-  paste0("Only `", colnames(crossed_ms), "` remains in the survival set, so ",
-         "the survival curve is not model-averaged, the crossed weights are ",
-         "the growth weights, and the model average differs from a single ",
-         "combination only in growth.")
-} else {
-  paste0("After screening, ", ncol(crossed_ms), " survival equations remain, ",
-         "and the weight is spread across their combinations with the growth ",
-         "equations.")
-}
-```
 
-`r growth_before_note` `r survival_before_note` `r survival_note`
-Of the growth weight after screening, `r sprintf("%.2f", max(growth_weights))`
-is given to `` `r names(which.max(growth_weights))` `` and
-`r smooth_text` (table above). The model
+
+No growth equation failed a check, so `screen_models()` returns the growth weights unchanged. Before screening, the survival equations that failed a check were given 0.62 of the survival weight, and `screen_models()` drops them from the average. After screening, 4 survival equations remain, and the weight is spread across their combinations with the growth equations.
+Of the growth weight after screening, 0.54
+is given to `` ecxwb1p3 `` and
+less than 0.01 to the threshold equations (`nec3param` and `nec4param`) (table above). The model
 average is compared with a single combination in *Refitting a selected
 combination*.
 
@@ -511,68 +480,19 @@ in proportion to their weights, so its credible band includes the uncertainty
 about the form of the curve as well as that about the parameters of each
 equation.
 
-```{r plot-manec, fig.width = 10, fig.asp = 0.4, out.width = "100%", fig.cap = "The model-averaged combined endpoint (response per individual exposed), growth (response of survivors) and survival of the screened sets, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate and its credible limits; blue lines mark the EC10 and its limits. Points are the growth of each snail in the combined panel, with the deaths as zeros, the growth of the survivors in the growth panel, and the proportion surviving at each dose in the survival panel."}
+
+``` r
 autoplot(fit_ms, which = "all", x_scale = "fitted", ecx = TRUE, xlab = "Dose")
 ```
 
-```{r manec-text, include = FALSE}
-summary_ms <- summary(fit_ms)
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp6-plot-manec-1.png" alt="The model-averaged combined endpoint (response per individual exposed), growth (response of survivors) and survival of the screened sets, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate and its credible limits; blue lines mark the EC10 and its limits. Points are the growth of each snail in the combined panel, with the deaths as zeros, the growth of the survivors in the growth panel, and the proportion surviving at each dose in the survival panel." width="100%" />
+<p class="caption">The model-averaged combined endpoint (response per individual exposed), growth (response of survivors) and survival of the screened sets, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate and its credible limits; blue lines mark the EC10 and its limits. Points are the growth of each snail in the combined panel, with the deaths as zeros, the growth of the survivors in the growth panel, and the proportion surviving at each dose in the survival panel.</p>
+</div>
 
-# An estimate and its credible interval, as "0.035 (0.010--0.090)".
-ci_text <- function(v) {
-  paste0(sig2(v[[1]]), " (", sig2(v[[2]]), "--", sig2(v[[3]]), ")")
-}
-# "close to" where the medians differ by less than 10 per cent.
-relation_to <- function(x, ref) {
-  if (abs(x / ref - 1) < 0.1) "close to" else if (x < ref) "below" else "above"
-}
-ne_ms_text <- function(endpoint) {
-  paste0("an ", summary_ms$ne_types[[endpoint]], " of ",
-         ci_text(summary_ms$ne[[endpoint]]))
-}
 
-growth_ma_text <- paste0(
-  "On the growth panel, the no-effect estimate of the average is ",
-  ne_ms_text("growth"), ", ",
-  relation_to(summary_ms$ne$growth[[1]], ne_growth), " the NSEC of ",
-  "`ecxll3` in the single factorised fit, ", ci_text(summary_f$ne$growth),
-  "."
-)
-survival_weights <- colSums(crossed_ms)
-smooth_survival <- sum(survival_weights[grepl("^ecx", names(survival_weights))])
-survival_ma_text <- if (length(survival_weights) == 1) {
-  paste0("The survival panel shows the `", names(survival_weights), "` curve ",
-         "only, because no other survival equation passed the screen.")
-} else {
-  ms_survival <- summary_ms$ne$survival
-  f_survival <- summary_f$ne$survival
-  width_ratio_s <- diff(ms_survival[2:3]) / diff(f_survival[2:3])
-  paste0(
-    "On the survival panel, ", sprintf("%.2f", smooth_survival), " of the ",
-    "weight is given to smooth equations, whose contribution to the ",
-    "no-effect estimate is an NSEC, so the survival no-effect estimate of ",
-    "the average is ", ne_ms_text("survival"), ". This is ",
-    relation_to(ms_survival[[1]], f_survival[[1]]), " the NEC of ",
-    "`nec3param` in the single factorised fit, ", ci_text(f_survival),
-    ", and its interval is ",
-    if (width_ratio_s > 1.1) {
-      paste0(sprintf("%.1f", width_ratio_s), " times as wide.")
-    } else if (width_ratio_s >= 0.9) {
-      "of similar width."
-    } else {
-      "narrower."
-    }
-  )
-}
-combined_ma_text <- paste0(
-  "The combined no-effect estimate of the average is ",
-  ne_ms_text("combined"), ", ",
-  relation_to(summary_ms$ne$combined[[1]], summary_ms$ne$growth[[1]]),
-  " its growth estimate."
-)
-```
 
-`r growth_ma_text` `r survival_ma_text` `r combined_ma_text`
+On the growth panel, the no-effect estimate of the average is an N(S)EC of 0.034 (0.0085--0.10), close to the NSEC of `ecxll3` in the single factorised fit, 0.035 (0.0077--0.092). On the survival panel, 0.64 of the weight is given to smooth equations, whose contribution to the no-effect estimate is an NSEC, so the survival no-effect estimate of the average is an N(S)EC of 13 (7.3--15). This is below the NEC of `nec3param` in the single factorised fit, 14 (11--15), and its interval is 1.8 times as wide. The combined no-effect estimate of the average is an N(S)EC of 0.034 (0.0062--0.10), close to its growth estimate.
 
 # The joint route
 
@@ -646,15 +566,25 @@ average over the response block only. Where a single fit is required,
 selected combination is one whose growth and survival equations both sampled
 properly.
 
-```{r best-crossed}
+
+``` r
 best <- best_crossed(fit_ms)
 best
+#> $growth
+#> [1] "ecxwb1p3"
+#> 
+#> $survival
+#> [1] "ecxll3"
+#> 
+#> $weight
+#> [1] 0.2554268
 ```
 
-Here the combination with the largest weight is `` `r best$growth` `` growth
-with `` `r best$survival` `` survival (`r sprintf("%.2f", best$weight)`).
+Here the combination with the largest weight is `` ecxwb1p3 `` growth
+with `` ecxll3 `` survival (0.26).
 
-```{r fit-joint, results = "hide"}
+
+``` r
 fit_j <- bnec_joint(fit_ms, seed = 10, refresh = 0, cores = 4,
                     control = list(adapt_delta = 0.999))
 ```
@@ -672,7 +602,8 @@ combined one, with no argument for selecting a block: `nsec()` returns it for
 any pair of equations, whereas `nec()` requires a growth equation with an `nec`
 parameter.
 
-```{r table-routes}
+
+``` r
 fit_b <- pull_best(fit_ms)
 
 ec10 <- rbind(
@@ -687,112 +618,56 @@ ec10 <- rbind(
   `combined, model average` = ecx(fit_ms)
 )
 signif(ec10, 2)
+#>                            Q50  Q2.5 Q97.5
+#> growth, factorised       0.070 0.028  0.28
+#> growth, joint            0.072 0.027  0.28
+#> growth, model average    0.077 0.028  0.32
+#> survival, factorised    13.000 9.900 15.00
+#> survival, joint         13.000 9.700 15.00
+#> survival, model average 13.000 9.700 15.00
+#> combined, factorised     0.070 0.028  0.28
+#> combined, joint          0.072 0.027  0.28
+#> combined, model average  0.077 0.028  0.32
 ```
 
-```{r sampling-joint, include = FALSE}
-sampling_j <- check_sampling(fit_j)
-route_diff <- 100 * max(abs(ec10[c(1, 4, 7), 1] - ec10[c(2, 5, 8), 1]) /
-                          ec10[c(1, 4, 7), 1])
-route_note <- if (route_diff <= 10) {
-  "and the difference is therefore likely to reflect Monte Carlo error"
-} else {
-  paste("and a difference of this size is larger than Monte Carlo error is",
-        "likely to produce, which suggests that at least one of the fits has",
-        "not sampled the posterior fully")
-}
-joint_div <- paste(sampling_j$n_divergent, if (sampling_j$n_divergent == 1)
-  "divergent transition" else "divergent transitions")
-joint_note <- if (sampling_j$failed) {
-  paste0("The joint fit, however, produced ", joint_div,
-         " and fails the checks of `check_sampling()`, ",
-         "whereas both of its equations passed them in the factorised fit, ",
-         "which is why `screen_models()` kept them. A joint fit adapts one ",
-         "sampler to both blocks, so the steep survival decline is likely to ",
-         "make the whole model harder to sample.")
-} else {
-  paste0("The joint fit produced ", joint_div,
-         " and passes the checks of `check_sampling()`, as both of ",
-         "its equations did in the factorised fit.")
-}
-route_conclusion <- if (route_diff <= 10) {
-  paste0("These results suggest that the factorised and joint routes differ ",
-         "in the models they can fit",
-         if (sampling_j$failed) " and in how readily they sample" else "",
-         ", and not in the estimates they give for a model both can fit.")
-} else {
-  paste("A difference of this size should be resolved, for example by",
-        "refitting both with more iterations, before either estimate is",
-        "reported.")
-}
 
-ma_growth <- ec10["growth, model average", ]
-best_growth <- ec10["growth, factorised", ]
-best_growth_weight <- growth_weights[[best$growth]]
-# The 2.5% and 97.5% quantiles vary by a few per cent between runs, so a
-# smaller difference in width is not described as wider or narrower.
-width_ratio <- diff(ma_growth[2:3]) / diff(best_growth[2:3])
-ma_note <- if (width_ratio > 1.1) {
-  paste0("The interval of the model average is wider than that of the ",
-         "selected combination, which is likely to reflect the ",
-         sprintf("%.2f", 1 - best_growth_weight),
-         " of the growth weight given to equations other than `", best$growth,
-         "`, whose curves may begin to decline at different doses.")
-} else if (width_ratio >= 0.9) {
-  paste0("The two intervals are of similar width, although ",
-         sprintf("%.2f", 1 - best_growth_weight),
-         " of the growth weight is given to equations other than `",
-         best$growth, "`, so those equations are likely to give similar ",
-         "estimates of the growth EC10.")
-} else {
-  paste0("The interval of the model average is narrower than that of the ",
-         "selected combination, which is consistent with the ",
-         sprintf("%.2f", best_growth_weight), " of the growth weight given to `",
-         best$growth, "`.")
-}
-```
 
 The EC10 medians of the factorised and joint fits of the selected combination
-differ by at most `r sprintf("%.1f", route_diff)`% across the three endpoints
+differ by at most 2.6% across the three endpoints
 (table above). Both routes fit the equations with identical likelihoods and
-priors, so they estimate one posterior, `r route_note`. `r joint_note`
-`r route_conclusion`
+priors, so they estimate one posterior, and the difference is therefore likely to reflect Monte Carlo error. The joint fit produced 1 divergent transition and passes the checks of `check_sampling()`, as both of its equations did in the factorised fit.
+These results suggest that the factorised and joint routes differ in the models they can fit, and not in the estimates they give for a model both can fit.
 
 `autoplot()` takes the same `which` argument for a joint fit as for a
 factorised one, so the joint refit is drawn as the factorised pair was (figure
 below).
 
-```{r plot-joint, fig.width = 10, fig.asp = 0.4, out.width = "100%", fig.cap = "The combined endpoint (response per individual exposed), growth (response of survivors) and survival of the joint refit, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate of each panel and its credible limits; blue lines mark the EC10 and its limits. Points are as in the figure of the model average."}
+
+``` r
 autoplot(fit_j, which = "all", x_scale = "fitted", ecx = TRUE, xlab = "Dose",
          point_alpha = 0.25)
 ```
 
-```{r joint-text, include = FALSE}
-nsec_j <- nsec(fit_j)
-joint_15 <- median(posterior_epred(fit_j, newdata = at_15))
-ma_15 <- median(posterior_epred(fit_ms, newdata = at_15))
-joint_ma_note <- if (abs(joint_15 / ma_15 - 1) < 0.1) {
-  paste("At this dose, selecting one combination therefore changes the",
-        "combined response little from that of the model average.")
-} else {
-  paste("At this dose, selecting one combination therefore gives a combined",
-        "response", if (joint_15 < ma_15) "below" else "above",
-        "that of the model average.")
-}
-```
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp6-plot-joint-1.png" alt="The combined endpoint (response per individual exposed), growth (response of survivors) and survival of the joint refit, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate of each panel and its credible limits; blue lines mark the EC10 and its limits. Points are as in the figure of the model average." width="100%" />
+<p class="caption">The combined endpoint (response per individual exposed), growth (response of survivors) and survival of the joint refit, with the median and 95% credible band of each curve. Grey vertical lines mark the no-effect estimate of each panel and its credible limits; blue lines mark the EC10 and its limits. Points are as in the figure of the model average.</p>
+</div>
+
+
 
 On the combined panel the grey lines mark the combined NSEC of the joint
-refit, `r ci_text(nsec_j)`, and the blue lines its combined EC10, and the EC10
+refit, 0.038 (0.012--0.097), and the blue lines its combined EC10, and the EC10
 of each block is in the table above. At a dose of 15, where
 survival has fallen to about half its control value, the median expected growth
-per snail exposed is `r sig2(joint_15)` for the joint
-refit and `r sig2(ma_15)` for the model average (figure in *Model averaging*),
-against `r sig2(combined_15)` for the single factorised fit of `ecxll3` with
-`nec3param` (figure in *Endpoints of the factorised fit*). `r joint_ma_note`
+per snail exposed is 3.5 for the joint
+refit and 3.6 for the model average (figure in *Model averaging*),
+against 3.7 for the single factorised fit of `ecxll3` with
+`nec3param` (figure in *Endpoints of the factorised fit*). At this dose, selecting one combination therefore changes the combined response little from that of the model average.
 
-The model average gives a growth EC10 of `r sig2(ma_growth[[1]])`
-(`r sig2(ma_growth[[2]])`–`r sig2(ma_growth[[3]])`), against
-`r sig2(best_growth[[1]])` (`r sig2(best_growth[[2]])`–`r sig2(best_growth[[3]])`)
-for the selected combination alone (table above). `r ma_note`
+The model average gives a growth EC10 of 0.077
+(0.028–0.32), against
+0.070 (0.028–0.28)
+for the selected combination alone (table above). The interval of the model average is wider than that of the selected combination, which is likely to reflect the 0.46 of the growth weight given to equations other than `ecxwb1p3`, whose curves may begin to decline at different doses.
 
 The equation for each block is set independently, so a joint fit with any
 combination can also be requested directly, with `crf()` naming the equation for
@@ -800,7 +675,8 @@ the response block and `model_survival` the equation for the survival block.
 `bnec_joint()` is a convenience wrapper that fills in these names from
 `best_crossed()` where they are not given.
 
-```{r joint-explicit, eval = FALSE}
+
+``` r
 bnec(growth ~ crf(log(dose + 0.001 / 10), model = "ecxll3"), data = snails,
      family = "hurdle_gamma", model_survival = "nec3param")
 ```
@@ -915,7 +791,8 @@ series with a control (0 and 1 to 64), and we generate and fit both curves on
 reasonable here because one is the lowest concentration tested, and it places
 the control one step below it.
 
-```{r zib-sim}
+
+``` r
 set.seed(101)
 
 nec3 <- function(x, top, beta, nec) {
@@ -945,22 +822,35 @@ Two of the conditions can be checked directly from the data: that there is no
 mass at 1, and that the zeros are confined to crashed cultures, not small
 measurements.
 
-```{r zib-checks}
+
+``` r
 c(n = nrow(zib_dat),
   zeros = sum(zib_dat$y == 0),
   max = round(max(zib_dat$y), 3),
   at_or_above_1 = sum(zib_dat$y >= 1))
+#>             n         zeros           max at_or_above_1 
+#>       128.000        33.000         0.877         0.000
 
 table(dose = zib_dat$x, measured = zib_dat$y > 0)
+#>     measured
+#> dose FALSE TRUE
+#>   0      0   16
+#>   1      0   16
+#>   2      0   16
+#>   4      0   16
+#>   8      2   14
+#>   16     7    9
+#>   32    11    5
+#>   64    13    3
 ```
 
-The largest observed proportion is `r round(max(zib_dat$y), 2)` and no value
+The largest observed proportion is 0.88 and no value
 is at or above 1, so there is no spike at the boundary for the Beta to
 accommodate.
 Cultures crash at the top
-`r c("one", "two", "three", "four", "five", "six", "seven")[sum(tapply(zib_dat$y == 0, zib_dat$x, any))]`
+four
 concentrations, in increasing numbers instead of all at once, and at least
-`r min(tapply(zib_dat$y > 0, zib_dat$x, sum))` of the 16 grew at every
+3 of the 16 grew at every
 concentration, which leaves the response block with data at each dose and the
 survival threshold identifiable (table above).
 
@@ -970,12 +860,14 @@ snail growth. The joint route would instead name the family, as
 `family = "zero_inflated_beta"`, and its second block is named `zi`, not `hu`,
 so the survival parameters appear as `zitop`, `zibeta` and `zinec`.
 
-```{r zib-fit-factorised, results = "hide"}
+
+``` r
 zib_f <- bnec_hurdle(y ~ crf(log(x + 1), model = "nec3param"),
                      data = zib_dat, seed = 101, refresh = 0)
 ```
 
-```{r zib-table}
+
+``` r
 # The generating EC50 is the concentration at which a generating curve falls to
 # half its value at the control. The combined curve is growth times survival.
 ec50_true <- function(f) uniroot(function(x) f(x) - f(0) / 2, c(0, 64))$root
@@ -990,45 +882,25 @@ zib_est <- rbind(
   `combined ec50` = ecx(zib_f, ecx_val = 50)
 )
 data.frame(generating = signif(generating, 3), signif(zib_est, 3))
+#>               generating   Q50  Q2.5 Q97.5
+#> growth nec           3.0  1.93  1.15  2.98
+#> survival nec         6.0  6.44  3.71 11.80
+#> combined nec         3.0  1.93  1.15  2.97
+#> growth ec50         25.0 28.00 19.70 45.90
+#> survival ec50       17.8 19.20 13.40 32.00
+#> combined ec50       10.0 10.30  7.94 14.30
 ```
 
-```{r zib-text, include = FALSE}
-zib_labels <- c("growth NEC", "survival NEC", "combined no-effect estimate",
-                "growth EC50", "survival EC50", "combined EC50")
-inside <- generating >= zib_est[, "Q2.5"] & generating <= zib_est[, "Q97.5"]
-inside_text <- if (all(inside)) {
-  "Every generating value lies inside its 95% credible interval"
-} else {
-  paste0("Each generating value lies inside its 95% credible interval except ",
-         "that of the ", paste(zib_labels[!inside], collapse = " and the "))
-}
-zib_ci <- function(row) {
-  paste0(sig2(zib_est[row, "Q50"]), " (", sig2(zib_est[row, "Q2.5"]), "--",
-         sig2(zib_est[row, "Q97.5"]), ")")
-}
-same_ne <- identical(sig2(zib_est["combined nec", "Q50"]),
-                     sig2(zib_est["growth nec", "Q50"]))
-grew_mean <- tapply(zib_dat$y[zib_dat$y > 0], zib_dat$x[zib_dat$y > 0], mean)
-miss_text <- if (!inside[1]) {
-  paste0(" In this simulated data set the mean of the cultures that grew is ",
-         sprintf("%.2f", grew_mean[["0"]]), " at the control and ",
-         sprintf("%.2f", grew_mean[["2"]]), " at a concentration of 2, ",
-         "whereas the generating curve is at 0.70 for both, so the data ",
-         "decline from below the generating threshold, and the growth NEC is ",
-         "estimated below it.")
-} else {
-  ""
-}
-```
+
 
 The combined no-effect estimate is the per-draw minimum of the growth and
 survival NECs, so its generating value is the smaller threshold, 3.
-`r inside_text` (table above).`r miss_text` The precision of the thresholds is limited by the
+Each generating value lies inside its 95% credible interval except that of the growth NEC and the combined no-effect estimate (table above). In this simulated data set the mean of the cultures that grew is 0.73 at the control and 0.69 at a concentration of 2, whereas the generating curve is at 0.70 for both, so the data decline from below the generating threshold, and the growth NEC is estimated below it. The precision of the thresholds is limited by the
 design, not by the family. A threshold model can locate a change point only as
 sharply as the dose spacing around it allows. The generating growth threshold
 of 3 falls in the gap between the doses at 2 and 4, and the survival threshold
 of 6 in the gap between 4 and 8, and with nothing observed inside a gap the
-likelihood is nearly flat across it. The survival NEC, `r zib_ci("survival nec")`,
+likelihood is nearly flat across it. The survival NEC, 6.4 (3.7--12),
 is the less precise of the two, because each culture contributes only whether
 it grew. Where a threshold is the quantity of interest, placing doses around it
 is therefore likely to narrow its interval more than extra replication
@@ -1036,23 +908,19 @@ elsewhere.
 
 The EC50 is where survival changes the combined estimate. Growth declines
 gradually from a concentration of 3 and has fallen by half only at about
-`r signif(generating[4], 2)`, whereas the cultures begin to crash above 6. At
+25, whereas the cultures begin to crash above 6. At
 the concentration at which growth has halved, only
-`r round(100 * survival_true(generating[4]))` per cent of cultures grow at all,
+40 per cent of cultures grow at all,
 so the combined curve falls to half its control value at a lower concentration:
 the combined EC50 is
-`r zib_ci("combined ec50")`, against `r zib_ci("growth ec50")` for growth and
-`r zib_ci("survival ec50")` for survival (table above). The combined no-effect
-estimate, `r zib_ci("combined nec")`, is in contrast
-`r if (same_ne) "equal to" else "close to"` the growth NEC, because growth
+10 (7.9--14), against 28 (20--46) for growth and
+19 (13--32) for survival (table above). The combined no-effect
+estimate, 1.9 (1.1--3.0), is in contrast
+equal to the growth NEC, because growth
 begins to decline at a lower concentration than survival, as it did for the
 snails.
 
-```{r zib-ends, include = FALSE}
-at_64 <- data.frame(x = 64)
-zib_growth_64 <- median(posterior_epred(zib_f, which = "growth", newdata = at_64))
-zib_combined_64 <- median(posterior_epred(zib_f, newdata = at_64))
-```
+
 
 `autoplot()` draws the three curves of the factorised fit (figure below), and
 with `ecx = TRUE` and `ecx_val = 50` it marks the EC50 of each panel beside the
@@ -1061,15 +929,21 @@ no-effect estimate it draws by default. On the `log1p` axis, which is
 series are spaced as they were fitted. The combined curve follows the growth
 curve up to the survival NEC, and above it falls further than growth as the
 cultures crash. At 64, for example, the median proportion
-achieved by cultures that grew is `r sig2(zib_growth_64)`, whereas the
-expected proportion per culture started is `r sig2(zib_combined_64)`.
+achieved by cultures that grew is 0.28, whereas the
+expected proportion per culture started is 0.058.
 
-```{r zib-plot, fig.width = 10, fig.asp = 0.38, out.width = "100%", fig.cap = "The simulated hurdle Beta. The combined endpoint (response per individual exposed) is the expected proportion per culture started, growth (response of survivors) the proportion achieved by cultures that grew, and survival the probability of a culture growing at all. Grey vertical lines mark the NEC of each panel and its credible limits (on the combined panel, the per-draw minimum of the growth and survival NECs), and blue lines the EC50 and its limits. Concentration is drawn on a log(x + 1) axis, the scale of the fit."}
+
+``` r
 autoplot(zib_f, which = "all", ecx = TRUE, ecx_val = 50,
          xlab = "Concentration") +
   scale_x_continuous(transform = "log1p",
                      breaks = c(0, 1, 2, 4, 8, 16, 32, 64))
 ```
+
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp6-zib-plot-1.png" alt="The simulated hurdle Beta. The combined endpoint (response per individual exposed) is the expected proportion per culture started, growth (response of survivors) the proportion achieved by cultures that grew, and survival the probability of a culture growing at all. Grey vertical lines mark the NEC of each panel and its credible limits (on the combined panel, the per-draw minimum of the growth and survival NECs), and blue lines the EC50 and its limits. Concentration is drawn on a log(x + 1) axis, the scale of the fit." width="100%" />
+<p class="caption">The simulated hurdle Beta. The combined endpoint (response per individual exposed) is the expected proportion per culture started, growth (response of survivors) the proportion achieved by cultures that grew, and survival the probability of a culture growing at all. Grey vertical lines mark the NEC of each panel and its credible limits (on the combined panel, the per-draw minimum of the growth and survival NECs), and blue lines the EC50 and its limits. Concentration is drawn on a log(x + 1) axis, the scale of the fit.</p>
+</div>
 
 # The origin of the zeros
 
@@ -1087,23 +961,37 @@ values in `fvfm` (maximum quantum yield). These zeros appear to make the data
 candidates for zero-inflation. However, they are not, and fitting
 `zero_inflated_beta` to them would be misleading.
 
-```{r herbicide-zeros}
+
+``` r
 data(herbicide)
 
 herbicide |>
   group_by(herbicide) |>
   summarise(n = n(), zeros = sum(fvfm == 0),
             min_nonzero = min(fvfm[fvfm > 0]), .groups = "drop")
+#> # A tibble: 7 × 4
+#>   herbicide       n zeros min_nonzero
+#>   <chr>       <int> <int>       <dbl>
+#> 1 ametryn        96    12        0.01
+#> 2 atrazine       84     0        0.04
+#> 3 diuron         72     0        0.02
+#> 4 hexazinone     76     1        0.01
+#> 5 irgarol        72    10        0.01
+#> 6 simazine       72     0        0.16
+#> 7 tebuthiuron   108     0        0.04
 ```
 
 Two features of the data indicate the origin of these zeros. First, each value
 is a multiple of the recording resolution, and the smallest non-zero value is
 equal to one unit of that resolution.
 
-```{r herbicide-resolution}
+
+``` r
 nonzero <- herbicide$fvfm[herbicide$fvfm > 0]
 c(resolution = min(diff(sort(unique(nonzero)))),
   smallest_nonzero = min(nonzero))
+#>       resolution smallest_nonzero 
+#>             0.01             0.01
 ```
 
 A recorded `0.00` therefore means that the true value was below 0.005. It does
@@ -1116,11 +1004,21 @@ for the more potent compounds (ametryn, hexazinone and irgarol), whose curves go
 lower. Diuron was tested with the organisms and the instrument used for the
 other herbicides, and yet its data contain no zeros.
 
-```{r herbicide-diuron}
+
+``` r
 herbicide |>
   filter(herbicide == "diuron") |>
   group_by(concentration) |>
   summarise(mean_fvfm = round(mean(fvfm), 3), .groups = "drop")
+#> # A tibble: 6 × 2
+#>   concentration mean_fvfm
+#>           <dbl>     <dbl>
+#> 1           0.1     0.698
+#> 2           0.3     0.639
+#> 3           1       0.491
+#> 4           3       0.27 
+#> 5          10       0.092
+#> 6          30       0.043
 ```
 
 Fitting a hurdle model to these data would give the `zi` block its own NEC and
@@ -1143,7 +1041,8 @@ and a hurdle model applies. Where the gap is approximately equal to the
 resolution, the zeros are rounding or censoring, and a hurdle model does not
 apply.
 
-```{r gap-diagnostic}
+
+``` r
 gap_ratio <- function(y) {
   y <- y[!is.na(y)]
   nonzero <- y[y > 0]
@@ -1153,11 +1052,13 @@ gap_ratio <- function(y) {
 
 c(herbicide = gap_ratio(herbicide$fvfm),
   simulated = gap_ratio(zib_dat$y))
+#> herbicide simulated 
+#>       1.0  125523.1
 ```
 
 A ratio near 1 (as for `herbicide`) indicates that the smallest non-zero value
 is one rounding unit above zero, so zero is simply the next value down. A large
-ratio (about `r format(round(gap_ratio(zib_dat$y), -1), big.mark = ",")` for
+ratio (about 125,520 for
 the simulated hurdle Beta data) indicates a real gap between "no response" and
 "the smallest response that was measured".
 
@@ -1255,7 +1156,7 @@ zero-probability block at all. Fitting a simpler model does not avoid it.
 > the raw measurements or from whoever prepared the data.
 
 In the `nassarius` data, for example, growth can be negative in principle, and
-`r with(nassarius, sum(alive == 1 & growth < 0))` survivors across the four
+4 survivors across the four
 tests are recorded with a negative growth, which indicates that negative values were not floored upstream
 and that the zeros are deaths. Zeros of different origin cannot be distinguished
 once written to file. The gap test and the provenance question are
@@ -1312,9 +1213,9 @@ the information about where survival collapses comes from the doses between the
 last with full survival and the first with none. Concentrations above that one,
 at which all units also died, are likely to change the survival estimates much
 less. The test of contaminant D is an example: all
-`r with(nassarius, sum(contaminant == "D" & dose == 20 & record == "absent_dose"))`
+24
 snails at a dose of 20 are absent from the source records, and without them the
-data would end at 15, where `r sum(snails$alive == 1 & snails$dose == 15)` of
-the `r sum(snails$dose == 15)` snails survived.
+data would end at 15, where 11 of
+the 24 snails survived.
 
 # References

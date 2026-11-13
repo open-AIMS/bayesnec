@@ -62,7 +62,10 @@ if [ -n "$workers" ]; then
   esac
 fi
 
-mapfile -t available < <(cd vignettes && ls -1 *.Rmd.orig | sed 's/\.Rmd\.orig$//')
+# Vignettes are in vignettes/ and pkgdown articles in vignettes/articles/; both
+# are named by their stem.
+mapfile -t available < <(for f in vignettes/*.Rmd.orig vignettes/articles/*.Rmd.orig; do
+  if [ -f "$f" ]; then basename "$f" .Rmd.orig; fi; done)
 [ "${#available[@]}" -gt 0 ] || {
   echo "no vignettes/*.Rmd.orig here. Run this from the repository root." >&2
   exit 1; }
@@ -85,7 +88,7 @@ for v in "${args[@]}"; do
   found=0
   for a in "${available[@]}"; do [ "$a" = "$v" ] && found=1 && break; done
   if [ "$found" -eq 0 ]; then
-    echo "no vignettes/$v.Rmd.orig on this branch." >&2
+    echo "no $v.Rmd.orig in vignettes/ or vignettes/articles/ on this branch." >&2
     echo "Available: ${available[*]}" >&2
     exit 1
   fi

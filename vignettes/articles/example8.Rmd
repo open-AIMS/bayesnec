@@ -2,11 +2,7 @@
 title: "Grouping and factor covariates"
 output:
   rmarkdown::html_vignette:
-vignette: >
-  %\VignetteIndexEntry{Grouping and factor covariates}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
-bibliography: bayesnec.bib
+bibliography: ../bayesnec.bib
 ---
 
 

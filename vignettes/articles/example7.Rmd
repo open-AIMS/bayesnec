@@ -2,11 +2,7 @@
 title: "Modelling growth data and other potentially negative response values"
 output:
   rmarkdown::html_vignette:
-vignette: >
-  %\VignetteIndexEntry{Modelling growth data and other potentially negative response values}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
-bibliography: bayesnec.bib
+bibliography: ../bayesnec.bib
 ---
 
 

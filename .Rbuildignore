@@ -39,6 +39,7 @@ README.Rmd
 ^.*\.log$
 ^\.git-blame-ignore-revs$
 ^\.git$
+^vignettes/articles$
 ^vignettes/precompile\.R$
 ^vignettes/fit_store\.R$
 ^vignettes/exmp2b_theoretical_curves\.R$

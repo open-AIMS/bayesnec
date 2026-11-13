@@ -49,11 +49,17 @@ development:
 # sees a `.Rmd.orig`, so an entry goes in with the rendered `.Rmd` rather than
 # with the source. `notes/vignette_numbering.md` rule 5 records that where a new
 # vignette's author will meet it.
+#
+# example1, example2, example2b and example3 are vignettes and ship with the
+# package. The rest are pkgdown articles in vignettes/articles/, which
+# .Rbuildignore keeps out of the tarball. pkgdown names them with the
+# `articles/` prefix and writes them to the same articles/ directory of the site
+# as the vignettes.
 articles:
   - title: Getting started
     navbar: ~
     contents:
-      - example5
+      - articles/example5
       - example1
       - example2
       - example2b
@@ -61,15 +67,15 @@ articles:
     navbar: Extending the analysis
     contents:
       - example3
-      - example4
+      - articles/example4
   - title: Designs and response types
     navbar: Designs and response types
     contents:
-      - example6
-      - example7
-      - example8
+      - articles/example6
+      - articles/example7
+      - articles/example8
   - title: Worked analyses
     navbar: Worked analyses
     contents:
-      - example9
-      - example10
+      - articles/example9
+      - articles/example10

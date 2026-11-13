@@ -1,7 +1,10 @@
 # Precompiling the vignettes on the AIMS HPC
 
 The `bayesnec` vignettes are precompiled: `vignettes/precompile.R` knits each
-`.Rmd.orig` to a `.Rmd`, and it is the `.Rmd` that is committed and shipped. A
+`.Rmd.orig` to a `.Rmd`, and it is the `.Rmd` that is committed and shipped.
+The pkgdown articles in `vignettes/articles/` are precompiled in the same way,
+named by their stem as a vignette is, and their output is copied back to
+`vignettes/articles/`. A
 full precompile is days of wall clock on a workstation, and #190 requires one
 across every vignette before the next release. This directory moves that work
 to the cluster.

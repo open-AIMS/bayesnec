@@ -2,20 +2,10 @@
 title: "Hormesis and the no-significant-effect concentration"
 output:
   rmarkdown::html_vignette:
-vignette: >
-  %\VignetteIndexEntry{Hormesis and the no-significant-effect concentration}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
-bibliography: bayesnec.bib
+bibliography: ../bayesnec.bib
 ---
 
-```{r setup, include=FALSE}
-stopifnot(require(knitr))
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", warning = FALSE,
-                      message = FALSE, fig.path = "vignette-fig-",
-                      fig.asp = 0.7, out.width = "75%", fig.align = "center",
-                      dev = "png", dpi = 100)
-```
+
 
 # Introduction
 
@@ -29,24 +19,10 @@ Test guidelines and statistical guidance from several jurisdictions agree on two
 
 A hormetic curve has at least four locations that could be reported as a no-effect or low-effect concentration (Figure 1; Table 1). The peak, and the descending return to the control that Brain and Cousens called the limiting dose for stimulation (LDS), are established hormesis quantities [@braincousens1989; @belzpiepho2012]. A control-based ECx measures a decline from the fitted control and not from the peak [@vanewijk1993; @belzpiepho2012]. The post-peak NSEC extends the NSEC of @fisherfox2023 to a hormetic curve: it is the first concentration on the declining limb at which the fitted mean falls below a lower quantile of the posterior distribution of the control. Only the ECx and the NSEC locate a decline below the control, and only the NSEC is defined by a statistical comparison with it, which makes it the regression counterpart of Environment Canada's rule for hypothesis tests.
 
-```{r estimand-plot, fig.width=6, fig.height=4, echo=FALSE, fig.cap="Figure 1. A theoretical hormetic curve, $m(c)=1+0.25c\\exp(1-c)-0.15\\max(c-1,0)$, showing the four candidate locations, with each concentration given in the legend. The grey dashed lines mark the control response $m(0)=1$, a lower reference of 0.95 standing in for a lower posterior quantile of the control, and the EC10 target of 0.9. The peak is labelled with the `nec` parameter because, in a threshold hormesis equation, that parameter is where the decline starts: at the peak in `neclinhorme`, and at or just below it in `nechorme` and `nechorme4`. This applies only to the threshold hormesis equations; the smooth equations `ecxhormebc4` and `ecxhormebc5` have no `nec` parameter."}
-m <- function(z) 1 + 0.25 * z * exp(1 - z) - 0.15 * pmax(z - 1, 0)
-x <- seq(0, 4, length.out = 400)
-crossing <- function(target) uniroot(function(z) m(z) - target, c(1.01, 4))$root
-locations <- c(Peak = 1, `Control return` = crossing(1),
-               `Post-peak NSEC` = crossing(0.95), EC10 = crossing(0.9))
-op <- par(mar = c(4.3, 4.4, 1, 0.5))
-plot(x, m(x), type = "l", lwd = 2, xlab = "Relative concentration",
-     ylab = "Mean response", ylim = c(0.55, 1.3))
-abline(h = c(1, 0.95, 0.9), lty = 2, col = "grey60")
-text(4, c(1, 0.95, 0.9), c("Control", "Lower reference", "EC10 target"),
-     adj = c(1, -0.3), cex = 0.7, col = "grey40")
-segments(locations, 0.55, locations, m(locations), lty = 1:4 + 1)
-legend("topright", legend = sprintf("%s (%.2f%s)", names(locations), locations,
-                                      c(" – nec", "", "", "")),
-       lty = 1:4 + 1, bty = "n", cex = 0.8)
-par(op)
-```
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-estimand-plot-1.png" alt="Figure 1. A theoretical hormetic curve, $m(c)=1+0.25c\exp(1-c)-0.15\max(c-1,0)$, showing the four candidate locations, with each concentration given in the legend. The grey dashed lines mark the control response $m(0)=1$, a lower reference of 0.95 standing in for a lower posterior quantile of the control, and the EC10 target of 0.9. The peak is labelled with the `nec` parameter because, in a threshold hormesis equation, that parameter is where the decline starts: at the peak in `neclinhorme`, and at or just below it in `nechorme` and `nechorme4`. This applies only to the threshold hormesis equations; the smooth equations `ecxhormebc4` and `ecxhormebc5` have no `nec` parameter." width="75%" />
+<p class="caption">Figure 1. A theoretical hormetic curve, $m(c)=1+0.25c\exp(1-c)-0.15\max(c-1,0)$, showing the four candidate locations, with each concentration given in the legend. The grey dashed lines mark the control response $m(0)=1$, a lower reference of 0.95 standing in for a lower posterior quantile of the control, and the EC10 target of 0.9. The peak is labelled with the `nec` parameter because, in a threshold hormesis equation, that parameter is where the decline starts: at the peak in `neclinhorme`, and at or just below it in `nechorme` and `nechorme4`. This applies only to the threshold hormesis equations; the smooth equations `ecxhormebc4` and `ecxhormebc5` have no `nec` parameter.</p>
+</div>
 
 | Location | Definition, for fitted mean $m(c)$ and fitted control $m(0)$ |
 | --- | --- |
@@ -71,25 +47,17 @@ The first dataset contains 65 individual specific growth rates of the marine din
 
 The second dataset is the `lettuce` series distributed with `drc` [@Ritz2016; @vanewijk1993]: shoot biomass after 21 days of exposure to isobutyl alcohol, with two observations at each of seven concentrations from zero to 100 mg/L (Figure 2). It is distributed with `bayesnec` as `inst/extdata/hormesis_lettuce_1993.csv`. Its small sample and terrestrial endpoint make it a methods example and not an aquatic guideline input.
 
-```{r lettuce-plot, echo=FALSE, fig.width=6, fig.height=4, fig.cap="Figure 2. The 14 individual lettuce shoot biomass observations. Concentrations are labelled in mg/L on a logarithmic axis offset by 0.1 mg/L, and the line joins treatment means for visual orientation; it is not a fitted model."}
-lettuce <- read.csv(system.file("extdata", "hormesis_lettuce_1993.csv",
-                                package = "bayesnec"))
-op <- par(mar = c(4.3, 4.4, 1, 0.5))
-plot(lettuce$weight ~ log10(lettuce$conc + 0.1), pch = 16,
-     col = "#A25D3A88", xaxt = "n", xlab = "Isobutyl alcohol (mg/L)",
-     ylab = "Shoot biomass")
-axis(1, at = log10(sort(unique(lettuce$conc)) + 0.1),
-     labels = sort(unique(lettuce$conc)), cex.axis = 0.75)
-with(aggregate(weight ~ conc, lettuce, mean),
-     lines(log10(conc + 0.1), weight, lwd = 2))
-par(op)
-```
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-lettuce-plot-1.png" alt="Figure 2. The 14 individual lettuce shoot biomass observations. Concentrations are labelled in mg/L on a logarithmic axis offset by 0.1 mg/L, and the line joins treatment means for visual orientation; it is not a fitted model." width="75%" />
+<p class="caption">Figure 2. The 14 individual lettuce shoot biomass observations. Concentrations are labelled in mg/L on a logarithmic axis offset by 0.1 mg/L, and the line joins treatment means for visual orientation; it is not a fitted model.</p>
+</div>
 
 # Fitting the candidate sets
 
 Both datasets were fitted with a Gaussian family and an identity link, which permits the negative fitted values that the marine growth rates require. The marine set contains five hormesis equations (`neclinhorme`, `nechorme`, `nechorme4`, `ecxhormebc4` and `ecxhormebc5`) and the monotone threshold equation `neclin` as a comparator, on recorded concentration. The lettuce set contains the five hormesis equations with `log(conc + 0.1)` as the predictor, because exposure spans more than two orders of magnitude; the offset retains the control, and `bayesnec` returns estimates in mg/L. The candidate equations differ in how their declining limbs end: `nechorme` and `ecxhormebc4` decline towards zero, `nechorme4` and `ecxhormebc5` estimate a lower asymptote that can be negative, and `neclin` and `neclinhorme` decline linearly. The power threshold equations were not fitted. `nechormepwr` and `nechorme4pwr` add one response unit at a marine concentration of 1 mg/L, far more than the observed rise, and their fractional powers are undefined at the negative transformed lettuce control, whereas `nechormepwr01` is bounded between zero and one and so cannot represent negative growth or lettuce biomass above one.
 
-```{r case-data, eval=FALSE}
+
+``` r
 library(bayesnec)
 negri <- read.csv("ignore/hormesis_data/hormesis_negri_2021.csv")
 negri$conc <- (negri$source_conc_ug_l_tah - 1) / 1000
@@ -99,7 +67,8 @@ lettuce <- read.csv(system.file("extdata", "hormesis_lettuce_1993.csv",
 
 Each candidate set is built with one `bnec()` call. `ecxhormebc5` is fitted separately because it starts from zero initial values, and `c()` adds it to the set.
 
-```{r case-sets, eval=FALSE}
+
+``` r
 marine_set <- bnec(sgr ~ crf(conc, model = c("neclin", "neclinhorme",
                                              "nechorme", "nechorme4",
                                              "ecxhormebc4")),
@@ -133,7 +102,8 @@ lettuce_set <- c(lettuce_set, lettuce_bc5)
 
 The code below shows these steps on whole sets. The estimates reported here come from `analysis/hormesis_case_fits.R` in the [research compendium](https://github.com/open-AIMS/hormesis-nsec-compendium), which fits each equation separately with the settings recorded there.
 
-```{r case-screen, eval=FALSE}
+
+``` r
 check_sampling(marine_set, divergence_cutoff = 0)
 check_sampling(lettuce_set, divergence_cutoff = 0)
 
@@ -167,7 +137,8 @@ lettuce_set <- amend(lettuce_set,
 
 The estimates are then extracted from each set. `summary()` prints the model weights with the no-effect estimate, and the NSEC of a single equation is obtained from the set with `pull_out()`.
 
-```{r case-estimates, eval=FALSE}
+
+``` r
 summary(marine_set)
 curve_params(marine_set)
 
@@ -202,9 +173,10 @@ The screen excluded `nechorme4`, and Figure 3 shows the remaining five equations
 
 Under the post-peak NSEC, the two equations with 0.967 of the weight nonetheless give similar no-effect estimates: 2.00 mg/L (1.80–2.18) for `neclinhorme` and 2.09 mg/L (1.73–2.41) for `ecxhormebc5` (Table 2). Each NSEC is read on the declining limb against the equation's own control, so it depends on where the curve falls below its lower reference and not on whether the curve first rises. These data therefore suggest that the NSEC can be estimated consistently across equations that represent the rise differently, whereas the `nec` parameter exists only in the threshold equations and marks a peak only where a rise is fitted. The model-averaged NSEC from `nsec(marine_set)` is 2.07 mg/L (1.74–2.42), between the 1.75 and 2.33 mg/L treatments, with an ECNSEC of 8.62% (1.46–15.2%). In each equation's panel the ECNSEC is the gap between the dashed and dotted lines; ten controls estimate the control precisely, so the gap is small and the model-averaged NSEC is just below the model-averaged EC10 of 2.16 mg/L (1.71–2.58). `nec(marine_set)` returns the N(S)EC of 2.07 mg/L, equal to the NSEC to three figures, because `neclin` has 0.002 of the weight.
 
-```{r marine-fit-plot, echo=FALSE, out.width="100%", fig.cap="Figure 3. Model-averaged (first panel) and candidate fits to individual *C. goreaui* growth rates, with each equation's model weight in its panel title. Each panel shows the posterior median fitted mean (line) and its 95% credible band (shading), the median fitted control (dashed line), the lower 0.01 quantile of the posterior of the fitted control (dotted line), and the NSEC as a purple line (median) with purple shading (95% credible interval). The model-average panel has no dotted line, because its NSEC mixes the equations' posterior draws, each read against its own control. Black points are treatment means calculated from the Negri et al. (2021) workbook (CC BY-NC 3.0 Australia); individual observations are not redistributed with the package. TAH concentrations are relative to the source-coded control."}
-knitr::include_graphics("vignette-fig-example10-marine-fits.png")
-```
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-example10-marine-fits.png" alt="Figure 3. Model-averaged (first panel) and candidate fits to individual *C. goreaui* growth rates, with each equation's model weight in its panel title. Each panel shows the posterior median fitted mean (line) and its 95% credible band (shading), the median fitted control (dashed line), the lower 0.01 quantile of the posterior of the fitted control (dotted line), and the NSEC as a purple line (median) with purple shading (95% credible interval). The model-average panel has no dotted line, because its NSEC mixes the equations' posterior draws, each read against its own control. Black points are treatment means calculated from the Negri et al. (2021) workbook (CC BY-NC 3.0 Australia); individual observations are not redistributed with the package. TAH concentrations are relative to the source-coded control." width="100%" />
+<p class="caption">Figure 3. Model-averaged (first panel) and candidate fits to individual *C. goreaui* growth rates, with each equation's model weight in its panel title. Each panel shows the posterior median fitted mean (line) and its 95% credible band (shading), the median fitted control (dashed line), the lower 0.01 quantile of the posterior of the fitted control (dotted line), and the NSEC as a purple line (median) with purple shading (95% credible interval). The model-average panel has no dotted line, because its NSEC mixes the equations' posterior draws, each read against its own control. Black points are treatment means calculated from the Negri et al. (2021) workbook (CC BY-NC 3.0 Australia); individual observations are not redistributed with the package. TAH concentrations are relative to the source-coded control.</p>
+</div>
 
 | Equation | Model weight | `nec` parameter, mg/L | Rise at peak, % | NSEC, mg/L | ECNSEC, % | EC10, mg/L |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -227,9 +199,10 @@ The lettuce control observations were 0.833 and 1.126 (a mean of 0.98). The mean
 
 The screen excluded `ecxhormebc5`, and Figure 4 shows the remaining four equations with their model weights (Table 3). The three threshold hormesis equations had 0.932 of the weight, and each of their curves rises above its fitted control to a peak near 1 mg/L, with sampled `nec` parameters of 0.919 mg/L for `neclinhorme`, 1.10 mg/L for `nechorme` and 1.12 mg/L for `nechorme4`. The model-averaged curve peaks at 1.02 mg/L, 11% (0.0004–46%) above its fitted control.
 
-```{r lettuce-fit-plot, echo=FALSE, out.width="100%", fig.cap="Figure 4. Model-averaged (first panel) and candidate fits to lettuce shoot biomass, with each equation's model weight in its panel title. Each panel shows the posterior median fitted mean (line) and its 95% credible band (shading), the median fitted control (dashed line), the lower 0.01 quantile of the posterior of the fitted control (dotted line), and the NSEC as a purple line (median) with purple shading (95% credible interval). The model-average panel has no dotted line, because its NSEC mixes the equations' posterior draws, each read against its own control. Pale points are individual observations and black points are treatment means. Concentrations are labelled in mg/L on the axis of Figure 2."}
-knitr::include_graphics("vignette-fig-example10-lettuce-fit.png")
-```
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-example10-lettuce-fit.png" alt="Figure 4. Model-averaged (first panel) and candidate fits to lettuce shoot biomass, with each equation's model weight in its panel title. Each panel shows the posterior median fitted mean (line) and its 95% credible band (shading), the median fitted control (dashed line), the lower 0.01 quantile of the posterior of the fitted control (dotted line), and the NSEC as a purple line (median) with purple shading (95% credible interval). The model-average panel has no dotted line, because its NSEC mixes the equations' posterior draws, each read against its own control. Pale points are individual observations and black points are treatment means. Concentrations are labelled in mg/L on the axis of Figure 2." width="100%" />
+<p class="caption">Figure 4. Model-averaged (first panel) and candidate fits to lettuce shoot biomass, with each equation's model weight in its panel title. Each panel shows the posterior median fitted mean (line) and its 95% credible band (shading), the median fitted control (dashed line), the lower 0.01 quantile of the posterior of the fitted control (dotted line), and the NSEC as a purple line (median) with purple shading (95% credible interval). The model-average panel has no dotted line, because its NSEC mixes the equations' posterior draws, each read against its own control. Pale points are individual observations and black points are treatment means. Concentrations are labelled in mg/L on the axis of Figure 2.</p>
+</div>
 
 | Equation | Model weight | `nec` parameter, mg/L | Rise at peak, % | NSEC, mg/L | ECNSEC, % | EC10, mg/L |
 | --- | --- | --- | --- | --- | --- | --- |

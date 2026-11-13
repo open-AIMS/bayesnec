@@ -7,12 +7,16 @@
 #
 # http://www.apache.org/licenses/LICENSE-2.0
 
-# Precompile the vignettes.
+# Precompile the vignettes in vignettes/ and the pkgdown articles in
+# vignettes/articles/. Both are named by their stem:
 #
-#   Rscript vignettes/precompile.R                  # every vignette
+#   Rscript vignettes/precompile.R                  # every vignette and article
 #   Rscript vignettes/precompile.R example7         # one
 #   Rscript vignettes/precompile.R example2 example7
-#   source("vignettes/precompile.R")                # every vignette
+#   source("vignettes/precompile.R")                # every vignette and article
+#
+# Each .Rmd is written beside its .Rmd.orig, and each figure is moved beside the
+# .Rmd that references it. The articles are not in the package tarball.
 #
 # and, for the routes that cannot pass arguments -- an interactive source(),
 # `R CMD BATCH`, a container `%runscript` -- the same selection is read from
@@ -46,10 +50,13 @@ library(purrr)
 rm(list = setdiff(ls(), ".bayesnec_selection"))
 
 # Convert *.orig to *.Rmd -------------------------------------------------
-available <- dir(path = "vignettes/", pattern = "\\.Rmd\\.orig$", full.names = TRUE)
+available <- c(
+  dir(path = "vignettes", pattern = "\\.Rmd\\.orig$", full.names = TRUE),
+  dir(path = "vignettes/articles", pattern = "\\.Rmd\\.orig$", full.names = TRUE)
+)
 if (!length(available)) {
-  stop("no vignettes/*.Rmd.orig found. Run this from the repository root.",
-       call. = FALSE)
+  stop("no vignettes/*.Rmd.orig or vignettes/articles/*.Rmd.orig found. Run",
+       " this from the repository root.", call. = FALSE)
 }
 if (length(.bayesnec_selection)) {
   # A vignette may be named as `example7`, `example7.Rmd`, `example7.Rmd.orig`
@@ -261,7 +268,7 @@ knit_one <- function(f) {
 
 # Figures written to the working directory by this run, so that a stale figure
 # left behind by an interrupted run is neither copied over a good committed one
-# nor deleted. Recorded before knitting and compared after: a partial rebuild
+# nor deleted. Recorded before each knit and compared after: a partial rebuild
 # must not touch the figures of the vignettes it is not rebuilding.
 # Contents, not modification time. A figure rewritten within the same second to
 # the same size would be missed by an mtime-and-size comparison, and the
@@ -271,7 +278,44 @@ fig_state <- function() {
   f <- dir(".", pattern = "^vignette-fig.*\\.png$")
   tools::md5sum(f)
 }
-before <- fig_state()
+
+# Move the figures one knit wrote into `dest`, the directory of its source ----
+# knitr writes figures to the working directory, the repository root, while the
+# .Rmd refers to them by a path relative to its own directory. Every vignette
+# and article is an html_vignette and so uses the png device: an embedded pdf is
+# rendered by the browser's pdf plugin rather than as an image.
+place_figures <- function(before, dest) {
+  after <- fig_state()
+  is_new <- !(names(after) %in% names(before))
+  changed <- names(after)[is_new |
+                            (!is_new & after != before[names(after)])]
+  if (!length(changed)) {
+    return(character(0))
+  }
+  # The package is built from these PNGs and embeds each one again in its html,
+  # so palette quantisation here is what keeps the built package small.
+  # magick is a maintainer dependency only; it is not in DESCRIPTION.
+  # BAYESNEC_QUANTISE_FIGURES=false skips this; quantise the PNGs before release.
+  quantise <- !identical(Sys.getenv("BAYESNEC_QUANTISE_FIGURES"), "false")
+  if (quantise && !requireNamespace("magick", quietly = TRUE)) {
+    stop("The magick package is needed to reduce the figure files. Install it ",
+         "and re-run.", call. = FALSE)
+  }
+  for (f in changed[quantise]) {
+    img <- magick::image_quantize(magick::image_read(f), max = 256,
+                                  dither = FALSE)
+    magick::image_write(img, f, format = "png8")
+  }
+  success <- file.copy(from = changed, to = file.path(dest, changed),
+                       overwrite = TRUE)
+  if (!all(success)) {
+    stop("Image files were not successfully transferred to ", dest, ": ",
+         paste(changed[!success], collapse = ", "), call. = FALSE)
+  }
+  unlink(changed)
+  message("Copied ", length(changed), " figure(s) into ", dest, "/")
+  changed
+}
 
 # Precompiled fits --------------------------------------------------------
 # example8 fits 189 models, which in sequence on a four-core allocation is the
@@ -301,48 +345,20 @@ if (nzchar(Sys.getenv("BAYESNEC_FIT_STORE"))) {
   fit_store_install()
 }
 
-purrr::walk(orig_files, knit_one)
-
-# Move figures into correct directory so they render ----------------------
-# Every vignette is an html_vignette and so uses the png device: an embedded
-# pdf is rendered by the browser's pdf plugin rather than as an image.
-after <- fig_state()
-is_new <- !(names(after) %in% names(before))
-changed <- names(after)[is_new |
-                          (!is_new & after != before[names(after)])]
-if (length(changed)) {
-  # The package is built from these PNGs and embeds each one again in its html,
-  # so palette quantisation here is what keeps the built package small.
-  # magick is a maintainer dependency only; it is not in DESCRIPTION.
-  # BAYESNEC_QUANTISE_FIGURES=false skips this; quantise the PNGs before release.
-  quantise <- !identical(Sys.getenv("BAYESNEC_QUANTISE_FIGURES"), "false")
-  if (quantise && !requireNamespace("magick", quietly = TRUE)) {
-    stop("The magick package is needed to reduce the figure files. Install it ",
-         "and re-run.", call. = FALSE)
-  }
-  for (f in changed[quantise]) {
-    img <- magick::image_quantize(magick::image_read(f), max = 256,
-                                  dither = FALSE)
-    magick::image_write(img, f, format = "png8")
-  }
-  success <- file.copy(from = changed, to = file.path("vignettes", changed),
-                       overwrite = TRUE)
-  # Clean up if successful ------------------------------------------------
-  if (!all(success)) {
-    stop("Image files were not successfully transferred to vignettes ",
-         "directory: ", paste(changed[!success], collapse = ", "),
-         call. = FALSE)
-  }
-  unlink(changed)
-  message("Copied ", length(changed), " figure(s) into vignettes/")
-}
+# Knit each source, then move the figures it wrote beside it, so that a
+# vignette's figures go to vignettes/ and an article's to vignettes/articles/.
+moved <- unlist(lapply(orig_files, function(f) {
+  before <- fig_state()
+  knit_one(f)
+  place_figures(before, dirname(f))
+}))
 
 # Anything left here was written by an earlier run that did not finish, and is
 # deliberately neither copied nor deleted: it may belong to a vignette this run
 # was not asked to rebuild. Reported, because otherwise it accumulates silently
 # -- the working directory is the repository root and these names are not
 # covered by vignettes/.gitignore.
-stale <- setdiff(names(fig_state()), changed)
+stale <- setdiff(names(fig_state()), moved)
 if (length(stale)) {
   message("Left in place, not written by this run: ", paste(stale, collapse = ", "),
           "\n  They are from an interrupted run. Delete them once you have",
