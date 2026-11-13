@@ -65,7 +65,7 @@ can also be refitted as a single model using `bnec_joint()`, in which each level
 is fitted with the equation its own model weights favour (by default) and has
 its own parameter values, but all levels are estimated in one posterior. Which
 designs admit which of these approaches is set out in the
-[Grouping and factor covariates][e8] vignette.
+[Grouping and factor covariates][e8] article.
 
 For each pair of fits, `compare_posterior` pairs the posterior draws of an
 estimate from one fit with those from the other at random, and subtracts one
@@ -74,7 +74,7 @@ from the other within each pair. It returns these differences, and in
 first fit has the higher estimate. This proportion estimates a posterior
 probability where the two posteriors are independent, which is the case for
 fits to separate data that share no parameter, such as the levels of a
-`bnec_group()` fit and every comparison in this vignette.
+`bnec_group()` fit and every comparison in this article.
 
 Where two estimates come from one posterior and share a parameter, for example
 two levels of a `bnec_joint()` refit with a common group-level term, they can
@@ -84,7 +84,7 @@ reflect any correlation between them. Where the levels are read at their
 observed group levels and were tested in shared batches, both are read in the
 same batch at each draw, as far as their numbers of observations per batch
 allow, so that the comparison is made within a batch. The
-[Grouping and factor covariates][e8] vignette compares copper and zinc in this
+[Grouping and factor covariates][e8] article compares copper and zinc in this
 way. Where two fits share data, such as two equations of one model set,
 `prob_diff` describes how far their posteriors overlap and cannot be read
 directly as a posterior probability (see the section *What the comparison
@@ -100,7 +100,7 @@ designed to make. For the herbicides we also demonstrate `exceedance()`, which
 returns the probability that a toxicity estimate is above a fixed concentration,
 such as a water quality guideline value.
 
-To run this vignette, we will also need some additional packages
+To run this article, we will also need some additional packages
 
 ```{r libraries, warning = FALSE, message = FALSE}
 library(bayesnec)
@@ -112,17 +112,14 @@ Both concentration series span two or more orders of magnitude, so each figure
 is drawn on a log axis. `ggbnec_data()` and `compare_posterior()` return the
 predictor on the scale it was recorded on, having already inverted any
 transformation written inside `crf()`, so the axis is set by transforming the
-scale and not the values. The helper `group_curves()` collects the fitted curve
-of each level of a `bnec_group()` fit into one data frame, so that a single
-`ggplot()` call can draw them together.
+scale and not the values. Called on a `bnec_group()` fit,
+`ggbnec_data()` collects the fitted curve of each level into one data frame,
+with the level in the column `panel`, so that a single `ggplot()` call can draw
+them together.
 
 ```{r helpers}
 log_x <- scale_x_continuous(transform = "log10",
                             labels = function(x) signif(x, 2))
-group_curves <- function(x) {
-  do.call(rbind, Map(function(f, lev) data.frame(level = lev, ggbnec_data(f)),
-                     x$fits, x$levels))
-}
 ```
 
 # Herbicide phytotoxicity to coral
@@ -261,10 +258,10 @@ for seven herbicides is several hundred lines. Here we collate only the model
 weights, to show which equations each herbicide supports.
 
 ```{r exmp4-herb-weights, fig.asp = 0.55, out.width = "85%"}
-herb_wi <- do.call(rbind, Map(function(f, lev) {
-  w <- summary(f)$mod_weights[, "wi"]
+herb_wi <- do.call(rbind, Map(function(s, lev) {
+  w <- s$mod_weights[, "wi"]
   data.frame(herbicide = lev, equation = names(w), wi = as.numeric(w))
-}, fits_herb$fits, fits_herb$levels))
+}, summary(fits_herb), fits_herb$levels))
 # Order the equations by their total weight, so those in use are at the top.
 herb_wi$equation <- reorder(factor(herb_wi$equation), herb_wi$wi, sum)
 
@@ -325,13 +322,13 @@ separately is appropriate here, because the curve they would be shrunk towards
 is not one the data agree on.
 
 ```{r exmp4-herbicides, fig.asp = 1.15, out.width = "72%"}
-ggplot(group_curves(fits_herb), aes(x = x_e, colour = level, fill = level)) +
+ggplot(ggbnec_data(fits_herb), aes(x = x_e, colour = panel, fill = panel)) +
   geom_polygon(aes(y = y_ci), colour = NA, alpha = 0.3) +
   # Give the line only the rows of the curve; the band's return half has no y_e.
   geom_line(data = ~ subset(.x, !is.na(y_e)), aes(y = y_e), linetype = 2) +
   geom_point(aes(x = x_r, y = y_r), alpha = 0.6, size = 1.2) +
   geom_vline(aes(xintercept = nec_vals), colour = "grey50") +
-  facet_wrap(~level, ncol = 2, scales = "free_x") +
+  facet_wrap(~panel, ncol = 2, scales = "free_x") +
   log_x +
   scale_colour_hue(guide = "none") +
   scale_fill_hue(guide = "none") +
@@ -749,7 +746,7 @@ The three scenarios are fixed levels of interest, so each is fitted separately
 using `bnec_group()`. Each chamber was held at one concentration and contained
 several fragments, so the fragments within a chamber are not independent
 observations, and we include a group-level term on chamber (`ogl(chamber)`) to
-allow for this. The [Grouping and factor covariates][e8] vignette describes what
+allow for this. The [Grouping and factor covariates][e8] article describes what
 a term of this kind estimates where each of its levels is observed at a single
 concentration, and the model weights of a set fitted with it leave out each
 chamber whole (see the `loo_controls` argument of `bnec()`).
@@ -807,9 +804,9 @@ that chamber to the model weights is approximate.
 without the chamber, which we have not done here.
 
 ```{r exmp4-coral-fits, fig.asp = 0.45, out.width = "95%"}
-rbind(data.frame(endpoint = "colour (proportion)", group_curves(fits_colour)),
-      data.frame(endpoint = "yield", group_curves(fits_yield))) |>
-  ggplot(aes(x = x_e, colour = level, fill = level)) +
+rbind(data.frame(endpoint = "colour (proportion)", ggbnec_data(fits_colour)),
+      data.frame(endpoint = "yield", ggbnec_data(fits_yield))) |>
+  ggplot(aes(x = x_e, colour = panel, fill = panel)) +
   geom_polygon(aes(y = y_ci), colour = NA, alpha = 0.2) +
   # Give the line only the rows of the curve; the band's return half has no y_e.
   geom_line(data = ~ subset(.x, !is.na(y_e)), aes(y = y_e)) +
@@ -1091,7 +1088,7 @@ colour response declines under at least one scenario.
 
 # Provenance
 
-The fits shown were made when this vignette was precompiled, so the estimates
+The fits shown were made when this article was precompiled, so the estimates
 are those of the package version it ships with. No call names `iter`, `warmup`
 or `control`, so the defaults of `bnec()` apply (4 chains of 10000 iterations
 with 8000 warmup), under `seed = 228`. `compare_posterior` pairs the draws under
