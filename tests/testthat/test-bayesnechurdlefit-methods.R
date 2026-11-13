@@ -812,7 +812,8 @@ test_that("ecx reads the control from preds$control, not the grid start", {
     hurdle_component_preds = hurdle_preds_stub(control_at = 8,
                                                curve_at_grid_start = 2)
   )
-  out <- ecx(obj, ecx_val = 50, posterior = TRUE)
+  expect_warning(out <- ecx(obj, ecx_val = 50, posterior = TRUE),
+                 "not identified")
   # The target is 4, which the curve (2 down to 0.1) never reaches, so every
   # draw is NA rather than an estimate read from the wrong reference.
   expect_true(all(is.na(out)))
