@@ -712,3 +712,16 @@ separate exported functions rather than becoming arguments of `bnec()`. Making
 them arguments would be a cleaner design, but it would make `?bnec`, already
 long, harder to read, and in 3.0.0 it would require refitting the `example8`
 fit store, whose units are keyed on the fitting call.
+
+## D51 — Every fit class has its own method or a clear refusal
+
+RF, 2026-11-13: for every exported generic, each fit class has a method written
+for it or a refusal that names the class, so that no class reaches a parent
+method by accident. The `bnecfit` methods of `c()`, `+` and `update()` refuse a
+class they were not written for, and the work is done by shared internal
+functions that the ordinary, model-set and hurdle classes call. A grouped fit
+has the methods of an ordinary fit, each delegating to the fit of the level it
+names: `update()` refits every level, and `c()` and `+` combine two grouped
+fits of the same data and levels into a model set at each level. The internal
+view of one level of a joint refit exposes only the estimators. Estimates
+returned by `ecx()`, `nsec()`, `nec()` and `ecnsec()` do not change.
