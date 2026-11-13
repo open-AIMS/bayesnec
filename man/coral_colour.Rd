@@ -26,7 +26,7 @@ concentration-response curve and admits only a displacement --- the
 within-concentration structure that the article
 \emph{Grouping and factor covariates}
 (\url{https://open-aims.github.io/bayesnec/articles/example8.html}) demonstrates. The article
-\emph{Comparing posterior predictions}
+\emph{Comparisons and exceedance probabilities}
 (\url{https://open-aims.github.io/bayesnec/articles/example4.html}) fits it
 with \code{ogl(chamber)}. The model weights of a set fitted with that term leave
 out each chamber whole; see the \code{loo_controls} argument of
@@ -75,7 +75,7 @@ numbers of the nine 29 \eqn{\mu}g/L chambers are absent.}
 \item{intensity}{Derived colour intensity on the unit interval (dbl).
 Exactly one observation is 1.}
 \item{proportion}{\code{1 - intensity} (dbl), the response used in
-the article \emph{Comparing posterior predictions}
+the article \emph{Comparisons and exceedance probabilities}
 (\url{https://open-aims.github.io/bayesnec/articles/example4.html}).
 Exactly one observation is 0.}
 }

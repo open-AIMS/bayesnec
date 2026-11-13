@@ -923,10 +923,12 @@ the same call returns.
   priors, the choice between `prior_type` sets, fixing a parameter, and
   priors in models with group-level terms.
 
-- The article [Comparing posterior predictions](https://open-aims.github.io/bayesnec/articles/example4.html) is rewritten on
+- The article [Comparisons and exceedance probabilities](https://open-aims.github.io/bayesnec/articles/example4.html),
+  formerly the vignette "Comparing posterior predictions", is rewritten on
   published data. It compares the seven herbicides of `herbicide`, and the
   three climate scenarios of `coral_colour` and `coral_pam`, in place of
-  simulated data (#534).
+  simulated data, and uses `exceedance()` to compare the N(S)EC of each
+  herbicide with a guideline value for diuron (#534).
 
 - `example5` is rewritten as the article [Installation and setup](https://open-aims.github.io/bayesnec/articles/example5.html),
   and `vignette("example1")`, `vignette("example2")` and the README refer to it

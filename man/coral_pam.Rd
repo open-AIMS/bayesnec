@@ -32,7 +32,7 @@ at 9.6 and 29 \eqn{\mu}g/L. They are readings at the floor of the
 fluorometer: no reading lies between 0 and the smallest positive value,
 0.007, and a fragment read twice can give one 0 and one positive reading. A
 \code{Beta} likelihood cannot represent a 0, so the article
-\emph{Comparing posterior predictions}
+\emph{Comparisons and exceedance probabilities}
 (\url{https://open-aims.github.io/bayesnec/articles/example4.html}) treats
 these readings as left-censored at the smallest positive value.
 

@@ -1,5 +1,5 @@
 ---
-title: "Comparing posterior predictions"
+title: "Comparisons and exceedance probabilities"
 output:
   rmarkdown::html_vignette:
 bibliography: ../bayesnec.bib
@@ -98,7 +98,9 @@ the first, the levels are seven photosystem II herbicides tested on the coral
 *Seriatopora hystrix* [@jones2003]. In the second, the levels are three climate
 scenarios under which the coral *Acropora millepora* was exposed to one of those
 herbicides, diuron [@flores2021], and the comparison is the one that study was
-designed to make.
+designed to make. For the herbicides we also demonstrate `exceedance()`, which
+returns the probability that a toxicity estimate is above a fixed concentration,
+such as a water quality guideline value.
 
 To run this vignette, we will also need some additional packages
 
@@ -557,6 +559,102 @@ average over `r herb_n_kept` fitted curves. Linear interpolation across a
 log-spaced series follows the chord of a curve that is concave over that
 interval, which places the half-effect concentration higher than a fitted curve
 would`r if (all(above > 0)) ", and this may explain why the published value is higher for all seven herbicides" else ""`.`r if (has_odd) paste0(" Nothing in these data indicates which estimate is closer to the truth for ", odd, ".") else ""`
+
+## Exceedance probabilities
+
+A toxicity estimate is often compared with a fixed concentration, such as a
+water quality guideline value or a concentration measured in the field.
+`exceedance()` returns the posterior probability that an estimate is above such
+a threshold, reading the estimate with `nec()`, `nsec()` or `ecx()` according to
+its `estimate` argument. For a `bnec_group()` fit it returns one row for each
+level, so the seven herbicides can be compared with one threshold in a single
+call.
+
+@flores2021 cite a proposed guideline value for diuron in marine waters of
+0.43 µg/L (the PC99, i.e. the concentration intended to protect 99% of
+species), and report that diuron has been detected at up to 0.778 µg/L (a mean
+over a month-long passive sampler deployment) around a nearshore island of the
+Great Barrier Reef. We use the guideline value as the threshold for each
+herbicide. However, it was derived for diuron only, so for the other six
+herbicides we use it only as a common concentration at which to compare them,
+and not as a guideline value.
+
+```{r exceed-herbicides}
+exceed_herb <- exceedance(fits_herb, threshold = 0.43)
+exceed_herb
+```
+
+```{r exceed-herb-text, include = FALSE}
+ex_threshold <- exceed_herb$threshold[1]
+# The probability for one level, or the interval where the censoring record
+# leaves it undecided.
+p_text <- function(i) {
+  if (is.na(exceed_herb$prob[i])) {
+    paste("between", sprintf("%.3f", exceed_herb$prob_lower[i]), "and",
+          sprintf("%.3f", exceed_herb$prob_upper[i]))
+  } else {
+    sprintf("%.3f", exceed_herb$prob[i])
+  }
+}
+ex_o <- order((exceed_herb$prob_lower + exceed_herb$prob_upper) / 2)
+ex_low <- ex_o[exceed_herb$prob_upper[ex_o] < 0.05]
+ex_high <- ex_o[exceed_herb$prob_lower[ex_o] > 0.95]
+ex_mid <- setdiff(ex_o, c(ex_low, ex_high))
+ex_parts <- c(
+  if (length(ex_low)) {
+    paste("below 0.05 for", words(exceed_herb$level[ex_low]))
+  },
+  if (length(ex_mid)) {
+    paste("between 0.05 and 0.95 for",
+          words(paste0(exceed_herb$level[ex_mid], " (",
+                       vapply(ex_mid, p_text, character(1)), ")")))
+  },
+  if (length(ex_high)) {
+    paste("above 0.95 for", words(exceed_herb$level[ex_high]))
+  }
+)
+ex_order_text <- paste0("The probability that the N(S)EC exceeds ",
+                        ex_threshold, " µg/L is ", clauses(ex_parts), ".")
+ex_d <- match("diuron", exceed_herb$level)
+diuron_text <- if (exceed_herb$prob_upper[ex_d] < 0.05) {
+  "is very likely below"
+} else if (exceed_herb$prob_lower[ex_d] > 0.95) {
+  "is very likely above"
+} else {
+  "may be on either side of"
+}
+undecided <- exceed_herb$level[is.na(exceed_herb$prob)]
+ex_exact_text <- if (length(undecided) == 0) {
+  paste0("`prob_lower` and `prob_upper` are equal to `prob` for each ",
+         "herbicide, because ", ex_threshold, " µg/L is within the range of ",
+         "concentrations at which each herbicide was tested, and so a draw ",
+         "censored beyond that range (counted in `n_above` and `n_below`) is ",
+         "known to be on one side of the threshold (see *Censored draws* in ",
+         "`?exceedance`).")
+} else {
+  paste0("For ", words(undecided), ", `prob` is `NA` and the probability is ",
+         "between `prob_lower` and `prob_upper`, because the threshold is ",
+         "beyond the range of concentrations tested, where a censored draw may ",
+         "be on either side of it (see *Censored draws* in `?exceedance`).")
+}
+```
+
+The default `estimate = "nec"` returns the probability for the N(S)EC, the
+model-averaged no-effect estimate compared between herbicides above. The
+threshold is read on the scale on which the estimate is returned, which by
+default is the scale on which concentration was recorded (see the `xform`
+argument in `?exceedance`), so `r ex_threshold` is in µg/L although the fits
+model log concentration.
+
+`r ex_order_text` For diuron, the herbicide for which the guideline value was
+derived, the probability is `r p_text(ex_d)`, which indicates that its N(S)EC
+`r diuron_text` the guideline value. `r ex_exact_text`
+
+These N(S)ECs describe one endpoint of one coral species (the effective quantum
+yield of its symbionts after a ten-hour exposure), whereas a PC99 is intended
+to protect 99% of species. For diuron we therefore read the probability as a
+statement about this endpoint only, and not as evidence of whether the guideline
+value protects corals in general.
 
 # Diuron under climate scenarios
 

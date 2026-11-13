@@ -384,7 +384,7 @@ NULL
 #' within-concentration structure that the article
 #' \emph{Grouping and factor covariates}
 #' (\url{https://open-aims.github.io/bayesnec/articles/example8.html}) demonstrates. The article
-#' \emph{Comparing posterior predictions}
+#' \emph{Comparisons and exceedance probabilities}
 #' (\url{https://open-aims.github.io/bayesnec/articles/example4.html}) fits it
 #' with \code{ogl(chamber)}. The model weights of a set fitted with that term leave
 #' out each chamber whole; see the \code{loo_controls} argument of
@@ -433,7 +433,7 @@ NULL
 #' \item{intensity}{Derived colour intensity on the unit interval (dbl).
 #'   Exactly one observation is 1.}
 #' \item{proportion}{\code{1 - intensity} (dbl), the response used in
-#'   the article \emph{Comparing posterior predictions}
+#'   the article \emph{Comparisons and exceedance probabilities}
 #'   (\url{https://open-aims.github.io/bayesnec/articles/example4.html}).
 #'   Exactly one observation is 0.}
 #' }
@@ -479,7 +479,7 @@ NULL
 #' fluorometer: no reading lies between 0 and the smallest positive value,
 #' 0.007, and a fragment read twice can give one 0 and one positive reading. A
 #' \code{Beta} likelihood cannot represent a 0, so the article
-#' \emph{Comparing posterior predictions}
+#' \emph{Comparisons and exceedance probabilities}
 #' (\url{https://open-aims.github.io/bayesnec/articles/example4.html}) treats
 #' these readings as left-censored at the smallest positive value.
 #'

@@ -228,7 +228,7 @@ Now that we have a better fit to these data, we can interpret the results. The e
 summary(exp(exp_1b$ne_posterior))
 ```
 
-EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See the [Model details][e2b] vignette and the [Comparing posterior predictions][e4] article for more information.
+EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See the [Model details][e2b] vignette and the [Comparisons and exceedance probabilities][e4] article for more information.
 
 ```{r, warning = FALSE}
 ecx(exp_1b, xform = exp)
