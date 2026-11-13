@@ -87,7 +87,9 @@
 #' does for \code{\link{bnec}}.
 #'
 #' A worked example, including the nested plan that drives both loops, is in
-#' \code{vignette("example8")} under \emph{Fitting the levels in parallel}.
+#' the article \emph{Grouping and factor covariates}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example8.html}) under
+#' \emph{Fitting the levels in parallel}.
 #'
 #' \bold{What a plan does and does not reproduce}
 #'

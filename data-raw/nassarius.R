@@ -5,7 +5,7 @@
 # The source file is not distributed with the package. It holds one row per
 # tank and one column per snail within that tank, with mortality recorded in
 # four different ways rather than as zeros -- which is the whole reason this
-# reconstruction is worth documenting. See vignette("example6").
+# reconstruction is worth documenting. See the example6 article.
 #
 # The contaminants are anonymised as A-D and the dose units are deliberately
 # not stated; the dose values are the tested nominal concentrations on an
@@ -141,8 +141,8 @@ nassarius <- dplyr::bind_rows(
                                        "absent_dose")),
     # Growth is retained exactly as measured, including the four slightly
     # negative values. Flooring them here would push a data-preparation
-    # decision into the shipped data, which is the practice vignette
-    # "example6" argues against.
+    # decision into the shipped data, which is the practice the example6
+    # article argues against.
     growth = ifelse(alive == 1, y, 0),
     contaminant = factor(LETTERS[round])
   ) |>

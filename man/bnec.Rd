@@ -562,8 +562,9 @@ block as \code{1 - <equation>} puts the declining curve on \emph{survival},
 so the equation set, its priors and the \code{\link{ecx}}/\code{\link{nsec}}
 definition of "decline from control" all carry over unchanged. The practical
 consequence is that \code{hutop} and \code{hunec} describe surviving rather
-than dying; \code{hunec} is the same concentration either way. See
-\code{vignette("example6")}.
+than dying; \code{hunec} is the same concentration either way. See the
+article \emph{Hurdle and zero-inflated concentration-response models}
+(\url{https://open-aims.github.io/bayesnec/articles/example6.html}).
 
 None of the joint families is selected automatically: a response
 containing zeros is still treated as Gamma, with a message, so that existing

@@ -235,7 +235,9 @@ by the shape. A deviation on a parameter, as in \code{(bot | group)} or
 variance function as well. Reading the fitted mean after an \code{ogl()}
 deviation can produce a second posterior mode at a very low mean when
 \code{"power"} on a \code{Gamma} response has \code{c1 > 1}. This occurred
-in a fit to the zinc bioluminescence data of \code{vignette("example8")}.
+in a fit to the zinc bioluminescence data of the article
+\emph{Grouping and factor covariates}
+(\url{https://open-aims.github.io/bayesnec/articles/example8.html}).
 
 A dispersion sub-model requires a family with a free dispersion parameter.
 For \code{poisson}, \code{bernoulli} and \code{binomial} the variance is a

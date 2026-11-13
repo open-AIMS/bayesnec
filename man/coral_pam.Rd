@@ -31,8 +31,10 @@ Yield is a proportion and 63 of the 414 readings are exactly 0, all of them
 at 9.6 and 29 \eqn{\mu}g/L. They are readings at the floor of the
 fluorometer: no reading lies between 0 and the smallest positive value,
 0.007, and a fragment read twice can give one 0 and one positive reading. A
-\code{Beta} likelihood cannot represent a 0, so \code{vignette("example4")}
-treats these readings as left-censored at the smallest positive value.
+\code{Beta} likelihood cannot represent a 0, so the article
+\emph{Comparing posterior predictions}
+(\url{https://open-aims.github.io/bayesnec/articles/example4.html}) treats
+these readings as left-censored at the smallest positive value.
 
 The control concentration is reported as \code{0}, and the substitution the
 source file holds for it is not shipped, for the reason given under

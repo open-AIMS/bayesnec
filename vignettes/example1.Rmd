@@ -15,8 +15,9 @@ bibliography: bayesnec.bib
 [e2]: example2.html
 [e2b]: example2b.html
 [e3]: example3.html
-[e4]: example4.html
-[e5]: example5.html
+[e4]: https://open-aims.github.io/bayesnec/articles/example4.html
+[e5]: https://open-aims.github.io/bayesnec/articles/example5.html
+[e6]: https://open-aims.github.io/bayesnec/articles/example6.html
 
 # `bayesnec`
 
@@ -61,7 +62,7 @@ section on this
 [link](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started)
 for further instructions on how to get the compilers running.
 
-The [Installation and setup][e5] vignette describes this in detail, including
+The [Installation and setup][e5] article describes this in detail, including
 both `brms` back ends (`rstan` and `cmdstanr`), the `cmdstanr` installation used
 to build these vignettes, and the failures most often encountered on Windows.
 
@@ -285,7 +286,7 @@ summary(exp(exp_1b$ne_posterior))
 #>   18.06   65.26   78.59   76.11   87.95  191.89
 ```
 
-EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
+EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See the [Model details][e2b] vignette and the [Comparing posterior predictions][e4] article for more information.
 
 
 ``` r
@@ -707,7 +708,7 @@ Interval censoring (third row of the table) resolves this problem. A population 
 
 There are two implications for practice. First, identification should be judged from the contraction from prior to posterior, and not from the interval. Across these three fits the contraction was 0.996, 0.379 and 0.953 respectively, and the middle value identifies the problem that the interval does not show. This can be computed from `pull_prior()` and the posterior draws. Second, the problem propagates, because any quantity derived from the deep part of the fitted curve (well below the bound) also depends on the prior, so an `ecx()` value whose target is near the asymptote should be treated with as much caution as `bot` itself.
 
-Whether a value is censored at all is a separate question from how to handle it once it is. A zero that marks a distinct event (e.g. an organism that died, and not a measurement that fell below a limit) is structural, and should be modelled with a hurdle model and not with a censoring declaration (see `vignette("example6")`).
+Whether a value is censored at all is a separate question from how to handle it once it is. A zero that marks a distinct event (e.g. an organism that died, and not a measurement that fell below a limit) is structural, and should be modelled with a hurdle model and not with a censoring declaration (see the [Hurdle and zero-inflated concentration-response models][e6] article).
 
 # Non-constant dispersion
 

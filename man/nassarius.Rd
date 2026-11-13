@@ -16,8 +16,10 @@ these data are used to illustrate.
 }
 \details{
 This dataset exists to demonstrate the hurdle concentration-response models
-(see \code{\link{bnec_hurdle}} and \code{vignette("example6")}). Exposure
-both suppresses growth in the snails that live and kills others, so an
+(see \code{\link{bnec_hurdle}} and the article
+\emph{Hurdle and zero-inflated concentration-response models}
+at \url{https://open-aims.github.io/bayesnec/articles/example6.html}).
+Exposure both suppresses growth in the snails that live and kills others, so an
 analysis of the survivors alone silently conditions on survival.
 
 \bold{Mortality is recorded as a zero growth value}, with \code{alive}
@@ -33,7 +35,9 @@ negative values among survivors. The assay is destructive, so growth is
 obtained by referencing each individual to a baseline mean rather than to
 its own starting size, and that referencing carries enough error to put a
 strongly suppressed individual below zero. They are retained rather than
-floored because flooring is the practice \code{vignette("example6")} argues
+floored because flooring is the practice that the article
+\emph{Hurdle and zero-inflated concentration-response models}
+(\url{https://open-aims.github.io/bayesnec/articles/example6.html}) argues
 against; a Gamma fit requires handling them explicitly.
 
 \bold{Contaminant B is the most severely affected test.} Only 63 of the 284
