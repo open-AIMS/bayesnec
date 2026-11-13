@@ -52,14 +52,15 @@ cumulative impacts of pesticides and global warming on corals".
 > (2021). *Combined effects of climate change and the herbicide diuron on the
 > coral* Acropora millepora. Marine Pollution Bulletin.
 
-RF is an author. **No volume, page range or DOI for this paper is recorded
-anywhere on disk.** `ignore/paper.bib` gives author, journal, title and year
-only. Those fields must be obtained before a bibliography entry is written, and
-must not be inferred — an earlier draft of the entry invented a volume, page
-range and DOI and was withdrawn.
+RF is an author. Its bibliography entry is `flores2021` in `vignettes/bayesnec.bib`.
 
 **Redistribution confirmed, RF 2026-09-11**, on the grounds that the paper is
-published and RF is an author. Both files are now shipped, as `coral_colour`
+published and RF is an author. RF, 2026-11-13: the AIMS data centre holds no
+record of the colour scores; the paper is Crown Copyright, so AIMS, which holds
+the data, may provide them for the package. Where the raw files and the
+published record differ, the published record governs: the raw data had
+errors that were checked against the paper, and `coral_pam` row 276 follows the
+published scenario (2050) rather than the raw file (2100). Both files are now shipped, as `coral_colour`
 (colour score, 180 rows, 45 chambers, five concentrations) and `coral_pam`
 (effective quantum yield, 414 rows, 54 chambers, six concentrations), built by
 `data-raw/coral_diuron.R`. The source CSVs are kept in `data-raw/coral_diuron/`
