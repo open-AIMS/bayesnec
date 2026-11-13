@@ -63,6 +63,10 @@ coral_colour <- cc |>
 # `Chamber` runs 1 to 3 within each climate-by-concentration cell rather than
 # across the experiment, so a unique identifier has to combine the three.
 pd <- read.csv(file.path(RAW, "pamdat.csv"))
+# The published eAtlas record supersedes the private file for row 276, which
+# the record places in 2050, chamber 36, not 2100.
+stopifnot(pd$Climate[276] == 2100, pd$Diuron[276] == 29, pd$Yield[276] == 0)
+pd$Climate[276] <- 2050
 
 coral_pam <- pd |>
   dplyr::transmute(

@@ -74,7 +74,8 @@ NULL
 #' in four chronic toxicity tests, reconstructed to one row per individual
 #' snail that entered the experiment. The test method follows Trenfield et al.
 #' (2016), although that publication does not describe the mortality scenario
-#' these data are used to illustrate.
+#' these data are used to illustrate. Unpublished data from the Australian
+#' Institute of Marine Science.
 #'
 #' This dataset exists to demonstrate the hurdle concentration-response models
 #' (see \code{\link{bnec_hurdle}} and the article
@@ -141,6 +142,8 @@ NULL
 #'
 #' \code{record} is retained so that the distinction stays visible and a fit
 #' can be repeated without the reinstated rows.
+#'
+#' @source Unpublished data from the Australian Institute of Marine Science.
 #'
 #' @name nassarius
 #' @docType data
@@ -242,6 +245,8 @@ NULL
 #' \item{days}{Exposure duration in days (int).}
 #' \item{density_initial}{Cell density at the start of the exposure (dbl).}
 #' }
+#'
+#' @source Unpublished data from the Australian Institute of Marine Science.
 #'
 #' @name alga
 #' @docType data
@@ -350,6 +355,19 @@ NULL
 #'   throughout, and the response to fit with \code{censoring}.}
 #' }
 #'
+#' @source Australian Institute of Marine Science (2025) A bioluminescent
+#' bacterial toxicity assay for tropical marine environments. AIMS data record,
+#' \url{https://apps.aims.gov.au/metadata/view/6aae0b3b-fe15-47cc-9a11-9fb669479f61}.
+#' The data are licensed under Creative Commons Attribution 3.0 Australia
+#' (CC BY 3.0 AU, \url{https://creativecommons.org/licenses/by/3.0/au/}) and
+#' remain under that licence in this package. They were changed as follows. The
+#' acute copper and zinc workbooks were combined; the 5 minute reads were
+#' omitted; the 15 and 30 minute reads were reshaped to one row per well and
+#' exposure time; the \code{batch}, \code{plate}, \code{well} and
+#' \code{conc_group} identifiers were constructed; and \code{censoring} and
+#' \code{rlu_cens} were added. The readings in \code{rlu} and the
+#' concentrations in \code{conc} are unchanged.
+#'
 #' @name lum31
 #' @docType data
 #' @format An object of class `data.frame` with 2904 rows and 10 columns.
@@ -438,6 +456,10 @@ NULL
 #'   Exactly one observation is 0.}
 #' }
 #'
+#' @source The experiment of Flores et al. (2021). The colour scores are
+#' distinct from the photosynthetic yield data of \code{\link{coral_pam}},
+#' which have a public data record.
+#'
 #' @name coral_colour
 #' @docType data
 #' @format An object of class `data.frame` with 171 rows and 8 columns.
@@ -458,12 +480,12 @@ NULL
 #'
 #' Effective quantum yield of photosystem II in the reef-building coral
 #' \emph{Acropora millepora} exposed to the herbicide diuron, crossed with
-#' three climate scenarios, from the same 14-day experiment as
-#' \code{\link{coral_colour}}.
+#' three climate scenarios, from the same experiment as
+#' \code{\link{coral_colour}}. Yield was read after 7 days of exposure.
 #'
 #' The design is three climate scenarios by six diuron concentrations by three
 #' chambers: 54 chambers. Yield was read repeatedly on the fragments in each
-#' chamber, so the chambers hold five to eight readings each and the rows are
+#' chamber, so the chambers hold six to eight readings each and the rows are
 #' not balanced. As with \code{\link{coral_colour}} a chamber sits at one
 #' concentration and admits only a displacement, and 54 chambers of several
 #' readings is the better conditioned of the two for a
@@ -500,6 +522,17 @@ NULL
 #' \item{yield}{Effective quantum yield of photosystem II (dbl), a proportion.
 #'   63 readings are exactly 0.}
 #' }
+#'
+#' @source Flores F, Uthicke S, Patel F, Negri A, Marques J, Sarit K (2020)
+#' Combined effects of climate change and the herbicide diuron on the coral
+#' \emph{Acropora millepora} (NESP 2.1.6 and NESP TWQ 5.2, AIMS). eAtlas,
+#' Dataset, \doi{10.25909/mnt4-g127}. The data are licensed under Creative
+#' Commons Attribution 3.0 Australia (CC BY 3.0 AU,
+#' \url{https://creativecommons.org/licenses/by/3.0/au/}) and remain under that
+#' licence in this package. They were changed as follows. The day 7 yield
+#' readings were reshaped to one row per reading; \code{chamber} was rebuilt
+#' from climate, concentration and the chamber number within that combination;
+#' and the substitute control concentration was dropped.
 #'
 #' @name coral_pam
 #' @docType data

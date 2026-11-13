@@ -7,6 +7,9 @@
 \format{
 An object of class \code{data.frame} with 310 rows and 9 columns.
 }
+\source{
+Unpublished data from the Australian Institute of Marine Science.
+}
 \description{
 Final cell density and average specific growth rate for two marine
 microalgae exposed to each of two contaminants, consolidated from four
