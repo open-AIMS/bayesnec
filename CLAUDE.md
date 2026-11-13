@@ -48,10 +48,17 @@ edits. Parallel work needs `git worktree`.
 
 The vignettes are R Markdown, which is the exception to the global rule against
 it: they are package vignettes built by `knitr`, and Quarto is not a vignette
-engine here. Each `vignettes/exampleN.Rmd` is generated from the `.Rmd.orig`
-beside it by `vignettes/precompile.R`, so that a CRAN build renders stored output
-rather than fitting models. Edit the `.Rmd.orig`; an edit to the `.Rmd` is lost
-at the next precompile.
+engine here. Each `.Rmd` is generated from the `.Rmd.orig` beside it by
+`vignettes/precompile.R`, so that a build renders stored output rather than
+fitting models. Edit the `.Rmd.orig`; an edit to the `.Rmd` is lost at the next
+precompile.
+
+Only `example1`, `example2`, `example2b` and `example3` ship with the package,
+in `vignettes/`. `example4` to `example10` are pkgdown articles in
+`vignettes/articles/`, which `.Rbuildignore` keeps out of the tarball (D49). A
+shipped vignette links to an article by its website address, because the
+article is not installed; pages on the site link to each other by relative
+address. Render an article with `Rscript vignettes/precompile.R exampleN`.
 
 A precompiled vignette embeds whatever the render printed. A home directory, a
 library path or compiler output reaches CRAN in the built vignette, so check the
@@ -72,7 +79,7 @@ The committed `.Rmd` already holds every chunk's output as text, so rendering it
 fits nothing and takes seconds:
 
 ```r
-rmarkdown::render("vignettes/example9.Rmd",
+rmarkdown::render("vignettes/articles/example9.Rmd",
                   output_file = "example9_20260917-0725.html",
                   output_dir = "<main checkout>/ignore/vignette_preview")
 ```
