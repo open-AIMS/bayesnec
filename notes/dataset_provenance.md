@@ -55,9 +55,7 @@ cumulative impacts of pesticides and global warming on corals".
 RF is an author. Its bibliography entry is `flores2021` in `vignettes/bayesnec.bib`.
 
 **Redistribution confirmed, RF 2026-09-11**, on the grounds that the paper is
-published and RF is an author. RF, 2026-11-13: the AIMS data centre holds no
-record of the colour scores; the paper is Crown Copyright, so AIMS, which holds
-the data, may provide them for the package. Where the raw files and the
+published and RF is an author. RF, 2026-11-13: where the raw files and the
 published record differ, the published record governs: the raw data had
 errors that were checked against the paper, and `coral_pam` row 276 follows the
 published scenario (2050) rather than the raw file (2100). Both files are now shipped, as `coral_colour`

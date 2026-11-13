@@ -458,10 +458,8 @@ NULL
 #'
 #' @source The experiment of Flores et al. (2021), \doi{10.1016/j.marpolbul.2021.112582}.
 #' The colour scores have no public data record, unlike the photosynthetic
-#' yield data of \code{\link{coral_pam}}. The paper is Crown Copyright, and
-#' the Australian Institute of Marine Science, which holds the data, provides
-#' them for this package. Where the source files and the paper differ, the
-#' paper is followed.
+#' yield data of \code{\link{coral_pam}}. Where the source files and the
+#' paper differ, the paper is followed.
 #'
 #' @name coral_colour
 #' @docType data
