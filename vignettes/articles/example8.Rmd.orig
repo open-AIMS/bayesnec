@@ -98,7 +98,7 @@ spans the concentration series, and whether the levels are a sample from a
 larger set (e.g. plates, which could have been any plates) or treatments chosen
 by the investigator (e.g. copper and zinc).
 
-| Grouping | Spans the series | Levels | Route | In this vignette |
+| Grouping | Spans the series | Levels | Route | In this article |
 |---|---|---|---|---|
 | Replicate vessels at one concentration (e.g. tanks, chambers, or the wells at one concentration on a plate) | No | A sample of possible vessels | `ogl()` on the vessel | `ogl(conc_group)` |
 | Repeated runs of the whole test (e.g. plates, batches, genotypes drawn from a population) | Yes | A sample of possible runs | `ogl()`, `(par \| group)` or `pgl()` on the run | `pgl(plate)` |
@@ -408,7 +408,7 @@ one_plate <- droplevels(subset(lum31, plate == "Zn 23Apr24 Rep6B" &
 Both fits use `model = "all"`, which `bnec()` filters to the equations valid for
 the family and predictor. We do not use `decline`, because it includes no
 equation whose curve can rise above the control, and most zinc plates do (figure
-of plate-relative means). No fit in this vignette names `iter`, `warmup` or
+of plate-relative means). No fit in this article names `iter`, `warmup` or
 `control`, so each samples at `bnec()`'s defaults, and a diagnostic shown here
 is what a reader would obtain from the same call.
 
@@ -1604,7 +1604,7 @@ results. The realised seeds are stored on the returned object as `level_seeds`.
 
 # Provenance
 
-The fits shown were made when this vignette was precompiled, so the estimates
+The fits shown were made when this article was precompiled, so the estimates
 are those of the package version it ships with. The session that produced them
 is recorded below.
 

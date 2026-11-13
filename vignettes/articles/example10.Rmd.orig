@@ -247,7 +247,7 @@ Counting only a decline as an effect is appropriate for a toxicant whose overall
 
 # Reproducibility
 
-The candidate sets were fitted outside the vignette build, because the marine observations are not redistributed and the fits are slow. The full run, including the import of the marine workbook, the sampler screen and the figures, is `analysis/hormesis_case_fits.R` in the [research compendium](https://github.com/open-AIMS/hormesis-nsec-compendium), and `analysis/hormesis_fit_plots.R` there recreates Figures 3 and 4 and the estimates in Tables 2 and 3 from the saved fits. Each fit used `seed = 570`, and the weights were computed after `set.seed(570)`.
+The candidate sets were fitted outside the article build, because the marine observations are not redistributed and the fits are slow. The full run, including the import of the marine workbook, the sampler screen and the figures, is `analysis/hormesis_case_fits.R` in the [research compendium](https://github.com/open-AIMS/hormesis-nsec-compendium), and `analysis/hormesis_fit_plots.R` there recreates Figures 3 and 4 and the estimates in Tables 2 and 3 from the saved fits. Each fit used `seed = 570`, and the weights were computed after `set.seed(570)`.
 The fits used `bayesnec` at commit `9b99f600` with R 4.6.1, `brms` 2.23.0 and `rstan` 2.32.7.
 The lettuce observations in Figure 2 are read from `inst/extdata/hormesis_lettuce_1993.csv`.
 

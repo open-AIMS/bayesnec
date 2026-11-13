@@ -65,7 +65,7 @@ which_failed <- function(fit) {
 
 # Overview
 
-The other vignettes each explain one part of `bayesnec` (e.g., what the model
+The other vignettes and articles each explain one part of `bayesnec` (e.g., what the model
 set is, what a `bayesmanecfit` is, how priors are built, and how to handle a
 two-block response). Here we run one analysis, on one plate of a bioluminescence
 toxicity test, from the data through to a reportable estimate, taking the steps
@@ -362,7 +362,7 @@ warmup rule the first 8,000 iterations of each chain are discarded, so 8,000
 post-warmup draws remain across the four chains. We use these defaults here and
 for the refits in steps 4 and 5, with identical data and seed. The `seed`
 argument controls Stan's sampler, whereas `set.seed()` controls the initial
-values `bayesnec` generates in R, so both are set. The precompiled vignette uses
+values `bayesnec` generates in R, so both are set. The precompiled article uses
 the `cmdstanr` backend
 (through `options(brms.backend = "cmdstanr")`); without that option `brms` uses
 `rstan`, and the diagnostic counts below may differ.
@@ -1402,7 +1402,7 @@ and they describe one plate. A methods section should state each of these.
 # Draft methods and results text
 
 Here we give a draft of how the analysis above might be described in a paper.
-It refers to steps 1 to 6 of this vignette as Supplementary Material S1 to S6
+It refers to steps 1 to 6 of this article as Supplementary Material S1 to S6
 (e.g., the sampler diagnostics table of step 3 would be Table S3). The values
 are those computed above, and would update with any change to the analysis.
 

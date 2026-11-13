@@ -23,7 +23,7 @@ mention flooring at all.
 
 | Location (`.orig` / rendered) | Content |
 |---|---|
-| `vignettes/example6.Rmd.orig:1117` / `example6.Rmd:1535` | Three-kinds-of-zero table: structural / **floored** / genuine |
+| `vignettes/articles/example6.Rmd.orig:1117` / `example6.Rmd:1535` | Three-kinds-of-zero table: structural / **floored** / genuine |
 | `.orig:1125–1140` / `.Rmd:1543–1560` | The three failures flooring causes in a hurdle fit, then the TG 201 paragraph |
 | `.orig:1160–1185` / `.Rmd:1578–1603` | *"What 'distorts the error distribution' means"* — the density-vs-CDF table |
 | `.orig:1214` / `.Rmd:1632` | **"Recommended handling — 1. Do not floor."** Items 2–4: censor by design, censor as salvage, ratio scale |
