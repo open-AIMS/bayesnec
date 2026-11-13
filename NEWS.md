@@ -136,9 +136,8 @@
   when a full draw fails. It rejects a draw at which an `exp()` in the curve
   would overflow, keeps refined values inside the prior bounds, and stops
   with an error after a set number of redraws. A fit with the same seed
-  therefore starts from other initial values than under 2.1.3.1, fewer fits
-  fall back to Stan's random initialisation, and some equations that failed
-  to fit now fit (#162, #266, #309, #578).
+  therefore starts from other initial values than under 2.1.3.1 (#162, #266,
+  #309, #578).
 
 - `bnec()` no longer replaces a zero in the predictor with a tenth of the
   smallest positive value. The control is fitted at 0, which changes the
