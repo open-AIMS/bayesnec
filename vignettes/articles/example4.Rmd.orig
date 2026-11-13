@@ -719,9 +719,10 @@ yield_gap <- max(apply(yield_means, 1, function(m) diff(range(m))))
 ```
 
 `r sum(yield_zero)` of the `r nrow(coral_pam)` yield readings are 0, all of
-them at `r words(zero_conc)` µg/L. @flores2021 repeated the
-yield measurement at 14 days only up to 2.9 µg/L, so the readings at the two
-highest concentrations were taken at 7 days, before those corals died. Yield is
+them at `r words(zero_conc)` µg/L. The readings in `coral_pam` were taken
+after 7 days of exposure. @flores2021 repeated the measurement at 14 days only
+up to 2.9 µg/L, because the corals at the two highest concentrations died
+before then. Yield is
 recorded to three decimal places, but no reading is between 0 and
 `r min(coral_pam$yield[!yield_zero])`, the smallest positive value. Of the
 `r nrow(read_twice)` fragments read twice at
