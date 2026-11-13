@@ -7,11 +7,23 @@
 \format{
 An object of class \code{data.frame} with 414 rows and 5 columns.
 }
+\source{
+Flores F, Uthicke S, Patel F, Negri A, Marques J, Sarit K (2020)
+Combined effects of climate change and the herbicide diuron on the coral
+\emph{Acropora millepora} (NESP 2.1.6 and NESP TWQ 5.2, AIMS). eAtlas,
+Dataset, \doi{10.25909/mnt4-g127}. The data are licensed under Creative
+Commons Attribution 3.0 Australia (CC BY 3.0 AU,
+\url{https://creativecommons.org/licenses/by/3.0/au/}) and remain under that
+licence in this package. They were changed as follows. The day 7 yield
+readings were reshaped to one row per reading; \code{chamber} was rebuilt
+from climate, concentration and the chamber number within that combination;
+and the substitute control concentration was dropped.
+}
 \description{
 Effective quantum yield of photosystem II in the reef-building coral
 \emph{Acropora millepora} exposed to the herbicide diuron, crossed with
-three climate scenarios, from the same 14-day experiment as
-\code{\link{coral_colour}}.
+three climate scenarios, from the same experiment as
+\code{\link{coral_colour}}. Yield was read after 7 days of exposure.
 }
 \details{
 The design is three climate scenarios by six diuron concentrations by three

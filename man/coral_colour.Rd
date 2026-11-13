@@ -7,6 +7,11 @@
 \format{
 An object of class \code{data.frame} with 171 rows and 8 columns.
 }
+\source{
+The experiment of Flores et al. (2021). The colour scores are
+distinct from the photosynthetic yield data of \code{\link{coral_pam}},
+which have a public data record.
+}
 \description{
 Colour score of the reef-building coral \emph{Acropora millepora} after a
 14-day exposure to the photosystem II herbicide diuron, crossed with three

@@ -7,12 +7,16 @@
 \format{
 An object of class \code{data.frame} with 1208 rows and 6 columns.
 }
+\source{
+Unpublished data from the Australian Institute of Marine Science.
+}
 \description{
 Growth and survival of the tropical marine snail \emph{Nassarius dorsatus}
 in four chronic toxicity tests, reconstructed to one row per individual
 snail that entered the experiment. The test method follows Trenfield et al.
 (2016), although that publication does not describe the mortality scenario
-these data are used to illustrate.
+these data are used to illustrate. Unpublished data from the Australian
+Institute of Marine Science.
 }
 \details{
 This dataset exists to demonstrate the hurdle concentration-response models
