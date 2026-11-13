@@ -63,7 +63,7 @@ in the implementation is specific to that reading, and any process that produces
 exact zeros alongside a positive response has this structure (see *Other
 response families* for proportions and counts).
 
-To run this vignette we also need
+To run this article we also need
 
 
 ``` r
@@ -99,7 +99,7 @@ from the test design (the `record` column gives the trace of each death; see
 *Deaths recorded by omission*).
 
 The doses span more than four orders of magnitude, so we fit the models on a
-log scale, as in the other vignettes. The control is recorded as a dose of zero,
+log scale, as in the other articles and vignettes. The control is recorded as a dose of zero,
 for which the logarithm is undefined, so we add 0.0001 (one decade below the
 lowest dose tested, 0.001) inside the call to `crf()`, which is far enough below
 it to be read as a control and close enough not to stretch the fitted range.

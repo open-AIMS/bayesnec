@@ -12,7 +12,7 @@ bibliography: ../bayesnec.bib
 
 # Summary
 
-This vignette examines how different conventions for handling negative
+This article examines how different conventions for handling negative
 growth-rate measurements affect concentration-response modelling and the
 resulting toxicity estimates. Negative growth rates are common in algal toxicity
 tests and other ecological endpoints that measure change over time, yet many
@@ -88,7 +88,7 @@ on four real algal growth tests (Section 6). The recommendations and the
 limitations are given in Sections 7 and 8, and the provenance of each figure
 quoted is recorded in Section 9.
 
-To run this vignette we will need the following packages.
+To run this article we will need the following packages.
 
 
 ``` r
@@ -146,9 +146,9 @@ require the response to be 90% and 50% of the control respectively, and both of
 these values are strictly positive. The negative part of the curve can
 therefore affect these estimates only indirectly, by changing the shape of the
 fitted curve through the observations at high concentrations, and it is this
-indirect effect that we quantify in the rest of this vignette.
+indirect effect that we quantify in the rest of this article.
 
-We do not normalise the response to the control anywhere in this vignette. The
+We do not normalise the response to the control anywhere in this article. The
 absolute ECx already expresses the effect relative to the fitted control
 response, so dividing the data by the control mean beforehand would apply the
 same correction twice, and would also distort the error structure [@Ritz2026].
@@ -220,7 +220,7 @@ because the population fell below a counting limit, is a censored observation
 and not a floored one, and is exempt from the substitution. A response that is
 genuinely zero because the population died is a different process again, for
 which the hurdle and zero-inflated families are designed (see the [Hurdle and
-zero-inflated concentration-response models][e6] vignette). However, these
+zero-inflated concentration-response models][e6] article). However, these
 families are not a remedy for a substituted negative.
 
 # 4 Zero-asymptote equations under a Gaussian family
@@ -346,7 +346,7 @@ bnec(y ~ crf(x, "decline"), data = dat_floored,
 
 The `beta` convention divides the floored response by its maximum, so that it
 is in the interval (0, 1], and fits a Beta. Dividing by the maximum is how these
-data have been prepared in the work this vignette draws on, whereas dividing by
+data have been prepared in the work this article draws on, whereas dividing by
 the control mean is at least as common elsewhere, and @Ritz2026 set out why the
 response should not be divided by either before fitting.
 
@@ -1210,7 +1210,7 @@ fit_case <- function(d, convention) {
 }
 ```
 
-These 24 fits are not run when this vignette is built. Instead, they are run
+These 24 fits are not run when this article is built. Instead, they are run
 in the compendium used for the simulation, against the pinned version of
 `bayesnec` used there, and their results are transcribed here (Section 9 gives
 the time they take and what this means for reading them).
@@ -1485,7 +1485,7 @@ measurements (Section 6.1).
 
 # 9 Provenance of the reported results
 
-Neither the simulation nor the case studies are run when this vignette is built.
+Neither the simulation nor the case studies are run when this article is built.
 Together they comprise 4,224 model-averaged fits, which is far more machine time
 than a package build can use, and they are run instead in a separate research
 compendium,
@@ -1503,7 +1503,7 @@ inside the container identified by the compendium's `hpc/image.lock`, which
 provides the toolchain and installs the package from that pinned source.
 
 This commit is a development version of `bayesnec`, and not a release. The
-version is more important here than usual, because this vignette measures the
+version is more important here than usual, because this article measures the
 behaviour of the package defaults. The results reported above depend on three
 defaults at that commit: the `nec` and `ec50` priors are built on the log of the
 predictor, the initial-value search accepts chains individually, and the NSEC
@@ -1522,9 +1522,9 @@ track), and are instead fetched from the cluster with `hpc/fetch-fits.sh`.
 
 The case studies are also fitted in the compendium. Four datasets by six
 conventions, each an average over thirteen or fourteen equations, take about
-fifteen hours, which is too long to run on a workstation whenever the vignette
+fifteen hours, which is too long to run on a workstation whenever the article
 is built. The case-study estimates therefore describe the pinned commit, as the
-simulation does, and not the version of `bayesnec` installed with this vignette.
+simulation does, and not the version of `bayesnec` installed with this article.
 However, Table 3, which describes the four datasets themselves, is computed at
 build time from the `alga` data that ship with the package, and therefore does
 reflect your installation.
