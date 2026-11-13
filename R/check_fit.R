@@ -386,6 +386,23 @@ hold_at_bound <- function(v, lower, upper, keep_zero) {
 #'
 #' @noRd
 check_fit_table <- function(fit, formula, y, grp, ndraws, seed, is_mixture) {
+  sims <- check_fit_draws(fit, formula, ndraws, seed)
+  check_fit_stats(y, sims$yrep, sims$mu, grp, is_mixture,
+                  cens = check_fit_cens(fit))
+}
+
+#' Simulated responses and the fitted mean at every fitted row
+#'
+#' @inheritParams check_fit_table
+#'
+#' @return A \code{\link[base]{list}} of \code{yrep}, a draws-by-rows
+#' \code{\link[base]{matrix}}, and \code{mu}, the posterior median of the mean
+#' at each row.
+#'
+#' @importFrom brms posterior_predict ndraws
+#'
+#' @noRd
+check_fit_draws <- function(fit, formula, ndraws, seed) {
   # brms errors when ndraws exceeds the draws a fit holds, so cap it.
   available <- brms::ndraws(fit)
   if (ndraws > available) {
@@ -402,7 +419,7 @@ check_fit_table <- function(fit, formula, y, grp, ndraws, seed, is_mixture) {
     mu <- apply(factorised_count_epred(fit, formula, ndraws = ndraws),
                 2, median)
   })
-  check_fit_stats(y, yrep, mu, grp, is_mixture, cens = check_fit_cens(fit))
+  list(yrep = yrep, mu = mu)
 }
 
 #' The per-group statistics, given a response and a simulated response

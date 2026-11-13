@@ -50,8 +50,23 @@ check_priors.bayesnecfit <- function(object, filename = NA, ask = TRUE) {
   if (!is.na(filename)) {
     chk_character(filename)
   }
-  brms_fit <- object$fit
-  all_pars <- rownames(brms::fixef(brms_fit))
+  prior_posterior_plot(object$fit, rownames(brms::fixef(object$fit)))
+}
+
+#' Plot the prior and posterior densities of some parameters of a brmsfit
+#'
+#' @param brms_fit A \code{\link[brms]{brmsfit}}.
+#' @param all_pars Population-level parameter names, as the row names of
+#' \code{\link[brms]{fixef}} give them.
+#'
+#' @return A \code{\link[ggplot2]{ggplot}}.
+#'
+#' @importFrom ggplot2 ggplot geom_density facet_wrap scale_fill_manual theme_bw labs
+#' @importFrom brms hypothesis
+#' @importFrom rlang .data
+#'
+#' @noRd
+prior_posterior_plot <- function(brms_fit, all_pars) {
   all_data <- vector(mode = "list", length = length(all_pars))
   for (i in seq_along(all_pars)) {
     hyp <- hypothesis(brms_fit, paste0(all_pars[i], " = 0"))

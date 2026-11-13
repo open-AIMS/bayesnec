@@ -551,6 +551,11 @@ select_curve_cols <- function(draws, prefix = "") {
 #' @param summary A \code{\link[base]{logical}} value.
 #' @param xform A function, from \code{recorded_xform()}.
 #' @param grid_span As for \code{prior_bound_rows()}.
+#' @param draws_for A function of the block prefix returning that block's
+#' draws-by-parameter matrix. One level of a joint refit supplies its own,
+#' because its coefficients are not named \code{b_<parameter>_Intercept}.
+#' @param nlpar_for A function of the block prefix and a parameter name
+#' returning the \pkg{brms} non-linear parameter its prior is set on.
 #'
 #' @return A \code{\link[base]{data.frame}} with attribute
 #' \code{"prior_bound_summary"}, or a \code{\link[base]{list}} of one draws
@@ -558,18 +563,24 @@ select_curve_cols <- function(draws, prefix = "") {
 #'
 #' @noRd
 one_fit_params <- function(fit, models, wi, summary, xform,
-                           grid_span = function() NA_real_) {
+                           grid_span = function() NA_real_,
+                           draws_for = function(prefix) {
+                             curve_param_draws(fit, prefix)
+                           },
+                           nlpar_for = function(prefix, par) {
+                             paste0(prefix, par)
+                           }) {
   dpars <- fit_dpars(fit$family)
   links <- fit_links(fit)
   records <- list()
   blocks <- lapply(names(dpars), function(d) {
-    draws <- curve_param_draws(fit, dpars[[d]])
+    draws <- draws_for(dpars[[d]])
     report_absent_params(colnames(draws), models[[d]], d)
     # Read the prior bounds before the map: both are on the fitted scale.
     if (summary) {
       records[[d]] <<- param_prior_boundary(fit, draws, dpars[[d]],
                                             models[[d]], wi, d, grid_span,
-                                            xform)
+                                            xform, nlpar_for)
     }
     # A draw a grid-read inverse cannot place is NA, with a message, so that
     # one equation's ec50 beyond the grid does not stop the whole table.
