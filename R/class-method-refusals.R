@@ -140,8 +140,8 @@ bnec_joint.bayesnecjointfit <- function(object, ...) {
 #' @export
 c.bayesnecjointfit <- function(x, ...) {
   refuse_fit_method("c", x,
-                    "Fit candidate sets with bnec_group() before",
-                    " bnec_joint().")
+                    "A joint refit cannot join a set. Fit candidate sets",
+                    " with bnec_group() before bnec_joint().")
 }
 
 #' @rdname c.bayesnecjointfit
@@ -152,8 +152,8 @@ c.bayesnecjointfit <- function(x, ...) {
 #' @export
 `+.bayesnecjointfit` <- function(e1, e2) {
   refuse_fit_method("+", e1,
-                    "Fit candidate sets with bnec_group() before",
-                    " bnec_joint().")
+                    "A joint refit cannot join a set. Fit candidate sets",
+                    " with bnec_group() before bnec_joint().")
 }
 
 #' ECNSEC for an ordinary fit
@@ -235,8 +235,8 @@ fit_add_dispatch <- function(e1, e2) {
       inherits(e2, "bayesnecjointfit")) {
     joint <- if (inherits(e1, "bayesnecjointfit")) e1 else e2
     return(refuse_fit_method("+", joint,
-                             "Fit candidate sets with bnec_group() before",
-                             " bnec_joint()."))
+                             "A joint refit cannot join a set. Fit candidate",
+                             " sets with bnec_group() before bnec_joint()."))
   }
   if (inherits(e1, "bayesnecgroupfit") ||
       inherits(e2, "bayesnecgroupfit")) {

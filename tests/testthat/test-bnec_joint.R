@@ -1016,8 +1016,8 @@ test_that("joint posterior comparisons use the levels' matching draws", {
     level_fit <- joint_level_fit(f$joint, lev)
     grid <- bnec_newdata(level_fit, resolution = 6,
                          x_range = range(f$data$x))
-    expected <- brms::posterior_epred(level_fit, newdata = grid,
-                                      re_formula = NA, draw_ids = 1:20)
+    expected <- estimator_epred(level_fit, newdata = grid,
+                                re_formula = NA, draw_ids = 1:20)
     expect_equal(fixed$posterior_list[[lev]], expected, label = lev)
   }
   expect_true(any(fixed$diff_list[["a-b"]] != 0))

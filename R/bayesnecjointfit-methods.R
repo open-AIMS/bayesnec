@@ -28,6 +28,17 @@ joint_level_fit <- function(object, level) {
   out
 }
 
+#' Label the equations selected for a joint refit
+#'
+#' @param fit A \code{bayesnecjointfit}.
+#' @return A character label pairing each level with its equation.
+#' @noRd
+#' @export
+group_model_label.bayesnecjointfit <- function(fit) {
+  paste(paste(fit$levels, unname(fit$models), sep = " = "),
+        collapse = ", ")
+}
+
 #' NEC draws or summaries for one joint level
 #'
 #' @param object A \code{bayesnecjointlevel} adapter.
