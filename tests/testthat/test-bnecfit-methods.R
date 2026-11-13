@@ -533,6 +533,18 @@ test_that("c() and + weight by the documented default", {
   expect_equal(attr(added$mod_stats$wi, "method"), "pseudobma")
 })
 
+test_that("parent combination and update methods refuse an unknown fit class", {
+  unknown <- structure(list(), class = c("unknownfit", "bnecfit"))
+  expect_error(c(unknown, unknown), "class unknownfit")
+  expect_error(unknown + unknown, "class unknownfit")
+  expect_error(update(unknown), "class unknownfit")
+  expect_error(c(nec4param, unknown), "class unknownfit")
+  for (generic in c("c", "+", "update")) {
+    expect_true(is.function(getS3method(generic, "bayesnecfit")))
+    expect_true(is.function(getS3method(generic, "bayesmanecfit")))
+  }
+})
+
 test_that("c() compares stored fit data by column name", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

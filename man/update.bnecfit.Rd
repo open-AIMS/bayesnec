@@ -46,10 +46,10 @@ never require it.}
 \item{...}{Further arguments to \code{\link[brms]{brm}}.}
 }
 \value{
-An object of class \code{\link{bnecfit}}. If one single model is
-returned, then also an object of class \code{\link{bayesnecfit}}; otherwise,
-if multiple models are returned, also an object of class
-\code{\link{bayesmanecfit}}.
+On a \code{bayesnecfit} or \code{bayesmanecfit}, a refitted
+\code{bayesnecfit} if one equation succeeds or a \code{bayesmanecfit}
+if several succeed. The abstract \code{bnecfit} method raises an error
+naming any other class.
 }
 \description{
 Update an object of class \code{\link{bnecfit}} as fitted by function

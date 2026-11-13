@@ -9,13 +9,16 @@ statistics.}
 \method{c}{bnecfit}(x, ...)
 }
 \arguments{
-\item{x}{An object of class \code{\link{bnecfit}}.}
+\item{x}{An object of class \code{\link{bayesnecfit}} or
+\code{\link{bayesmanecfit}}.}
 
-\item{...}{Additional objects of class \code{\link{bnecfit}}.}
+\item{...}{Further ordinary fits or model sets fitted to the same data.}
 }
 \value{
-A \code{\link{bayesnecfit}} where only one distinct model remains,
-otherwise a \code{\link{bayesmanecfit}}.
+On a \code{bayesnecfit} or \code{bayesmanecfit}, a
+\code{bayesnecfit} where one distinct equation remains, or a
+\code{bayesmanecfit} otherwise. The abstract \code{bnecfit} method
+raises an error naming any other class.
 }
 \description{
 Concatenate multiple \code{\link{bnecfit}} objects into one single

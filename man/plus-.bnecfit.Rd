@@ -14,7 +14,9 @@ statistics.}
 \item{e2}{An object of class \code{\link{bnecfit}}.}
 }
 \value{
-An object of class \code{\link{bayesmanecfit}}.
+On an ordinary fit or model set, a \code{bayesnecfit} where one
+equation remains, or a \code{bayesmanecfit} otherwise. The abstract
+\code{bnecfit} method raises an error naming any other class.
 }
 \description{
 "Add" multiple \code{\link{bnecfit}} objects into one single
