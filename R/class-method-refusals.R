@@ -106,7 +106,8 @@ compare_posterior.bayesnechurdlefit <- function(x, ...) {
 #' @export
 bnec_joint.bayesnecfit <- function(object, ...) {
   refuse_fit_method("bnec_joint", object,
-                    "Fit levels with bnec_group() before bnec_joint().")
+                    "Use a bayesnecgroupfit from bnec_group()",
+                    " before bnec_joint().")
 }
 
 #' @rdname bnec_joint.bayesnecfit
@@ -115,7 +116,8 @@ bnec_joint.bayesnecfit <- function(object, ...) {
 #' @export
 bnec_joint.bayesmanecfit <- function(object, ...) {
   refuse_fit_method("bnec_joint", object,
-                    "Fit levels with bnec_group() before bnec_joint().")
+                    "Use a bayesnecgroupfit from bnec_group()",
+                    " before bnec_joint().")
 }
 
 #' @rdname bnec_joint.bayesnecfit
