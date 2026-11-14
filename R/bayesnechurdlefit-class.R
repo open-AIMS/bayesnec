@@ -248,7 +248,9 @@ hurdle_check_which <- function(which) {
 #' value.
 #'
 #' @return A vector containing the estimated no-effect value, including upper
-#' and lower credible interval bounds.
+#' and lower credible interval bounds, or one value per draw with
+#' \code{posterior = TRUE}. Censored draws are \code{Inf} above the
+#' search range and \code{-Inf} below it.
 #'
 #' @importFrom stats quantile
 #' @importFrom chk chk_logical
@@ -354,7 +356,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
   attr(estimate, "toxicity_estimate") <- label
   attr(out, "toxicity_estimate") <- label
   attr(estimate, "component") <- which
-  if (!posterior) estimate else out
+  if (!posterior) estimate else censored_infinite(out)
 }
 
 #' The no-effect draws one hurdle component contributes
@@ -416,7 +418,9 @@ hurdle_component_ne <- function(part, extrapolate, ...) {
 #' \code{\link{posterior_epred.bayesnechurdlefit}} use the same range.
 #'
 #' @return A vector containing the estimated ECx value, including upper and
-#' lower credible interval bounds.
+#' lower credible interval bounds, or one value per draw with
+#' \code{posterior = TRUE}. Censored draws are \code{Inf} above the
+#' search range and \code{-Inf} below it.
 #'
 #' @importFrom stats quantile
 #' @importFrom chk chk_logical chk_numeric
@@ -517,7 +521,7 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
   attr(estimate, "component") <- which
   attr(out, "ecx_val") <- ecx_val
   attr(out, "toxicity_estimate") <- "ecx"
-  if (!posterior) estimate else out
+  if (!posterior) estimate else censored_infinite(out)
 }
 
 #' Crossed model weights for a \code{\link{bayesnechurdlefit}}
@@ -642,7 +646,8 @@ combine_censored_min <- function(g, s, n) {
   out[unresolved] <- Inf
   above <- is.infinite(out) & out > 0
   below <- is.infinite(out) & out < 0
-  out[above | below] <- NA_real_
+  out[above] <- Inf
+  out[below] <- -Inf
   # The record holds one bound per posterior: the smallest upper limit and the
   # largest lower one, as in concat_censoring(). Both are true of every
   # censored draw. The test above keeps every identified value at or below the

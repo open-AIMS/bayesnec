@@ -317,7 +317,7 @@ expect_ecx_all_above <- function(fit, types) {
   for (type in types) {
     e <- suppressWarnings(ecx(fit, posterior = TRUE, type = type))
     cens <- attr(e, "censored")
-    expect_true(all(is.na(e)), info = type)
+    expect_true(all(e == Inf), info = type)
     expect_true(all(cens$above), info = type)
     expect_false(any(cens$below), info = type)
     est <- suppressWarnings(ecx(fit, type = type))

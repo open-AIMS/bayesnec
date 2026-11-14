@@ -150,7 +150,10 @@ test_that("fitted spanning levels exclude one-concentration levels", {
   expect_equal(unname(attr(per, "x_control")["plate=p3"]), 0.15)
   expect_equal(unname(attr(shared, "x_control")["plate=p3"]), 0.05)
   mix <- suppressMessages(ecx(fit, posterior = TRUE, resolution = 30))
-  expect_true(all(is.finite(mix[!is.na(mix)])))
+  cens <- attr(mix, "censored")
+  identified <- if (is.null(cens)) rep(TRUE, length(mix)) else
+    !cens$above & !cens$below
+  expect_true(all(is.finite(mix[identified & !is.na(mix)])))
   expect_equal(length(mix), fit$sample_size)
   expect_null(names(mix))
   expect_true(all(is.finite(suppressMessages(nsec(fit, resolution = 30)))))
@@ -396,7 +399,10 @@ test_that("hurdle endpoints and band read observed levels", {
   mixed <- suppressWarnings(suppressMessages(ecx(
     fit, posterior = TRUE, resolution = 25
   )))
-  expect_true(all(is.finite(mixed[!is.na(mixed)])))
+  cens <- attr(mixed, "censored")
+  identified <- if (is.null(cens)) rep(TRUE, length(mixed)) else
+    !cens$above & !cens$below
+  expect_true(all(is.finite(mixed[identified & !is.na(mixed)])))
   expect_true(is.finite(unname(suppressWarnings(suppressMessages(ecx(
     fit, pool = "mean_estimate", resolution = 25
   )))[1])))

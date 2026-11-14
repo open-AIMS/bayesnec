@@ -112,8 +112,8 @@
 #' cent rather than truncating it, so \code{ecx_val} is not capped at 100.
 #'
 #' Where the curve does not reach the target anywhere in the predictor range
-#' the ECx is not identified and \code{NA} is returned, with a warning
-#' reporting how many draws were affected.
+#' the ECx is not identified. With \code{posterior = TRUE} the draw is
+#' \code{Inf}, and a warning reports how many draws were affected.
 #'
 #' The curve is searched on a grid of recorded concentrations. Where
 #' \code{crf()} transforms the predictor inline, as in
@@ -167,8 +167,10 @@
 #'
 #' @seealso \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{nsec}}
 #'
-#' @return A vector containing the estimated ECx value, including upper and
-#' lower 95% credible interval bounds.
+#' @return The ECx estimate and credible bounds, or with
+#' \code{posterior = TRUE} one value per draw. A draw censored above the
+#' search range is \code{Inf}; one censored below it is \code{-Inf}. The
+#' \code{"censored"} attribute records the bounds and affected draws.
 #'
 #' @section Capping and dropping:
 #' A draw whose curve does not reach the target anywhere in the prediction
@@ -178,6 +180,9 @@
 #' summary is then censored: the draw keeps its rank and is given no value, so
 #' a reported quantile that falls among such draws is the end of the prediction
 #' range rather than a quantile of the draws that did reach the target.
+#' With \code{posterior = TRUE}, censored draws are returned as \code{Inf}
+#' or \code{-Inf}, so \code{sort()} and \code{quantile()} retain their
+#' positions. Attribute \code{"censored"} records their bounds and ends.
 #' Attribute \code{"censored_summary"} marks which entries those are, and
 #' states how many draws lie beyond each end and where the ends are. A draw
 #' whose curve had already passed the target where the range begins is recorded
@@ -392,7 +397,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   if (!posterior) {
     ecx_estimate
   } else {
-    ecx_out
+    censored_infinite(ecx_out)
   }
 }
 
@@ -497,7 +502,7 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
   if (!posterior) {
     finish(ecx_estimate)
   } else {
-    finish(ecx_out)
+    finish(censored_infinite(ecx_out))
   }
 }
 

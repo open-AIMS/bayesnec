@@ -175,7 +175,7 @@ test_that("ecnsec is the absolute percent effect at the nsec", {
   expect_lt(ec[1], 25)
 })
 
-test_that("nsec returns NA where the curve never reaches the reference", {
+test_that("nsec returns Inf where the curve never reaches the reference", {
   # A grid confined to the flat head has no crossing. Report it as censored
   # rather than returning its nearest endpoint as an identified NSEC.
   skip_on_cran()
@@ -184,7 +184,8 @@ test_that("nsec returns NA where the curve never reaches the reference", {
                 posterior = TRUE),
     "does not fall below"
   )
-  expect_true(any(is.na(out)))
+  expect_true(any(is.infinite(out) & out > 0))
+  expect_identical(attr(out, "censored")$above, is.infinite(out) & out > 0)
 })
 
 
@@ -227,10 +228,11 @@ test_that("an x_range above the control does not report the control", {
   )
   # The draws whose own control is at or below the reference keep the control,
   # because that is a property of the fit and not of the range asked for. Every
-  # other draw already below the reference at the first grid point is NA.
+  # other draw already below the reference at the first grid point is -Inf.
   expect_equal(sum(out == x_control, na.rm = TRUE), 0.01 * n_draws)
-  expect_true(sum(is.na(out)) > 0.01 * n_draws)
-  expect_true(all(out >= 1 | out == x_control, na.rm = TRUE))
+  expect_true(sum(is.infinite(out) & out < 0) > 0.01 * n_draws)
+  expect_true(all(out[!attr(out, "censored")$below] >= 1 |
+                  out[!attr(out, "censored")$below] == x_control))
   # Prepending the control preserves these draws when the grid extends below
   # the data or becomes coarser. This checks draw retention; interpolated
   # values can still depend on grid spacing.

@@ -258,7 +258,7 @@ pool_estimate_draws <- function(draws, weights, pool, seed = 216,
                                                    effects, indices),
                                              use.names = FALSE)[by_draw]
     }
-    return(out)
+    return(censored_infinite(out))
   }
   if (identical(pool, "mean_curve")) {
     stop("`mean_curve` requires the level curves.", call. = FALSE)
@@ -288,7 +288,8 @@ pool_estimate_draws <- function(draws, weights, pool, seed = 216,
       stop("A draw is censored at opposite ends in different levels; its",
            " weighted mean has no known bound.", call. = FALSE)
     }
-    out[above | below] <- NA_real_
+    out[above] <- Inf
+    out[below] <- -Inf
     attr(out, "censored") <- censoring_record(
       upper, lower, above, below
     )
