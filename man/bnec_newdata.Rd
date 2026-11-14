@@ -4,7 +4,7 @@
 \alias{bnec_newdata}
 \title{bnec_newdata}
 \usage{
-bnec_newdata(x, resolution = 100, x_range = NA)
+bnec_newdata(x, resolution = 100, x_range = NA, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
@@ -16,12 +16,17 @@ the number of x values over which to predict values.}
 
 \item{x_range}{A \code{\link[base]{numeric}} vector of length 2 indicating
 the range of x values over which to make predictions.}
+
+\item{...}{Class-specific arguments, including \code{level} for a
+\code{bayesnecgroupfit}.}
 }
 \value{
-A \code{\link[base]{data.frame}} to be used in predictions. For a
-\code{\link{bayesnecjointfit}} it holds \code{resolution} rows for each
-level of the grouping factor, in a column of that name, with the level
-varying slowest; every other class gives \code{resolution} rows.
+A \code{\link[base]{data.frame}} to be used in predictions.
+Ordinary and hurdle fits give \code{resolution} rows. A
+\code{bayesnecjointfit} gives that many rows per level, with the level
+varying slowest. A \code{bayesnecgroupfit} gives one grid per level, as a
+data frame with a leading \code{level} column when schemas match or a
+named list otherwise. Selecting one grouped level gives one data frame.
 
 Where the formula has a \code{disp(~...)} term naming a column other than
 the predictor, the data frame holds that column at one fixed value, the

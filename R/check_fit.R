@@ -528,6 +528,8 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture, cens = NULL) {
 #' @method check_fit bayesnecfit
 #'
 #' @inherit check_fit description return examples
+#' @return A \code{checkfit} table for this single fit, with model and
+#' Pareto diagnostic attributes.
 #'
 #' @importFrom stats model.frame
 #' @importFrom chk chk_number
@@ -535,22 +537,32 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture, cens = NULL) {
 #' @export
 check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
                                   ...) {
-  # Validate the seed: set.seed(NULL) is not an error but reseeds from the
-  # clock, so the diagnostic would not repeat.
   chk_number(seed)
-  mod_dat <- model.frame(x$bayesnecformula, data = x$fit$data)
+  check_fit_one_table(x, group, ndraws, seed)
+}
+
+#' Build one diagnostic table from a stored fitted component
+#'
+#' @param part A stored component with a brms fit and formula.
+#' @param group Optional observation grouping.
+#' @param ndraws Number of predictive draws.
+#' @param seed Reproducible simulation seed.
+#' @return A \code{checkfit} table with its model and Pareto attributes.
+#' @noRd
+check_fit_one_table <- function(part, group, ndraws, seed) {
+  mod_dat <- model.frame(part$bayesnecformula, data = part$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
-  y <- x$fit$data[[y_var]]
-  predictor <- x$fit$data[[x_var]]
+  y <- part$fit$data[[y_var]]
+  predictor <- part$fit$data[[x_var]]
   grp <- check_fit_groups(predictor, group)
-  out <- check_fit_table(x$fit, x$bayesnecformula, y, grp, ndraws, seed,
-                         is_hurdle_family(x$fit$family))
-  ctrl <- check_fit_control_groups(predictor, grp, recorded_x_control(x))
+  out <- check_fit_table(part$fit, part$bayesnecformula, y, grp, ndraws, seed,
+                         is_hurdle_family(part$fit$family))
+  ctrl <- check_fit_control_groups(predictor, grp, recorded_x_control(part))
   out$control <- out$group %in% ctrl
-  attr(out, "model") <- x$model
+  attr(out, "model") <- part$model
   attr(out, "pareto") <- check_fit_pareto_row(
-    x, if (!is.null(x$fit$criteria$logo)) "logo" else "loo"
+    part, if (!is.null(part$fit$criteria$logo)) "logo" else "loo"
   )
   allot_class(out, c("checkfit", "data.frame"))
 }
@@ -561,18 +573,15 @@ check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
 #' @method check_fit bayesmanecfit
 #'
 #' @inherit check_fit description return examples
+#' @return A \code{checkfit} table with one row block per model and
+#' columns for model weights, with Pareto diagnostics as an attribute.
 #'
 #' @export
 check_fit.bayesmanecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
                                     ...) {
-  # Validated here as well as in the bayesnecfit method it delegates to, so
-  # that a bad seed is refused before the first pull_out() rather than after.
   chk_number(seed)
   out <- lapply(names(x$mod_fits), function(m) {
-    # pull_out() expands a fit and recalculates its criteria. This check only
-    # needs the stored brms fit, formula, and equation name.
-    fit_m <- allot_class(x$mod_fits[[m]], c("bayesnecfit", "bnecfit"))
-    res <- check_fit(fit_m, group = group, ndraws = ndraws, seed = seed)
+    res <- check_fit_one_table(x$mod_fits[[m]], group, ndraws, seed)
     res$model <- m
     res$wi <- x$mod_stats[m, "wi"]
     res

@@ -1098,3 +1098,88 @@ test_that("a pool value that is not one of the four is refused on a grouped fit"
   expect_error(ecx(gf, pool = "foo"), msg, fixed = TRUE)
   expect_error(nsec(gf, pool = c("none", "mixture")), msg, fixed = TRUE)
 })
+
+test_that("grouped methods select levels and preserve result shapes", {
+  g <- fake_group_fit(list(a = nec4param, b = nec4param))
+  expect_named(fitted(g), g$levels)
+  expect_true(is.matrix(fitted(g, level = "a")))
+  expect_named(predict(g), g$levels)
+  expect_equal(dim(posterior_epred(g, level = "a", ndraws = 3))[1], 3L)
+  expect_named(posterior_predict(g, ndraws = 3), g$levels)
+  expect_named(pp_check(g, ndraws = 3), g$levels)
+  expect_named(rhat(g), g$levels)
+  expect_named(get_priors(g), g$levels)
+  expect_s3_class(get_priors(g, level = "a"), "brmsprior")
+  expect_named(pull_brmsfit(g), g$levels)
+  expect_s3_class(pull_brmsfit(g, level = "b"), "brmsfit")
+  expect_named(suppressMessages(pull_best(g)), g$levels)
+  expect_s3_class(formula(g, level = "a"), "bayesnecformula")
+  expect_named(formula(g), g$levels)
+  frame <- model.frame(g)
+  expect_s3_class(frame, "data.frame")
+  expect_equal(unique(frame$level), g$levels)
+  grid <- bnec_newdata(g, resolution = 5)
+  expect_s3_class(grid, "data.frame")
+  expect_equal(as.integer(table(grid$level)), c(5L, 5L))
+  expect_equal(dim(fitted(g, newdata = grid, level = "a"))[1], 5L)
+  expect_error(fitted(g, level = "unknown"), "bayesnecgroupfit")
+  expect_error(get_priors(g, level = c("a", "b")), "bayesnecgroupfit")
+  expect_error(pull_brmsfit(g, level = NA_character_), "bayesnecgroupfit")
+})
+
+test_that("grouped plotting methods return level results", {
+  g <- fake_group_fit(list(a = nec4param, b = nec4param))
+  grDevices::pdf(NULL)
+  device <- grDevices::dev.cur()
+  on.exit(if (device %in% grDevices::dev.list()) grDevices::dev.off(device),
+          add = TRUE)
+  expect_named(check_chains(g), g$levels)
+  plots <- check_priors(g, ask = FALSE)
+  expect_named(plots, g$levels)
+  expect_s3_class(plots$a, "ggplot")
+})
+
+test_that("grouped update visits each level and combination checks data", {
+  seen <- character()
+  local_mocked_bindings(
+    update.bayesnecfit = function(object, ...) {
+      seen <<- c(seen, object$model)
+      object
+    }, .package = "bayesnec"
+  )
+  g <- fake_group_fit(list(a = nec4param, b = nec4param))
+  expect_s3_class(update(g), "bayesnecgroupfit")
+  expect_length(seen, 2L)
+  expect_error(update(g, level = "a"), "refits every level")
+  other <- g
+  other$group_var <- "other"
+  expect_error(c(g, other), "grouping variables")
+  other <- g
+  other$levels <- rev(g$levels)
+  expect_error(g + other, "different levels")
+  other <- g
+  other$data$x[1] <- other$data$x[1] + 1
+  expect_error(c(g, other), "different data")
+  expect_error(c(g, nec4param), "bayesnecfit")
+  expect_error(g + nec4param, "bayesnecgroupfit with class bayesnecfit")
+  expect_error(nec4param + g, "bayesnecgroupfit with class bayesnecfit")
+})
+
+test_that("grouped fits combine their models within each level", {
+  a <- fake_group_fit(list(a = nec4param, b = nec4param))
+  b <- fake_group_fit(list(a = ecx4param, b = ecx4param))
+  combined <- suppressMessages(suppressWarnings(c(a, b)))
+  expect_s3_class(combined, "bayesnecgroupfit")
+  expect_named(combined$fits, a$levels)
+  expect_true(all(vapply(combined$fits, inherits, logical(1),
+                         "bayesmanecfit")))
+  plus <- suppressMessages(suppressWarnings(a + b))
+  expect_named(plus$fits, a$levels)
+})
+
+test_that("grouped print labels each level's stored model type", {
+  g <- fake_group_fit(list(a = nec4param, b = manec_example))
+  lines <- capture.output(print(g))
+  expect_true(any(grepl("a.*nec4param", lines)))
+  expect_true(any(grepl("b.*2 models: nec4param, ecx4param", lines)))
+})

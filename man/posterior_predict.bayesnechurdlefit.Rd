@@ -10,6 +10,8 @@
   which = "combined",
   resolution = 1000,
   x_range = NA,
+  newdata = NULL,
+  re_formula = NA,
   ...
 )
 }
@@ -23,7 +25,13 @@
 
 \item{x_range}{A range of predictor values to predict over.}
 
-\item{...}{Unused.}
+\item{newdata}{An optional \code{\link[base]{data.frame}} of predictor
+values. When supplied, \code{resolution} and \code{x_range} are ignored.}
+
+\item{re_formula}{Optional group-effects setting passed to both components.}
+
+\item{...}{Passed to each component posterior method, including
+\code{ndraws} and \code{draw_ids}.}
 }
 \value{
 A \code{\link[base]{matrix}}.

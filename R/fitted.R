@@ -42,6 +42,9 @@ NULL
 #'
 #' @inherit fitted description return examples
 #' @inheritParams brms::fitted.brmsfit
+#' @return For a \code{bayesnecfit}, a matrix with one row per prediction
+#' point and columns for the estimate, error and requested quantiles; with
+#' \code{summary = FALSE}, a draws-by-point matrix.
 #'
 #' @importFrom stats fitted
 #'
@@ -53,7 +56,7 @@ fitted.bayesnecfit <- function(object, newdata = NULL, re_formula = NULL,
                                robust = FALSE, probs = c(0.025, 0.975), ...) {
   scale <- match.arg(scale)
   check_newdata_disp(object$bayesnecformula, newdata)
-  fit <- pull_brmsfit(object)
+  fit <- object$fit
   if (!is_factorised_count_formula(object$bayesnecformula, fit$family) ||
       scale == "linear" || !is.null(dpar) || !is.null(nlpar)) {
     return(fitted(

@@ -253,7 +253,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
   check_ecnsec_range(object, nsec, nsec_use, range(newdata_list$x_vec),
                      x_range, xform)
 
-  p_samples <- posterior_epred(object,
+  p_samples <- estimator_epred(object,
                                newdata = newdata_list$newdata,
                                re_formula = if (is.null(object$re_formula)) NA
                                  else object$re_formula)
@@ -261,7 +261,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
     object, resolution = 2, x_range = c(nsec_use, nsec_use)
   )
 
-  pred_val_nsec <- posterior_epred(object,
+  pred_val_nsec <- estimator_epred(object,
                                    newdata = newdat_nsec$newdata,
                                    re_formula = if (is.null(object$re_formula)) NA
                                      else object$re_formula)
@@ -272,7 +272,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
   # pairs row i across calls only because each call thins by the stored index.
   control_draws <- control_posterior(
     object, newdata_list$newdata,
-    function(nd) posterior_epred(
+    function(nd) estimator_epred(
       object, newdata = nd,
       re_formula = if (is.null(object$re_formula)) NA else object$re_formula
     ), x_at = control_reading$value

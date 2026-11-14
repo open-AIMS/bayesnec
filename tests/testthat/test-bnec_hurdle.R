@@ -493,6 +493,32 @@ test_that("the hurdle methods run on a growth disp() term (#410)", {
   expect_s3_class(autoplot(fit), "ggplot")
 })
 
+test_that("hurdle predictions forward draw and newdata settings", {
+  skip_on_cran()
+  fit <- disp_hurdle_fixture()$fit
+  nd <- bnec_newdata(fit, resolution = 6)
+  for (which in c("combined", "growth", "survival")) {
+    expect_equal(dim(posterior_epred(fit, which = which, ndraws = 4,
+                                     resolution = 6)), c(4L, 6L))
+    expect_equal(dim(posterior_epred(fit, which = which, ndraws = 4,
+                                     newdata = nd)), c(4L, 6L))
+    expect_equal(dim(posterior_predict(fit, which = which, ndraws = 4,
+                                       newdata = nd)), c(4L, 6L))
+    expect_equal(dim(fitted(fit, which = which, summary = FALSE,
+                            ndraws = 4, newdata = nd)), c(4L, 6L))
+    expect_equal(dim(predict(fit, which = which, summary = FALSE,
+                             ndraws = 4, newdata = nd)), c(4L, 6L))
+  }
+  expect_equal(posterior_epred(fit, which = "growth", newdata = nd,
+                               draw_ids = 1:4),
+               posterior_epred(fit$growth, newdata = nd,
+                               re_formula = NA, draw_ids = 1:4))
+  formulas <- formula(fit)
+  expect_named(formulas, c("growth", "survival"))
+  expect_s3_class(formulas$growth, "bayesnecformula")
+  expect_s3_class(formulas$survival, "bayesnecformula")
+})
+
 test_that("bnec_joint builds the growth disp() term into the joint model (#410)", {
   skip_on_cran()
   # Mock bnec() so the joint refit builds without sampling. Its shape formula

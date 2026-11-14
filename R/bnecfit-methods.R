@@ -31,11 +31,14 @@
 #' equations that failed to fit, are joined; see \code{\link{bnec_record}} and
 #' \code{\link{failed_models}}.
 #'
-#' @param x An object of class \code{\link{bnecfit}}.
-#' @param ... Additional objects of class \code{\link{bnecfit}}.
+#' @param x An object of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}.
+#' @param ... Further ordinary fits or model sets fitted to the same data.
 #'
-#' @return A \code{\link{bayesnecfit}} where only one distinct model remains,
-#' otherwise a \code{\link{bayesmanecfit}}.
+#' @return On a \code{bayesnecfit} or \code{bayesmanecfit}, a
+#' \code{bayesnecfit} where one distinct equation remains, or a
+#' \code{bayesmanecfit} otherwise. The abstract \code{bnecfit} method
+#' raises an error naming any other class.
 #'
 #' @examples
 #' \dontrun{
@@ -57,6 +60,29 @@
 #'
 #' @export
 c.bnecfit <- function(x, ...) {
+  stop("c() has no combination method for class ", class(x)[1],
+       ". Use c() on bayesnecfit or bayesmanecfit objects, or combine",
+       " grouped and hurdle fits with their own methods.", call. = FALSE)
+}
+
+#' Combine an ordinary fit or model set with other ordinary fits
+#'
+#' @param x A \code{bayesnecfit}.
+#' @param ... Further ordinary fits or model sets.
+#' @return A \code{bayesnecfit} for one equation, or a
+#' \code{bayesmanecfit} for a model set.
+#' @method c bayesnecfit
+#' @export
+c.bayesnecfit <- function(x, ...) combine_bnec_fits(x, ...)
+
+#' @rdname c.bayesnecfit
+#' @param x A \code{bayesmanecfit}.
+#' @method c bayesmanecfit
+#' @export
+c.bayesmanecfit <- function(x, ...) combine_bnec_fits(x, ...)
+
+#' @noRd
+combine_bnec_fits <- function(x, ...) {
   dots <- list(...)
   inputs <- c(list(x), dots)
   if (any(vapply(inputs, is_bayesnecjointfit, logical(1)))) {
@@ -65,6 +91,15 @@ c.bnecfit <- function(x, ...) {
          " factor in one posterior, so it cannot join a set. To compare",
          " equations, fit them as a set with bnec_group(), then refit the",
          " equation each level favours with bnec_joint().", call. = FALSE)
+  }
+  ordinary <- vapply(inputs, function(z) {
+    inherits(z, "bayesnecfit") || inherits(z, "bayesmanecfit")
+  }, logical(1))
+  if (!all(ordinary)) {
+    bad <- class(inputs[[which(!ordinary)[1]]])[1]
+    stop("c() cannot combine class ", bad, " with an ordinary fit or model",
+         " set. Combine fits of that class through its own c() method.",
+         call. = FALSE)
   }
   if (!all(c(is_bnecfit(x), sapply(dots, is_bnecfit)))) {
     stop("All objects must be an object fitted by bnec.")
@@ -142,7 +177,9 @@ c.bnecfit <- function(x, ...) {
 #' @param e1 An object of class \code{\link{bnecfit}}.
 #' @param e2 An object of class \code{\link{bnecfit}}.
 #'
-#' @return An object of class \code{\link{bayesmanecfit}}.
+#' @return On an ordinary fit or model set, a \code{bayesnecfit} where one
+#' equation remains, or a \code{bayesmanecfit} otherwise. The abstract
+#' \code{bnecfit} method raises an error naming any other class.
 #'
 #' @examples
 #' \dontrun{
@@ -164,14 +201,36 @@ c.bnecfit <- function(x, ...) {
 #'
 #' @export
 `+.bnecfit` <- function(e1, e2) {
+  stop("+ has no combination method for class ", class(e1)[1],
+       ". Use + on bayesnecfit or bayesmanecfit objects, or combine",
+       " grouped and hurdle fits with their own methods.", call. = FALSE)
+}
+
+#' @noRd
+add_bnec_fits <- function(e1, e2) {
   if (is.null(e2)) {
     return(e1)
   }
   if (!all(sapply(list(e1, e2), is_bnecfit))) {
     stop("Cannot add \"", class(e2)[1], "\" objects.")
   }
-  c(e1, e2)
+  combine_bnec_fits(e1, e2)
 }
+
+#' Add an ordinary fit to another ordinary fit or model set
+#'
+#' @param e1 A \code{bayesnecfit} or \code{bayesmanecfit}.
+#' @param e2 A \code{bayesnecfit} or \code{bayesmanecfit}.
+#' @return A \code{bayesnecfit} for one equation, or a
+#' \code{bayesmanecfit} for a model set.
+#' @method + bayesnecfit
+#' @export
+`+.bayesnecfit` <- add_bnec_fits
+
+#' @rdname plus-.bayesnecfit
+#' @method + bayesmanecfit
+#' @export
+`+.bayesmanecfit` <- add_bnec_fits
 
 #' Update an object of class \code{\link{bnecfit}} as fitted by function
 #' \code{\link{bnec}}.
@@ -234,10 +293,10 @@ c.bnecfit <- function(x, ...) {
 #' @param loo_controls As for \code{\link{bnec}}. An element not named is
 #' taken from \code{object}, as \code{\link{amend}} describes.
 #'
-#' @return An object of class \code{\link{bnecfit}}. If one single model is
-#' returned, then also an object of class \code{\link{bayesnecfit}}; otherwise,
-#' if multiple models are returned, also an object of class
-#' \code{\link{bayesmanecfit}}.
+#' @return On a \code{bayesnecfit} or \code{bayesmanecfit}, a refitted
+#' \code{bayesnecfit} if one equation succeeds or a \code{bayesmanecfit}
+#' if several succeed. The abstract \code{bnecfit} method raises an error
+#' naming any other class.
 #'
 #' @importFrom stats update
 #'
@@ -261,6 +320,41 @@ c.bnecfit <- function(x, ...) {
 update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
                            x_range = NULL, resolution = NULL, sig_val = NULL,
                            loo_controls, force_fit = FALSE, ...) {
+  stop("update() has no refit method for class ", class(object)[1],
+       ". Use update() on a bayesnecfit, bayesmanecfit, bayesnecgroupfit,",
+       " bayesnechurdlefit or bayesnecjointfit.", call. = FALSE)
+}
+
+#' Refit a single \code{bayesnecfit}
+#'
+#' @inheritParams update.bnecfit
+#' @return A \code{bayesnecfit} if the equation refits successfully.
+#' @method update bayesnecfit
+#' @export
+update.bayesnecfit <- function(object, newdata = NULL, recompile = NULL,
+                               x_range = NULL, resolution = NULL,
+                               sig_val = NULL, loo_controls,
+                               force_fit = FALSE, ...) {
+  update_bnec_fit(object, newdata = newdata, recompile = recompile,
+                  x_range = x_range, resolution = resolution,
+                  sig_val = sig_val,
+                  loo_controls = if (missing(loo_controls)) NULL else
+                    loo_controls, force_fit = force_fit, ...)
+}
+
+#' Refit a \code{bayesmanecfit} model set
+#'
+#' @inheritParams update.bnecfit
+#' @return A \code{bayesmanecfit} if several equations refit, or a
+#' \code{bayesnecfit} if only one succeeds.
+#' @method update bayesmanecfit
+#' @export
+update.bayesmanecfit <- update.bayesnecfit
+
+#' @noRd
+update_bnec_fit <- function(object, newdata = NULL, recompile = NULL,
+                            x_range = NULL, resolution = NULL, sig_val = NULL,
+                            loo_controls, force_fit = FALSE, ...) {
   original_class <- grep("bayes", class(object), value = TRUE)
   if (!original_class %in% c("bayesnecfit", "bayesmanecfit")) {
     stop("Object is not of class bayesnecfit or bayesmanecfit.")

@@ -1,15 +1,12 @@
-#' One level of a joint refit, seen as an ordinary fit
+#' One level of a joint refit for toxicity estimators
 #'
-#' Presents one level of a joint refit as a \code{\link{bayesnecfit}}, so that
-#' the existing \code{\link{ecx}}, \code{\link{nsec}} and \code{\link{nec}}
-#' methods run on it unchanged rather than being written again. The class is
-#' internal and adds only the fields that name the level.
+#' Holds the fields that toxicity estimators read for one level. The internal
+#' class exposes only those estimators and its predictor grid.
 #'
 #' @param object An object of class \code{\link{bayesnecjointfit}}.
 #' @param level One level of \code{object$group_var}.
 #'
-#' @return An object of class \code{bayesnecjointlevel}, inheriting from
-#' \code{\link{bayesnecfit}}.
+#' @return An internal \code{bayesnecjointlevel} adapter.
 #'
 #' @noRd
 joint_level_fit <- function(object, level) {
@@ -20,7 +17,7 @@ joint_level_fit <- function(object, level) {
               level_spec = object$level_spec, retained_data = NULL,
               level_x = joint_level_x(object, level),
               x_control = recorded_x_control(object))
-  out <- allot_class(out, c("bayesnecjointlevel", "bayesnecfit", "bnecfit"))
+  out <- allot_class(out, "bayesnecjointlevel")
   # Keep the sampled breakpoint only where it is also the no-effect estimate.
   if (sampled_nec_is_no_effect(model)) {
     out$ne_posterior <- joint_level_draws(object, "nec", level)
@@ -29,6 +26,66 @@ joint_level_fit <- function(object, level) {
     out$ne_type <- "NSEC"
   }
   out
+}
+
+#' Label the equations selected for a joint refit
+#'
+#' @param fit A \code{bayesnecjointfit}.
+#' @return A character label pairing each level with its equation.
+#' @noRd
+#' @export
+group_model_label.bayesnecjointfit <- function(fit) {
+  paste(paste(fit$levels, unname(fit$models), sep = " = "),
+        collapse = ", ")
+}
+
+#' NEC draws or summaries for one joint level
+#'
+#' @param object A \code{bayesnecjointlevel} adapter.
+#' @param ... Estimator settings.
+#' @return A numeric summary or posterior vector for this level.
+#' @method nec bayesnecjointlevel
+#' @export
+nec.bayesnecjointlevel <- function(object, ...) nec.bayesnecfit(object, ...)
+
+#' NSEC draws or summaries for one joint level
+#'
+#' @inheritParams nec.bayesnecjointlevel
+#' @return A numeric summary or posterior vector for this level.
+#' @method nsec bayesnecjointlevel
+#' @export
+nsec.bayesnecjointlevel <- function(object, ...) nsec.bayesnecfit(object, ...)
+
+#' ECx draws or summaries for one joint level
+#'
+#' @inheritParams nec.bayesnecjointlevel
+#' @return A numeric summary or posterior vector for this level.
+#' @method ecx bayesnecjointlevel
+#' @export
+ecx.bayesnecjointlevel <- function(object, ...) ecx.bayesnecfit(object, ...)
+
+#' ECNSEC draws or summaries for one joint level
+#'
+#' @inheritParams nec.bayesnecjointlevel
+#' @return A numeric summary or posterior vector for this level.
+#' @method ecnsec bayesnecjointlevel
+#' @export
+ecnsec.bayesnecjointlevel <- function(object, ...) ecnsec.bnecfit(object, ...)
+
+#' Posterior predictions used inside toxicity estimators
+#'
+#' @param object A fit or one joint level.
+#' @param newdata Predictor data.
+#' @param ... Passed to posterior prediction.
+#' @return A draws-by-observation matrix.
+#' @noRd
+estimator_epred <- function(object, newdata, ...) {
+  if (!inherits(object, "bayesnecjointlevel")) {
+    return(posterior_epred(object, newdata = newdata, ...))
+  }
+  check_newdata_disp(object$bayesnecformula, newdata)
+  factorised_count_epred(object$fit, object$bayesnecformula,
+                         newdata = newdata, ...)
 }
 
 #' The recorded predictor values of one level of a joint refit
@@ -225,10 +282,13 @@ joint_level_spec <- function(object, predict_levels = NULL) {
        predict_levels = predict_levels, inds = object$level_spec$inds)
 }
 
+#' @return A predictor grid with rows for every joint level.
 #' @noRd
 #' @method bnec_newdata bayesnecjointfit
 #' @export
-bnec_newdata.bayesnecjointfit <- function(x, resolution = 100, x_range = NA) {
+bnec_newdata.bayesnecjointfit <- function(x, resolution = 100, x_range = NA,
+                                          ...) {
+  check_unused_dots(list(...), "bnec_newdata")
   check_args_newdata(resolution, x_range)
   prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
                   resolution = resolution,
@@ -236,11 +296,13 @@ bnec_newdata.bayesnecjointfit <- function(x, resolution = 100, x_range = NA) {
                   x_control = recorded_x_control(x))$newdata
 }
 
+#' @return A predictor grid containing only this adapter's level.
 #' @noRd
 #' @method bnec_newdata bayesnecjointlevel
 #' @export
 bnec_newdata.bayesnecjointlevel <- function(x, resolution = 100,
-                                            x_range = NA) {
+                                            x_range = NA, ...) {
+  check_unused_dots(list(...), "bnec_newdata")
   check_args_newdata(resolution, x_range)
   # Default to the level's own range, as bnec_group() gives each level.
   if (all(is.na(x_range)) && length(x$level_x)) {
@@ -519,8 +581,8 @@ joint_level_curve <- function(object, level, resolution = 1000,
     grid$newdata[[grid$x_var]] <- as.numeric(inverse(x_seq))
     grid$x_seq <- x_seq
   }
-  y <- fitted(lvl_fit, newdata = grid$newdata, robust = TRUE,
-              re_formula = NA, scale = "response")
+  y <- fitted.bayesnecfit(lvl_fit, newdata = grid$newdata, robust = TRUE,
+                          re_formula = NA, scale = "response")
   data.frame(x = grid$x_seq, Estimate = y[, "Estimate"],
              Q2.5 = y[, "Q2.5"], Q97.5 = y[, "Q97.5"])
 }
@@ -976,13 +1038,16 @@ check_chains.bayesnecjointfit <- function(x, filename = NA, ...) {
   invisible(NULL)
 }
 
+#' @return Invisibly, a named list of plots for the joint levels.
 #' @noRd
 #' @method check_priors bayesnecjointfit
 #' @importFrom ggplot2 ggtitle
 #' @importFrom grDevices devAskNewPage pdf dev.cur dev.list dev.off
 #' @importFrom chk chk_character
 #' @export
-check_priors.bayesnecjointfit <- function(object, filename = NA, ask = TRUE) {
+check_priors.bayesnecjointfit <- function(object, filename = NA, ask = TRUE,
+                                         ...) {
+  check_unused_dots(list(...), "check_priors")
   if (!is.na(filename)) {
     chk_character(filename)
   }

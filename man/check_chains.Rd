@@ -24,6 +24,9 @@ empty character string will indicate the user wants to save the plots.}
 }
 \value{
 No return value, generates a plot or writes a pdf to file.
+
+No value; draws one chain page per stored equation, or writes
+those pages to \code{filename}.
 }
 \description{
 Plots HMC chains for a \code{\link{bayesnecfit}} or

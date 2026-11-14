@@ -2,9 +2,27 @@
 % Please edit documentation in R/check_sampling.R
 \name{check_sampling}
 \alias{check_sampling}
+\alias{check_sampling.bayesnecfit}
+\alias{check_sampling.bayesmanecfit}
+\alias{check_sampling.bayesnechurdlefit}
+\alias{check_sampling.bayesnecgroupfit}
+\alias{check_sampling.bayesnecjointfit}
+\alias{check_sampling.default}
 \title{Sampler diagnostics for every candidate model}
 \usage{
 check_sampling(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+
+\method{check_sampling}{bayesnecfit}(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+
+\method{check_sampling}{bayesmanecfit}(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+
+\method{check_sampling}{bayesnechurdlefit}(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+
+\method{check_sampling}{bayesnecgroupfit}(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+
+\method{check_sampling}{bayesnecjointfit}(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+
+\method{check_sampling}{default}(x, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}},
@@ -16,6 +34,8 @@ check_sampling(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
 \item{ess_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
 \item{divergence_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
+
+\item{...}{Unused by the default method, which names unsupported classes.}
 }
 \value{
 A \code{\link[base]{data.frame}} with one row per candidate model and
@@ -26,6 +46,18 @@ same table includes a leading \code{level} column. For a
 \code{\link{bayesnechurdlefit}}, a named \code{\link[base]{list}} of two
 such tables --- \code{growth} and \code{survival} --- as
 \code{\link{rhat}} also returns for that class.
+
+A one-row sampler diagnostic table for this fit.
+
+A sampler diagnostic table with one row per candidate model.
+
+A named list of growth and survival diagnostic tables.
+
+A diagnostic table with one row per candidate and level.
+
+A diagnostic table with one row per joint level.
+
+An error naming the unsupported class.
 }
 \description{
 Reports, per candidate model, whether the sampler explored the posterior:

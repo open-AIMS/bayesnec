@@ -8,7 +8,8 @@
 #' @param object An object of class \code{\link{bayesnecfit}},
 #' \code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}} as returned by
 #' \code{\link{bnec}}, or of class \code{\link{bayesnecjointfit}} as returned
-#' by \code{\link{bnec_joint}}.
+#' by \code{\link{bnec_joint}}, or of class
+#' \code{\link{bayesnecgroupfit}} as returned by \code{\link{bnec_group}}.
 #' @param ... Not used. Any argument supplied here is refused; see Details.
 #'
 #' @details The highest-weighted candidate contributes most to the
@@ -40,7 +41,10 @@
 #' with each component reduced to its own highest-weighted model. For a
 #' \code{\link{bayesnecjointfit}}, \code{object} unchanged, because each level
 #' already has a single equation, the one its own model weights favoured
-#' when \code{\link{bnec_joint}} chose it.
+#' when \code{\link{bnec_joint}} chose it. For a
+#' \code{\link{bayesnecgroupfit}}, a named list of selected
+#' \code{\link{bayesnecfit}} objects by level, or one such fit when
+#' \code{level} names a level.
 #'
 #' @seealso \code{\link{pull_out}}, \code{\link{screen_models}},
 #' \code{\link{check_fit}}, \code{\link{summary}}
@@ -61,7 +65,7 @@ pull_best <- function(object, ...) {
   # depend on the class or follow the selection report. A `model` argument
   # would otherwise fail in pull_out() as "matched by multiple actual
   # arguments".
-  if (...length() > 0) {
+  if (...length() > 0 && !inherits(object, "bayesnecgroupfit")) {
     supplied <- ...names()
     supplied <- supplied[nzchar(supplied)]
     stop("pull_best() takes the object and nothing else",
@@ -79,9 +83,8 @@ pull_best <- function(object, ...) {
 #' @noRd
 #' @export
 pull_best.default <- function(object, ...) {
-  stop("pull_best() applies to an object of class bayesnecfit, bayesmanecfit",
-       " or bayesnechurdlefit, as returned by bnec(). A bayesnecgroupfit holds",
-       " one such fit per level in `fits`; select on each of those.",
+  stop("pull_best() applies to a fit of class bayesnecfit, bayesmanecfit,",
+       " bayesnechurdlefit, bayesnecgroupfit or bayesnecjointfit.",
        call. = FALSE)
 }
 

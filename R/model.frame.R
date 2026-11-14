@@ -88,6 +88,8 @@ model.frame.bayesnecfit <- function(formula, ...) {
 #' @method model.frame bayesmanecfit
 #'
 #' @inherit model.frame description return examples details
+#' @return For a \code{bayesmanecfit}, the fitted data frame of the named
+#' equation.
 #'
 #' @importFrom stats model.frame
 #' 
@@ -95,9 +97,5 @@ model.frame.bayesnecfit <- function(formula, ...) {
 #'
 #' @export
 model.frame.bayesmanecfit <- function(formula, model, ...) {
-  chk_character(model)  
-  pull_out(formula, model) |>
-    suppressMessages() |>
-    suppressWarnings() |>
-    model.frame()
+  model.frame(selected_model_component(formula, model)$fit)
 }

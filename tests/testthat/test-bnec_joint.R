@@ -1016,8 +1016,8 @@ test_that("joint posterior comparisons use the levels' matching draws", {
     level_fit <- joint_level_fit(f$joint, lev)
     grid <- bnec_newdata(level_fit, resolution = 6,
                          x_range = range(f$data$x))
-    expected <- brms::posterior_epred(level_fit, newdata = grid,
-                                      re_formula = NA, draw_ids = 1:20)
+    expected <- estimator_epred(level_fit, newdata = grid,
+                                re_formula = NA, draw_ids = 1:20)
     expect_equal(fixed$posterior_list[[lev]], expected, label = lev)
   }
   expect_true(any(fixed$diff_list[["a-b"]] != 0))
@@ -1738,6 +1738,34 @@ test_that("the joint predictions are those of the fit at each row's level", {
   expect_equal(fitted(j, newdata = grid), fitted(j$fit, newdata = grid))
   expect_equal(dim(posterior_predict(j, newdata = nd)),
                c(brms::ndraws(j$fit), 2L))
+})
+
+test_that("a joint-level adapter exposes estimators only", {
+  level <- joint_level_fit(joint_split(), "a")
+  expect_identical(class(level), "bayesnecjointlevel")
+  expect_false(inherits(level, "bayesnecfit"))
+  for (name in c("nec", "nsec", "ecx", "ecnsec")) {
+    expect_true(is.function(getS3method(name, "bayesnecjointlevel")))
+  }
+  for (name in c("fitted", "predict", "posterior_epred",
+                 "posterior_predict", "check_fit", "pp_check", "rhat",
+                 "check_chains", "check_priors", "summary", "update", "c")) {
+    expect_null(getS3method(name, "bayesnecjointlevel", optional = TRUE))
+  }
+})
+
+test_that("joint predictions use only rows of a requested level", {
+  skip_on_cran()
+  j <- composed_gate_fixture()$joint
+  rows <- joint_level_rows(j)
+  nd <- j$fit$data[rows$b[1:3], c("x", "site"), drop = FALSE]
+  expect_equal(nrow(fitted(j, newdata = nd)), 3L)
+  expect_equal(nrow(predict(j, newdata = nd)), 3L)
+  expect_equal(dim(posterior_epred(j, newdata = nd, ndraws = 4)),
+               c(4L, 3L))
+  expect_equal(dim(posterior_predict(j, newdata = nd, ndraws = 4)),
+               c(4L, 3L))
+  expect_true(all(as.character(nd$site) == "b"))
 })
 
 test_that("pp_check() on a joint refit checks each level on its own rows", {

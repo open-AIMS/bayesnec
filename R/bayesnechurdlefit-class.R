@@ -44,6 +44,8 @@ is_bayesnechurdlefit <- function(x) {
 #' the grid to, or \code{NULL}.
 #' @param x_values A grid to predict at, used as given. It overrides
 #' \code{resolution}, \code{x_range} and \code{grid_limits}.
+#' @param re_formula Optional group-effects setting for both components.
+#' @param ... Passed to each component posterior method.
 #' @details Draws are paired by row, which is valid because the two posteriors
 #' are independent. Where the fits hold different numbers of draws, both are
 #' truncated to the smaller.
@@ -64,7 +66,8 @@ is_bayesnechurdlefit <- function(x) {
 #' @noRd
 hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
                                    x_control = "own", levels = TRUE,
-                                   grid_limits = NULL, x_values = NULL) {
+                                   grid_limits = NULL, x_values = NULL,
+                                   re_formula = NULL, ...) {
   if (!is.null(x_values)) x_range <- range(x_values)
   spec <- if (levels && is.null(object$observed_group)) {
     observed_level_spec(object)
@@ -78,7 +81,8 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
       hurdle_component_preds(observed_level_fit(object, spec, i),
                              resolution = resolution, x_range = x_range,
                              x_control = x_control, grid_limits = grid_limits,
-                             x_values = x_values)
+                             x_values = x_values,
+                             re_formula = re_formula, ...)
     })
     n <- min(vapply(levels, function(x) nrow(x$combined), integer(1)))
     owner <- observed_assignment(spec, n)
@@ -146,16 +150,18 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
       nd_s$newdata[[v]] <- object$observed_group[[v]]
     }
   }
-  re_formula <- if (is.null(object$re_formula)) NA else object$re_formula
+  re_formula <- if (is.null(re_formula)) {
+    if (is.null(object$re_formula)) NA else object$re_formula
+  } else re_formula
   g <- posterior_epred(object$growth, newdata = nd_g$newdata,
-                       re_formula = re_formula)
+                       re_formula = re_formula, ...)
   s <- posterior_epred(object$survival, newdata = nd_s$newdata,
-                       re_formula = re_formula)
+                       re_formula = re_formula, ...)
   x_at <- if (is.numeric(x_control)) control_reading$value else
     control_x(object)
   epred_part <- function(part) {
     function(nd) posterior_epred(part, newdata = nd,
-                                re_formula = re_formula)
+                                re_formula = re_formula, ...)
   }
   c_g <- control_posterior(object$growth, nd_g$newdata, epred_part(object$growth),
                            x_at = x_at)

@@ -81,9 +81,9 @@ test_that("arguments other than the object are refused before anything else", {
                         silent = TRUE))
 })
 
-test_that("classes other than the three fitted ones are refused", {
-  expect_error(pull_best(list(a = 1)), "applies to an object of class")
-  expect_error(pull_best(manec_example$mod_stats), "applies to an object")
+test_that("objects outside the supported fit classes are refused", {
+  expect_error(pull_best(list(a = 1)), "applies to a fit of class")
+  expect_error(pull_best(manec_example$mod_stats), "applies to a fit of class")
 })
 
 test_that("a hurdle fit selects within each component", {

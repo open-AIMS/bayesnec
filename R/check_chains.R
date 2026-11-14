@@ -109,6 +109,8 @@ plot_chains <- function(fit, pars, title) {
 #' @method check_chains bayesmanecfit
 #'
 #' @inherit check_chains description return examples
+#' @return No value; draws one chain page per stored equation, or writes
+#' those pages to \code{filename}.
 #'
 #' @importFrom grDevices pdf dev.off
 #' @importFrom chk chk_character
@@ -120,12 +122,16 @@ check_chains.bayesmanecfit <- function(x, filename = NA, ...) {
   }
   if (!is.na(filename)) {
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE)
+    pdf_dev <- grDevices::dev.cur()
+    on.exit(if (pdf_dev %in% grDevices::dev.list())
+      grDevices::dev.off(pdf_dev), add = TRUE)
   }
   for (m in seq_len(length(x$mod_fits))) {
-    check_chains(x = pull_out(x, model = names(x$mod_fits)[m]))
+    fit <- x$mod_fits[[m]]$fit
+    plot_chains(fit, rownames(brms::fixef(fit)), names(x$mod_fits)[m])
   }
   if (!is.na(filename)) {
-    dev.off()
+    grDevices::dev.off(pdf_dev)
     message("Chain plots saved to file ", filename, ".pdf")
   }
 }
