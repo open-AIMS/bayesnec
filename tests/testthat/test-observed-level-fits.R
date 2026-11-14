@@ -366,8 +366,14 @@ test_that("logged predictors store no-effect draws on the fitted scale", {
                                      posterior = TRUE, resolution = 40))
   expect_equal(as.numeric(fit$ne_posterior), as.numeric(fitted),
                tolerance = 1e-6)
-  expect_equal(exp(as.numeric(fitted)), as.numeric(recorded),
-               tolerance = 1e-6)
+  cens <- attr(recorded, "censored")
+  identified <- !cens$above & !cens$below
+  expect_identical(attr(fitted, "censored")$above, cens$above)
+  expect_identical(attr(fitted, "censored")$below, cens$below)
+  expect_equal(exp(as.numeric(fitted)[identified]),
+               as.numeric(recorded)[identified], tolerance = 1e-6)
+  expect_equal(as.numeric(fitted)[!identified],
+               as.numeric(recorded)[!identified])
   warnings <- character()
   error <- withCallingHandlers(
     tryCatch(ecx(fit, x_control = 0, resolution = 20),
