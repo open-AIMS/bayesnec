@@ -144,7 +144,8 @@
 #' finite value, so an entry falling among such draws is the end of the
 #' prediction range rather than a quantile. With \code{posterior = TRUE},
 #' draws censored above the range are \code{Inf} and those censored below
-#' are \code{-Inf}; attribute \code{"censored"} records their bounds. Attribute \code{"censored_summary"} marks
+#' are \code{-Inf}; attribute \code{"censored"} records their bounds.
+#' Attribute \code{"censored_summary"} marks
 #' which entries those are and states how many draws lie beyond each end.
 #'
 #' Under the default \code{asymptote_observed = TRUE}, the \code{nec} prior is

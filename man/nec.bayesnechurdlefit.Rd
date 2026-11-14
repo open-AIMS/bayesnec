@@ -61,7 +61,9 @@ terms default to \code{"mixture"}.}
 }
 \value{
 A vector containing the estimated no-effect value, including upper
-and lower credible interval bounds.
+and lower credible interval bounds, or one value per draw with
+\code{posterior = TRUE}. Censored draws are \code{Inf} above the
+search range and \code{-Inf} below it.
 }
 \description{
 Extracts the predicted NEC value from a \code{\link{bayesnechurdlefit}}

@@ -108,8 +108,10 @@ taken over the prediction range before it is extended, so a limit beyond
 the data does not change the estimate.}
 }
 \value{
-A vector containing the estimated ECx value, including upper and
-lower 95\% credible interval bounds.
+The ECx estimate and credible bounds, or with
+\code{posterior = TRUE} one value per draw. A draw censored above the
+search range is \code{Inf}; one censored below it is \code{-Inf}. The
+\code{"censored"} attribute records the bounds and affected draws.
 }
 \description{
 Extracts the predicted ECx value as desired from an object of class
@@ -151,8 +153,8 @@ rearranges to the same reference and which permits a value above 100 per
 cent rather than truncating it, so \code{ecx_val} is not capped at 100.
 
 Where the curve does not reach the target anywhere in the predictor range
-the ECx is not identified and \code{NA} is returned, with a warning
-reporting how many draws were affected.
+the ECx is not identified. With \code{posterior = TRUE} the draw is
+\code{Inf}, and a warning reports how many draws were affected.
 
 The curve is searched on a grid of recorded concentrations. Where
 \code{crf()} transforms the predictor inline, as in
@@ -213,6 +215,9 @@ that its estimate equals that value; it is recorded as lying beyond it. The
 summary is then censored: the draw keeps its rank and is given no value, so
 a reported quantile that falls among such draws is the end of the prediction
 range rather than a quantile of the draws that did reach the target.
+With \code{posterior = TRUE}, censored draws are returned as \code{Inf}
+or \code{-Inf}, so \code{sort()} and \code{quantile()} retain their
+positions. Attribute \code{"censored"} records their bounds and ends.
 Attribute \code{"censored_summary"} marks which entries those are, and
 states how many draws lie beyond each end and where the ends are. A draw
 whose curve had already passed the target where the range begins is recorded
