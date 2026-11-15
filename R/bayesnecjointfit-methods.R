@@ -88,6 +88,20 @@ estimator_epred <- function(object, newdata, ...) {
                          newdata = newdata, ...)
 }
 
+#' Refuse fitted values from an internal joint level
+#'
+#' @param object An internal \code{bayesnecjointlevel} adapter.
+#' @param ... Unused.
+#' @return An error directing the caller to the joint refit.
+#' @method fitted bayesnecjointlevel
+#' @importFrom stats fitted
+#' @export
+fitted.bayesnecjointlevel <- function(object, ...) {
+  stop("fitted() is unavailable for a bayesnecjointlevel adapter.",
+       " Use fitted() on the joint refit with level-specific newdata.",
+       call. = FALSE)
+}
+
 #' The recorded predictor values of one level of a joint refit
 #'
 #' The refit's data span every level's concentrations, so a level's grid and

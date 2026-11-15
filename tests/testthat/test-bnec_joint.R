@@ -1806,7 +1806,9 @@ test_that("a joint-level adapter exposes estimators only", {
   for (name in c("nec", "nsec", "ecx", "ecnsec")) {
     expect_true(is.function(getS3method(name, "bayesnecjointlevel")))
   }
-  for (name in c("fitted", "predict", "posterior_epred",
+  expect_error(stats::fitted(level),
+               "unavailable for a bayesnecjointlevel")
+  for (name in c("predict", "posterior_epred",
                  "posterior_predict", "check_fit", "pp_check", "rhat",
                  "check_chains", "check_priors", "summary", "update", "c")) {
     expect_null(getS3method(name, "bayesnecjointlevel", optional = TRUE))
