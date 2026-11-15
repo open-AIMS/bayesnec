@@ -71,8 +71,11 @@ A vector containing the estimated no-effect value, including upper
 and lower 95\% credible interval bounds (or other interval as specified by
 prob_vals). Where any posterior draw lies beyond the range the model was
 predicted over, that draw keeps its rank in the summary and is given no
-value, so an entry falling among such draws is the end of the prediction
-range rather than a quantile. Attribute \code{"censored_summary"} marks
+finite value, so an entry falling among such draws is the end of the
+prediction range rather than a quantile. With \code{posterior = TRUE},
+draws censored above the range are \code{Inf} and those censored below
+are \code{-Inf}; attribute \code{"censored"} records their bounds.
+Attribute \code{"censored_summary"} marks
 which entries those are and states how many draws lie beyond each end.
 
 Under the default \code{asymptote_observed = TRUE}, the \code{nec} prior is
@@ -209,7 +212,9 @@ bound, which is right-censoring in the ordinary sense. An NSEC or an ECx is
 read off a fitted curve: a draw whose curve never reaches the target has no
 such concentration in the range and may have none at any concentration, so
 the draw is not capped at the bound, it is recorded as lying beyond it. Both
-are reported the same way here, because neither claims a value for the draw.
+are reported the same way in the summary. With \code{posterior = TRUE},
+both return \code{Inf} or \code{-Inf} for a censored draw, which keeps
+its position in \code{sort()} and \code{quantile()}.
 
 Which quantile estimator is used depends on whether anything is censored.
 A posterior with no beyond-range draw is summarised with

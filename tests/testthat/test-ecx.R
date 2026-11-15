@@ -231,14 +231,17 @@ test_that("hormesis_def is refused by name rather than absorbed by dots", {
                "hormesis_def has been removed")
 })
 
-test_that("a target the curve never reaches returns NA with a warning", {
+test_that("a target the curve never reaches is censored above with a warning", {
   # A direct target above every predicted response must yield no crossing,
   # not the nearest grid point or the control concentration.
   skip_on_cran()
   expect_warning(out <- ecx(nec4param, ecx_val = 100, type = "direct",
                             resolution = 100, posterior = TRUE),
                  "does not reach")
-  expect_true(all(is.na(out)))
+  draw_cens <- attr(out, "censored")
+  expect_true(all(out == Inf))
+  expect_true(all(draw_cens$above))
+  expect_false(any(draw_cens$below))
   # Censored draws contribute ranks, not numerical bound values. When every
   # rank lies above the range, all summary entries report the upper bound.
   expect_warning(est <- ecx(nec4param, ecx_val = 100, type = "direct",

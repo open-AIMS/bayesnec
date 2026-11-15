@@ -348,6 +348,22 @@ has_censoring <- function(cens) {
   !is.null(cens) && (any(cens$above) || any(cens$below))
 }
 
+#' Return censored draws at the appropriate infinite end
+#'
+#' The record, not a missing value or the sign of a transformation, identifies
+#' censored draws. Leave an unrecorded missing draw unchanged.
+#'
+#' @param values A numeric posterior vector.
+#' @param cens Its censoring record.
+#' @return The vector with recorded draws at infinite ends.
+#' @noRd
+censored_infinite <- function(values, cens = attr(values, "censored")) {
+  if (is.null(cens)) return(values)
+  values[cens$above] <- Inf
+  values[cens$below] <- -Inf
+  values
+}
+
 #' Quantiles of a posterior whose beyond-range draws have no value
 #'
 #' Places a censored draw at \code{Inf} or \code{-Inf} before the quantile is
@@ -1177,12 +1193,12 @@ return_nec_post <- function(m) {
   out <- unname(if (is_bayesnecfit(m)) m$ne_posterior else m$w_ne_posterior)
   map <- recorded_xform(m, NULL)
   if (identical(map, identity)) {
-    return(out)
+    return(censored_infinite(out))
   }
   cens <- attr(out, "censored")
   out <- map_draws(out, map, cens, "no-effect estimate")
   attr(out, "censored") <- xform_censoring(cens, map)
-  out
+  censored_infinite(out)
 }
 
 #' @noRd

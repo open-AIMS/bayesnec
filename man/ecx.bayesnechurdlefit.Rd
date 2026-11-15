@@ -92,7 +92,9 @@ the data does not change the estimate.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and
-lower credible interval bounds.
+lower credible interval bounds, or one value per draw with
+\code{posterior = TRUE}. Censored draws are \code{Inf} above the
+search range and \code{-Inf} below it.
 }
 \description{
 Extracts the predicted ECx value from a \code{\link{bayesnechurdlefit}}

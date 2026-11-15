@@ -317,7 +317,7 @@ expect_ecx_all_above <- function(fit, types) {
   for (type in types) {
     e <- suppressWarnings(ecx(fit, posterior = TRUE, type = type))
     cens <- attr(e, "censored")
-    expect_true(all(is.na(e)), info = type)
+    expect_true(all(e == Inf), info = type)
     expect_true(all(cens$above), info = type)
     expect_false(any(cens$below), info = type)
     est <- suppressWarnings(ecx(fit, type = type))
@@ -333,7 +333,7 @@ expect_nsec_above_but_control <- function(fit, sig_val = 0.01) {
   ns <- suppressWarnings(nsec(fit, posterior = TRUE, sig_val = sig_val))
   cens <- attr(ns, "censored")
   top <- brms::as_draws_df(fit$fit)$b_top_Intercept
-  at_control <- !is.na(ns)
+  at_control <- !cens$above & !cens$below & !is.na(ns)
   expect_identical(sum(at_control),
                    sum(top <= stats::quantile(top, sig_val)))
   expect_true(all(ns[at_control] == min(fit$fit$data$x)))

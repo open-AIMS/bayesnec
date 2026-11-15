@@ -79,7 +79,9 @@ recorded at fitting. Level controls are recorded in the result's
 \code{x_control} attribute.}
 }
 \value{
-A vector containing the estimated NSEC value and credible bounds.
+The NSEC estimate and credible bounds, or one value per draw
+with \code{posterior = TRUE}. Censored draws are \code{Inf} above the
+search range and \code{-Inf} below it.
 }
 \description{
 Extracts the predicted NSEC value from a \code{\link{bayesnechurdlefit}}

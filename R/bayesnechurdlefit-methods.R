@@ -285,7 +285,9 @@ hurdle_disp_placeholders <- function(newdata, object) {
 #' observed at one concentration is excluded. \code{pool} and
 #' \code{x_control} use the same rules as for a single fit.
 #'
-#' @return A vector containing the estimated NSEC value and credible bounds.
+#' @return The NSEC estimate and credible bounds, or one value per draw
+#' with \code{posterior = TRUE}. Censored draws are \code{Inf} above the
+#' search range and \code{-Inf} below it.
 #'
 #' @importFrom stats quantile
 #' @importFrom chk chk_logical
@@ -379,7 +381,7 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
   attr(estimate, "toxicity_estimate") <- "nsec"
   attr(estimate, "component") <- which
   attr(out, "toxicity_estimate") <- "nsec"
-  if (!posterior) estimate else out
+  if (!posterior) estimate else censored_infinite(out)
 }
 
 #' Back-transform predictor values through any function applied inside crf()

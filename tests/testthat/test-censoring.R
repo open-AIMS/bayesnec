@@ -5,6 +5,21 @@ cens_record <- function(above, below, upper = 10, lower = 0) {
   bayesnec:::censoring_record(upper, lower, above, below)
 }
 
+test_that("infinite censor values keep their rank and leave missing draws alone", {
+  x <- c(NA_real_, 3, NA_real_, NA_real_)
+  attr(x, "censored") <- cens_record(
+    above = c(FALSE, FALSE, TRUE, FALSE),
+    below = c(TRUE, FALSE, FALSE, FALSE)
+  )
+  before <- attr(x, "censored")
+  out <- bayesnec:::censored_infinite(x)
+  expect_equal(as.numeric(out), c(-Inf, 3, Inf, NA_real_))
+  expect_identical(attr(out, "censored"), before)
+  expect_equal(sort(out), c(-Inf, 3, Inf))
+  expect_error(stats::quantile(out), "missing values")
+  expect_equal(unname(stats::quantile(out[1:3], c(0, 1))), c(-Inf, Inf))
+})
+
 test_that("a posterior with no beyond-range draw is summarised as before", {
   # An absent or empty censoring record must preserve the uncensored summary
   # to the last bit.
@@ -285,6 +300,18 @@ test_that("a combined posterior censors values outside its common range", {
   expect_identical(attr(result, "censored_summary")$bound, c("", ">="))
 })
 
+test_that("mixture pooling marks values outside the shared range", {
+  a <- c(2, 2)
+  b <- c(4, 5)
+  attr(a, "censored") <- cens_record(logical(2), logical(2), upper = 3)
+  attr(b, "censored") <- cens_record(logical(2), logical(2), upper = 5)
+  out <- bayesnec:::pool_estimate_draws(
+    list(a = a, b = b), c(1, 1), "mixture", assignment = c(1, 2)
+  )
+  expect_equal(as.numeric(out), c(2, Inf))
+  expect_identical(attr(out, "censored")$above, c(FALSE, TRUE))
+})
+
 test_that("subset_censoring takes a component's share of a record", {
   cens <- cens_record(c(TRUE, FALSE, TRUE, FALSE), rep(FALSE, 4))
   out <- bayesnec:::subset_censoring(cens, c(1L, 2L))
@@ -319,7 +346,7 @@ test_that("combine_censored_min keeps the block that is inside the range", {
   s <- c(4, 5, NA_real_)
   attr(s, "censored") <- cens_record(c(FALSE, FALSE, TRUE), rep(FALSE, 3))
   out <- bayesnec:::combine_censored_min(g, s, 3)
-  expect_equal(out$values, c(4, 3, NA_real_))
+  expect_equal(out$values, c(4, 3, Inf))
   expect_identical(out$censored$above, c(FALSE, FALSE, TRUE))
   # A draw below the foot of the range is the smaller whatever the other block
   # says.
@@ -327,7 +354,7 @@ test_that("combine_censored_min keeps the block that is inside the range", {
                                      c(TRUE, FALSE, FALSE))
   out2 <- bayesnec:::combine_censored_min(g, s, 3)
   expect_identical(out2$censored$below, c(TRUE, FALSE, FALSE))
-  expect_true(is.na(out2$values[1]))
+  expect_identical(out2$values[1], -Inf)
 })
 
 test_that("combine_censored_min is pmin where neither block is censored", {
@@ -644,6 +671,26 @@ test_that("a draw beyond the lower end is recorded as below", {
   expect_gt(cens$n_below, 0)
   expect_true(any(cens$bound == "<="))
   expect_equal(cens$lower, 2.5)
+})
+
+test_that("censored posterior draws sort and quantile at the right ends", {
+  skip_on_cran()
+  upper <- suppressWarnings(ecx(ecx4param, ecx_val = 50,
+                                x_range = c(0.03, 0.6), resolution = 50,
+                                posterior = TRUE))
+  upper_record <- attr(upper, "censored")
+  expect_gt(sum(upper_record$above), 0)
+  expect_true(all(upper[upper_record$above] == Inf))
+  expect_identical(tail(sort(upper), 1), Inf)
+  expect_equal(unname(stats::quantile(upper, 1)), Inf)
+
+  lower <- suppressWarnings(nsec(ecx4param, x_range = c(2.5, 3.2),
+                                 resolution = 50, posterior = TRUE))
+  lower_record <- attr(lower, "censored")
+  expect_gt(sum(lower_record$below), 0)
+  expect_true(all(lower[lower_record$below] == -Inf))
+  expect_identical(head(sort(lower), 1), -Inf)
+  expect_equal(unname(stats::quantile(lower, 0)), -Inf)
 })
 
 test_that("the model-averaged fraction is the weighted one", {
@@ -1066,7 +1113,7 @@ test_that("a threshold above the other component's limit is not identified", {
   expect_equal(cs$upper, 10)
   expect_identical(cs$n_above, 4L)
   post <- suppressWarnings(nec(obj, posterior = TRUE))
-  expect_true(all(is.na(post)))
+  expect_true(all(post == Inf))
   expect_identical(attr(post, "censored")$above, rep(TRUE, 4))
   expect_warning(nec(obj), "not identified for 4 of 4 draws")
 })
@@ -1100,7 +1147,7 @@ test_that("the combined threshold does not depend on component order", {
   # Censoring at both ends in one posterior. Draw by draw: above 10 against
   # 20; above 10 against 5; below 0 against 20; 3 against above 40; above
   # both limits; 7 against below 0; 9 against 30.
-  expect_equal(gs$values, c(NA, 5, NA, 3, NA, NA, 9))
+  expect_equal(gs$values, c(Inf, 5, -Inf, 3, Inf, -Inf, 9))
   expect_identical(gs$censored$above,
                    c(TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE))
   expect_identical(gs$censored$below,
@@ -1121,7 +1168,7 @@ test_that("the shorter range bounds the combination in either direction", {
   s <- c(NA_real_, NA_real_)
   attr(s, "censored") <- cens_record(c(TRUE, TRUE), logical(2))
   out <- bayesnec:::combine_censored_min(g, s, 2)
-  expect_equal(out$values, c(NA, 8))
+  expect_equal(out$values, c(Inf, 8))
   expect_identical(out$censored$above, c(TRUE, FALSE))
   # Both censored above, at unequal limits: the minimum exceeds the smaller
   # limit, which is the one bound true of it.
@@ -1143,7 +1190,7 @@ test_that("a draw below the foot of its range stays below it", {
   attr(s, "censored") <- cens_record(logical(3), c(FALSE, FALSE, TRUE))
   attr(attr(s, "censored"), "swapped") <- TRUE
   out <- bayesnec:::combine_censored_min(g, s, 3)
-  expect_true(all(is.na(out$values)))
+  expect_true(all(out$values == -Inf))
   expect_identical(out$censored$below, c(TRUE, TRUE, TRUE))
   expect_false(any(out$censored$above))
   expect_equal(out$censored$lower, 5)
@@ -1170,7 +1217,7 @@ test_that("an identified minimum keeps its value at either foot", {
   attr(g, "censored") <- cens_record(logical(2), c(TRUE, FALSE))
   g[1] <- NA_real_
   equal <- bayesnec:::combine_censored_min(g, s, 2)
-  expect_equal(equal$values, c(NA, 6))
+  expect_equal(equal$values, c(-Inf, 6))
   expect_identical(equal$censored$below, c(TRUE, FALSE))
   expect_equal(equal$censored$lower, 0)
 })
@@ -1205,7 +1252,7 @@ test_that("a curve-derived NSEC with no stored value combines as censored", {
                             cens_record(logical(4), logical(4), upper = 40))
   obj <- hurdle_of(growth, survival)
   post <- suppressMessages(suppressWarnings(nec(obj, posterior = TRUE)))
-  expect_equal(as.numeric(post), c(NA, 5, 3, 8))
+  expect_equal(as.numeric(post), c(Inf, 5, 3, 8))
   expect_identical(attr(post, "censored")$above, c(TRUE, FALSE, FALSE, FALSE))
   msgs <- testthat::capture_messages(suppressWarnings(nec(obj)))
   expect_true(any(grepl("combines sampled NEC and curve-read NSEC", msgs)))

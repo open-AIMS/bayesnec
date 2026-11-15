@@ -299,9 +299,10 @@ test_that("a mixture keeps each censoring flag with its draw", {
   b <- c(1.5, 2.5, 2.8, 2.9)
   out <- bayesnec:::pool_estimate_draws(list(a = a, b = b), c(1, 1),
                                         "mixture")
-  expect_equal(attr(out, "censored")$above, is.na(out) | out > 3)
+  marks <- attr(out, "censored")$above
+  expect_identical(marks, is.infinite(out) & out > 0)
   from_a <- attr(out, "level") == "a"
-  expect_equal(as.numeric(out)[from_a], a[from_a])
+  expect_equal(as.numeric(out)[from_a & !marks], a[from_a & !marks])
 })
 
 test_that("a numeric control changes the reference and rejects log zero", {
@@ -435,7 +436,7 @@ test_that("mean_curve NSEC censors crossings before the common range", {
     fits, c(1, 1), "nsec",
     list(resolution = 3, posterior = TRUE)
   )
-  expect_true(is.na(out[2]))
+  expect_identical(out[2], -Inf)
   expect_true(attr(out, "censored")$below[2])
   expect_equal(attr(out, "censored")$lower, 2)
 })
@@ -460,7 +461,7 @@ test_that("mean_curve NSEC reads a finite extrapolation limit", {
   tested <- estimate(FALSE)
   extended <- estimate(5)
   expect_identical(grids[[3]][match(grids[[1]], grids[[3]])], grids[[1]])
-  expect_true(is.na(tested[2]))
+  expect_identical(tested[2], Inf)
   expect_true(is.finite(extended[2]))
   expect_gt(extended[2], 3)
   expect_equal(attr(extended, "censored")$upper, 5)

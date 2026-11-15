@@ -115,7 +115,8 @@
 #'
 #' @return A vector containing the estimated ECNSEC value, including upper and
 #' lower 95% credible interval bounds, or with \code{posterior = TRUE} the
-#' value for each posterior draw.
+#' value for each posterior draw. This percentage is read at the supplied
+#' concentration; no draw is censored by a search for a crossing.
 #'
 #' @examples
 #' \donttest{

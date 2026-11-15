@@ -815,8 +815,9 @@ test_that("ecx reads the control from preds$control, not the grid start", {
   expect_warning(out <- ecx(obj, ecx_val = 50, posterior = TRUE),
                  "not identified")
   # The target is 4, which the curve (2 down to 0.1) never reaches, so every
-  # draw is NA rather than an estimate read from the wrong reference.
-  expect_true(all(is.na(out)))
+  # draw is censored below rather than read from the wrong reference.
+  expect_true(all(out == -Inf))
+  expect_true(all(attr(out, "censored")$below))
 })
 
 test_that("the estimator methods survive a censored draw", {

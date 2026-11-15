@@ -96,7 +96,9 @@ recorded at fitting. Level controls are recorded in the result's
 \value{
 A vector containing the estimated NSEC value, including upper and
 lower 95\% credible interval bounds, or with \code{posterior = TRUE} the
-value for each posterior draw.
+value for each posterior draw. Censored draws are \code{Inf} above the
+search range and \code{-Inf} below it; attribute \code{"censored"}
+records their bounds and positions.
 }
 \description{
 Extracts the predicted NSEC value as desired from an
@@ -166,11 +168,13 @@ it applies where the prediction grid begins at the control. Where
 \code{x_range} begins at a higher concentration, a draw already at or below
 the reference at the first grid point reached it somewhere below the range
 asked for, which is not identified within that range: such a draw returns
-\code{NA} and is reported as lying at or below the start of the range.
+\code{-Inf} with \code{posterior = TRUE} and is reported as lying at or
+below the start of the range.
 
 Where a draw's curve does not reach the reference at any tested concentration
 its NSEC is above the highest concentration in the prediction grid. Such a
-draw returns \code{NA}, keeps its rank in the summary and is given no value,
+draw returns \code{Inf} with \code{posterior = TRUE}, keeps its rank
+in the summary and is given no finite value,
 so the summary is censored above that concentration, as the \emph{Capping
 and dropping} section describes, and a warning reports how many draws were
 affected. Extending \code{x_range} will estimate it, at the price of reading
@@ -210,6 +214,9 @@ that its estimate equals that value; it is recorded as lying beyond it. The
 summary is then censored: the draw keeps its rank and is given no value, so
 a reported quantile that falls among such draws is the end of the prediction
 range rather than a quantile of the draws that did reach the target.
+With \code{posterior = TRUE}, censored draws are returned as \code{Inf}
+or \code{-Inf}, so \code{sort()} and \code{quantile()} retain their
+positions. Attribute \code{"censored"} records their bounds and ends.
 Attribute \code{"censored_summary"} marks which entries those are, and
 states how many draws lie beyond each end and where the ends are. A draw
 whose curve had already passed the target where the range begins is recorded

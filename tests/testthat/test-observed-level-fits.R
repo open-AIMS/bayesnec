@@ -150,7 +150,10 @@ test_that("fitted spanning levels exclude one-concentration levels", {
   expect_equal(unname(attr(per, "x_control")["plate=p3"]), 0.15)
   expect_equal(unname(attr(shared, "x_control")["plate=p3"]), 0.05)
   mix <- suppressMessages(ecx(fit, posterior = TRUE, resolution = 30))
-  expect_true(all(is.finite(mix[!is.na(mix)])))
+  cens <- attr(mix, "censored")
+  identified <- if (is.null(cens)) rep(TRUE, length(mix)) else
+    !cens$above & !cens$below
+  expect_true(all(is.finite(mix[identified & !is.na(mix)])))
   expect_equal(length(mix), fit$sample_size)
   expect_null(names(mix))
   expect_true(all(is.finite(suppressMessages(nsec(fit, resolution = 30)))))
@@ -363,8 +366,14 @@ test_that("logged predictors store no-effect draws on the fitted scale", {
                                      posterior = TRUE, resolution = 40))
   expect_equal(as.numeric(fit$ne_posterior), as.numeric(fitted),
                tolerance = 1e-6)
-  expect_equal(exp(as.numeric(fitted)), as.numeric(recorded),
-               tolerance = 1e-6)
+  cens <- attr(recorded, "censored")
+  identified <- !cens$above & !cens$below
+  expect_identical(attr(fitted, "censored")$above, cens$above)
+  expect_identical(attr(fitted, "censored")$below, cens$below)
+  expect_equal(exp(as.numeric(fitted)[identified]),
+               as.numeric(recorded)[identified], tolerance = 1e-6)
+  expect_equal(as.numeric(fitted)[!identified],
+               as.numeric(recorded)[!identified])
   warnings <- character()
   error <- withCallingHandlers(
     tryCatch(ecx(fit, x_control = 0, resolution = 20),
@@ -396,7 +405,10 @@ test_that("hurdle endpoints and band read observed levels", {
   mixed <- suppressWarnings(suppressMessages(ecx(
     fit, posterior = TRUE, resolution = 25
   )))
-  expect_true(all(is.finite(mixed[!is.na(mixed)])))
+  cens <- attr(mixed, "censored")
+  identified <- if (is.null(cens)) rep(TRUE, length(mixed)) else
+    !cens$above & !cens$below
+  expect_true(all(is.finite(mixed[identified & !is.na(mixed)])))
   expect_true(is.finite(unname(suppressWarnings(suppressMessages(ecx(
     fit, pool = "mean_estimate", resolution = 25
   )))[1])))
