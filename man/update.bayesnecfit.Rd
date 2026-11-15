@@ -2,9 +2,22 @@
 % Please edit documentation in R/bnecfit-methods.R
 \name{update.bayesnecfit}
 \alias{update.bayesnecfit}
+\alias{update.bayesmanecfit}
 \title{Refit a single \code{bayesnecfit}}
 \usage{
 \method{update}{bayesnecfit}(
+  object,
+  newdata = NULL,
+  recompile = NULL,
+  x_range = NULL,
+  resolution = NULL,
+  sig_val = NULL,
+  loo_controls,
+  force_fit = FALSE,
+  ...
+)
+
+\method{update}{bayesmanecfit}(
   object,
   newdata = NULL,
   recompile = NULL,
@@ -46,7 +59,12 @@ never require it.}
 }
 \value{
 A \code{bayesnecfit} if the equation refits successfully.
+
+A \code{bayesmanecfit} if several equations refit, or a
+\code{bayesnecfit} if only one succeeds.
 }
 \description{
 Refit a single \code{bayesnecfit}
+
+Refit a \code{bayesmanecfit} model set
 }

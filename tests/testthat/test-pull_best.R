@@ -60,7 +60,7 @@ test_that("a bayesnecfit is returned unchanged, naming the model it holds", {
     expect_message("holds the single model nec4param")
 })
 
-test_that("arguments other than the object are refused before anything else", {
+test_that("arguments other than the object are refused before selection", {
   # Refused rather than ignored: honoured on the bayesmanecfit branch and
   # ignored on the bayesnecfit branch, they would make the returned object
   # depend on the class the caller was told not to test for.
@@ -73,7 +73,7 @@ test_that("arguments other than the object are refused before anything else", {
   expect_error(pull_best(manec_example, model = "ecx4param"),
                "`model` cannot be passed here")
   expect_error(pull_best(manec_example, 50), "takes the object and nothing")
-  # Before dispatch, so an unusable object is not what gets reported first.
+  # The default method refuses unused arguments before checking the class.
   expect_error(pull_best(list(a = 1), resolution = 50),
                "takes the object and nothing")
   # And before the selection is reported.

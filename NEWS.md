@@ -521,8 +521,9 @@ the same call returns.
   `formula()` and `model.frame()` return one element, row or table per
   level, and `screen_models()` passes or stops the refit as a whole.
   `fitted()`, `predict()`, `posterior_epred()` and `posterior_predict()`
-  predict the fitted rows of every level, or a `newdata` that names each
-  row's level; a request for one level uses only its rows and draws.
+  predict the fitted rows of every level, or a `newdata` naming one
+  level's rows. The `level` argument is refused; all levels share one
+  posterior.
   `group_level_sd()` reads the refit as one fit. `update()` refits the same
   model, `get_priors()` returns its priors, `pull_prior()` returns its full
   prior table, and `pull_best()` returns it unchanged.
@@ -899,7 +900,9 @@ the same call returns.
   as it does on a single fit (#278).
 
 - `check_priors()` on a model set restores the page prompt and closes its PDF
-  device on exit (#459).
+  device on exit. It now returns named plots invisibly; `check_priors()` and
+  `check_chains()` no longer print a model extraction message for each
+  equation (#459).
 
 - extraDistr is listed in Suggests, since brms needs it to evaluate a
   `beta_binomial` likelihood.
@@ -1092,9 +1095,9 @@ the same call returns.
 
 - If link functions are not specified in bnec, then the default link function is used; previous versions of bayesnec used the identity link.
 
-- An additional family has been added betabinomial2 for over dispersered binomial data.
+- An additional family has been added beta_binomial2 for over-dispersed binomial data.
 
-- The package supports using link functions for generalized modelling, which appears to be more stable and is also in line with more typical generalised modelling approaches.
+- The package supports using link functions for generalised modelling, which appears to be more stable and is also in line with more typical generalised modelling approaches.
 
 - There are multiple options for model weights calculation from the loo package. The default is "pseudobma BB".
 

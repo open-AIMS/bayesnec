@@ -6,7 +6,7 @@
 #' @param object A fitted \code{bayesnec} object.
 #'
 #' @details Returns the whole \code{\link[brms]{brmsprior}} each fit carries,
-#' \pkg{brms} defaults and duplicated vectorized rows included, which is what to
+#' \pkg{brms} defaults and duplicated vectorised rows included, which is what to
 #' use for looking at a fit. It is not accepted by \code{bnec(prior = )} --
 #' \code{\link{get_priors}} is the function for feeding priors back in.
 #'

@@ -10,7 +10,7 @@
 \method{c}{bayesmanecfit}(x, ...)
 }
 \arguments{
-\item{x}{A \code{bayesmanecfit}.}
+\item{x}{A \code{bayesnecfit} or \code{bayesmanecfit}.}
 
 \item{...}{Further ordinary fits or model sets.}
 }

@@ -144,18 +144,6 @@ c.bayesnecjointfit <- function(x, ...) {
                     " with bnec_group() before bnec_joint().")
 }
 
-#' @rdname c.bayesnecjointfit
-#' @param e1,e2 Fits to combine.
-#' @return An error naming \code{bayesnecjointfit}; use
-#' \code{bnec_group()} for candidate sets.
-#' @method + bayesnecjointfit
-#' @export
-`+.bayesnecjointfit` <- function(e1, e2) {
-  refuse_fit_method("+", e1,
-                    "A joint refit cannot join a set. Fit candidate sets",
-                    " with bnec_group() before bnec_joint().")
-}
-
 #' ECNSEC for an ordinary fit
 #'
 #' @param object A \code{bayesnecfit}.
@@ -231,6 +219,8 @@ failed_models.bayesnecjointfit <- function(object, ...) {
 #' @return A combined fit, or a class-specific error for an invalid pair.
 #' @noRd
 fit_add_dispatch <- function(e1, e2) {
+  # Share one function across the fit classes so Ops dispatch does not warn
+  # about incompatible methods for a mixed pair.
   if (inherits(e1, "bayesnecjointfit") ||
       inherits(e2, "bayesnecjointfit")) {
     joint <- if (inherits(e1, "bayesnecjointfit")) e1 else e2
@@ -258,15 +248,47 @@ fit_add_dispatch <- function(e1, e2) {
            class(other)[1], ". Combine two hurdle fits instead.",
            call. = FALSE)
     }
-    hurdle_check_pair(list(e1, e2))
-    return(hurdle_rewrap(e1, e1$growth + e2$growth,
-                         e1$survival + e2$survival))
+    return(c.bayesnechurdlefit(e1, e2))
   }
   add_bnec_fits(e1, e2)
 }
 
+#' Add an ordinary fit to another ordinary fit or model set
+#'
+#' @param e1 A \code{bayesnecfit} or \code{bayesmanecfit}.
+#' @param e2 A \code{bayesnecfit} or \code{bayesmanecfit}.
+#' @return A \code{bayesnecfit} for one equation, or a
+#' \code{bayesmanecfit} for a model set.
+#' @method + bayesnecfit
+#' @export
 `+.bayesnecfit` <- fit_add_dispatch
+
+#' @rdname plus-.bayesnecfit
+#' @method + bayesmanecfit
+#' @export
 `+.bayesmanecfit` <- fit_add_dispatch
+
+#' Combine two hurdle fits
+#'
+#' @param e1,e2 Hurdle fits to combine.
+#' @return A combined \code{bayesnechurdlefit}.
+#' @method + bayesnechurdlefit
+#' @export
 `+.bayesnechurdlefit` <- fit_add_dispatch
+
+#' Combine two grouped fits level by level
+#'
+#' @param e1,e2 Grouped fits on the same data and levels.
+#' @return A \code{bayesnecgroupfit} whose fit at each level is the
+#' combined model set.
+#' @method + bayesnecgroupfit
+#' @export
 `+.bayesnecgroupfit` <- fit_add_dispatch
+
+#' @rdname c.bayesnecjointfit
+#' @param e1,e2 Fits to combine.
+#' @return An error naming \code{bayesnecjointfit}; use
+#' \code{bnec_group()} for candidate sets.
+#' @method + bayesnecjointfit
+#' @export
 `+.bayesnecjointfit` <- fit_add_dispatch

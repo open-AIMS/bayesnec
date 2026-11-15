@@ -456,7 +456,7 @@ input data. Guesses include: "bernoulli" / bernoulli / bernoulli(), "Beta" /
 Beta / Beta(), "binomial" / binomial / binomial(), "beta_binomial" /
 "beta_binomial", "Gamma" / Gamma / Gamma(), "gaussian" / gaussian /
 gaussian(), "negbinomial" / negbinomial / negbinomial(), or "poisson" /
-poisson / poisson(). Note, however, that "negbinomial" and "betabinomimal2"
+poisson / poisson(). Note, however, that "negbinomial" and "beta_binomial"
 require knowledge on whether the data is over-dispersed. As
 explained below in the Return section, the user can extract the dispersion
 parameter from a \code{\link{bnec}} call, and if they so wish, can refit the

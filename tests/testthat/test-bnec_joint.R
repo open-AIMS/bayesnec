@@ -1546,7 +1546,8 @@ test_that("every generic of a bayesnecfit has a joint method", {
   s3 <- getNamespaceInfo(asNamespace("bayesnec"), "S3methods")
   plain <- unique(s3[s3[, 2] == "bayesnecfit", 1])
   joint <- unique(s3[s3[, 2] == "bayesnecjointfit", 1])
-  expect_equal(setdiff(plain, joint), character(0))
+  # group_model_label() is used only while printing separate grouped fits.
+  expect_equal(setdiff(plain, c(joint, "group_model_label")), character(0))
   expect_false(is.null(getS3method("print", "jointsummary", optional = TRUE)))
 })
 
@@ -1740,6 +1741,65 @@ test_that("the joint predictions are those of the fit at each row's level", {
                c(brms::ndraws(j$fit), 2L))
 })
 
+test_that("a joint negative-binomial level reads constant shape draws", {
+  joint <- joint_split()
+  joint$fit$family <- brms::hurdle_negbinomial()
+  level <- joint_level_fit(joint, "a")
+  shape_calls <- 0L
+  local_mocked_bindings(
+    factorised_count_epred = function(fit, formula, newdata, dpar, ...) {
+      expect_identical(fit$family$family, "hurdle_negbinomial")
+      expect_identical(dpar, "shape")
+      expect_equal(nrow(newdata), 1L)
+      shape_calls <<- shape_calls + 1L
+      matrix(c(2, 4), ncol = 1)
+    },
+    .package = "bayesnec"
+  )
+  actual <- count_positive_asymptote(
+    level, "mu", c(1, 2), bnec_newdata(level, resolution = 2)
+  )
+  expected <- as.numeric(hurdle_positive_mean(
+    c(1, 2), "hurdle_negbinomial", matrix(c(2, 4), ncol = 1)
+  ))
+  expect_equal(actual, expected)
+  expect_identical(shape_calls, 1L)
+})
+
+test_that("relative ECx uses shape draws on a joint negative-binomial fit", {
+  joint <- joint_split()
+  joint$fit$family <- brms::hurdle_negbinomial()
+  shape_calls <- 0L
+  local_mocked_bindings(
+    factorised_count_epred = function(fit, formula, newdata, dpar, ...) {
+      n <- brms::ndraws(fit)
+      if (identical(dpar, "shape")) {
+        shape_calls <<- shape_calls + 1L
+        return(matrix(2, nrow = n, ncol = nrow(newdata)))
+      }
+      expect_identical(dpar, "mu")
+      matrix(rep(10 - 2 * newdata$x, each = n), nrow = n)
+    },
+    .package = "bayesnec"
+  )
+  result <- suppressWarnings(suppressMessages(
+    ecx(joint, ecx_val = 10, dpar = "mu", type = "relative",
+        resolution = 10)
+  ))
+  expect_equal(result$level, c("low", "high"))
+  expect_true(all(is.finite(result$Q50)))
+  expect_gt(shape_calls, 0L)
+})
+
+test_that("joint prediction methods refuse an unused level", {
+  joint <- joint_split()
+  for (predictor in list(stats::fitted, stats::predict,
+                         brms::posterior_epred, brms::posterior_predict)) {
+    expect_error(predictor(joint, level = "a"),
+                 "Use newdata with rows for one level")
+  }
+})
+
 test_that("a joint-level adapter exposes estimators only", {
   level <- joint_level_fit(joint_split(), "a")
   expect_identical(class(level), "bayesnecjointlevel")
@@ -1747,7 +1807,9 @@ test_that("a joint-level adapter exposes estimators only", {
   for (name in c("nec", "nsec", "ecx", "ecnsec")) {
     expect_true(is.function(getS3method(name, "bayesnecjointlevel")))
   }
-  for (name in c("fitted", "predict", "posterior_epred",
+  expect_error(stats::fitted(level),
+               "unavailable for a bayesnecjointlevel")
+  for (name in c("predict", "posterior_epred",
                  "posterior_predict", "check_fit", "pp_check", "rhat",
                  "check_chains", "check_priors", "summary", "update", "c")) {
     expect_null(getS3method(name, "bayesnecjointlevel", optional = TRUE))

@@ -356,7 +356,8 @@ summarise first.
 
 ```{r cmp-herbicides}
 cmp_herb <- compare_posterior(fits_herb, comparison = "n(s)ec")
-herb_post <- cmp_herb$posterior_data
+herb_post <- cmp_herb$posterior_data |>
+  filter(is.finite(value))
 herb_sum <- herb_post |>
   group_by(model) |>
   summarise(median = median(value), lower = quantile(value, 0.025),
@@ -854,7 +855,8 @@ and we plot them as densities, with one panel for each endpoint and estimate.
 ```{r exmp4-cmp-scenarios, fig.asp = 0.6, out.width = "95%"}
 coral_post <- bind_rows(lapply(cmp_coral, function(cmps) {
   bind_rows(lapply(cmps, `[[`, "posterior_data"), .id = "estimate")
-}), .id = "endpoint")
+}), .id = "endpoint") |>
+  filter(is.finite(value))
 coral_post$estimate <- factor(coral_post$estimate,
                               levels = c("EC50", "EC10", "N(S)EC"))
 ggplot(data = coral_post, mapping = aes(x = value)) +

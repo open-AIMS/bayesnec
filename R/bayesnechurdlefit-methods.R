@@ -1036,21 +1036,6 @@ c.bayesnechurdlefit <- function(x, ...) {
                 do.call(c, lapply(objects, `[[`, "survival")))
 }
 
-#' Combines two \code{\link{bayesnechurdlefit}} objects
-#'
-#' @param e1 An object of class \code{\link{bayesnechurdlefit}}.
-#' @param e2 An object of class \code{\link{bayesnechurdlefit}}.
-#'
-#' @return An object of class \code{\link{bayesnechurdlefit}}.
-#'
-#' @method + bayesnechurdlefit
-#'
-#' @export
-`+.bayesnechurdlefit` <- function(e1, e2) {
-  hurdle_check_pair(list(e1, e2))
-  hurdle_rewrap(e1, e1$growth + e2$growth, e1$survival + e2$survival)
-}
-
 # ---------------------------------------------------------------------------
 # Plotting
 #
