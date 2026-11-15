@@ -412,10 +412,7 @@ fit_ogl <- screen_models(fit_ogl)
 #>   -  ecxll5: 77 divergent transitions
 #> Fitted models are: nec3param nec4param nechorme ecx4param ecxwb1 ecxwb2 ecxwb1p3 ecxwb2p3 ecxll4 ecxll3 ecxhormebc4 ecxflat
 #> The fitted ecxflat curve does not fall to the control's 0.01 quantile within the predictor range for 7920 of 8000 draws. The NSEC summary is censored at 2.75: those draws keep their rank in it and are given no value.
-#> The leave-one-group-out score has Pareto k at or above 0.7 for 2 of 11 levels of conc_group in ecxwb1 (weight
-#> 0.94); 3 of 11 levels of conc_group in ecxll3 (weight 0.032); 3 of 11 levels of conc_group in ecxhormebc4 (weight
-#> 0.02). The affected scores are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the
-#> equation without each level.
+#> The leave-one-group-out score has Pareto k at or above 0.7 for 2 of 11 levels of conc_group in ecxwb1 (weight 0.94); 3 of 11 levels of conc_group in ecxll3 (weight 0.032); 3 of 11 levels of conc_group in ecxhormebc4 (weight 0.02). The affected scores are approximate; loo_controls = list(refit = TRUE) replaces them by refitting the equation without each level.
 ```
 
 
@@ -826,7 +823,7 @@ fits_tox <- screen_models(fits_tox, group_action = "per_level")
 
 |Toxicant |Equations retained |Weight of 0.01 or more                                        |EC10, mg/L          |NSEC, mg/L          |
 |:--------|:------------------|:-------------------------------------------------------------|:-------------------|:-------------------|
-|Cu       |10 of 15           |`ecxll5` 0.72, `ecxll4` 0.16, `ecx4param` 0.10, `ecxwb1` 0.02 |0.062 (0.038--0.15) |0.061 (0.030--0.16) |
+|Cu       |10 of 15           |`ecxll5` 0.72, `ecxll4` 0.16, `ecx4param` 0.10, `ecxwb1` 0.02 |0.062 (0.038--0.15) |0.061 (0.031--0.16) |
 |Zn       |12 of 15           |`ecxll5` 0.96, `ecxwb1` 0.04                                  |0.38 (0.24--0.57)   |0.27 (0.075--0.47)  |
 
 
@@ -858,10 +855,10 @@ The screen retained 10 equations for copper and
 weight was `ecxll5` at both levels
 (table above). The EC10 is 0.062 (0.038--0.15) mg/L for copper
 and 0.38 (0.24--0.57) mg/L for zinc, so copper is the more potent
-metal, as @luter2025 report. The NSEC is 0.061 (0.030--0.16) mg/L
+metal, as @luter2025 report. The NSEC is 0.061 (0.031--0.16) mg/L
 for copper and 0.27 (0.075--0.47) mg/L for zinc, so its median is
 within 5 per cent of the median EC10 for copper and below it for zinc (orange and blue lines in the figure). The upper bound of
-copper's EC10 interval is 4.0 times its lower bound,
+copper's EC10 interval is 4.1 times its lower bound,
 against 2.4 for zinc, most likely because the mixture over copper's plates includes the two 1Oct24 plates, whose curves fall at higher concentrations than those of the other copper plates (figure of plate-relative means).
 Each panel has its own response axis, because the plates of each metal were
 read at different gains, and their relative light units are not comparable
@@ -1141,17 +1138,48 @@ cmp_joint$prob_diff
 #>   comparison prob prob_lower prob_upper censored_first censored_second
 #> 1      Cu-Zn    0          0          0              0               0
 ec10_joint <- cmp_joint$posterior_list
-zn_cu_ratio <- ec10_joint[["Zn"]] / ec10_joint[["Cu"]]
-quantile(zn_cu_ratio, c(0.5, 0.025, 0.975), na.rm = TRUE)
-#>      50%     2.5%    97.5% 
-#> 6.279024 2.806012 9.889286
+# Each censored EC10 keeps its rank at the appropriate infinite end.
+ec10_limits <- function(d) {
+  value <- as.numeric(d)
+  lo <- hi <- value
+  cens <- attr(d, "censored")
+  if (!is.null(cens)) {
+    value[cens$above] <- Inf
+    value[cens$below] <- -Inf
+    lo[cens$above] <- cens$upper
+    hi[cens$above] <- Inf
+    lo[cens$below] <- 0
+    hi[cens$below] <- cens$lower
+  }
+  list(value = value, lo = lo, hi = hi, cens = cens)
+}
+ec10_limits_joint <- lapply(ec10_joint, ec10_limits)
+z <- ec10_limits_joint[["Zn"]]
+c <- ec10_limits_joint[["Cu"]]
+zn_cu_ratio <- z$value / c$value
+ratio_indeterminate <- is.nan(zn_cu_ratio)
+# An Inf/Inf ratio is unknown; its possible range is zero to infinity.
+ratio_low <- z$lo / c$hi
+ratio_high <- z$hi / c$lo
+ratio_low[ratio_indeterminate | is.nan(ratio_low)] <- 0
+ratio_high[ratio_indeterminate | is.nan(ratio_high)] <- Inf
+ratio_type <- if (any(!is.finite(c(z$value, c$value)))) 1 else 7
+ratio_probs <- c(0.5, 0.025, 0.975)
+ratio_q <- rbind(lower = quantile(ratio_low, ratio_probs, type = ratio_type),
+                 upper = quantile(ratio_high, ratio_probs, type = ratio_type))
+ratio_q
+#>            50%     2.5%    97.5%
+#> lower 6.279024 2.806012 9.889286
+#> upper 6.279024 2.806012 9.889286
 ```
 
 
 
 
 ``` r
-ggplot(data.frame(ratio = zn_cu_ratio), aes(x = ratio)) +
+ratio_plot <- data.frame(ratio = zn_cu_ratio[is.finite(zn_cu_ratio) &
+                                               zn_cu_ratio > 0])
+ggplot(ratio_plot, aes(x = ratio)) +
   geom_density(fill = "grey85", colour = "grey30") +
   scale_x_continuous(transform = "log10") +
   theme_classic() +
@@ -1163,15 +1191,20 @@ ggplot(data.frame(ratio = zn_cu_ratio), aes(x = ratio)) +
 <p class="caption">plot of chunk fig-ratio-joint</p>
 </div>
 
-Zinc's EC10 is 6.3 (2.8--9.9) times copper's, and the
-probability that it exceeds copper's, one minus the `prob` of `prob_diff`, is
+Zinc's EC10 is 6.3 (2.8–9.9) times copper's, with each quantile bounded
+using all 8000 paired draws. At
+0 draws (0 per cent),
+both EC10s are beyond their prediction ranges and their ratio is indeterminate;
+those draws enter each lower bound as zero and each upper bound as infinity.
+The density shows finite positive ratios only: 0
+draws are at its lower end and 0
+at its upper end, in addition to the indeterminate draws. The probability that
+zinc's EC10 exceeds copper's, one minus the `prob` of `prob_diff`, is
 more than 99.9 per cent. Both metals are read in the same batch at
-95 per cent of the draws. Their log EC10s have a
-correlation of 0.27 across draws, so part of their uncertainty cancels in the ratio. The interval of the
-ratio spans a factor of 3.5 between its bounds,
-as wide as the EC10 interval of copper and wider than that of zinc, which span a factor of 3.5 for copper and 2.3 for zinc. The separate fits
-of `fits_tox` share no parameter, so a ratio formed from their draws could
-include no dependence between the metals.
+95 per cent of the draws. Across all paired draws, their
+EC10s have a Spearman rank correlation of 0.23.
+The ratio interval spans a factor of 3.5 between its bounds, as wide as the EC10 interval of copper and wider than that of zinc, which span a factor of 3.5 for copper and 2.3 for zinc. The separate fits of `fits_tox` share no parameter, so a ratio
+formed from their draws could include no dependence between the metals.
 
 
 
@@ -1260,7 +1293,7 @@ is recorded below.
 
 ``` r
 packageVersion("bayesnec")
-#> [1] '2.1.3.44'
+#> [1] '3.0.0'
 packageVersion("brms")
 #> [1] '2.23.0'
 R.version.string
