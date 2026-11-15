@@ -1411,37 +1411,69 @@ from those draws:
 cmp_joint <- compare_posterior(fits_tox_joint, comparison = "ecx", ecx_val = 10)
 cmp_joint$prob_diff
 ec10_joint <- cmp_joint$posterior_list
-finite_ec10 <- function(d) {
-  censored <- attr(d, "censored")
-  keep <- is.finite(d) & d > 0
-  if (!is.null(censored)) {
-    keep <- keep & !censored$above & !censored$below
+# Each censored EC10 keeps its rank at the appropriate infinite end.
+ec10_limits <- function(d) {
+  value <- as.numeric(d)
+  lo <- hi <- value
+  cens <- attr(d, "censored")
+  if (!is.null(cens)) {
+    value[cens$above] <- Inf
+    value[cens$below] <- -Inf
+    lo[cens$above] <- cens$upper
+    hi[cens$above] <- Inf
+    lo[cens$below] <- 0
+    hi[cens$below] <- cens$lower
   }
-  keep
+  list(value = value, lo = lo, hi = hi, cens = cens)
 }
-ratio_known <- finite_ec10(ec10_joint[["Zn"]]) &
-  finite_ec10(ec10_joint[["Cu"]])
-zn_cu_ratio <- ec10_joint[["Zn"]][ratio_known] /
-  ec10_joint[["Cu"]][ratio_known]
-quantile(zn_cu_ratio, c(0.5, 0.025, 0.975))
+ec10_limits_joint <- lapply(ec10_joint, ec10_limits)
+z <- ec10_limits_joint[["Zn"]]
+c <- ec10_limits_joint[["Cu"]]
+zn_cu_ratio <- z$value / c$value
+ratio_indeterminate <- is.nan(zn_cu_ratio)
+# An Inf/Inf ratio is unknown; its possible range is zero to infinity.
+ratio_low <- z$lo / c$hi
+ratio_high <- z$hi / c$lo
+ratio_low[ratio_indeterminate | is.nan(ratio_low)] <- 0
+ratio_high[ratio_indeterminate | is.nan(ratio_high)] <- Inf
+ratio_type <- if (any(!is.finite(c(z$value, c$value)))) 1 else 7
+ratio_probs <- c(0.5, 0.025, 0.975)
+ratio_q <- rbind(lower = quantile(ratio_low, ratio_probs, type = ratio_type),
+                 upper = quantile(ratio_high, ratio_probs, type = ratio_type))
+ratio_q
 ```
 
 ```{r ratio-summary, include = FALSE}
-# The censoring record identifies draws beyond the prediction range.
-ratio_censored <- if (any(!ratio_known)) {
-  paste0(" (leaving out ", sum(!ratio_known), " draws whose EC10 lies",
-         " beyond the tested range)")
-} else {
-  ""
-}
-ratio_q <- quantile(zn_cu_ratio, c(0.5, 0.025, 0.975))
-# The ratio of the upper to the lower bound of each 95 per cent interval.
-level_span <- vapply(ec10_joint, function(d) {
-  q <- quantile(d[finite_ec10(d)], c(0.025, 0.975))
-  q[[2]] / q[[1]]
-}, numeric(1))
-log_cor <- cor(log(ec10_joint[["Zn"]][ratio_known]),
-               log(ec10_joint[["Cu"]][ratio_known]))
+ratio_q_text <- vapply(seq_along(ratio_probs), function(i) {
+  lo <- ratio_q["lower", i]
+  hi <- ratio_q["upper", i]
+  if (identical(lo, hi)) return(fmt(lo))
+  if (is.infinite(hi)) return(paste0("≥", fmt(lo)))
+  if (lo == 0) return(paste0("≤", fmt(hi)))
+  paste(fmt(lo), "to", fmt(hi))
+}, character(1))
+ratio_ci_text <- paste0(ratio_q_text[1], " (", ratio_q_text[2], "–",
+                        ratio_q_text[3], ")")
+# Quantiles of each full EC10 posterior retain the ranks of censored draws.
+level_q <- lapply(ec10_limits_joint, function(d) {
+  cens <- d$cens
+  q <- quantile(d$value, c(0.025, 0.975),
+                type = if (any(is.infinite(d$value))) 1 else 7)
+  if (any(is.infinite(q))) {
+    stopifnot(!is.null(cens))
+    q[is.infinite(q) & q > 0] <- cens$upper
+    q[is.infinite(q) & q < 0] <- cens$lower
+  }
+  q
+})
+level_censored <- vapply(ec10_limits_joint, function(d) {
+  any(!is.finite(d$value))
+}, logical(1))
+level_span <- vapply(level_q, function(q) q[[2]] / q[[1]], numeric(1))
+rank_cor <- cor(z$value, c$value, method = "spearman")
+ratio_point <- ratio_q["lower", ] == ratio_q["upper", ]
+span_identified <- all(ratio_point) && !any(level_censored) &&
+  all(is.finite(ratio_q)) && all(is.finite(level_span))
 level_span_text <- if (identical(fmt(level_span[["Cu"]]),
                                  fmt(level_span[["Zn"]]))) {
   paste(fmt(level_span[["Cu"]]), "for each")
@@ -1449,27 +1481,25 @@ level_span_text <- if (identical(fmt(level_span[["Cu"]]),
   paste(fmt(level_span[["Cu"]]), "for copper and", fmt(level_span[["Zn"]]),
         "for zinc")
 }
-ratio_span <- ratio_q[[3]] / ratio_q[[2]]
-# Compare the spans as printed, so that the text never calls 3.5 wider than 3.5.
-span_order <- sign(as.numeric(fmt(ratio_span)) -
-                     vapply(level_span, function(x) as.numeric(fmt(x)), 1))
-span_word <- setNames(c("narrower than", "as wide as", "wider than")[span_order + 2],
-                      names(span_order))
-span_text <- if (span_order[["Cu"]] == span_order[["Zn"]]) {
-  paste(span_word[[1]], "the EC10 intervals of both metals")
+span_text <- if (span_identified) {
+  ratio_span <- ratio_q["upper", 3] / ratio_q["lower", 2]
+  # Compare printed spans so equal rounded values receive the same description.
+  span_order <- sign(as.numeric(fmt(ratio_span)) -
+                       vapply(level_span, function(x) as.numeric(fmt(x)), 1))
+  span_word <- setNames(c("narrower than", "as wide as", "wider than")[span_order + 2],
+                        names(span_order))
+  comparison <- if (span_order[["Cu"]] == span_order[["Zn"]]) {
+    paste(span_word[[1]], "the EC10 intervals of both metals")
+  } else {
+    paste(span_word[["Cu"]], "the EC10 interval of copper and",
+          span_word[["Zn"]], "that of zinc")
+  }
+  paste0("The ratio interval spans a factor of ", fmt(ratio_span),
+         " between its bounds, ", comparison, ", which span a factor of ",
+         level_span_text, ".")
 } else {
-  paste(span_word[["Cu"]], "the EC10 interval of copper and", span_word[["Zn"]],
-        "that of zinc")
-}
-cor_text <- if (log_cor >= 0.5) {
-  ", so much of their uncertainty cancels in the ratio"
-} else if (log_cor >= 0.1) {
-  ", so part of their uncertainty cancels in the ratio"
-} else if (log_cor > -0.1) {
-  ", so almost none of their uncertainty cancels in the ratio"
-} else {
-  paste(", so the interval of the ratio is wider than it would be for",
-        "independent draws")
+  paste("Censoring leaves at least one ratio or EC10 interval limit",
+        "unidentified, so their interval widths cannot be compared as exact values.")
 }
 # The share of draws at which both metals were read in the same batch. The
 # "level" attribute names the plate and batch each draw was read at.
@@ -1490,22 +1520,29 @@ zn_above_text <- if (is.na(pd$prob)) {
 ```
 
 ```{r fig-ratio-joint, fig.asp = 0.5, out.width = "70%"}
-ggplot(data.frame(ratio = zn_cu_ratio), aes(x = ratio)) +
+ratio_plot <- data.frame(ratio = zn_cu_ratio[is.finite(zn_cu_ratio) &
+                                               zn_cu_ratio > 0])
+ggplot(ratio_plot, aes(x = ratio)) +
   geom_density(fill = "grey85", colour = "grey30") +
   scale_x_continuous(transform = "log10") +
   theme_classic() +
   labs(x = "Ratio of zinc's EC10 to copper's (joint refit)", y = "Density")
 ```
 
-Zinc's EC10 is `r ci(ratio_q)` times copper's`r ratio_censored`, and the
-probability that it exceeds copper's, one minus the `prob` of `prob_diff`, is
+Zinc's EC10 is `r ratio_ci_text` times copper's, with each quantile bounded
+using all `r length(zn_cu_ratio)` paired draws. At
+`r sum(ratio_indeterminate)` draws (`r fmt(100 * mean(ratio_indeterminate), 3)` per cent),
+both EC10s are beyond their prediction ranges and their ratio is indeterminate;
+those draws enter each lower bound as zero and each upper bound as infinity.
+The density shows finite positive ratios only: `r sum(zn_cu_ratio == 0, na.rm = TRUE)`
+draws are at its lower end and `r sum(is.infinite(zn_cu_ratio) & zn_cu_ratio > 0, na.rm = TRUE)`
+at its upper end, in addition to the indeterminate draws. The probability that
+zinc's EC10 exceeds copper's, one minus the `prob` of `prob_diff`, is
 `r zn_above_text` per cent. Both metals are read in the same batch at
-`r fmt(100 * same_batch)` per cent of the draws. Their log EC10s have a
-correlation of `r fmt(log_cor)` across draws`r cor_text`. The interval of the
-ratio spans a factor of `r fmt(ratio_span)` between its bounds,
-`r span_text`, which span a factor of `r level_span_text`. The separate fits
-of `fits_tox` share no parameter, so a ratio formed from their draws could
-include no dependence between the metals.
+`r fmt(100 * same_batch)` per cent of the draws. Across all paired draws, their
+EC10s have a Spearman rank correlation of `r fmt(rank_cor)`.
+`r span_text` The separate fits of `fits_tox` share no parameter, so a ratio
+formed from their draws could include no dependence between the metals.
 
 ```{r diagnostics-joint, include = FALSE}
 np_joint <- brms::nuts_params(fits_tox_joint$fit)
