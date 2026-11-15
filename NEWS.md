@@ -900,7 +900,9 @@ the same call returns.
   as it does on a single fit (#278).
 
 - `check_priors()` on a model set restores the page prompt and closes its PDF
-  device on exit (#459).
+  device on exit. It now returns named plots invisibly; `check_priors()` and
+  `check_chains()` no longer print a model extraction message for each
+  equation (#459).
 
 - extraDistr is listed in Suggests, since brms needs it to evaluate a
   `beta_binomial` likelihood.
