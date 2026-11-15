@@ -537,6 +537,7 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture, cens = NULL) {
 #' @export
 check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
                                   ...) {
+  # Reject NULL: set.seed(NULL) reseeds from the clock and cannot repeat.
   chk_number(seed)
   check_fit_one_table(x, group, ndraws, seed)
 }
