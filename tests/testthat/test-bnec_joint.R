@@ -1546,7 +1546,8 @@ test_that("every generic of a bayesnecfit has a joint method", {
   s3 <- getNamespaceInfo(asNamespace("bayesnec"), "S3methods")
   plain <- unique(s3[s3[, 2] == "bayesnecfit", 1])
   joint <- unique(s3[s3[, 2] == "bayesnecjointfit", 1])
-  expect_equal(setdiff(plain, joint), character(0))
+  # group_model_label() is used only while printing separate grouped fits.
+  expect_equal(setdiff(plain, c(joint, "group_model_label")), character(0))
   expect_false(is.null(getS3method("print", "jointsummary", optional = TRUE)))
 })
 
