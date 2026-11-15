@@ -788,7 +788,7 @@ count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
     if (!constant) {
       return(disp_positive_asymptote(object, spec, mean_asymptote))
     }
-    shape <- posterior_epred(
+    shape <- estimator_epred(
       object, newdata = newdata[1, , drop = FALSE], re_formula = NA,
       dpar = "shape"
     )

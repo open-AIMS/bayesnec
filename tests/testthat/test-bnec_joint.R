@@ -1740,6 +1740,56 @@ test_that("the joint predictions are those of the fit at each row's level", {
                c(brms::ndraws(j$fit), 2L))
 })
 
+test_that("a joint negative-binomial level reads constant shape draws", {
+  joint <- joint_split()
+  joint$fit$family <- brms::hurdle_negbinomial()
+  level <- joint_level_fit(joint, "a")
+  shape_calls <- 0L
+  local_mocked_bindings(
+    factorised_count_epred = function(fit, formula, newdata, dpar, ...) {
+      expect_identical(fit$family$family, "hurdle_negbinomial")
+      expect_identical(dpar, "shape")
+      expect_equal(nrow(newdata), 1L)
+      shape_calls <<- shape_calls + 1L
+      matrix(c(2, 4), ncol = 1)
+    },
+    .package = "bayesnec"
+  )
+  actual <- count_positive_asymptote(
+    level, "mu", c(1, 2), bnec_newdata(level, resolution = 2)
+  )
+  expected <- as.numeric(hurdle_positive_mean(
+    c(1, 2), "hurdle_negbinomial", matrix(c(2, 4), ncol = 1)
+  ))
+  expect_equal(actual, expected)
+  expect_identical(shape_calls, 1L)
+})
+
+test_that("relative ECx uses shape draws on a joint negative-binomial fit", {
+  joint <- joint_split()
+  joint$fit$family <- brms::hurdle_negbinomial()
+  shape_calls <- 0L
+  local_mocked_bindings(
+    factorised_count_epred = function(fit, formula, newdata, dpar, ...) {
+      n <- brms::ndraws(fit)
+      if (identical(dpar, "shape")) {
+        shape_calls <<- shape_calls + 1L
+        return(matrix(2, nrow = n, ncol = nrow(newdata)))
+      }
+      expect_identical(dpar, "mu")
+      matrix(rep(10 - 2 * newdata$x, each = n), nrow = n)
+    },
+    .package = "bayesnec"
+  )
+  result <- suppressWarnings(suppressMessages(
+    ecx(joint, ecx_val = 10, dpar = "mu", type = "relative",
+        resolution = 10)
+  ))
+  expect_equal(result$level, c("low", "high"))
+  expect_true(all(is.finite(result$Q50)))
+  expect_gt(shape_calls, 0L)
+})
+
 test_that("a joint-level adapter exposes estimators only", {
   level <- joint_level_fit(joint_split(), "a")
   expect_identical(class(level), "bayesnecjointlevel")
