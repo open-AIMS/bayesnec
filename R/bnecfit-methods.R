@@ -67,7 +67,7 @@ c.bnecfit <- function(x, ...) {
 
 #' Combine an ordinary fit or model set with other ordinary fits
 #'
-#' @param x A \code{bayesnecfit}.
+#' @param x A \code{bayesnecfit} or \code{bayesmanecfit}.
 #' @param ... Further ordinary fits or model sets.
 #' @return A \code{bayesnecfit} for one equation, or a
 #' \code{bayesmanecfit} for a model set.
@@ -76,7 +76,6 @@ c.bnecfit <- function(x, ...) {
 c.bayesnecfit <- function(x, ...) combine_bnec_fits(x, ...)
 
 #' @rdname c.bayesnecfit
-#' @param x A \code{bayesmanecfit}.
 #' @method c bayesmanecfit
 #' @export
 c.bayesmanecfit <- function(x, ...) combine_bnec_fits(x, ...)
@@ -329,6 +328,7 @@ update.bayesnecfit <- function(object, newdata = NULL, recompile = NULL,
 
 #' Refit a \code{bayesmanecfit} model set
 #'
+#' @rdname update.bayesnecfit
 #' @inheritParams update.bnecfit
 #' @return A \code{bayesmanecfit} if several equations refit, or a
 #' \code{bayesnecfit} if only one succeeds.
