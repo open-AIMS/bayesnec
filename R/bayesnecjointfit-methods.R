@@ -929,6 +929,10 @@ joint_newdata <- function(object, newdata) {
 #' @importFrom stats fitted
 #' @export
 fitted.bayesnecjointfit <- function(object, newdata = NULL, ...) {
+  if ("level" %in% ...names()) {
+    stop("Use newdata with rows for one level of a joint refit.",
+         call. = FALSE)
+  }
   fitted.bayesnecfit(object, newdata = joint_newdata(object, newdata), ...)
 }
 
@@ -937,6 +941,10 @@ fitted.bayesnecjointfit <- function(object, newdata = NULL, ...) {
 #' @importFrom stats predict
 #' @export
 predict.bayesnecjointfit <- function(object, newdata = NULL, ...) {
+  if ("level" %in% ...names()) {
+    stop("Use newdata with rows for one level of a joint refit.",
+         call. = FALSE)
+  }
   predict.bayesnecfit(object, newdata = joint_newdata(object, newdata), ...)
 }
 
@@ -945,6 +953,10 @@ predict.bayesnecjointfit <- function(object, newdata = NULL, ...) {
 #' @importFrom brms posterior_epred
 #' @export
 posterior_epred.bayesnecjointfit <- function(object, newdata = NULL, ...) {
+  if ("level" %in% ...names()) {
+    stop("Use newdata with rows for one level of a joint refit.",
+         call. = FALSE)
+  }
   posterior_epred.bayesnecfit(object,
                               newdata = joint_newdata(object, newdata), ...)
 }
@@ -954,6 +966,10 @@ posterior_epred.bayesnecjointfit <- function(object, newdata = NULL, ...) {
 #' @importFrom brms posterior_predict
 #' @export
 posterior_predict.bayesnecjointfit <- function(object, newdata = NULL, ...) {
+  if ("level" %in% ...names()) {
+    stop("Use newdata with rows for one level of a joint refit.",
+         call. = FALSE)
+  }
   posterior_predict.bayesnecfit(object,
                                 newdata = joint_newdata(object, newdata), ...)
 }

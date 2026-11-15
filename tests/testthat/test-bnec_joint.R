@@ -1790,6 +1790,15 @@ test_that("relative ECx uses shape draws on a joint negative-binomial fit", {
   expect_gt(shape_calls, 0L)
 })
 
+test_that("joint prediction methods refuse an unused level", {
+  joint <- joint_split()
+  for (predictor in list(stats::fitted, stats::predict,
+                         brms::posterior_epred, brms::posterior_predict)) {
+    expect_error(predictor(joint, level = "a"),
+                 "Use newdata with rows for one level")
+  }
+})
+
 test_that("a joint-level adapter exposes estimators only", {
   level <- joint_level_fit(joint_split(), "a")
   expect_identical(class(level), "bayesnecjointlevel")

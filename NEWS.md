@@ -521,8 +521,9 @@ the same call returns.
   `formula()` and `model.frame()` return one element, row or table per
   level, and `screen_models()` passes or stops the refit as a whole.
   `fitted()`, `predict()`, `posterior_epred()` and `posterior_predict()`
-  predict the fitted rows of every level, or a `newdata` that names each
-  row's level; a request for one level uses only its rows and draws.
+  predict the fitted rows of every level, or a `newdata` naming one
+  level's rows. The `level` argument is refused; all levels share one
+  posterior.
   `group_level_sd()` reads the refit as one fit. `update()` refits the same
   model, `get_priors()` returns its priors, `pull_prior()` returns its full
   prior table, and `pull_best()` returns it unchanged.
