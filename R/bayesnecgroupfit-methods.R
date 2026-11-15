@@ -403,7 +403,8 @@ update.bayesnecgroupfit <- function(object, newdata = NULL,
   } else {
     first$fit$family
   }
-  out$weights_method <- fit_weights_method(first)
+  methods <- Filter(Negate(is.null), lapply(fits, fit_weights_method))
+  if (length(methods)) out$weights_method <- methods[[1]]
   out$level_seeds <- NULL
   out
 }
@@ -459,6 +460,8 @@ c.bayesnecgroupfit <- function(x, ...) {
     do.call(c, lapply(objects, function(z) z$fits[[lev]]))
   })
   names(out$fits) <- x$levels
-  out$weights_method <- fit_weights_method(out$fits[[1]])
+  methods <- Filter(Negate(is.null), lapply(out$fits, fit_weights_method))
+  if (length(methods)) out$weights_method <- methods[[1]]
+  out$level_seeds <- NULL
   out
 }

@@ -1148,7 +1148,12 @@ test_that("grouped update visits each level and combination checks data", {
     }, .package = "bayesnec"
   )
   g <- fake_group_fit(list(a = nec4param, b = nec4param))
-  expect_s3_class(update(g), "bayesnecgroupfit")
+  g$weights_method <- "pseudobma"
+  g$level_seeds <- c(a = 1L, b = 2L)
+  updated <- update(g)
+  expect_s3_class(updated, "bayesnecgroupfit")
+  expect_identical(updated$weights_method, g$weights_method)
+  expect_null(updated$level_seeds)
   expect_length(seen, 2L)
   expect_error(update(g, level = "a"), "refits every level")
   other <- g
@@ -1167,10 +1172,12 @@ test_that("grouped update visits each level and combination checks data", {
 
 test_that("grouped fits combine their models within each level", {
   a <- fake_group_fit(list(a = nec4param, b = nec4param))
+  a$level_seeds <- c(a = 1L, b = 2L)
   b <- fake_group_fit(list(a = ecx4param, b = ecx4param))
   combined <- suppressMessages(suppressWarnings(c(a, b)))
   expect_s3_class(combined, "bayesnecgroupfit")
   expect_named(combined$fits, a$levels)
+  expect_null(combined$level_seeds)
   expect_true(all(vapply(combined$fits, inherits, logical(1),
                          "bayesmanecfit")))
   plus <- suppressMessages(suppressWarnings(a + b))
