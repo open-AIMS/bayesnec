@@ -1411,26 +1411,37 @@ from those draws:
 cmp_joint <- compare_posterior(fits_tox_joint, comparison = "ecx", ecx_val = 10)
 cmp_joint$prob_diff
 ec10_joint <- cmp_joint$posterior_list
-zn_cu_ratio <- ec10_joint[["Zn"]] / ec10_joint[["Cu"]]
-quantile(zn_cu_ratio, c(0.5, 0.025, 0.975), na.rm = TRUE)
+finite_ec10 <- function(d) {
+  censored <- attr(d, "censored")
+  keep <- is.finite(d) & d > 0
+  if (!is.null(censored)) {
+    keep <- keep & !censored$above & !censored$below
+  }
+  keep
+}
+ratio_known <- finite_ec10(ec10_joint[["Zn"]]) &
+  finite_ec10(ec10_joint[["Cu"]])
+zn_cu_ratio <- ec10_joint[["Zn"]][ratio_known] /
+  ec10_joint[["Cu"]][ratio_known]
+quantile(zn_cu_ratio, c(0.5, 0.025, 0.975))
 ```
 
 ```{r ratio-summary, include = FALSE}
-# ecx() gives no value to a draw whose EC10 lies beyond the tested range.
-ratio_censored <- if (any(is.na(zn_cu_ratio))) {
-  paste0(" (leaving out ", sum(is.na(zn_cu_ratio)), " draws whose EC10 lies",
+# The censoring record identifies draws beyond the prediction range.
+ratio_censored <- if (any(!ratio_known)) {
+  paste0(" (leaving out ", sum(!ratio_known), " draws whose EC10 lies",
          " beyond the tested range)")
 } else {
   ""
 }
-ratio_q <- quantile(zn_cu_ratio, c(0.5, 0.025, 0.975), na.rm = TRUE)
+ratio_q <- quantile(zn_cu_ratio, c(0.5, 0.025, 0.975))
 # The ratio of the upper to the lower bound of each 95 per cent interval.
 level_span <- vapply(ec10_joint, function(d) {
-  q <- quantile(d, c(0.025, 0.975), na.rm = TRUE)
+  q <- quantile(d[finite_ec10(d)], c(0.025, 0.975))
   q[[2]] / q[[1]]
 }, numeric(1))
-log_cor <- cor(log(ec10_joint[["Zn"]]), log(ec10_joint[["Cu"]]),
-               use = "complete.obs")
+log_cor <- cor(log(ec10_joint[["Zn"]][ratio_known]),
+               log(ec10_joint[["Cu"]][ratio_known]))
 level_span_text <- if (identical(fmt(level_span[["Cu"]]),
                                  fmt(level_span[["Zn"]]))) {
   paste(fmt(level_span[["Cu"]]), "for each")
