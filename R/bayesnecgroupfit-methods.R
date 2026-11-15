@@ -462,14 +462,3 @@ c.bayesnecgroupfit <- function(x, ...) {
   out$weights_method <- fit_weights_method(out$fits[[1]])
   out
 }
-
-#' Combine two grouped fits level by level
-#'
-#' @param e1,e2 Grouped fits on the same data and levels.
-#' @return A \code{bayesnecgroupfit} whose fit at each level is the
-#' combined model set.
-#' @method + bayesnecgroupfit
-#' @export
-`+.bayesnecgroupfit` <- function(e1, e2) {
-  c.bayesnecgroupfit(e1, e2)
-}

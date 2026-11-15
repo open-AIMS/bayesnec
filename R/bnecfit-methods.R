@@ -217,21 +217,6 @@ add_bnec_fits <- function(e1, e2) {
   combine_bnec_fits(e1, e2)
 }
 
-#' Add an ordinary fit to another ordinary fit or model set
-#'
-#' @param e1 A \code{bayesnecfit} or \code{bayesmanecfit}.
-#' @param e2 A \code{bayesnecfit} or \code{bayesmanecfit}.
-#' @return A \code{bayesnecfit} for one equation, or a
-#' \code{bayesmanecfit} for a model set.
-#' @method + bayesnecfit
-#' @export
-`+.bayesnecfit` <- add_bnec_fits
-
-#' @rdname plus-.bayesnecfit
-#' @method + bayesmanecfit
-#' @export
-`+.bayesmanecfit` <- add_bnec_fits
-
 #' Update an object of class \code{\link{bnecfit}} as fitted by function
 #' \code{\link{bnec}}.
 #'
