@@ -13,7 +13,7 @@ pull_best(object, ...)
 by \code{\link{bnec_joint}}, or of class
 \code{\link{bayesnecgroupfit}} as returned by \code{\link{bnec_group}}.}
 
-\item{...}{Not used. Any argument supplied here is refused; see Details.}
+\item{...}{Refused except for \code{level} on a grouped fit.}
 }
 \value{
 For a \code{\link{bayesmanecfit}}, an object of class
@@ -45,7 +45,7 @@ more than the equal share of 0.1. No threshold is applied;
 candidates hold exactly the same highest weight, the first in the order of
 the set is returned and the tie is reported.
 
-The object is the only argument, and any other is refused. To rebuild a fit
+On an ordinary, hurdle or joint fit, any other argument is refused. To rebuild a fit
 at a different \code{x_range}, \code{resolution}, \code{sig_val} or
 \code{loo_controls}, use \code{\link{pull_out}} with a model name, or
 \code{\link{amend}}. The selected equation is reported for a

@@ -10,7 +10,7 @@
 #' \code{\link{bnec}}, or of class \code{\link{bayesnecjointfit}} as returned
 #' by \code{\link{bnec_joint}}, or of class
 #' \code{\link{bayesnecgroupfit}} as returned by \code{\link{bnec_group}}.
-#' @param ... Not used. Any argument supplied here is refused; see Details.
+#' @param ... Refused except for \code{level} on a grouped fit.
 #'
 #' @details The highest-weighted candidate contributes most to the
 #' model-averaged estimate, so its fit is the one normally inspected with
@@ -23,7 +23,7 @@
 #' candidates hold exactly the same highest weight, the first in the order of
 #' the set is returned and the tie is reported.
 #'
-#' The object is the only argument, and any other is refused. To rebuild a fit
+#' On an ordinary, hurdle or joint fit, any other argument is refused. To rebuild a fit
 #' at a different \code{x_range}, \code{resolution}, \code{sig_val} or
 #' \code{loo_controls}, use \code{\link{pull_out}} with a model name, or
 #' \code{\link{amend}}. The selected equation is reported for a
@@ -61,11 +61,12 @@
 #'
 #' @export
 pull_best <- function(object, ...) {
-  # Refuse `...` in the generic, before dispatch, so that the refusal cannot
-  # depend on the class or follow the selection report. A `model` argument
-  # would otherwise fail in pull_out() as "matched by multiple actual
-  # arguments".
-  if (...length() > 0 && !inherits(object, "bayesnecgroupfit")) {
+  UseMethod("pull_best")
+}
+
+#' @noRd
+refuse_pull_best_dots <- function(...) {
+  if (...length() > 0) {
     supplied <- ...names()
     supplied <- supplied[nzchar(supplied)]
     stop("pull_best() takes the object and nothing else",
@@ -77,12 +78,13 @@ pull_best <- function(object, ...) {
          " instead; and rebuild a fit at a different x_range, resolution,",
          " sig_val or loo_controls with ?pull_out or ?amend.", call. = FALSE)
   }
-  UseMethod("pull_best")
+  invisible(NULL)
 }
 
 #' @noRd
 #' @export
 pull_best.default <- function(object, ...) {
+  refuse_pull_best_dots(...)
   stop("pull_best() applies to a fit of class bayesnecfit, bayesmanecfit,",
        " bayesnechurdlefit, bayesnecgroupfit or bayesnecjointfit.",
        call. = FALSE)
@@ -91,6 +93,7 @@ pull_best.default <- function(object, ...) {
 #' @noRd
 #' @export
 pull_best.bayesnecfit <- function(object, ...) {
+  refuse_pull_best_dots(...)
   # Not a usage error: screen_models() returns a bayesnecfit when one equation
   # is left, and this saves the caller testing the class. Report it anyway, so
   # that the record of the selection does not depend on the branch.
@@ -102,6 +105,7 @@ pull_best.bayesnecfit <- function(object, ...) {
 #' @noRd
 #' @export
 pull_best.bayesnecjointfit <- function(object, ...) {
+  refuse_pull_best_dots(...)
   models <- vapply(object$levels, joint_level_model, character(1),
                    object = object, USE.NAMES = FALSE)
   message("Each level of this joint refit has one equation (",
@@ -113,6 +117,7 @@ pull_best.bayesnecjointfit <- function(object, ...) {
 #' @noRd
 #' @export
 pull_best.bayesmanecfit <- function(object, ...) {
+  refuse_pull_best_dots(...)
   model <- best_weighted_model(object$mod_stats)
   # Delegate to pull_out(), which rebuilds the weighted quantities and copies
   # the record of failed models. It returns a bayesnecfit for every set the
@@ -123,6 +128,7 @@ pull_best.bayesmanecfit <- function(object, ...) {
 #' @noRd
 #' @export
 pull_best.bayesnechurdlefit <- function(object, ...) {
+  refuse_pull_best_dots(...)
   # Label each component's report. The components hold different candidate
   # sets, so they often select different equations.
   message("Growth component:")
