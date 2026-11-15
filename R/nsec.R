@@ -63,7 +63,7 @@
 #' just the median and 95 credible intervals.
 #'
 #' @details NSEC is no-effect toxicity metric that estimates the concentration 
-#' at which the modeled mean response is statistically indistinguishable from 
+#' at which the modelled mean response is statistically indistinguishable from
 #' the mean control response. See the detailed derivation in
 #' Fisher and Fox (2023).
 #'

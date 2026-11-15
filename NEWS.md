@@ -1095,9 +1095,9 @@ the same call returns.
 
 - If link functions are not specified in bnec, then the default link function is used; previous versions of bayesnec used the identity link.
 
-- An additional family has been added betabinomial2 for over dispersered binomial data.
+- An additional family has been added beta_binomial2 for over-dispersed binomial data.
 
-- The package supports using link functions for generalized modelling, which appears to be more stable and is also in line with more typical generalised modelling approaches.
+- The package supports using link functions for generalised modelling, which appears to be more stable and is also in line with more typical generalised modelling approaches.
 
 - There are multiple options for model weights calculation from the loo package. The default is "pseudobma BB".
 
