@@ -434,6 +434,19 @@ test_that("the default path is unchanged for a named list", {
   expect_setequal(names(r$posterior_list), c("a", "b"))
 })
 
+test_that("an estimator error on one level names that level", {
+  g <- fake_group_fit(list(
+    a = suppressMessages(pull_out(manec_example, model = "nec4param")),
+    b = suppressMessages(pull_out(manec_example, model = "ecx4param"))
+  ))
+  expect_error(nec(g), "Level b: nec() is not defined for ecx4param",
+               fixed = TRUE)
+  expect_error(suppressWarnings(nec(g, pool = "mixture")),
+               "Level b: nec() is not defined for ecx4param", fixed = TRUE)
+  expect_error(exceedance(g, 1.5), "Level b: nec() is not defined",
+               fixed = TRUE)
+})
+
 test_that("the default still refuses input that is not a named list", {
   expect_error(compare_posterior(list(1, 2)), "named list")
   expect_error(compare_posterior("not a list"), "named list")

@@ -102,6 +102,20 @@ with_level_label <- function(level, expr) {
   )
 }
 
+#' Prefix an error raised on one level with that level
+#'
+#' @param level The level, a \code{\link[base]{character}} string.
+#' @param expr An expression evaluated on the fit of that level.
+#'
+#' @return The value of \code{expr}.
+#'
+#' @noRd
+with_level_error <- function(level, expr) {
+  tryCatch(expr, error = function(e) {
+    stop("Level ", level, ": ", conditionMessage(e), call. = FALSE)
+  })
+}
+
 #' Apply a per-fit function to each level, labelling what each level raises
 #'
 #' @inheritParams group_lapply
@@ -111,7 +125,9 @@ with_level_label <- function(level, expr) {
 #' @noRd
 group_lapply_labelled <- function(object, fun, ...) {
   out <- lapply(seq_along(object$fits), function(i) {
-    with_level_label(object$levels[i], fun(object$fits[[i]], ...))
+    with_level_error(object$levels[i],
+                     with_level_label(object$levels[i],
+                                      fun(object$fits[[i]], ...)))
   })
   names(out) <- object$levels
   out
@@ -148,9 +164,11 @@ group_estimate_table <- function(object, what, fun, ..., pool = "none",
   }
   if (identical(pool, "none")) {
     est <- lapply(seq_along(object$fits), function(i) {
-      with_level_label(object$levels[i], with_prior_bound_label(
-        paste("Level", object$levels[i]),
-        do.call(fun, c(list(object$fits[[i]]), dots))
+      with_level_error(object$levels[i], with_level_label(
+        object$levels[i], with_prior_bound_label(
+          paste("Level", object$levels[i]),
+          do.call(fun, c(list(object$fits[[i]]), dots))
+        )
       ))
     })
     names(est) <- object$levels
@@ -164,8 +182,9 @@ group_estimate_table <- function(object, what, fun, ..., pool = "none",
   }
   dots$posterior <- TRUE
   draws <- lapply(seq_along(object$fits), function(i) {
-    with_level_label(object$levels[i],
-                     do.call(fun, c(list(object$fits[[i]]), dots)))
+    with_level_error(object$levels[i], with_level_label(
+      object$levels[i], do.call(fun, c(list(object$fits[[i]]), dots))
+    ))
   })
   names(draws) <- object$levels
   pooled <- pool_estimate_draws(draws, object$n, pool,

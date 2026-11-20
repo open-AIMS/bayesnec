@@ -169,11 +169,12 @@ exceedance.bayesnecgroupfit <- function(object, threshold,
   # raised before any level's curve is evaluated.
   check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
                         list(...))
-  # Each level is an ordinary fit, so the per-level comparison is a map over
-  # them, as group_lapply() makes it for the estimators themselves.
-  rows <- group_lapply(object, exceedance_fit, threshold = threshold,
-                       estimate = estimate, ecx_val = ecx_val, xform = xform,
-                       ...)
+  rows <- lapply(seq_along(object$fits), function(i) {
+    with_level_error(object$levels[i], exceedance_fit(
+      object$fits[[i]], threshold = threshold, estimate = estimate,
+      ecx_val = ecx_val, xform = xform, ...
+    ))
+  })
   out <- do.call(rbind, lapply(seq_along(rows), function(i) {
     cbind(data.frame(level = object$levels[i], stringsAsFactors = FALSE),
           rows[[i]])
