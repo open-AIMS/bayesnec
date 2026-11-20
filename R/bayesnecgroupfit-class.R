@@ -534,7 +534,7 @@ nec.bayesnecgroupfit <- function(object, ...) {
                   collapse = ", "),
            " has none. Use nsec() to pool the NSEC.", call. = FALSE)
     }
-    check_prob_vals(if (is.null(dots$prob_vals)) NULL else dots$prob_vals)
+    check_prob_vals(dots$prob_vals)
     message_levels_lack_nec(object$levels[lacking], models[lacking])
   }
   prob_vals <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else

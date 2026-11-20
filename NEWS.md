@@ -391,6 +391,12 @@ the same call returns.
 - `check_fit()` on a `bayesnecgroupfit` checks each level and returns a
   `checkfit_group` object, with `print()` and `plot()` methods (#562, #563).
 
+- `nec()` and `exceedance()` on a `bayesnecgroupfit` return `NA` for a level
+  fitted with a single smooth equation, which has no `nec` parameter, and say
+  so in one message that names the level and points to `nsec()`, as they do
+  for a `bayesnecjointfit`. Where every level is of that kind they stop. A
+  level holding a model set returns its model-averaged N(S)EC.
+
 - `crossed_group_weights()` gives the model weights of each level of a
   `bayesnecgroupfit`, the best combination of per-level equations with its
   weight, and the weights of the equations common to every level. Given a
@@ -550,12 +556,6 @@ the same call returns.
   equation. `nec(no_effect = TRUE)` gives the NSEC of a smooth level as well.
   Where every level has a smooth equation, `nec()` stops, as it does for a
   single smooth equation. The other classes refuse `no_effect` (#388, #570).
-
-- `nec()` and `exceedance()` on a `bayesnecgroupfit` return `NA` for a level
-  fitted with a single smooth equation, which has no `nec` parameter, and say
-  so in one message that names the level and points to `nsec()`, as they do
-  for a `bayesnecjointfit`. Where every level is of that kind they stop. A
-  level holding a model set is unchanged.
 
 ## Estimates beyond the prediction range
 
