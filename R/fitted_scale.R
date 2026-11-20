@@ -217,9 +217,10 @@ refine_inverse_grid <- function(raw, fitted, transform) {
 #' Apply a map to posterior draws, refusing a draw it cannot place
 #'
 #' A map read off the grid gives \code{NA} beyond it. A censored draw has no
-#' value in any summary, so it may be \code{NA}. Any other draw would be
-#' dropped from the quantiles without a word, so the call stops, or with
-#' \code{refuse = FALSE} says so and leaves the draw \code{NA}.
+#' value in any summary, so it is returned \code{NA}, whatever its stored
+#' value. Any other draw would be dropped from the quantiles without a word,
+#' so the call stops, or with \code{refuse = FALSE} says so and leaves the
+#' draw \code{NA}.
 #'
 #' @param values A \code{\link[base]{numeric}} vector of draws.
 #' @param map The function from \code{recorded_xform()}.
@@ -228,19 +229,21 @@ refine_inverse_grid <- function(raw, fitted, transform) {
 #' @param refuse \code{TRUE} to stop on such a draw, \code{FALSE} for a
 #' message.
 #'
-#' @return \code{map(values)}.
+#' @return \code{map(values)}, \code{NA} at each draw \code{cens} records.
 #' @noRd
 map_draws <- function(values, map, cens = NULL, what = "estimate",
                       refuse = TRUE) {
+  # A stored censored draw can be -Inf, which log() or sqrt() turn into NaN
+  # with a warning. Map it as NA; censored_infinite() restores it from cens.
+  if (!is.null(cens) && length(cens$above) == length(values)) {
+    values[cens$above | cens$below] <- NA
+  }
   out <- map(values)
   tr <- attr(map, "grid_inverse")
   if (is.null(tr)) {
     return(out)
   }
   lost <- is.na(out) & !is.na(values)
-  if (!is.null(cens) && length(cens$above) == length(values)) {
-    lost <- lost & !cens$above & !cens$below
-  }
   if (any(lost)) {
     text <- paste0(
       "No closed-form inverse of ", tr$label, " is known, so the ", what,

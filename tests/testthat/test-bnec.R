@@ -387,7 +387,8 @@ test_that("the NSEC of ecxflat is censored above but for the control share (#419
   # The stored no-effect estimate is that NSEC, read on the fit's own grid, and
   # at the default sig_val every entry of its summary is the bound.
   cens <- attr(fit$ne_posterior, "censored")
-  expect_identical(sum(cens$above) + sum(!is.na(fit$ne_posterior)),
+  expect_true(all(fit$ne_posterior[cens$above] == Inf))
+  expect_identical(sum(cens$above) + sum(is.finite(fit$ne_posterior)),
                    length(fit$ne_posterior))
   expect_identical(attr(fit$ne, "censored_summary")$bound, rep(">=", 3))
   effect <- suppressMessages(
@@ -419,7 +420,8 @@ test_that("a set holding ecxflat mixes its NSEC draws into the N(S)EC (#419)", {
   vals <- as.numeric(fit$w_ne_posterior)[seg]
   above <- attr(fit$w_ne_posterior, "censored")$above[seg]
   control <- min(fit$mod_fits$ecxflat$fit$data$x)
-  expect_true(all(above | (!is.na(vals) & vals == control)))
+  expect_true(all(vals[above] == Inf))
+  expect_true(all(above | vals == control))
   expect_gt(sum(above), 0)
   msgs <- character(0)
   withCallingHandlers(

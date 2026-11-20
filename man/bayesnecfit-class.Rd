@@ -76,7 +76,12 @@ absent for the fitted model type.}
 
 \item{\code{residuals}}{Residual values of the observed data from the fitted model.}
 
-\item{\code{ne_posterior}}{The posterior of that no-effect estimate.}
+\item{\code{ne_posterior}}{The posterior of that no-effect estimate, one value per
+draw. Attribute \code{"censored"} records the draws that lie beyond either
+end of the prediction range; a summary keeps their rank and gives them no
+value. A draw read off the curve there is stored as \code{Inf} above the
+range and \code{-Inf} below it, the form in which \code{\link{nec}} and
+\code{\link{nsec}} return a censored draw with \code{posterior = TRUE}.}
 
 \item{\code{ne_type}}{A \code{\link[base]{character}} vector indicating the type of
 no-effect toxicity estimate. A monotone threshold equation contributes its

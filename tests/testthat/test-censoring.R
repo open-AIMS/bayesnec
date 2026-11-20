@@ -673,6 +673,51 @@ test_that("a draw beyond the lower end is recorded as below", {
   expect_equal(cens$lower, 2.5)
 })
 
+test_that("a stored curve-read draw beyond either end is infinite", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  x <- manec_example$mod_fits[["ecx4param"]]$fit$data$x
+  ends <- list(above = censored_x_range(), below = c(min(x) + 0.3, max(x)))
+  for (end in names(ends)) {
+    fit <- censored_ecx_fit(x_range = ends[[end]])
+    post <- fit$ne_posterior
+    cens <- attr(post, "censored")
+    expect_gt(sum(cens[[end]]), 0)
+    expect_true(all(post[cens$above] == Inf))
+    expect_true(all(post[cens$below] == -Inf))
+    expect_true(all(is.finite(post[!cens$above & !cens$below])))
+    direct <- suppressWarnings(nsec(fit, x_range = ends[[end]],
+                                    resolution = 50, posterior = TRUE,
+                                    xform = identity))
+    expect_equal(as.numeric(post), as.numeric(direct))
+  }
+})
+
+test_that("a stored censored draw saved as NA is read as one stored infinite", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # An object saved before censored draws were stored as Inf or -Inf holds NA
+  # there. The record, not the value, decides every estimate and summary.
+  x <- manec_example$mod_fits[["ecx4param"]]$fit$data$x
+  read <- function(f, ...) suppressWarnings(bayesnec:::necfit_ne(f, ...))
+  for (rng in list(censored_x_range(), c(min(x) + 0.3, max(x)))) {
+    fit <- censored_ecx_fit(x_range = rng)
+    old <- fit
+    cens <- attr(old$ne_posterior, "censored")
+    old$ne_posterior[cens$above | cens$below] <- NA_real_
+    expect_true(anyNA(old$ne_posterior))
+    for (args in list(list(), list(posterior = TRUE), list(xform = log),
+                      list(xform = log, posterior = TRUE))) {
+      expect_identical(do.call(read, c(list(old), args)),
+                       do.call(read, c(list(fit), args)))
+    }
+    expect_identical(bayesnec:::summary_ne_vals(old, log),
+                     bayesnec:::summary_ne_vals(fit, log))
+  }
+})
+
 test_that("censored posterior draws sort and quantile at the right ends", {
   skip_on_cran()
   upper <- suppressWarnings(ecx(ecx4param, ecx_val = 50,

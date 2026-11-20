@@ -105,6 +105,8 @@ test_that("a stored smooth NSEC reads its control where nsec() does", {
     direct <- suppressWarnings(nsec(stored, x_range = rng, resolution = 200,
                                     posterior = TRUE, xform = identity))
     expect_equal(as.numeric(stored$ne_posterior), as.numeric(direct))
+    expect_identical(attr(stored$ne_posterior, "censored")[c("above", "below")],
+                     attr(direct, "censored")[c("above", "below")])
   }
 })
 
