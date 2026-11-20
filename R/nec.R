@@ -91,7 +91,11 @@
 #'   \item For a \code{\link{bayesnecfit}} holding a hormesis threshold
 #'     equation, the \bold{NSEC} read off the fitted curve, as
 #'     \code{\link{nsec}} reads it. It is computed when the model is fitted,
-#'     with the \code{sig_val} passed to \code{\link{bnec}}.
+#'     with the \code{sig_val} passed to \code{\link{bnec}}, on the grid of
+#'     \code{resolution} points stored with the fit, 1000 by default.
+#'     \code{\link{nsec}} reads it again on a grid of its own
+#'     \code{resolution}, 500 by default, so the two can differ in the last
+#'     figures.
 #'   \item For a \code{\link{bayesnecfit}} holding a smooth (\code{ecx}-type)
 #'     equation, which has no \code{nec} parameter, \code{nec} stops with an
 #'     error. Use \code{\link{nsec}} for its no-effect estimate, the
