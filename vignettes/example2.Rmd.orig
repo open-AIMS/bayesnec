@@ -94,7 +94,7 @@ exp_5$mod_stats
 
 We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged no-effect estimate is reported, in this case as an N(S)EC. For this example the **nec4param** and **ecxwb2** models have the highest weights.
 
-All these model fits are satisfactory despite the relatively low number of iterations set in our example. The summary also gives the number of divergent transitions after warmup for each model, and would include a warning for any model with more than 10 (the cutoff used by `check_sampling()`).
+All these model fits are satisfactory despite the relatively low number of iterations set in our example. The summary also gives the number of divergent transitions after warmup for each model, and would include a warning for any model with divergent transitions in more than 0.125% of its retained draws (the cutoff used by `check_sampling()`), which here is 2 of the 1,600 draws.
 
 ```{r}
 summary(exp_5)
@@ -153,7 +153,7 @@ rhat(exp_5, rhat_cutoff = 1.05) |>
   sapply("[[", "failed")
 ```
 
-The `rhat()` function returns only Rhat, whereas `check_sampling()` returns all three sampler diagnostics (Rhat, effective sample size and the number of divergent transitions) for each candidate model:
+The `rhat()` function returns only Rhat, whereas `check_sampling()` returns all three sampler diagnostics (Rhat, effective sample size, and the number of divergent transitions with their proportion of the retained draws) for each candidate model:
 
 ```{r}
 check_sampling(exp_5)
