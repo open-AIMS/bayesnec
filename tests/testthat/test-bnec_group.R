@@ -439,12 +439,85 @@ test_that("an estimator error on one level names that level", {
     a = suppressMessages(pull_out(manec_example, model = "nec4param")),
     b = suppressMessages(pull_out(manec_example, model = "ecx4param"))
   ))
-  expect_error(nec(g), "Level b: nec() is not defined for ecx4param",
-               fixed = TRUE)
+  # A level with no nec parameter does not refuse nec(): see below. Another
+  # refusal still names the level.
+  expect_error(nec(g, extrapolate = "x"), "extrapolate")
+  expect_error(suppressMessages(nsec(g, prob_vals = c(0.5, 0.7))),
+               "central, lower and upper")
+})
+
+test_that("nec() gives NA for a level with no nec parameter and says so", {
+  skip_on_cran()
+  nec4 <- suppressMessages(pull_out(manec_example, model = "nec4param"))
+  ecx4 <- suppressMessages(pull_out(manec_example, model = "ecx4param"))
+  g <- fake_group_fit(list(a = nec4, b = ecx4))
+  expect_message(n <- nec(g), "No NEC is defined at \"b\" \\(ecx4param\\)")
+  expect_message(nec(g), "nsec\\(\\)")
+  expect_equal(n$level, c("a", "b"))
+  expect_false(anyNA(unlist(n[1, c("Q50", "Q2.5", "Q97.5")])))
+  expect_true(all(is.na(unlist(n[2, c("Q50", "Q2.5", "Q97.5")]))))
+  expect_true(all(unlist(n[, c("bound_Q50", "bound_Q2.5", "bound_Q97.5")][2, ])
+                  == ""))
+  # The level that has a nec parameter is what nec() on it alone returns.
+  expect_equal(as.numeric(unlist(n[1, c("Q50", "Q2.5", "Q97.5")])),
+               as.numeric(nec(nec4)))
+  # prob_vals names the columns of the NA row.
+  n2 <- suppressMessages(nec(g, prob_vals = c(0.5, 0.3, 0.7)))
+  expect_equal(names(n2)[2:4], c("Q50", "Q30", "Q70"))
+  expect_error(nec(g, prob_vals = c(0.5, 0.7)), "central, lower and upper")
+  # One NA vector of the right length per such level, never zeros.
+  p <- suppressMessages(nec(g, posterior = TRUE))
+  expect_named(p, c("a", "b"))
+  expect_true(all(is.na(p$b)))
+  expect_false(anyNA(p$a))
+  expect_equal(length(p$b), brms::ndraws(ecx4$fit))
+  # Pooling needs a nec parameter at every level.
   expect_error(suppressWarnings(nec(g, pool = "mixture")),
-               "Level b: nec() is not defined for ecx4param", fixed = TRUE)
-  expect_error(exceedance(g, 1.5), "Level b: nec() is not defined",
-               fixed = TRUE)
+               "Pooling NEC values needs a nec parameter at every level")
+  # no_effect is a joint-refit argument.
+  expect_error(nec(g, no_effect = TRUE), "no_effect")
+})
+
+test_that("nec() refuses a group in which no level has a nec parameter", {
+  skip_on_cran()
+  ecx4 <- suppressMessages(pull_out(manec_example, model = "ecx4param"))
+  g <- fake_group_fit(list(a = ecx4, b = ecx4))
+  expect_error(nec(g), "nec\\(\\) is not defined at any level")
+  expect_error(nec(g), "\"a\" \\(ecx4param\\), \"b\" \\(ecx4param\\)")
+  expect_error(nec(g), "nsec\\(\\)")
+  # The estimators that exist for every equation still return a row each.
+  expect_equal(suppressWarnings(suppressMessages(nsec(g)))$level, c("a", "b"))
+})
+
+test_that("a level holding a model set still returns its estimate", {
+  skip_on_cran()
+  ecx4 <- suppressMessages(pull_out(manec_example, model = "ecx4param"))
+  g <- fake_group_fit(list(a = manec_example, b = ecx4))
+  n <- suppressMessages(nec(g))
+  expect_equal(n$level, c("a", "b"))
+  expect_false(anyNA(unlist(n[1, c("Q50", "Q2.5", "Q97.5")])))
+  expect_true(all(is.na(unlist(n[2, c("Q50", "Q2.5", "Q97.5")]))))
+  # A group whose levels all hold sets raises no message about a nec parameter.
+  g2 <- fake_group_fit(list(a = manec_example, b = manec_example))
+  expect_no_message(nec(g2), message = "No NEC is defined")
+})
+
+test_that("exceedance() gives NA for a level with no nec parameter", {
+  skip_on_cran()
+  nec4 <- suppressMessages(pull_out(manec_example, model = "nec4param"))
+  ecx4 <- suppressMessages(pull_out(manec_example, model = "ecx4param"))
+  g <- fake_group_fit(list(a = nec4, b = ecx4))
+  expect_message(out <- suppressWarnings(exceedance(g, 1.5)),
+                 "No NEC is defined at \"b\" \\(ecx4param\\)")
+  expect_equal(out$level, c("a", "b"))
+  expect_false(is.na(out$prob[1]))
+  expect_true(is.na(out$prob[2]))
+  expect_equal(out$n_draws[2], 0)
+  # The other estimates have a value at every level.
+  expect_false(anyNA(suppressWarnings(suppressMessages(
+    exceedance(g, 1.5, estimate = "nsec")))$prob))
+  g2 <- fake_group_fit(list(a = ecx4, b = ecx4))
+  expect_error(exceedance(g2, 1.5), "nec\\(\\) is not defined at any level")
 })
 
 test_that("the default still refuses input that is not a named list", {
