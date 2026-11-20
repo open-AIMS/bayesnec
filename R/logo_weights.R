@@ -183,7 +183,7 @@ logo_integrate <- function(h, r0, sd, nodes = 10, newton_steps = 2,
   out
 }
 
-#' Gauss--Legendre nodes and weights on [-1, 1]
+#' Gauss--Legendre nodes and weights on the interval -1 to 1
 #'
 #' @param n Number of nodes.
 #'
@@ -226,8 +226,7 @@ log_add_exp <- function(a, b) {
 #' @return A \code{psis_loo} object from \code{\link[loo]{loo}}, with one
 #' pointwise row per level and attributes \code{"group"} and \code{"levels"}.
 #'
-#' @importFrom brms prepare_predictions log_lik as_draws_matrix nchains ndraws
-#' rhat
+#' @importFrom brms prepare_predictions log_lik as_draws_matrix nchains ndraws rhat
 #' @importFrom loo loo relative_eff
 #'
 #' @noRd
