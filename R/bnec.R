@@ -988,6 +988,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # included, is decided from fewer rows than were supplied.
   check_complete_cases(bdat)
   check_finite_cases(bdat)
+  check_rate_denominator(bdat)
   check_concentration_count(bdat)
   validate_predictor_scale(
     predictor_scale, retrieve_var(bdat, "x_var", error = TRUE)

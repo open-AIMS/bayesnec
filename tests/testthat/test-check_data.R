@@ -264,6 +264,20 @@ test_that("a rate() term adds the denominator under its own name", {
   expect_identical(unique(res$mod_dat$denom), 2)
 })
 
+test_that("a rate() denominator of zero or less is refused, naming the rows", {
+  d <- data.frame(x = rep(c(0.1, 1, 10, 100), each = 5),
+                  y = as.integer(rep(c(20, 15, 8, 2), each = 5)),
+                  n = rep(2, 20))
+  d$n[c(3, 7)] <- c(0, -1)
+  f <- y | rate(n) ~ crf(x, model = "nec3param")
+  expect_error(cd_run(f, d, poisson(link = "identity")),
+               "rate() denominator n is zero or negative at row(s) 3, 7",
+               fixed = TRUE)
+  # get_priors() reaches check_data() without a fit.
+  expect_error(get_priors(f, data = d, family = poisson(link = "identity")),
+               "must be greater than zero")
+})
+
 test_that("is_censored returns a scalar FALSE that recycles", {
   # The contract the boundary corrections depend on: with no cens() term the
   # result must recycle harmlessly against a response of any length.

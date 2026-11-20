@@ -181,6 +181,7 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   mod_dat <- model.frame(formula, data = data)
   check_complete_cases(mod_dat)
   check_finite_cases(mod_dat)
+  check_rate_denominator(mod_dat)
   check_level_concentrations(mod_dat, grp, group_var)
   validate_predictor_scale(
     predictor_scale, retrieve_var(mod_dat, "x_var", error = TRUE)

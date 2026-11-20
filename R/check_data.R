@@ -976,6 +976,34 @@ check_finite_cases <- function(data) {
        " before fitting.", hint, call. = FALSE)
 }
 
+#' Refuse a \code{rate()} denominator that is zero or less
+#'
+#' The denominator enters the fit as an offset on the log scale, so a zero or
+#' negative value has no logarithm. Rows are named by row name, as in
+#' \code{check_finite_cases()}.
+#'
+#' @param data A model frame for a \code{\link{bayesnecformula}}.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_rate_denominator <- function(data) {
+  denominator <- retrieve_var(data, "rate_var")
+  if (is.null(denominator)) {
+    return(invisible(NULL))
+  }
+  bad <- is.finite(denominator) & denominator <= 0
+  if (!any(bad)) {
+    return(invisible(NULL))
+  }
+  label <- pop_var_label(data, "rate_var", "rate")
+  stop("The rate() denominator ", label, " is zero or negative at row(s) ",
+       row_list(rownames(data)[bad]), ". The denominator is the exposure the",
+       " count was observed over, and it enters the fit as a logarithm, so it",
+       " must be greater than zero. Remove or correct those rows before",
+       " fitting.", call. = FALSE)
+}
+
 #' Refuse data with fewer than two distinct predictor values
 #'
 #' A curve needs observations at two or more concentrations. Zero rows, one
@@ -1218,6 +1246,7 @@ check_data <- function(data, family, model) {
   # tests every element, so an NA left by options(na.action = "na.pass") is
   # reported too.
   check_finite_cases(data)
+  check_rate_denominator(data)
   check_concentration_count(data)
   check_trials_values(data, family)
   resp_check <- mean(y[which(x < mean(x))]) <

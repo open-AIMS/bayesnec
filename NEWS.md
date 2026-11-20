@@ -309,11 +309,11 @@ the same call returns.
 
 - `bnec()`, `bnec_group()`, `amend()` and `update()` check the data once
   before fitting. They refuse a value of the predictor or response that is
-  not finite, a predictor with a single value and data with no rows, and
-  under `binomial` or `beta_binomial` trials that are not a positive whole
-  number or are fewer than the response. `bnec_group()` refuses a level
-  observed at a single concentration, and warns of one observed at two
-  (#578).
+  not finite, a `rate()` denominator of zero or less, a predictor with a
+  single value and data with no rows, and under `binomial` or
+  `beta_binomial` trials that are not a positive whole number or are fewer
+  than the response. `bnec_group()` refuses a level observed at a single
+  concentration, and warns of one observed at two (#578).
 
 - `bnec()`, `bnec_group()`, `amend()` and `update()` refuse, before fitting,
   a `sig_val` outside (0, 1), a `resolution` that is not a whole number of at
@@ -831,6 +831,10 @@ the same call returns.
 
 - `bnec()` accepts a `lognormal` or `constant()` prior on a curve parameter,
   and `sample_priors()` draws from both (#84, #244, #302).
+
+- `sample_priors()` draws a bounded prior from the truncated distribution.
+  2.1.3.1 resampled the draws that fell inside the bounds with replacement,
+  which repeated values under tight bounds.
 
 - `sample_priors(plot = NA)` returns the draws, as documented (#244).
 
