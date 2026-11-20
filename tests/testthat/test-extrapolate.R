@@ -461,6 +461,15 @@ test_that("a draw with no value is refused rather than dropped in silence", {
     ),
     "has no value for 2 of"
   )
+  # A curve-read draw with no value is stored as Inf or -Inf.
+  post[c(5, 11)] <- c(Inf, -Inf)
+  expect_error(
+    suppressMessages(
+      bayesnec:::extrapolated_manec_ne(pure_nec_stub(post), lims, bounds,
+                                       0.01, 200)
+    ),
+    "has no value for 2 of"
+  )
 })
 
 test_that("a set with no stored draw index is rebuilt under one index", {
