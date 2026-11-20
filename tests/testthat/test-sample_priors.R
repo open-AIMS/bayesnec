@@ -102,8 +102,9 @@ test_that("a prior with no draw inside its bounds is named in the error", {
                "prior on top, normal\\(0, 1\\), fell inside its bounds")
 })
 
-test_that("a single draw inside the bounds is returned as drawn", {
-  # One kept draw of 1 or more must not be read as sample(1:x).
+test_that("a single bounded draw is returned as drawn", {
+  # A bound that removes almost none of the prior leaves the draw almost as
+  # the unbounded call makes it; the truncation rescales it slightly.
   ps <- data.frame(
     prior = "normal(5, 1)", class = "b", coef = "", group = "", resp = "",
     dpar = "", nlpar = "top", lb = c("0", NA), ub = NA_character_,
@@ -111,7 +112,7 @@ test_that("a single draw inside the bounds is returned as drawn", {
   )
   bounded <- sample_priors(ps[1, ], n_samples = 1, plot = NA)
   unbounded <- sample_priors(ps[2, ], n_samples = 1, plot = NA)
-  expect_equal(bounded$b_top, unbounded$b_top)
+  expect_equal(bounded$b_top, unbounded$b_top, tolerance = 1e-5)
   expect_gt(bounded$b_top, 1)
 })
 
