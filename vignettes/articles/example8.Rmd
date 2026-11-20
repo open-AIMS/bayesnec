@@ -1008,7 +1008,7 @@ fits_tox_joint
 #>   dispersion        : shared 
 #>   summed weight     : 0.833 of the available weight across levels
 #>   weight at level   : Cu 0.703, Zn 0.964 
-#>   fitted by         : bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1 
+#>   fitted by         : bayesnec 3.0.0, installed from a local source, which records no commit, under R 4.6.1 
 #> 
 #> Every curve parameter takes a value per level in one posterior;
 #> read them from the draws as b_<parameter>_toxicant<level>.
