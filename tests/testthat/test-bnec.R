@@ -823,6 +823,32 @@ test_that("degenerate data are refused once, before any model", {
   expect_identical(calls, 0L)
 })
 
+test_that("a rate() denominator of zero or less is refused once, before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  d <- data.frame(x = rep(c(0.1, 1, 10, 100), each = 5),
+                  y = as.integer(rep(c(20, 15, 8, 2), each = 5)),
+                  n = rep(2, 20))
+  d$n[c(3, 7)] <- c(0, -1)
+  msg <- tryCatch(
+    suppressWarnings(suppressMessages(
+      bnec(y | rate(n) ~ crf(x, c("nec3param", "nec4param")), data = d,
+           family = poisson(link = "identity"))
+    )),
+    error = conditionMessage
+  )
+  expect_match(msg, "rate() denominator n is zero or negative at row(s) 3, 7",
+               fixed = TRUE)
+  expect_no_match(msg, "None of the models")
+  expect_identical(calls, 0L)
+})
+
 test_that("an x_range that is not NA or an increasing pair is refused before any model", {
   calls <- 0L
   local_mocked_bindings(

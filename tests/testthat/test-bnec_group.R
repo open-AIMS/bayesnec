@@ -1062,6 +1062,13 @@ test_that("degenerate data are refused before any level", {
   inf_x <- d
   inf_x$x[3] <- Inf
   expect_match(run(inf_x), "not finite, in x at row(s) 3", fixed = TRUE)
+  bad_rate <- d
+  bad_rate$exposure <- 2
+  bad_rate$exposure[3] <- 0
+  expect_match(run(bad_rate, count | rate(exposure) ~ crf(x, "nec3param"),
+                   family = "poisson"),
+               "rate() denominator exposure is zero or negative at row(s) 3",
+               fixed = TRUE)
   one <- d
   one$x[one$site == "b"] <- 1
   expect_match(run(one),
