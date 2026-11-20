@@ -2,8 +2,8 @@
 #'
 #' Reports, per candidate model, whether the sampler explored the posterior:
 #' the largest Rhat, the smallest effective sample size, and the number of
-#' divergent transitions with their proportion of the retained draws. It sits
-#' alongside \code{\link{check_chains}} (chain mixing, visually),
+#' divergent transitions with their proportion of the retained draws. The
+#' other checks are \code{\link{check_chains}} (chain mixing, visually),
 #' \code{\link{check_priors}} (the priors) and \code{\link{check_fit}} (the
 #' fit against the data).
 #'
