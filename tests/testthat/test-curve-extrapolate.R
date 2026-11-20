@@ -96,7 +96,9 @@ test_that("ECx preserves interior values and identifies or censors beyond the da
   expect_identical(as.numeric(extended)[identified],
                    as.numeric(interior)[identified])
 
-  expect_true(all(is.na(estimate(20))))
+  censored <- estimate(20)
+  expect_true(all(censored == Inf))
+  expect_true(all(attr(censored, "censored")$above))
   beyond_data <- estimate(20, 2)
   expect_true(all(is.finite(beyond_data)))
   expect_true(all(beyond_data > 0.9 & beyond_data < 2))
