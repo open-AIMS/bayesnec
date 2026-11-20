@@ -114,3 +114,26 @@ test_that("a single draw inside the bounds is returned as drawn", {
   expect_equal(bounded$b_top, unbounded$b_top)
   expect_gt(bounded$b_top, 1)
 })
+
+test_that("a tightly bounded prior returns new draws inside its bounds", {
+  # Resampling the retained draws returns duplicates once few survive the
+  # bounds. Each prior here keeps well under 1% of its mass.
+  ps <- data.frame(
+    prior = c("normal(0, 1)", "gamma(2, 1)", "beta(2, 2)", "lognormal(0, 1)",
+              "uniform(0, 10)", "normal(0, 1)"),
+    class = "b", coef = "", group = "", resp = "", dpar = "",
+    nlpar = c("a", "b", "c", "d", "e", "f"),
+    lb = c("2", "6", "0.9", "5", "4.9", ""),
+    ub = c("2.05", "6.1", "0.95", "5.2", "5.1", "-2.5"),
+    stringsAsFactors = FALSE
+  )
+  out <- sample_priors(ps, n_samples = 500, plot = NA)
+  lb <- as.numeric(ps$lb)
+  ub <- as.numeric(ps$ub)
+  for (j in seq_along(out)) {
+    expect_length(out[[j]], 500)
+    expect_false(anyDuplicated(out[[j]]) > 0, info = names(out)[j])
+    if (!is.na(lb[j])) expect_true(all(out[[j]] >= lb[j]), info = names(out)[j])
+    expect_true(all(out[[j]] <= ub[j]), info = names(out)[j])
+  }
+})
