@@ -1669,6 +1669,8 @@ test_that("summary() of a joint refit gives the estimator rows per level", {
     expect_named(s$rhat_issues, j$levels)
     expect_equal(s$divergences,
                  sum(brms::nuts_params(j$fit, pars = "divergent__")$Value))
+    expect_equal(s$divergence_draws, brms::ndraws(j$fit))
+    expect_equal(s$divergence_cutoff, 0.00125)
     out <- paste(capture.output(print(s)), collapse = "\n")
     expect_match(out, "a: nec3param (NEC)", fixed = TRUE)
     expect_match(out, "b EC50", fixed = TRUE)
@@ -1681,6 +1683,22 @@ test_that("summary() of a joint refit gives the estimator rows per level", {
   # print() warns of a level that fails the Rhat cutoff.
   bad <- suppressWarnings(suppressMessages(summary(j, rhat_cutoff = 0.5)))
   expect_warning(capture.output(print(bad)), "Rhat > 0.5", fixed = TRUE)
+  # It warns where the divergences of the whole fit exceed the proportion.
+  div <- suppressWarnings(suppressMessages(summary(j)))
+  div$divergences <- 17
+  div$divergence_draws <- 8000
+  expect_warning(capture.output(print(div)), paste0(
+    "17 divergent transitions after warmup (0.21% of 8000 draws), more",
+    " than 0.125%."
+  ), fixed = TRUE)
+  div$divergences <- 10
+  expect_no_warning(capture.output(print(div)))
+  # A summary stored before the draws were recorded holds a count cutoff.
+  div$divergence_draws <- NULL
+  div$divergence_cutoff <- 9
+  expect_warning(capture.output(print(div)),
+                 "10 divergent transitions after warmup, more than 9.",
+                 fixed = TRUE)
 })
 
 test_that("plot() of a joint refit draws each level's own panel", {
@@ -1980,6 +1998,8 @@ test_that("check_sampling() and screen_models() read a joint refit per level", {
   expect_equal(tab$n_divergent,
                rep(sum(brms::nuts_params(j$fit, pars = "divergent__")$Value),
                    2))
+  # The count is for the whole fit, so the ratio uses the whole fit's draws.
+  expect_equal(tab$divergent_ratio, tab$n_divergent / brms::ndraws(j$fit))
   expect_message(out <- screen_models(j),
                  "All 2 levels of the joint refit passed", fixed = TRUE)
   expect_identical(out, j)

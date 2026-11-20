@@ -12,7 +12,7 @@ test_that("check_sampling returns one row per candidate with all columns", {
   expect_s3_class(tab, "data.frame")
   expect_setequal(tab$model, manec_example$success_models)
   expect_named(tab, c("model", "max_rhat", "min_ess", "min_ess_ratio",
-                      "n_divergent", "failed"))
+                      "n_divergent", "divergent_ratio", "failed"))
   expect_type(tab$failed, "logical")
 })
 
@@ -50,21 +50,144 @@ test_that("divergences come from nuts_params, which is backend-agnostic", {
   expect_equal(tab$n_divergent[tab$model == "nec4param"], sum(np$Value))
 })
 
+# Replaces nuts_params() so that every fit reports `k` divergent transitions,
+# and, where `draws` is given, ndraws() so that every fit retains `draws`.
+local_divergent_count <- function(k, draws = NULL, env = parent.frame()) {
+  local_mocked_bindings(
+    nuts_params = function(object, pars = NULL, ...) {
+      data.frame(Chain = 1L, Iteration = seq_len(k + 1),
+                 Parameter = factor("divergent__"), Value = c(rep(1, k), 0))
+    },
+    .package = "bayesnec",
+    .env = env
+  )
+  if (!is.null(draws)) {
+    local_mocked_bindings(ndraws = function(x, ...) draws,
+                          .package = "bayesnec", .env = env)
+  }
+}
+
+# The divergence decision of check_sampling() alone: the Rhat and ESS
+# criteria are switched off.
+divergence_verdict <- function(k, draws, ...) {
+  local_divergent_count(k, draws)
+  tab <- check_sampling(manec_example, rhat_cutoff = 99, ess_cutoff = 0, ...)
+  tab$failed[tab$model == "nec4param"]
+}
+
+test_that("divergent_ratio is n_divergent divided by the retained draws", {
+  skip_on_cran()
+  local_divergent_count(7)
+  tab <- check_sampling(manec_example)
+  fit <- manec_example$mod_fits$nec4param$fit
+  expect_equal(tab$n_divergent, c(7, 7))
+  expect_equal(tab$divergent_ratio, tab$n_divergent / brms::ndraws(fit))
+})
+
+test_that("the default cutoff passes 10 of 8000 draws and fails 11", {
+  # 0.00125 is 10 of the 8,000 draws bnec() retains by default.
+  failed <- function(n, draws) {
+    bayesnec:::divergence_failed(bayesnec:::divergent_ratio(n, draws),
+                                 0.00125)
+  }
+  expect_false(failed(10, 8000))
+  expect_true(failed(11, 8000))
+  expect_false(failed(5, 4000))
+  expect_true(failed(6, 4000))
+  skip_on_cran()
+  expect_false(divergence_verdict(10, 8000))
+  expect_true(divergence_verdict(11, 8000))
+  expect_false(divergence_verdict(5, 4000))
+  expect_true(divergence_verdict(6, 4000))
+})
+
+test_that("a rate of divergence gets one decision at any number of draws", {
+  # Thinning by 2 halves the draws and, in expectation, the count.
+  skip_on_cran()
+  expect_identical(divergence_verdict(12, 8000), divergence_verdict(6, 4000))
+  expect_true(divergence_verdict(6, 4000))
+  expect_identical(divergence_verdict(10, 8000), divergence_verdict(5, 4000))
+  expect_false(divergence_verdict(5, 4000))
+})
+
+test_that("no retained draws gives an NA ratio and no divergence failure", {
+  expect_true(is.na(bayesnec:::divergent_ratio(3, 0)))
+  expect_true(is.na(bayesnec:::divergent_ratio(3, NA)))
+  expect_false(bayesnec:::divergence_failed(NA_real_, 0.00125))
+  skip_on_cran()
+  for (draws in list(0, NA_real_)) {
+    local_divergent_count(3, draws)
+    tab <- check_sampling(manec_example, rhat_cutoff = 99, ess_cutoff = 0)
+    expect_true(all(is.na(tab$divergent_ratio)))
+    expect_identical(tab$failed, c(FALSE, FALSE))
+  }
+})
+
+test_that("Inf switches the divergence criterion off", {
+  skip_on_cran()
+  expect_true(divergence_verdict(99, 100))
+  expect_false(divergence_verdict(99, 100, divergence_cutoff = Inf))
+  expect_true(divergence_verdict(1, 100, divergence_cutoff = 0))
+  local_divergent_count(99, 100)
+  expect_message(
+    screen_models(manec_example, rhat_cutoff = 99, ess_cutoff = 0,
+                  divergence_cutoff = Inf),
+    "divergences not screened", fixed = TRUE
+  )
+})
+
+test_that("a cutoff written as a count stops with the conversion", {
+  skip_on_cran()
+  conversion <- "10 divergent transitions of 8,000 draws is 0.00125"
+  messages <- vapply(list(
+    function() check_sampling(manec_example, divergence_cutoff = 10),
+    function() screen_models(manec_example, divergence_cutoff = 10),
+    function() summary(manec_example, divergence_cutoff = 10),
+    function() summary(nec4param, divergence_cutoff = 10)
+  ), function(f) tryCatch(f(), error = conditionMessage), character(1))
+  expect_match(messages, "proportion of the retained draws", fixed = TRUE)
+  expect_match(messages, conversion, fixed = TRUE)
+  expect_length(unique(messages), 1)
+  expect_error(check_sampling(manec_example, divergence_cutoff = 1),
+               conversion, fixed = TRUE)
+  expect_error(check_sampling(manec_example, divergence_cutoff = -0.001),
+               "must not be negative", fixed = TRUE)
+  expect_error(check_sampling(manec_example, divergence_cutoff = NA_real_))
+})
+
+test_that("the screen states the cutoff and the share of draws as percentages", {
+  skip_on_cran()
+  local_divergent_count(0)
+  expect_message(
+    screen_models(manec_example, rhat_cutoff = 99, ess_cutoff = 0),
+    "(Rhat <= 99, ESS >= 0, divergent draws <= 0.125%)", fixed = TRUE
+  )
+  local_divergent_count(17, 8000)
+  msg <- tryCatch(
+    screen_models(manec_example, rhat_cutoff = 99, ess_cutoff = 0),
+    error = conditionMessage
+  )
+  expect_match(msg, "nothing left to return", fixed = TRUE)
+  expect_match(msg,
+               "nec4param: 17 divergent transitions (0.21% of 8000 draws)",
+               fixed = TRUE)
+})
+
 test_that("every threshold is an argument and each can fail a model alone", {
   skip_on_cran()
   # manec_example fails Rhat and ESS at the defaults
   expect_true(all(check_sampling(manec_example)$failed))
   # relax everything: nothing fails
   loose <- check_sampling(manec_example, rhat_cutoff = 99, ess_cutoff = 0,
-                          divergence_cutoff = 1e6)
+                          divergence_cutoff = Inf)
   expect_false(any(loose$failed))
   # each threshold in isolation
   expect_true(any(check_sampling(manec_example, rhat_cutoff = 1.01,
                                  ess_cutoff = 0,
-                                 divergence_cutoff = 1e6)$failed))
+                                 divergence_cutoff = Inf)$failed))
   expect_true(any(check_sampling(manec_example, rhat_cutoff = 99,
                                  ess_cutoff = 400,
-                                 divergence_cutoff = 1e6)$failed))
+                                 divergence_cutoff = Inf)$failed))
 })
 
 test_that("check_sampling works on a single bayesnecfit", {
@@ -162,10 +285,11 @@ test_that("check_sampling returns one level-labelled table for a grouped fit", {
   skip_on_cran()
   grouped <- group_sampling_fixture()
   tab <- check_sampling(grouped, rhat_cutoff = 1.15, ess_cutoff = 0,
-                        divergence_cutoff = 1e6)
+                        divergence_cutoff = Inf)
   expect_s3_class(tab, "data.frame")
   expect_named(tab, c("level", "model", "max_rhat", "min_ess",
-                      "min_ess_ratio", "n_divergent", "failed"))
+                      "min_ess_ratio", "n_divergent", "divergent_ratio",
+                      "failed"))
   expect_equal(nrow(tab), 4)
   nec_rows <- tab[tab$model == "nec4param", ]
   expect_equal(nec_rows$level, c("a", "b"))
@@ -180,7 +304,7 @@ test_that("case 1 — nothing failed: unchanged, amend not called", {
   # the message condition, not the value of the expression.
   expect_message(
     out <- screen_models(manec_example, rhat_cutoff = 99, ess_cutoff = 0,
-                         divergence_cutoff = 1e6),
+                         divergence_cutoff = Inf),
     "All 2 candidate models passed"
   )
   expect_s3_class(out, "bayesmanecfit")
@@ -193,7 +317,7 @@ test_that("case 2 — some failed: the failures are dropped", {
   skip_on_cran()
   suppressWarnings(expect_message(
     out <- screen_models(manec_example, rhat_cutoff = 1.15, ess_cutoff = 0,
-                         divergence_cutoff = 1e6),
+                         divergence_cutoff = Inf),
     "Dropping 1 of 2"
   ))
   # a two-model set reduced to one becomes a bayesnecfit, as amend() does
@@ -230,7 +354,7 @@ test_that("a passing bayesnecfit comes back unchanged", {
   one <- suppressMessages(pull_out(manec_example, model = "nec4param"))
   expect_message(
     out <- screen_models(one, rhat_cutoff = 99, ess_cutoff = 0,
-                         divergence_cutoff = 1e6),
+                         divergence_cutoff = Inf),
     "All 1 candidate models passed"
   )
   expect_s3_class(out, "bayesnecfit")
@@ -242,7 +366,7 @@ test_that("screen_models rewraps a hurdle fit as a hurdle fit", {
   h <- structure(list(growth = manec_example, survival = manec_example),
                  class = c("bayesnechurdlefit", "bnecfit"))
   out <- suppressMessages(
-    screen_models(h, rhat_cutoff = 99, ess_cutoff = 0, divergence_cutoff = 1e6)
+    screen_models(h, rhat_cutoff = 99, ess_cutoff = 0, divergence_cutoff = Inf)
   )
   expect_s3_class(out, "bayesnechurdlefit")
   expect_s3_class(out$growth, "bayesmanecfit")
@@ -254,7 +378,7 @@ test_that("grouped screening drops failures independently by default", {
   grouped <- group_sampling_fixture()
   suppressWarnings(expect_message(
     out <- screen_models(grouped, rhat_cutoff = 1.15, ess_cutoff = 0,
-                         divergence_cutoff = 1e6),
+                         divergence_cutoff = Inf),
     "Screening level"
   ))
   expect_s3_class(out, "bayesnecgroupfit")
@@ -270,7 +394,7 @@ test_that("common grouped screening removes an equation from every level", {
   grouped <- group_sampling_fixture()
   suppressWarnings(expect_message(
     out <- screen_models(grouped, rhat_cutoff = 1.15, ess_cutoff = 0,
-                         divergence_cutoff = 1e6, group_action = "common"),
+                         divergence_cutoff = Inf, group_action = "common"),
     "from every level"
   ))
   expect_s3_class(out, "bayesnecgroupfit")
@@ -308,7 +432,7 @@ test_that("the reasons name every failing criterion, not just the first", {
   msg2 <- tryCatch({
     withCallingHandlers(
       screen_models(manec_example, rhat_cutoff = 1.15, ess_cutoff = 0,
-                    divergence_cutoff = 1e6),
+                    divergence_cutoff = Inf),
       message = function(m) stop(conditionMessage(m))
     )
   }, error = function(e) conditionMessage(e))
@@ -319,7 +443,7 @@ test_that("quiet suppresses the message but not the screening", {
   skip_on_cran()
   expect_silent(
     out <- screen_models(manec_example, rhat_cutoff = 99, ess_cutoff = 0,
-                         divergence_cutoff = 1e6, quiet = TRUE)
+                         divergence_cutoff = Inf, quiet = TRUE)
   )
   expect_s3_class(out, "bayesmanecfit")
 })

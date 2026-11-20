@@ -517,14 +517,14 @@ test_that("a fixed parameter does not break rhat on a multi-model fit", {
   expect_false("top" %in% names(r[[1]]$rhat_vals))
 
   tab <- check_sampling(fit, rhat_cutoff = 99, ess_cutoff = 0,
-                        divergence_cutoff = 1e6)
+                        divergence_cutoff = Inf)
   expect_false(anyNA(tab$failed))
   expect_false(anyNA(tab$max_rhat))
   expect_false(any(tab$failed))
   # Check that a reported no-op leaves the model set unchanged.
   expect_message(
     out <- screen_models(fit, rhat_cutoff = 99, ess_cutoff = 0,
-                         divergence_cutoff = 1e6),
+                         divergence_cutoff = Inf),
     "candidate models passed"
   )
   expect_equal(length(out$mod_fits), length(fit$mod_fits))
