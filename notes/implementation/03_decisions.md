@@ -741,5 +741,7 @@ A curve-read NSEC draw stored in a fit's `ne_posterior` or `w_ne_posterior`
 takes the same `±Inf` form (2026-11-20). A sampled NEC draw outside the search
 range keeps its sampled value in the stored posterior, marked by the record,
 because the `extrapolate` release and the prior-bound note read it there; the
-estimators still return it as `±Inf`. An object saved with `NA` plus a record is
+estimators still return it as `±Inf`. A fit read at observed levels is the
+exception: its stored posterior is pooled from `nec()` output, so a censored
+draw is stored as `±Inf`. An object saved with `NA` plus a record is
 read by the record and returns the same results as one saved with `±Inf`.
