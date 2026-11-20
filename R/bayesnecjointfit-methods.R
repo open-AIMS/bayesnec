@@ -448,14 +448,10 @@ joint_ne_table <- function(object, no_effect, ..., pool = "none") {
   } else {
     dots$prob_vals
   }
-  # Validated here as well as in the per-level methods because a fit whose
-  # levels are all smooth reaches neither under no_effect = FALSE: every level
-  # takes the NA row built below, whose names come from prob_vals.
-  if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
-      prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
-    stop("prob_vals must include central, lower and upper quantiles,",
-         " in that order.", call. = FALSE)
-  }
+  # Validated here as well as in the per-level methods because a level with
+  # no nec parameter takes the NA row built below, whose names come from
+  # prob_vals.
+  check_prob_vals(dots$prob_vals)
   posterior <- isTRUE(dots$posterior)
   if (!identical(pool, "none")) dots$posterior <- TRUE
   levels <- object$levels
@@ -463,6 +459,9 @@ joint_ne_table <- function(object, no_effect, ..., pool = "none") {
                    USE.NAMES = FALSE)
   threshold <- vapply(levels, joint_level_is_threshold, logical(1),
                       object = object, USE.NAMES = FALSE)
+  if (!any(threshold) && !no_effect) {
+    refuse_every_level_lacks_nec(levels, models, no_effect = TRUE)
+  }
   sampled <- vapply(models, sampled_nec_is_no_effect, logical(1))
   ne_type <- rep(NA_character_, length(levels))
   ne_type[sampled] <- "NEC"
@@ -505,15 +504,8 @@ joint_ne_table <- function(object, no_effect, ..., pool = "none") {
     return(out)
   }
   if (any(!threshold) && !no_effect) {
-    # Worded to read the same for one level or for every level.
-    message("No NEC is defined at ",
-            paste0("\"", levels[!threshold], "\" (", models[!threshold], ")",
-                   collapse = ", "),
-            ", where the equation fitted has no nec parameter, so those ",
-            "estimates are NA. nec(x, no_effect = TRUE) returns the no-effect ",
-            "estimate each level's equation supports -- a sampled NEC for a ",
-            "monotone threshold equation, or the NSEC of a hormesis threshold ",
-            "or smooth curve -- labelled by type.")
+    message_levels_lack_nec(levels[!threshold], models[!threshold],
+                            no_effect = TRUE)
   }
   if (posterior) {
     attr(est, "model") <- setNames(models, levels)
