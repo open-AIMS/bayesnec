@@ -647,8 +647,6 @@ combine_censored_min <- function(g, s, n) {
   out[unresolved] <- Inf
   above <- is.infinite(out) & out > 0
   below <- is.infinite(out) & out < 0
-  out[above] <- Inf
-  out[below] <- -Inf
   # The record holds one bound per posterior: the smallest upper limit and the
   # largest lower one, as in concat_censoring(). Both are true of every
   # censored draw. The test above keeps every identified value at or below the
