@@ -523,8 +523,8 @@ the same call returns.
   level, and `screen_models()` passes or stops the refit as a whole.
   `fitted()`, `predict()`, `posterior_epred()` and `posterior_predict()`
   predict the fitted rows of every level, or a `newdata` naming one
-  level's rows. The `level` argument is refused; all levels share one
-  posterior.
+  level's rows. These methods, and those that return one result per level,
+  refuse a `level` argument, because all levels share one posterior.
   `group_level_sd()` reads the refit as one fit. `update()` refits the same
   model, `get_priors()` returns its priors, `pull_prior()` returns its full
   prior table, and `pull_best()` returns it unchanged.

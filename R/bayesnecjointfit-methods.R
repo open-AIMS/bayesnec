@@ -673,6 +673,7 @@ ggbnec_data.bayesnecjointfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                          xform = NULL, ..., group = NULL,
                                          x_scale = c("recorded", "fitted"),
                                          which = "combined") {
+  refuse_joint_level("ggbnec_data", ...)
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
   check_xform(xform)
@@ -776,6 +777,7 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                       point_alpha = 1,
                                       x_scale = c("recorded", "fitted"),
                                       xlab = "Predictor", ylab = NULL) {
+  refuse_joint_level("autoplot", ...)
   chk_lgl(nec)
   chk_lgl(ecx)
   group_aes <- match.arg(group_aes)
@@ -817,6 +819,7 @@ autoplot.bayesnecjointfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #' @method pull_brmsfit bayesnecjointfit
 #' @export
 pull_brmsfit.bayesnecjointfit <- function(object, ...) {
+  refuse_joint_level("pull_brmsfit", ...)
   object$fit
 }
 
@@ -836,6 +839,25 @@ refuse_joint_method <- function(x, what, remedy) {
     paste0(" of \"", x$group_var, "\"")
   stop(what, " is not defined for a bayesnecjointfit, which fits every level",
        levels_of, " in one posterior. ", remedy, call. = FALSE)
+}
+
+#' Refuse a level argument to a method of a joint refit
+#'
+#' The grouped-fit methods take \code{level}. A joint refit holds every level
+#' in one posterior, so its methods return every level.
+#'
+#' @param what The method name, as \code{"rhat"}.
+#' @param ... The dots of the calling method.
+#'
+#' @return \code{NULL}, invisibly, or an error.
+#'
+#' @noRd
+refuse_joint_level <- function(what, ...) {
+  if ("level" %in% ...names()) {
+    stop(what, "() on a bayesnecjointfit returns every level, because all ",
+         "levels share one posterior, so it takes no `level`.", call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' The coefficients that belong to one level of a joint refit alone
@@ -1021,6 +1043,7 @@ joint_level_rows <- function(object) {
 #' @importFrom ggplot2 ggtitle
 #' @export
 pp_check.bayesnecjointfit <- function(object, ...) {
+  refuse_joint_level("pp_check", ...)
   if ("newdata" %in% ...names()) {
     stop("pp_check() on a bayesnecjointfit checks each level against its own",
          " rows, so it takes no `newdata`. Call brms::pp_check() on the",
@@ -1043,6 +1066,7 @@ pp_check.bayesnecjointfit <- function(object, ...) {
 #' @importFrom chk chk_number
 #' @export
 rhat.bayesnecjointfit <- function(x, rhat_cutoff = 1.01, ...) {
+  refuse_joint_level("rhat", ...)
   chk_number(rhat_cutoff)
   vals <- screenable_pars(rhat(x$fit))
   vars <- variables(x$fit)
@@ -1064,6 +1088,7 @@ rhat.bayesnecjointfit <- function(x, rhat_cutoff = 1.01, ...) {
 #' @importFrom chk chk_character
 #' @export
 check_chains.bayesnecjointfit <- function(x, filename = NA, ...) {
+  refuse_joint_level("check_chains", ...)
   if (!is.na(filename)) {
     chk_character(filename)
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE)
@@ -1125,6 +1150,7 @@ check_priors.bayesnecjointfit <- function(object, filename = NA, ask = TRUE,
 #' @export
 check_fit.bayesnecjointfit <- function(x, group = NULL, ndraws = 1000,
                                        seed = 10, ...) {
+  refuse_joint_level("check_fit", ...)
   chk_number(seed)
   d <- x$fit$data
   if (!is.null(group) && length(group) > 1L) {
@@ -1199,6 +1225,7 @@ joint_curve_draws <- function(object, level, prefix = "") {
 #' @export
 curve_params.bayesnecjointfit <- function(object, summary = TRUE,
                                           xform = NULL, ...) {
+  refuse_joint_level("curve_params", ...)
   chk_lgl(summary)
   check_xform(xform)
   report_scales(object, "joint refit")
@@ -1238,6 +1265,7 @@ curve_params.bayesnecjointfit <- function(object, summary = TRUE,
 #' @method formula bayesnecjointfit
 #' @export
 formula.bayesnecjointfit <- function(x, ...) {
+  refuse_joint_level("formula", ...)
   out <- lapply(x$levels, function(l) {
     swap_crf_model(x$bayesnecformula, joint_level_model(x, l))
   })
@@ -1250,6 +1278,7 @@ formula.bayesnecjointfit <- function(x, ...) {
 #' @importFrom stats model.frame
 #' @export
 model.frame.bayesnecjointfit <- function(formula, ...) {
+  refuse_joint_level("model.frame", ...)
   d <- model.frame(formula$fit)
   rows <- joint_level_rows(formula)
   lapply(rows, function(r) d[r, , drop = FALSE])
@@ -1267,6 +1296,7 @@ plot.bayesnecjointfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                   lxform = identity, jitter_x = FALSE,
                                   jitter_y = FALSE, ylab = "Response",
                                   xlab = "Predictor", xticks = NA) {
+  refuse_joint_level("plot", ...)
   chk_lgl(CI)
   chk_lgl(add_nec)
   chk_lgl(add_ec10)

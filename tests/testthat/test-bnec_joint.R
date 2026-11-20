@@ -1800,6 +1800,21 @@ test_that("joint prediction methods refuse an unused level", {
   }
 })
 
+test_that("joint methods that return every level refuse a level", {
+  joint <- joint_split()
+  methods <- list(rhat = rhat, curve_params = curve_params,
+                  formula = stats::formula, model.frame = stats::model.frame,
+                  check_fit = check_fit, check_chains = check_chains,
+                  plot = plot, autoplot = ggplot2::autoplot,
+                  ggbnec_data = ggbnec_data, pp_check = brms::pp_check,
+                  pull_brmsfit = pull_brmsfit)
+  for (name in names(methods)) {
+    expect_error(methods[[name]](joint, level = "low"),
+                 paste0(name, "() on a bayesnecjointfit returns every level"),
+                 fixed = TRUE)
+  }
+})
+
 test_that("a joint-level adapter exposes estimators only", {
   level <- joint_level_fit(joint_split(), "a")
   expect_identical(class(level), "bayesnecjointlevel")
