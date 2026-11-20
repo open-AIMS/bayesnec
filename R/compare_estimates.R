@@ -50,12 +50,12 @@
 #' applies to every comparison type. An ECx or NSEC draw whose curve does not
 #' reach the target is such a draw, and so is a threshold equation's
 #' \code{nec} draw above the prediction range, which is sampled and has a
-#' number but is reported by \code{\link{nec}} as a bound. Under "nec" and
-#' "n(s)ec", \code{posterior_list} and \code{posterior_data} still hold that
-#' sampled value, as \code{\link{nec}} returns it with \code{posterior = TRUE}.
-#' The \code{"censored"} attribute of \code{posterior_list} marks the draw and
-#' \code{posterior_data} does not, so a value there beyond the prediction range
-#' is not an identified estimate.
+#' number but is reported by \code{\link{nec}} as a bound. In
+#' \code{posterior_list} and \code{posterior_data} such a draw is \code{Inf}
+#' above the range and \code{-Inf} below it, as the estimator returns it with
+#' \code{posterior = TRUE}. The \code{"censored"} attribute of
+#' \code{posterior_list} records the bounds, and \code{posterior_data} holds
+#' only the infinite value.
 #'
 #' The comparison does not delete these draws. For many pairs the censoring
 #' record fixes the sign of the difference whatever the censored value is: a

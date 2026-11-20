@@ -48,7 +48,8 @@
 #' number of draws, and for an object saved by an earlier version that carries
 #' neither field, which falls back to a fixed seed.
 #' @slot w_ne_posterior The model-weighted posterior estimate of the no-effect
-#' toxicity estimate.
+#' toxicity estimate. Its draws beyond the prediction range are recorded and
+#' stored as described for \code{ne_posterior} in \code{\link{bayesnecfit}}.
 #' @slot w_predicted_y The model-weighted predicted values for the observed
 #' data.
 #' @slot w_residuals Model-weighted residual values

@@ -74,11 +74,12 @@
   the plot annotations mark it `>=` or `<=`, and a warning gives the number of
   draws affected. Once any draw is censored, the quantiles are order
   statistics of the draws. With `posterior = TRUE`, a draw censored above
-  the search range is `Inf` and one censored below it is `-Inf`. The
-  `attr(, "censored")` record retains the bounds and affected draws. These
-  infinite values keep their positions in `sort()` and `quantile()`. A
-  posterior with no censored draw is summarised as before. See `?nec`
-  (#39, #395).
+  the search range is `Inf` and one censored below it is `-Inf`, and a
+  curve-read draw stored in a fit's `ne_posterior` or `w_ne_posterior` takes
+  the same form. The `attr(, "censored")` record retains the bounds and
+  affected draws. These infinite values keep their positions in `sort()` and
+  `quantile()`. A posterior with no censored draw is summarised as before. See
+  `?nec` (#39, #395).
 
 - `ecx()` and `nsec()` measure every estimate from the control, the predicted
   mean at the lowest observed concentration or at the `x_control` given to
