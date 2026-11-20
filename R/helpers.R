@@ -306,10 +306,10 @@ do_wrapper <- function(..., fct = "cbind") {
 estimates_summary <- function(x) {
   cens <- attr(x, "censored")
   if (!has_censoring(cens)) {
-    # A draw whose curve does not reach the target within the predictor range
-    # is NA, hence na.rm. Keep median() rather than routing this through
-    # summarise_censored(): quantile() can differ from it in the last bit, and
-    # archived analyses are compared against this value.
+    # No draw is recorded as censored, so na.rm drops only a draw with no
+    # value, as summarise_censored() does. Keep median() rather than routing
+    # this through summarise_censored(): quantile() can differ from it in the
+    # last bit, and archived analyses are compared against this value.
     x <- c(median(x, na.rm = TRUE), quantile(x, c(0.025, 0.975), na.rm = TRUE))
     names(x) <- c("Estimate", "Q2.5", "Q97.5")
     return(x)
@@ -3231,7 +3231,7 @@ check_nsec_no_type <- function(dots) {
 
 #' Report the draws whose estimate is not identified
 #'
-#' A no-effect or ECx estimate is \code{NA} for any draw whose curve does not
+#' A no-effect or ECx estimate has no value for any draw whose curve does not
 #' reach the target within the predictor range, so its summary is censored.
 #' \code{ecx()} and \code{nsec()} warn as they build such a posterior. This
 #' reports it for a path that summarises a posterior built elsewhere, such as

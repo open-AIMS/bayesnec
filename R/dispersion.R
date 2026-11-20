@@ -372,7 +372,7 @@ pearson_dispersion <- function(obs_y, prd_out, ppd_out, var_out,
   n_missing <- sum(is.na(disp))
   if (n_missing > 0 && n_missing < length(disp)) {
     # Name the NA draws rather than leave estimates_summary() and P(>1) to
-    # drop them silently, as nsec_off_curve() does for a censored draw.
+    # drop them silently.
     message("No observation contributes a residual in ", n_missing, " of ",
             length(disp), " draws of the ", who_short, ". Those draws return ",
             "NA and are excluded from the summary, which is computed from the ",

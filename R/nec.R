@@ -420,7 +420,7 @@ necfit_ne <- function(object, posterior = FALSE, xform = NULL,
   cens <- xform_censoring(cens, map)
   attr(nec_out, "censored") <- cens
   # The stored posterior can hold draws beyond the prediction range: a
-  # b_nec_Intercept draw the prior does not confine, or an NA from
+  # b_nec_Intercept draw the prior does not confine, or an infinite draw from
   # nsec_off_curve() for a joint fit with a smooth survival block. Such a draw
   # keeps its rank and is given no value, not max(x_vec).
   warn_censored_draws(nec_out, ne_label(object), cens = cens,

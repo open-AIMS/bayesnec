@@ -137,7 +137,9 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     attr(out, "below_range") <- NULL
     attr(out, "x_searched_from") <- NULL
     attr(out, "censored") <- cens
-    out
+    # Store a censored draw as nsec(posterior = TRUE) returns it. Transform
+    # first: crf() can be undefined at -Inf.
+    censored_infinite(out)
   }
   # Memoised: a smooth block on a hurdle fit reaches this twice on the same
   # posterior, and crossing_x() runs a root search per draw.

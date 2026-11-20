@@ -607,7 +607,8 @@ print.bayesnechurdlefit <- function(x, ...) {
 #' Takes the minimum of the component no-effect draws, which must be on the
 #' fitted scale, not the recorded one. Censoring flags and
 #' upper limits decide whether an outside-range minimum is identified;
-#' plain \code{pmin()} would propagate \code{NA} for a censored component draw.
+#' plain \code{pmin()} would misread a censored component draw, which has no
+#' value.
 #'
 #' @param g,s The two component posteriors, each carrying its \code{"censored"}
 #' record where it has one.
