@@ -39,10 +39,13 @@
 #' @param loo_controls A named \code{\link[base]{list}} of up to five
 #' elements. "fitting" and "weights" are each a named \code{\link[base]{list}}
 #' containing the desired arguments to be passed on to \code{\link[brms]{loo}}
-#' (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-#' If no \code{method} is named in "weights", \pkg{bayesnec} sets the
-#' \code{method} argument of \code{\link[loo]{loo_model_weights}} to
-#' "pseudobma", whichever function assembles the model set. "leave_out" is
+#' (via "fitting") or to the weighting function (via "weights"). "weights"
+#' names a \code{method}, "pseudobma" or "stacking", and the arguments of
+#' \code{\link[loo]{pseudobma_weights}} (\code{BB}, \code{BB_n} and
+#' \code{alpha}) or of \code{\link[loo]{stacking_weights}}
+#' (\code{optim_method} and \code{optim_control}); any other argument is
+#' refused. If no \code{method} is named, \pkg{bayesnec} uses "pseudobma",
+#' whichever function assembles the model set. "leave_out" is
 #' "group" (the default) or "observation", and sets what is left out when the
 #' score behind the weights is computed. Under "group", where each level of a
 #' group-level term is observed at a single concentration, each level is left
@@ -68,12 +71,11 @@
 #' \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
 #' existing set. They keep the "fitting" arguments it was built with unless
 #' the caller names "fitting", and the method it was weighted by unless the
-#' caller names another. \code{\link{pull_out}} takes no weighting method at
-#' all: it reports and ignores one given in "weights" and always keeps the
-#' set's own.
+#' caller names another. \code{\link{pull_out}} keeps the set's scores and
+#' weights: it reports and ignores "weights", "leave_out" and "refit".
 #' \code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
 #' see \code{\link{c.bnecfit}} for how they decide the method. See
-#' ?\code{\link[loo]{loo_model_weights}} for further info.
+#' ?\code{\link[loo]{pseudobma_weights}} for further info.
 #' @param x_var Removed in version 2.0. Use formula instead. Used to be a
 #' \code{\link[base]{character}} indicating the column heading
 #' containing the predictor (concentration) variable.
