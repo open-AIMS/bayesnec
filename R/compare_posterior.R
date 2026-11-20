@@ -241,14 +241,17 @@ compare_posterior.bayesnecjointfit <- function(x, comparison = "n(s)ec",
   }
   warned <- options(bayesnec.relative_warned = TRUE)
   on.exit(options(warned), add = TRUE)
+  # nec() reports curve arguments as unused where no level reads its curve,
+  # and the user supplied none of these defaults.
+  ne_args <- if (any(joint_curve_read(x, identical(comparison, "n(s)ec")))) {
+    list(sig_val = sig_val, resolution = resolution, x_range = x_range)
+  }
   posterior_list <- with_preserved_rng_state({
     set.seed(seed, sample.kind = "Rejection")
     switch(comparison,
-      "nec" = nec(x, posterior = TRUE, sig_val = sig_val,
-                  resolution = resolution, x_range = x_range),
-      "n(s)ec" = nec(x, no_effect = TRUE, posterior = TRUE,
-                     sig_val = sig_val, resolution = resolution,
-                     x_range = x_range),
+      "nec" = do.call(nec, c(list(x, posterior = TRUE), ne_args)),
+      "n(s)ec" = do.call(nec, c(list(x, no_effect = TRUE, posterior = TRUE),
+                                ne_args)),
       "nsec" = nsec(x, sig_val = sig_val, resolution = resolution,
                     x_range = x_range, posterior = TRUE),
       "ecx" = ecx(x, ecx_val = ecx_val, type = type,

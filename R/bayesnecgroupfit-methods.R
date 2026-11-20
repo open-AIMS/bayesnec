@@ -26,12 +26,8 @@ group_method <- function(object, level, fun) {
 
 #' @noRd
 group_method_one <- function(object, level, fun) {
-  tryCatch(
-    with_level_label(level, fun(object$fits[[level]], level)),
-    error = function(e) {
-      stop("Level ", level, ": ", conditionMessage(e), call. = FALSE)
-    }
-  )
+  with_level_error(level,
+                   with_level_label(level, fun(object$fits[[level]], level)))
 }
 
 #' Bind level tables with matching columns and classes
