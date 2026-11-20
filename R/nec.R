@@ -117,8 +117,18 @@
 #'     default, reports a sampled NEC for a monotone threshold equation, a
 #'     curve-read NSEC for a hormesis threshold equation and \code{NA} for a
 #'     smooth equation. \code{no_effect = TRUE} also reports the NSEC of a
+#'     smooth equation. Where every level has a smooth equation and
+#'     \code{no_effect = FALSE}, \code{nec} stops, as it does for a single
 #'     smooth equation.
 #'     The \code{ne_type} column is what a model-averaged N(S)EC cannot report.
+#'   \item For a \code{\link{bayesnecgroupfit}}, a
+#'     \code{\link[base]{data.frame}} with one row per level, each read as
+#'     for the fit held at that level. A level fitted with a single smooth
+#'     equation has no \code{nec} parameter, and its row is \code{NA}. One
+#'     message names those levels and points to \code{\link{nsec}}. Where every
+#'     level is of that kind, or with \code{pool} other than \code{"none"}
+#'     where any is, \code{nec} stops. A level holding a model set always has
+#'     an estimate, of the kind described above.
 #' }
 #'
 #' The result carries attribute \code{"toxicity_estimate"}, \code{"nec"},

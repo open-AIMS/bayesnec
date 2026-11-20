@@ -442,15 +442,119 @@ group_model_label.bayesmanecfit <- function(fit) {
          paste(names(fit$mod_fits), collapse = ", "))
 }
 
+#' Whether a level's fit is a single equation with no nec parameter
+#'
+#' A model set or a hurdle fit always returns a no-effect estimate from
+#' \code{\link{nec}}, so only a \code{\link{bayesnecfit}} can lack one.
+#'
+#' @param fit The fit of one level.
+#'
+#' @return A \code{\link[base]{logical}} of length 1.
+#' @noRd
+level_lacks_nec <- function(fit) {
+  inherits(fit, "bayesnecfit") && !inherits(fit, "bayesnechurdlefit") &&
+    !has_nec_parameter(fit$model, fit$fit)
+}
+
+#' Refuse quantile probabilities that are not central, lower, upper
+#'
+#' @param prob_vals A numeric vector, or \code{NULL} for the default.
+#' @noRd
+check_prob_vals <- function(prob_vals) {
+  if (is.null(prob_vals)) return(invisible(TRUE))
+  if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
+      prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
+    stop("prob_vals must include central, lower and upper quantiles,",
+         " in that order.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+#' The message that levels with no nec parameter return NA
+#'
+#' @param levels,models The affected levels and the equation fitted at each.
+#' @param no_effect Whether \code{nec(x, no_effect = TRUE)} is a remedy for the
+#' class.
+#' @noRd
+message_levels_lack_nec <- function(levels, models, no_effect = FALSE) {
+  message("No NEC is defined at ",
+          paste0("\"", levels, "\" (", models, ")", collapse = ", "),
+          ", where the equation fitted has no nec parameter, so those ",
+          "estimates are NA. ",
+          if (no_effect) {
+            paste0("nec(x, no_effect = TRUE) returns the no-effect estimate ",
+                   "each level's equation supports -- a sampled NEC for a ",
+                   "monotone threshold equation, or the NSEC of a hormesis ",
+                   "threshold or smooth curve -- labelled by type.")
+          } else {
+            "nsec() returns the no-effect estimate read off the fitted curve."
+          })
+}
+
+#' The refusal of nec() where no level has a nec parameter
+#'
+#' @param levels,models The levels and the equation fitted at each.
+#' @param no_effect Whether \code{nec(x, no_effect = TRUE)} is a remedy for the
+#' class.
+#'
+#' @noRd
+refuse_every_level_lacks_nec <- function(levels, models, no_effect = FALSE) {
+  stop("nec() is not defined at any level: the equation fitted at ",
+       paste0("\"", levels, "\" (", models, ")", collapse = ", "),
+       " has no nec parameter. Use nsec() for the no-effect estimate, read ",
+       "off the fitted curve",
+       if (no_effect) ", or nec(x, no_effect = TRUE) to label it by type",
+       ".", call. = FALSE)
+}
+
+#' The no-effect table of a bayesnecgroupfit
+#'
+#' A level whose single equation has no \code{nec} parameter returns \code{NA}
+#' and one message names those levels, as for a
+#' \code{\link{bayesnecjointfit}}. Pooling refuses such a level, and so does a
+#' fit in which every level lacks one.
+#'
 #' @noRd
 #' @method nec bayesnecgroupfit
+#' @importFrom brms ndraws
 #' @export
 nec.bayesnecgroupfit <- function(object, ...) {
   # Check here, so that the error names this class rather than a level's.
   check_no_effect_arg(list(...), object)
+  lacking <- vapply(object$fits, level_lacks_nec, logical(1))
+  models <- vapply(object$fits, group_model_label, character(1))
+  if (all(lacking)) {
+    refuse_every_level_lacks_nec(object$levels, models)
+  }
+  dots <- list(...)
+  if (any(lacking)) {
+    if (!is.null(dots$pool) && !identical(dots$pool, "none")) {
+      stop("Pooling NEC values needs a nec parameter at every level, and ",
+           paste0("\"", object$levels[lacking], "\" (", models[lacking], ")",
+                  collapse = ", "),
+           " has none. Use nsec() to pool the NSEC.", call. = FALSE)
+    }
+    check_prob_vals(if (is.null(dots$prob_vals)) NULL else dots$prob_vals)
+    message_levels_lack_nec(object$levels[lacking], models[lacking])
+  }
+  prob_vals <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else
+    dots$prob_vals
+  per_level <- function(f, ...) {
+    if (!level_lacks_nec(f)) {
+      return(nec(f, ...))
+    }
+    # NA per draw, not NULL or zeros: zeros would read as an estimate at the
+    # origin.
+    if (isTRUE(list(...)$posterior)) {
+      return(rep(NA_real_, ndraws(f$fit)))
+    }
+    na_row <- stats::quantile(NA_real_, probs = prob_vals, na.rm = TRUE)
+    names(na_row) <- clean_names(na_row)
+    na_row
+  }
   once_stale_ne_warning(
     object,
-    group_estimate_table(object, "nec", function(f, ...) nec(f, ...), ...)
+    group_estimate_table(object, "nec", per_level, ...)
   )
 }
 

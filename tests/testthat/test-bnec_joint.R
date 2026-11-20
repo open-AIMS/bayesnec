@@ -1270,29 +1270,16 @@ test_that("no_effect = TRUE labels the no-effect estimate at every level", {
                ne$ne_type == "NEC")
 })
 
-test_that("a refit whose levels are all smooth gives NA, not an error", {
-  # The strict path returns NA for smooth equations without reading posterior
-  # draws, so an all-smooth case needs only this structural mock.
+test_that("a refit whose levels are all smooth refuses nec()", {
+  # The refusal precedes any read of posterior draws, so a structural mock
+  # reaches it.
   o <- structure(list(group_var = "site", levels = c("a", "b"),
                       models = list(a = "ecx4param", b = "ecxll5"),
                       level_spec = list(composed = TRUE)),
                  class = c("bayesnecjointfit", "bnecfit"))
-  n <- suppressMessages(nec(o))
-  expect_equal(n$level, c("a", "b"))
-  expect_equal(n$model, c("ecx4param", "ecxll5"))
-  expect_true(all(is.na(n$ne_type)))
-  expect_true(all(is.na(unlist(n[, c("Q50", "Q2.5", "Q97.5")]))))
-  expect_equal(names(n), c("level", "model", "ne_type",
-                           "Q50", "Q2.5", "Q97.5",
-                           "bound_Q50", "bound_Q2.5", "bound_Q97.5"))
-  # An NA row has no censoring record, so no entry of it is marked as a bound.
-  expect_true(all(unlist(n[, c("bound_Q50", "bound_Q2.5", "bound_Q97.5")]) ==
-                    ""))
-  # prob_vals still names the columns where no level reaches a per-level
-  # method to validate it.
-  n2 <- suppressMessages(nec(o, prob_vals = c(0.5, 0.3, 0.7)))
-  expect_equal(names(n2), c("level", "model", "ne_type", "Q50", "Q30", "Q70",
-                            "bound_Q50", "bound_Q30", "bound_Q70"))
+  expect_error(nec(o), "nec\\(\\) is not defined at any level")
+  expect_error(nec(o), "\"a\" \\(ecx4param\\), \"b\" \\(ecxll5\\)")
+  expect_error(nec(o), "no_effect = TRUE")
   expect_error(nec(o, prob_vals = c(0.5, 0.7)), "central, lower and upper")
 })
 

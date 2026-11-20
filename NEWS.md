@@ -548,7 +548,14 @@ the same call returns.
   NEC of a level fitted with a monotone threshold equation, the NSEC of a
   hormesis threshold equation, and `NA`, with a message, for a smooth
   equation. `nec(no_effect = TRUE)` gives the NSEC of a smooth level as well.
-  The other classes refuse `no_effect` (#388, #570).
+  Where every level has a smooth equation, `nec()` stops, as it does for a
+  single smooth equation. The other classes refuse `no_effect` (#388, #570).
+
+- `nec()` and `exceedance()` on a `bayesnecgroupfit` return `NA` for a level
+  fitted with a single smooth equation, which has no `nec` parameter, and say
+  so in one message that names the level and points to `nsec()`, as they do
+  for a `bayesnecjointfit`. Where every level is of that kind they stop. A
+  level holding a model set is unchanged.
 
 ## Estimates beyond the prediction range
 
