@@ -736,3 +736,10 @@ correctly without special handling, whereas an `NA` invites `na.rm = TRUE`,
 which drops the censored draws and biases the estimate low. `toxval` already
 returns an unresolved draw as `Inf`. Summaries and comparisons, which read the
 censoring record, return the same values as before.
+
+A curve-read NSEC draw stored in a fit's `ne_posterior` or `w_ne_posterior`
+takes the same `±Inf` form (2026-11-20). A sampled NEC draw outside the search
+range keeps its sampled value in the stored posterior, marked by the record,
+because the `extrapolate` release and the prior-bound note read it there; the
+estimators still return it as `±Inf`. An object saved with `NA` plus a record is
+read by the record and returns the same results as one saved with `±Inf`.
