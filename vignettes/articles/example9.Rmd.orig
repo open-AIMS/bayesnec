@@ -510,7 +510,7 @@ by `failed_models()`, and has no sampler diagnostics to screen.
 
 The ESS floor is an absolute count, whereas the divergence allowance is a
 proportion of the retained draws. At an unchanged divergence rate a longer run
-has the same proportion of divergent draws, but may provide enough draws for an
+has, in expectation, the same proportion of divergent draws, but may provide enough draws for an
 ESS above 400. A comparison between runs
 therefore needs their chain counts, iterations and warmup beside the diagnostic
 table. The decision also uses `min_ess` (an absolute count) and not

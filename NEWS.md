@@ -602,7 +602,7 @@ the same call returns.
   of its retained draws are divergent, by default 0.00125 (0.125%), which is
   10 of the 8,000 draws `bnec()` retains by default. Because the cutoff is a
   proportion, thinning or a longer run at the same rate of divergence does
-  not change the decision (#148, #597).
+  not change, in expectation, the quantity it is compared with (#148, #597).
 
 - `summary()` of a single fit or a model set reports the number of divergent
   transitions of each equation, and its printed output warns where they
