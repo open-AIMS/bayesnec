@@ -37,7 +37,8 @@ test_that("joint comparisons pair estimates and retain censoring", {
     10, 0, c(FALSE, TRUE, FALSE, FALSE), rep(FALSE, 4)
   )
   b <- c(1, 5, 5, 5)
-  joint <- structure(list(levels = c("a", "b"), model = "nec4param"),
+  # A hormesis threshold level reads its NSEC off the curve with these.
+  joint <- structure(list(levels = c("a", "b"), model = "nechorme4"),
                      class = "bayesnecjointfit")
   passed <- NULL
   local_mocked_bindings(nec = function(...) {
@@ -54,6 +55,38 @@ test_that("joint comparisons pair estimates and retain censoring", {
   expect_equal(result$prob_diff$censored_first, 0.25)
   expect_identical(compare_posterior(joint, comparison = "nec", seed = 99),
                    result)
+  # Sampled NEC levels read no curve, so nec() is not given the defaults.
+  joint$model <- "nec4param"
+  compare_posterior(joint, comparison = "n(s)ec")
+  expect_false(any(c("sig_val", "resolution", "x_range") %in% names(passed)))
+})
+
+test_that("a joint nec() reports curve arguments only where no level used them", {
+  joint <- structure(list(levels = c("a", "b"),
+                          models = c(a = "nec4param", b = "ecx4param")),
+                     class = "bayesnecjointfit")
+  calls <- list()
+  local_mocked_bindings(
+    joint_level_fit = function(object, level) level,
+    nec = function(object, ...) {
+      calls[[length(calls) + 1]] <<- list(fun = "nec", args = list(...))
+      c(Q50 = 1, Q2.5 = 0.5, Q97.5 = 2)
+    },
+    nsec = function(object, ...) {
+      calls[[length(calls) + 1]] <<- list(fun = "nsec", args = list(...))
+      c(Q50 = 1, Q2.5 = 0.5, Q97.5 = 2)
+    }
+  )
+  expect_no_message(bayesnec:::joint_ne_table(joint, no_effect = TRUE,
+                                              sig_val = 0.05,
+                                              resolution = 40))
+  expect_equal(vapply(calls, `[[`, "", "fun"), c("nec", "nsec"))
+  expect_null(calls[[1]]$args$sig_val)
+  expect_equal(calls[[2]]$args$sig_val, 0.05)
+  joint$models[["b"]] <- "nec3param"
+  expect_message(bayesnec:::joint_ne_table(joint, no_effect = TRUE,
+                                           sig_val = 0.05),
+                 "did not use `sig_val`")
 })
 
 test_that("joint fitted curves retain shared posterior rows", {

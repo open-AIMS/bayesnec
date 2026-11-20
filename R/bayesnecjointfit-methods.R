@@ -398,6 +398,23 @@ joint_estimate_table <- function(object, what, fun, ..., pool = "none",
   finish(estimate_table(est, object$levels, what))
 }
 
+#' The levels of a joint refit whose no-effect estimate is read off the curve
+#'
+#' @param object An object of class \code{\link{bayesnecjointfit}}.
+#' @param no_effect A \code{\link[base]{logical}} value, see
+#' \code{\link{nec}}.
+#'
+#' @return A \code{\link[base]{logical}} vector with one element per level,
+#' \code{TRUE} where \code{\link{nec}} calls \code{\link{nsec}} on that level.
+#' @noRd
+joint_curve_read <- function(object, no_effect) {
+  models <- vapply(object$levels, joint_level_model, character(1),
+                   object = object, USE.NAMES = FALSE)
+  sampled <- vapply(models, sampled_nec_is_no_effect, logical(1),
+                    USE.NAMES = FALSE)
+  !sampled & (models %in% mod_groups$nec | no_effect)
+}
+
 #' The no-effect estimate at every level of a composed joint refit
 #'
 #' Each level fits one equation, so its estimate is a NEC or an NSEC, never a
@@ -455,10 +472,16 @@ joint_ne_table <- function(object, no_effect, ..., pool = "none") {
   }
   na_row <- quantile(NA_real_, probs = prob_vals, na.rm = TRUE)
   names(na_row) <- clean_names(na_row)
+  # A sampled level reads no curve. Report the curve arguments once, and only
+  # where no level reads them, rather than from nec() at every sampled level.
+  sampled_dots <- dots[setdiff(names(dots), nec_curve_args)]
+  if (!any(joint_curve_read(object, no_effect))) {
+    report_unused_curve_args(dots, re_evaluated = FALSE)
+  }
   est <- lapply(seq_along(levels), function(i) {
     lvl_fit <- joint_level_fit(object, levels[i])
     if (sampled[i]) {
-      return(do.call(nec, c(list(lvl_fit), dots)))
+      return(do.call(nec, c(list(lvl_fit), sampled_dots)))
     }
     if (threshold[i] || no_effect) {
       return(do.call(nsec, c(list(lvl_fit), dots)))
