@@ -25,7 +25,8 @@
 #' \code{\link{bnec_version}}).
 #' Warning messages are also printed to screen in case
 #' model fits are not satisfactory with regards to their Rhats or their
-#' divergent transitions.
+#' divergent transitions, the latter as a proportion of the retained draws
+#' (see \code{divergence_cutoff}).
 #' 
 #' @details The summary method for both \code{\link{bayesnecfit}} and
 #' \code{\link{bayesmanecfit}} also returns a no-effect toxicity
@@ -101,9 +102,11 @@ NULL
 #' If no value is specified by the user, returns calculations for EC10, EC50,
 #' and EC90.
 #' @param divergence_cutoff A \code{\link[base]{numeric}} vector of length 1.
-#' The summary warns of a model with more divergent transitions after warmup
-#' than this. Defaults to 10, the cutoff \code{\link{check_sampling}} and
-#' \code{\link{screen_models}} use. On a model set the warning gives each
+#' The proportion of retained draws above which the divergent transitions of
+#' a model are reported in a warning. Defaults to 0.00125 (0.125\%, or 10 of
+#' 8,000 draws), the cutoff \code{\link{check_sampling}} and
+#' \code{\link{screen_models}} use. A value of 1 or more is refused, and
+#' \code{Inf} turns the warning off. On a model set the warning gives each
 #' flagged equation's model weight beside its count.
 #'
 #' @method summary bayesnecfit
@@ -116,10 +119,10 @@ NULL
 #' @export
 summary.bayesnecfit <- function(object, ..., ecx = FALSE,
                                 ecx_vals = c(10, 50, 90),
-                                divergence_cutoff = 10) {
+                                divergence_cutoff = 0.00125) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
-  chk_number(divergence_cutoff)
+  check_divergence_cutoff(divergence_cutoff)
   x <- object
   warn_stale_observed_display(x)
   warn_stale_ne_type(x)
@@ -154,6 +157,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     ecs = ecs,
     bayesr2 = bayes_R2(x$fit),
     divergences = summary_divergences(x),
+    divergence_draws = summary_divergence_draws(x),
     divergence_cutoff = divergence_cutoff,
     failed_models = failed_models(x),
     bnec_version = bnec_version(x)
@@ -190,7 +194,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
                                   ecx_vals = c(10, 50, 90),
                                   rhat_cutoff = 1.01,
-                                  divergence_cutoff = 10,
+                                  divergence_cutoff = 0.00125,
                                   fit_ratio_cutoff = 1.15,
                                   check_fit = TRUE) {
   chk_lgl(ecx)
@@ -198,7 +202,7 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
   # chk_number, not chk_numeric: the documented type of each cutoff is a
   # vector of length 1, and chk_numeric admits any length.
   chk_number(rhat_cutoff)
-  chk_number(divergence_cutoff)
+  check_divergence_cutoff(divergence_cutoff)
   chk_number(fit_ratio_cutoff)
   chk_lgl(check_fit)
   x <- object
@@ -242,6 +246,7 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     rhat_issues = lapply(rhat(x, rhat_cutoff = rhat_cutoff), "[[", "failed"),
     rhat_cutoff = rhat_cutoff,
     divergences = summary_divergences(x),
+    divergence_draws = summary_divergence_draws(x),
     divergence_cutoff = divergence_cutoff,
     # Recompute the control check rather than store a prediction matrix on the
     # object, which bnec() leaves out to keep fits small. It uses 200 draws,
@@ -477,4 +482,16 @@ summary_divergences <- function(x) {
     }
     count_divergent(fit)
   }, numeric(1))
+}
+
+#' The number of retained draws in each model of a fit
+#'
+#' @param x A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#'
+#' @return A named \code{\link[base]{numeric}} vector, one element per model,
+#' named as \code{summary_divergences()} names its counts.
+#'
+#' @noRd
+summary_divergence_draws <- function(x) {
+  vapply(sampling_fits(x), function(fit) as.numeric(ndraws(fit)), numeric(1))
 }

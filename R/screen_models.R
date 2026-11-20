@@ -88,9 +88,10 @@
 #'
 #' @export
 screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
-                          divergence_cutoff = 10, quiet = FALSE,
+                          divergence_cutoff = 0.00125, quiet = FALSE,
                           group_action = c("per_level", "common")) {
   chk_lgl(quiet)
+  check_divergence_cutoff(divergence_cutoff)
   if (is_bayesnechurdlefit(x)) {
     screen_part <- function(part) {
       screen_models(part, rhat_cutoff = rhat_cutoff, ess_cutoff = ess_cutoff,
@@ -118,7 +119,7 @@ screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
     if (!quiet) {
       message("All ", nrow(tab), " candidate models passed the sampler",
               " screen (Rhat <= ", rhat_cutoff, ", ESS >= ", ess_cutoff,
-              ", divergences <= ", divergence_cutoff, ").")
+              ", ", divergence_rule_label(divergence_cutoff), ").")
     }
     return(x)
   }
@@ -167,7 +168,7 @@ screen_joint_levels <- function(x, rhat_cutoff, ess_cutoff, divergence_cutoff,
     if (!quiet) {
       message("All ", nrow(tab), " levels of the joint refit passed the",
               " sampler screen (Rhat <= ", rhat_cutoff, ", ESS >= ",
-              ess_cutoff, ", divergences <= ", divergence_cutoff, ").")
+              ess_cutoff, ", ", divergence_rule_label(divergence_cutoff), ").")
     }
     return(x)
   }
@@ -222,8 +223,8 @@ screen_group_models <- function(x, rhat_cutoff, ess_cutoff,
     if (!quiet) {
       message("All ", nrow(tab), " candidate fits across ", length(x$levels),
               " levels passed the sampler screen (Rhat <= ", rhat_cutoff,
-              ", ESS >= ", ess_cutoff, ", divergences <= ",
-              divergence_cutoff, ").")
+              ", ESS >= ", ess_cutoff, ", ",
+              divergence_rule_label(divergence_cutoff), ").")
     }
     return(x)
   }
@@ -299,8 +300,13 @@ screen_reasons <- function(tab, rhat_cutoff, ess_cutoff, divergence_cutoff) {
     if (isTRUE(r$min_ess < ess_cutoff)) {
       why <- c(why, paste0("ESS ", round(r$min_ess, 1)))
     }
-    if (isTRUE(r$n_divergent > divergence_cutoff)) {
-      why <- c(why, paste0(r$n_divergent, " divergent transitions"))
+    if (divergence_failed(r$divergent_ratio, divergence_cutoff)) {
+      # A failing row has a positive count and ratio, so their quotient
+      # recovers the number of draws.
+      n_draws <- round(r$n_divergent / r$divergent_ratio)
+      why <- c(why, paste0(r$n_divergent, " divergent transitions (",
+                           format_percent(r$divergent_ratio), " of ",
+                           n_draws, " draws)"))
     }
     paste0("  -  ", r$model, ": ", paste0(why, collapse = ", "))
   }, character(1))

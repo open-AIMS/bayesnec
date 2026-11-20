@@ -54,8 +54,13 @@ should the user decide to calculate them (see the non-exported
 giving the number of divergent transitions after warmup, \code{NA} for a
 model not sampled by NUTS.}
 
-\item{\code{divergence_cutoff}}{The number of divergent transitions above which the
-printed summary warns.}
+\item{\code{divergence_draws}}{A named \code{\link[base]{numeric}} vector of
+length 1 giving the number of retained draws the divergent transitions were
+counted over. Absent from a summary made before it was recorded, in which
+case \code{divergence_cutoff} is a count.}
+
+\item{\code{divergence_cutoff}}{The proportion of retained draws above which the
+divergent transitions of the model are reported in a printed warning.}
 
 \item{\code{failed_models}}{Any models from the original set that could not be
 fitted, with the priors and initial values used. See

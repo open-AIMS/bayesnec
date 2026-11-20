@@ -132,8 +132,9 @@ the no-effect estimate, labelled NEC or NSEC as
 \code{ecx = TRUE}, and for the Bayesian R-squared of that level's rows.
 The estimate rows are the tables \code{\link{nec}} and \code{\link{ecx}}
 return. \code{print()} on the summary warns where a level fails
-\code{rhat_cutoff} or the fit has more divergent transitions than
-\code{divergence_cutoff}.
+\code{rhat_cutoff}, or where the divergent transitions of the fit are a
+larger proportion of its retained draws than \code{divergence_cutoff},
+0.00125 (0.125\\%) by default as in \code{\link{check_sampling}}.
 \item \code{plot()} draws one base-graphics panel per level, as it draws
 a \code{\link{bayesnecfit}}.
 \item \code{fitted()}, \code{predict()}, \code{posterior_epred()} and

@@ -10,17 +10,47 @@
 \alias{check_sampling.default}
 \title{Sampler diagnostics for every candidate model}
 \usage{
-check_sampling(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+check_sampling(
+  x,
+  rhat_cutoff = 1.01,
+  ess_cutoff = 400,
+  divergence_cutoff = 0.00125
+)
 
-\method{check_sampling}{bayesnecfit}(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+\method{check_sampling}{bayesnecfit}(
+  x,
+  rhat_cutoff = 1.01,
+  ess_cutoff = 400,
+  divergence_cutoff = 0.00125
+)
 
-\method{check_sampling}{bayesmanecfit}(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+\method{check_sampling}{bayesmanecfit}(
+  x,
+  rhat_cutoff = 1.01,
+  ess_cutoff = 400,
+  divergence_cutoff = 0.00125
+)
 
-\method{check_sampling}{bayesnechurdlefit}(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+\method{check_sampling}{bayesnechurdlefit}(
+  x,
+  rhat_cutoff = 1.01,
+  ess_cutoff = 400,
+  divergence_cutoff = 0.00125
+)
 
-\method{check_sampling}{bayesnecgroupfit}(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+\method{check_sampling}{bayesnecgroupfit}(
+  x,
+  rhat_cutoff = 1.01,
+  ess_cutoff = 400,
+  divergence_cutoff = 0.00125
+)
 
-\method{check_sampling}{bayesnecjointfit}(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
+\method{check_sampling}{bayesnecjointfit}(
+  x,
+  rhat_cutoff = 1.01,
+  ess_cutoff = 400,
+  divergence_cutoff = 0.00125
+)
 
 \method{check_sampling}{default}(x, ...)
 }
@@ -33,14 +63,19 @@ check_sampling(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
 
 \item{ess_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
-\item{divergence_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
+\item{divergence_cutoff}{A \code{\link[base]{numeric}} vector of length 1.
+The proportion of retained draws, from 0 to less than 1, above which the
+divergent transitions fail a model. Defaults to 0.00125, which is 10 of
+8,000 draws. \code{Inf} turns the divergence criterion off.}
 
 \item{...}{Unused by the default method, which names unsupported classes.}
 }
 \value{
 A \code{\link[base]{data.frame}} with one row per candidate model and
 columns \code{model}, \code{max_rhat}, \code{min_ess}, \code{min_ess_ratio},
-\code{n_divergent} and \code{failed}. For a
+\code{n_divergent}, \code{divergent_ratio} and \code{failed}.
+\code{divergent_ratio} is \code{n_divergent} divided by the number of
+retained draws, and is \code{NA} where there are none. For a
 \code{\link{bayesnecgroupfit}} or a \code{\link{bayesnecjointfit}}, the
 same table includes a leading \code{level} column. For a
 \code{\link{bayesnechurdlefit}}, a named \code{\link[base]{list}} of two
@@ -62,9 +97,10 @@ An error naming the unsupported class.
 \description{
 Reports, per candidate model, whether the sampler explored the posterior:
 the largest Rhat, the smallest effective sample size, and the number of
-divergent transitions. It sits alongside \code{\link{check_chains}} (chain
-mixing, visually), \code{\link{check_priors}} (the priors) and
-\code{\link{check_fit}} (the fit against the data).
+divergent transitions with their proportion of the retained draws. It sits
+alongside \code{\link{check_chains}} (chain mixing, visually),
+\code{\link{check_priors}} (the priors) and \code{\link{check_fit}} (the
+fit against the data).
 }
 \details{
 \code{check_sampling()} asks \emph{did this model sample properly}, where
@@ -89,11 +125,21 @@ reported \code{min_ess} is the minimum over parameters of
 \code{min(bulk-ESS, tail-ESS)}, obtained as
 \code{min(neff_ratio(x)) * ndraws(x)}.
 
-\bold{Divergences 10} \emph{has no literature behind it}. Stan's own guidance
-is that \emph{any} divergence means the sampler failed to explore the
-posterior and estimates may be biased. Ten is pragmatic, from practice with
-these non-linear models, which routinely produce a handful near a boundary.
-It is a working default and should be described that way rather than cited.
+\bold{Divergences 0.125\\%} is a proportion of the retained draws: a model
+fails where more than 0.125\\% of its retained draws are divergent
+transitions. That is 10 of the 8,000 draws \code{\link{bnec}} retains by
+default, so at the defaults a model with 11 or more fails. The value has no
+analysis of bias behind it, and is a working default rather than a
+recommendation. Stan's guidance is that any divergence means the sampler may
+not have explored the posterior, and the published tolerances we found are
+proportions, for example 0.1\\% of post-warm-up iterations in Fuglstad et al.
+(2020). A value of 1 or more is refused, and \code{Inf} turns the divergence
+criterion off.
+
+Stan records sampler diagnostics only on the iterations it saves. Thinning
+therefore lowers the number of divergent transitions recorded, but not, in
+expectation, their proportion of the retained draws, and a longer run at the
+same rate of divergence records more of them in the same proportion.
 }
 
 \section{A heavily thinned fit can fail ESS that a ratio would pass}{
@@ -135,7 +181,8 @@ A \code{\link{bayesnecjointfit}} gives the same table, with one row per
 level. The Rhat and ESS of a row are reduced over that level's own
 coefficients and the parameters the levels share, such as \code{lp__}.
 \code{n_divergent} is the count for the whole fit, because a divergent
-transition cannot be attributed to one level.
+transition cannot be attributed to one level, and \code{divergent_ratio}
+divides it by the draws of the whole fit.
 }
 
 \examples{
@@ -150,6 +197,10 @@ Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Burkner, P.-C. (2021).
 Rank-normalization, folding, and localization: An improved Rhat for assessing
 convergence of MCMC (with discussion). \emph{Bayesian Analysis}, 16(2),
 667--718. doi:10.1214/20-BA1221
+
+Fuglstad, G.-A., Hem, I. G., Knight, A., Rue, H., & Riebler, A. (2020).
+Intuitive joint priors for variance parameters. \emph{Bayesian Analysis},
+15(4), 1109--1137. doi:10.1214/19-BA1185
 }
 \seealso{
 \code{\link{screen_models}}, \code{\link{check_fit}},

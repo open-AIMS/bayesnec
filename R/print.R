@@ -102,7 +102,8 @@ print.necsummary <- function(x, ...) {
   print_version(x$bnec_version)
   div_bad <- divergent_models(x)
   if (length(div_bad) > 0) {
-    warning(divergence_message(div_bad, x$divergence_cutoff),
+    warning(divergence_message(div_bad, x$divergence_cutoff,
+                               x$divergence_draws),
             "\nConsider refitting with a larger adapt_delta, passed to bnec()",
             " as control = list(adapt_delta = ...).\n")
   }
@@ -187,6 +188,7 @@ print.manecsummary <- function(x, ...) {
     }
     if (length(div_bad) > 0) {
       msg <- c(msg, divergence_message(div_bad, x$divergence_cutoff,
+                                       x$divergence_draws,
                                        x$mod_weights[names(div_bad), "wi"]))
     }
     if (length(fit_bad) > 0) {
@@ -228,7 +230,7 @@ This is a modelling result rather than a fault; inspect with check_fit().
   invisible(x)
 }
 
-#' The models of a summary with more divergent transitions than its cutoff
+#' The models of a summary whose divergent transitions fail its cutoff
 #'
 #' @param x A \code{necsummary} or \code{manecsummary}.
 #'
@@ -241,29 +243,46 @@ divergent_models <- function(x) {
   if (is.null(n)) {
     return(numeric(0))
   }
-  # Strictly greater, as check_sampling() fails a model. which() drops the NA
-  # of a model not sampled by NUTS.
-  n[which(n > x$divergence_cutoff)]
+  draws <- x$divergence_draws
+  if (is.null(draws)) {
+    # A summary stored before the draws were recorded holds a cutoff that is
+    # a count, so compare the count with it. which() drops the NA of a model
+    # not sampled by NUTS.
+    return(n[which(n > x$divergence_cutoff)])
+  }
+  n[divergence_failed(divergent_ratio(n, draws[names(n)]),
+                      x$divergence_cutoff)]
 }
 
 #' The lines of a summary warning that name the divergent models
 #'
 #' @param div_bad A named \code{\link[base]{numeric}} vector of counts, from
 #' \code{divergent_models()}.
-#' @param cutoff The cutoff the counts exceed.
+#' @param cutoff The cutoff the counts fail.
+#' @param draws The named retained draws of each model, or \code{NULL} for a
+#' summary stored before they were recorded, whose cutoff is a count.
 #' @param weights The model weight of each model in \code{div_bad}, in the
 #' same order, or \code{NULL} for a single fit.
 #'
 #' @return A \code{\link[base]{character}} string.
 #'
 #' @noRd
-divergence_message <- function(div_bad, cutoff, weights = NULL) {
-  detail <- if (is.null(weights)) {
-    div_bad
+divergence_message <- function(div_bad, cutoff, draws = NULL,
+                               weights = NULL) {
+  if (is.null(draws)) {
+    head <- paste0("Divergent transitions > ", cutoff)
+    detail <- as.character(div_bad)
   } else {
-    paste0(div_bad, ", model weight ", sprintf("%.2f", weights))
+    draws <- draws[names(div_bad)]
+    head <- paste0("Divergent transitions > ", format_percent(cutoff, 3),
+                   " of draws")
+    detail <- paste0(div_bad, ", ", format_percent(div_bad / draws), " of ",
+                     draws, " draws")
   }
-  paste0("Divergent transitions > ", cutoff, " (see ?check_sampling):\n",
+  if (!is.null(weights)) {
+    detail <- paste0(detail, ", model weight ", sprintf("%.2f", weights))
+  }
+  paste0(head, " (see ?check_sampling):\n",
          paste0("  -  ", names(div_bad), " (", detail, ")", collapse = "\n"))
 }
 

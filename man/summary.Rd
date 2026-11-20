@@ -11,7 +11,7 @@
   ...,
   ecx = FALSE,
   ecx_vals = c(10, 50, 90),
-  divergence_cutoff = 10
+  divergence_cutoff = 0.00125
 )
 
 \method{summary}{bayesmanecfit}(
@@ -20,7 +20,7 @@
   ecx = FALSE,
   ecx_vals = c(10, 50, 90),
   rhat_cutoff = 1.01,
-  divergence_cutoff = 10,
+  divergence_cutoff = 0.00125,
   fit_ratio_cutoff = 1.15,
   check_fit = TRUE
 )
@@ -42,9 +42,11 @@ If no value is specified by the user, returns calculations for EC10, EC50,
 and EC90.}
 
 \item{divergence_cutoff}{A \code{\link[base]{numeric}} vector of length 1.
-The summary warns of a model with more divergent transitions after warmup
-than this. Defaults to 10, the cutoff \code{\link{check_sampling}} and
-\code{\link{screen_models}} use. On a model set the warning gives each
+The proportion of retained draws above which the divergent transitions of
+a model are reported in a warning. Defaults to 0.00125 (0.125\\%, or 10 of
+8,000 draws), the cutoff \code{\link{check_sampling}} and
+\code{\link{screen_models}} use. A value of 1 or more is refused, and
+\code{Inf} turns the warning off. On a model set the warning gives each
 flagged equation's model weight beside its count.}
 
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1. The
@@ -75,7 +77,8 @@ and the installation of \pkg{bayesnec} that fitted it (see
 \code{\link{bnec_version}}).
 Warning messages are also printed to screen in case
 model fits are not satisfactory with regards to their Rhats or their
-divergent transitions.
+divergent transitions, the latter as a proportion of the retained draws
+(see \code{divergence_cutoff}).
 }
 \description{
 Generates a summary for objects fitted by \code{\link{bnec}}.
