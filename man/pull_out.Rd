@@ -31,11 +31,14 @@ names a \code{method}, "pseudobma" or "stacking", and the arguments of
 (\code{optim_method} and \code{optim_control}); any other argument is
 refused. If no \code{method} is named, \pkg{bayesnec} uses "pseudobma",
 whichever function assembles the model set. "leave_out" is
-"group" (the default) or "observation", and sets what is left out when the
+"group" (the default), "observation" or "kfold", and sets what is left out when the
 score behind the weights is computed. Under "group", where each level of a
 group-level term is observed at a single concentration, each level is left
 out whole; otherwise, and always under "observation", each observation is
-left out. "refit" is \code{FALSE} (the default) or \code{TRUE}, and applies
+left out. "kfold" selects complete exact scores previously computed by
+\code{\link{kfold_groups}} and attached with \code{\link{kfold_weights}};
+it cannot be requested on an initial \code{bnec()} call. "refit" is
+\code{FALSE} (the default) or \code{TRUE}, and applies
 under "group" only: where \code{TRUE}, each equation is refitted without
 each level whose Pareto k is at or above 0.7. The "fitting" arguments
 apply to the score computed by leaving out each observation.
@@ -51,7 +54,7 @@ retained in
 \code{fit$mod_fits[[model]]$fit$criteria$loo}; where groups were left out,
 the selected criterion, including its Pareto k values, is in
 \code{fit$mod_fits[[model]]$fit$criteria$logo}, even for equations with less
-than 0.01 weight.
+than 0.01 weight. Exact K-fold scores are stored in \code{criteria$kfold}.
 See Details, under model averaging.
 \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
 existing set. They keep the "fitting" arguments it was built with unless

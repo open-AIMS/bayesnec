@@ -328,6 +328,13 @@ recorded_expand_args <- function(objects, x_range = NULL, resolution = NULL,
         }
       }, set_objects, set_records
     ))
+    if (length(set_objects) == 0L && length(objects) > 0L &&
+        all(vapply(objects, function(o) {
+          inherits(o, "bayesnecfit") &&
+            inherits(o$fit$criteria$kfold, "kfold")
+        }, logical(1)))) {
+      loo$leave_out <- "kfold"
+    }
   }
   if (!"refit" %in% named) {
     loo$refit <- agreed("loo_controls$refit", lapply(

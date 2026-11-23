@@ -621,6 +621,15 @@ the same call returns.
 
 ## Model weights
 
+- `kfold_groups()` refits a single equation or a model set without each fold
+  of grouping levels and scores each held-out level jointly. It accepts a
+  stored fold assignment, can compute one fold per R process, and returns
+  criteria that `loo::loo_compare()` can compare after `kfold_combine()`.
+  `kfold_weights()` uses complete exact scores to weight a model set.
+  The existing leave-one-group-out score also integrates two independent
+  deviations on the same grouping, so a set with both a height and a
+  position term can be weighted over cells (#598).
+
 - `loo_controls` takes three new elements. `leave_out` is `"group"`, the
   default, or `"observation"`. `"group"` leaves out each level of a
   group-level term whole where every level is observed at a single

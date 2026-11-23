@@ -63,11 +63,14 @@ names a \code{method}, "pseudobma" or "stacking", and the arguments of
 (\code{optim_method} and \code{optim_control}); any other argument is
 refused. If no \code{method} is named, \pkg{bayesnec} uses "pseudobma",
 whichever function assembles the model set. "leave_out" is
-"group" (the default) or "observation", and sets what is left out when the
+"group" (the default), "observation" or "kfold", and sets what is left out when the
 score behind the weights is computed. Under "group", where each level of a
 group-level term is observed at a single concentration, each level is left
 out whole; otherwise, and always under "observation", each observation is
-left out. "refit" is \code{FALSE} (the default) or \code{TRUE}, and applies
+left out. "kfold" selects complete exact scores previously computed by
+\code{\link{kfold_groups}} and attached with \code{\link{kfold_weights}};
+it cannot be requested on an initial \code{bnec()} call. "refit" is
+\code{FALSE} (the default) or \code{TRUE}, and applies
 under "group" only: where \code{TRUE}, each equation is refitted without
 each level whose Pareto k is at or above 0.7. The "fitting" arguments
 apply to the score computed by leaving out each observation.
@@ -83,7 +86,7 @@ retained in
 \code{fit$mod_fits[[model]]$fit$criteria$loo}; where groups were left out,
 the selected criterion, including its Pareto k values, is in
 \code{fit$mod_fits[[model]]$fit$criteria$logo}, even for equations with less
-than 0.01 weight.
+than 0.01 weight. Exact K-fold scores are stored in \code{criteria$kfold}.
 See Details, under model averaging.
 \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
 existing set. They keep the "fitting" arguments it was built with unless
@@ -732,8 +735,8 @@ is instead left out whole. For each posterior draw, the level's deviation is int
 out of the joint likelihood of its observations by Gauss--Legendre
 quadrature on each side of its mode, with the other group-level deviations
 held at their drawn values, so that the curve has to predict the level. This
-is supported for one such grouping, whose deviation appears in each equation
-as a single normal intercept per level, as in an \code{ogl()} term or one
+is supported for one such grouping with up to two independent normal
+intercepts per level, as in an \code{ogl()} term together with one
 \code{(par | group)} term. For any other structure, such as \code{pgl()} on
 the grouping, each observation is left out, with a warning. The score of a
 level whose Pareto k is at or above 0.7 is approximate, and a message lists the
@@ -757,6 +760,13 @@ of \code{leave_out}, so it is taken to have been scored by leaving out each
 observation, and is scored that way again when rebuilt;
 \code{amend(x, loo_controls = list(leave_out = "group"))} recomputes its
 weights.
+
+For exact K-fold scoring of grouping levels, call
+\code{\link{kfold_groups}} on a single fit or set. It refits without each
+fold and integrates every independent deviation on the held-out grouping.
+Use its \code{fold} argument to compute folds in separate R processes and
+combine them with \code{\link{kfold_combine}}. For a set,
+\code{\link{kfold_weights}} uses the complete scores for model weights.
 
 \bold{Reproducing a fit}
 
