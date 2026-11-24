@@ -620,11 +620,16 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
     if (!is.null(scores$logo)) {
       mod_fits[[m]]$fit$criteria$logo <- scores$logo[[m]]
     }
+    if (!is.null(scores$kfold)) {
+      mod_fits[[m]]$fit$criteria$kfold <- scores$kfold[[m]]
+    }
   }
+  elpd_column <- if (identical(scores$leave_out, "kfold"))
+    "elpd_kfold" else "elpd_loo"
   mod_stats$elpd <- vapply(scores$criteria, function(l) {
-    l$estimates["elpd_loo", "Estimate"]
+    l$estimates[elpd_column, "Estimate"]
   }, numeric(1))
-  pointwise <- lapply(scores$criteria, function(x) x$pointwise[, "elpd_loo"])
+  pointwise <- lapply(scores$criteria, function(x) x$pointwise[, elpd_column])
   n_units <- lengths(pointwise)
   if (length(unique(n_units)) != 1L) {
     stop("Cannot weight models with different numbers of observations: ",
@@ -644,8 +649,10 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   names(mod_stats$wi) <- names(scores$criteria)
   attr(mod_stats$wi, "method") <- method
   attr(mod_stats$wi, "leave_out") <- scores$leave_out
-  report_weight_k(scores$criteria, mod_stats$wi, scores$leave_out,
-                  loo_controls$refit, loo_controls$report_k)
+  if (!identical(scores$leave_out, "kfold")) {
+    report_weight_k(scores$criteria, mod_stats$wi, scores$leave_out,
+                    loo_controls$refit, loo_controls$report_k)
+  }
   mod_stats <- cbind(mod_stats, disp)
   sample_size <- set_draw_count(object)
   # Realise the weighted draw once and store both the index and its seed.
