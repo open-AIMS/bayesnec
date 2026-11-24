@@ -125,8 +125,10 @@ The papers behind this package and the training material are in
 `C:/Rworking/references/`, outside every repository so that they are never
 committed, and reached from here through `ignore/references`. Read one by that
 path rather than the absolute one, so the read stays inside the working
-directory. `notes/references.md` lists what is there and gives the key in
-`vignettes/bayesnec.bib` for each paper the package cites.
+directory. `references.bib` in the library catalogues every file, named
+`<key>.<ext>`; where `vignettes/bayesnec.bib` uses another key for the same
+paper, the library entry lists it in its `ids` field. `notes/references.md`
+describes the arrangement.
 
 ## Naming the models in prose
 
