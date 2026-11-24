@@ -107,14 +107,31 @@ logo_slot <- function(fit, group, prep = NULL) {
   c(slots[[1]], list(slots = slots, reason = NULL))
 }
 
-#' Integrate every independent deviation on a held-out grouping
+#' Each level's log-likelihood with its deviations on a grouping integrated out
+#'
+#' @param fit A \code{\link[brms]{brmsfit}}.
+#' @param prep Its \code{brms::prepare_predictions()} output for the draws
+#' \code{draw_ids}.
+#' @param group The grouping, as \code{fit$ranef$group} names it.
+#' @param level The level of every observation in \code{prep}.
+#' @param draw_ids The draws in \code{prep}, or \code{NULL} for all of them.
+#' @param starts Optionally, one matrix of starting deviations per deviation,
+#' in place of the draws in \code{prep}.
+#'
+#' @return The draws by levels matrix of \code{log p(y_g | theta_s)}, with
+#' columns in the order of \code{levels(level)}. Up to two deviations are
+#' integrated, the second nested within the first.
+#'
 #' @noRd
 logo_integrate_slots <- function(fit, prep, group, level, draw_ids = NULL,
                                  starts = NULL) {
   slot <- logo_slot(fit, group, prep)
   if (!is.null(slot$reason)) stop(slot$reason, call. = FALSE)
-  likelihood <- function() t(rowsum(t(log_lik(prep)), level, reorder = TRUE))
-  if (is.null(slot$path)) return(likelihood())
+  if (is.null(slot$path)) {
+    # No deviation to integrate: a level's joint log-likelihood is the sum
+    # over its observations.
+    return(t(rowsum(t(log_lik(prep)), level, reorder = TRUE)))
+  }
   slots <- slot$slots
   columns <- slots[[1]]$col_of_obs
   if (!all(vapply(slots, function(s) identical(s$col_of_obs, columns),
@@ -132,7 +149,7 @@ logo_integrate_slots <- function(fit, prep, group, level, draw_ids = NULL,
     if (i > length(slots)) return(likelihood())
     part <- slots[[i]]
     h <- function(z) {
-      # Update the prepared predictions shared by both integration levels.
+      # Assign with <<-: likelihood() and the nested integral read this prep.
       prep[[part$path[1]]][[part$path[2]]]$re$r[[group]] <<- z
       integrate(i + 1L)
     }
@@ -522,12 +539,13 @@ logo_refit_level <- function(base, o, group, level, g) {
 #' @param train The data of the refit.
 #'
 #' @return \code{init} with each \code{z_k} replaced by zeros at the number of
-#' levels in \code{train}, or \code{"random"} where \code{init} is not a list.
+#' levels in \code{train}. A number or keyword is returned unchanged, because
+#' it applies at any number of levels; anything else becomes \code{"random"}.
 #'
 #' @noRd
 refit_inits <- function(init, fit, train) {
   if (!is.list(init)) {
-    return("random")
+    return(if (is.numeric(init) || is.character(init)) init else "random")
   }
   re <- fit$ranef
   dims <- lapply(split(re, re$id), function(r) {

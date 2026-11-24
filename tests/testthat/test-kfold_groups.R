@@ -37,6 +37,7 @@ test_that("separate folds combine to a comparable exact criterion", {
   assignment <- stats::setNames(rep(1:2, 4), cell)
   local_mocked_bindings(kfold_fit_settings = function(fit)
                           c(iter = 300, warmup = 150),
+                        kfold_fit_key = function(fit, data) "key",
                         kfold_refit = function(o, data, group, level,
                                                 fold_map, fold, settings) {
     names <- names(fold_map)[fold_map == fold]
@@ -59,7 +60,8 @@ test_that("separate folds combine to a comparable exact criterion", {
   expect_identical(attr(combined, "refit_settings")$warmup, 150L)
   expect_equal(unname(loo::loo_compare(full, combined)[, "elpd_diff"]),
                c(0, 0))
-  expect_error(kfold_combine(parts[[1]], parts[[1]]), "duplicate fold")
+  expect_identical(kfold_combine(parts[[2]], parts[[1]], parts[[1]]),
+                   combined)
   other <- parts[[2]]
   other$settings$iter <- 100L
   expect_error(kfold_combine(parts[[1]], other), "different settings")
@@ -75,7 +77,7 @@ test_that("a failed fold leaves its levels without a score", {
   second <- structure(c(base, list(fold = 2L, results = list(
     ecxlin = list(error = "sampler failed")
   ))), class = "kfold_groups_part")
-  expect_warning(out <- kfold_combine(first, second), "no score")
+  expect_warning(out <- kfold_combine(first, second), "fold 2 of ecxlin")
   expect_s3_class(out, "kfold_groups_part")
   expect_true(is.na(out$results$ecxlin$elpd["b"]))
   expect_identical(out$results$ecxlin$diagnostics[["2"]]$error,
@@ -84,6 +86,102 @@ test_that("a failed fold leaves its levels without a score", {
   repaired$results$ecxlin <- list(elpd = c(b = -2),
                                    diagnostics = list(max_rhat = 1))
   expect_s3_class(kfold_combine(out, repaired), "kfold")
+  # The replacement is used whether it comes before or after the failure.
+  expect_identical(kfold_combine(repaired, out), kfold_combine(out, repaired))
+})
+
+test_that("a held-out level with no finite density fails its fold", {
+  out <- bayesnec:::kfold_result(c(a = -1, b = -Inf, c = NaN),
+                                 list(max_rhat = 1.01, error = NULL))
+  expect_identical(out$error, "no finite log predictive density for b, c")
+  expect_identical(out$diagnostics$max_rhat, 1.01)
+  expect_identical(out$diagnostics$error, out$error)
+  ok <- bayesnec:::kfold_result(c(a = -1), list(max_rhat = 1, error = NULL))
+  expect_null(ok$error)
+  data <- data.frame(y = 1:4, x = c(1, 1, 2, 2))
+  object <- structure(list(
+    fit = list(data = data, ranef = data.frame(group = character())),
+    model = "ecxlin",
+    bayesnecformula = bayesnecformula(y ~ crf(x, model = "ecxlin")),
+    retained_data = data.frame(cell = letters[1:4])),
+    class = c("bayesnecfit", "bnecfit"))
+  local_mocked_bindings(
+    kfold_fit_settings = function(fit) c(iter = 300, warmup = 150),
+    kfold_fit_key = function(fit, data) "key",
+    kfold_refit = function(o, data, group, level, fold_map, fold, settings) {
+      names <- names(fold_map)[fold_map == fold]
+      bayesnec:::kfold_result(
+        stats::setNames(if (fold == 1) c(-1, -Inf) else c(-2, -3), names),
+        list(max_rhat = 1, divergent = 0, error = NULL))
+    }
+  )
+  expect_warning(
+    expect_warning(out <- kfold_groups(object, group = "cell",
+                                       folds = c(a = 1L, b = 2L, c = 1L,
+                                                 d = 2L)),
+                   "Fold 1 of ecxlin failed: no finite .* for c"),
+    "fold 1 of ecxlin"
+  )
+  expect_s3_class(out, "kfold_groups_part")
+  expect_identical(out$results$ecxlin$diagnostics[["1"]]$max_rhat, 1)
+  expect_true(all(is.na(out$results$ecxlin$elpd[c("a", "c")])))
+})
+
+test_that("kfold_groups leaves the caller's random stream where it was", {
+  data <- data.frame(y = 1:4, x = c(1, 1, 2, 2))
+  object <- structure(list(
+    fit = list(data = data, ranef = data.frame(group = character())),
+    model = "ecxlin",
+    bayesnecformula = bayesnecformula(y ~ crf(x, model = "ecxlin")),
+    retained_data = data.frame(cell = letters[1:4])),
+    class = c("bayesnecfit", "bnecfit"))
+  local_mocked_bindings(
+    kfold_fit_settings = function(fit) c(iter = 300, warmup = 150),
+    kfold_fit_key = function(fit, data) "key",
+    kfold_refit = function(o, data, group, level, fold_map, fold, settings) {
+      set.seed(fold)
+      names <- names(fold_map)[fold_map == fold]
+      list(elpd = stats::setNames(stats::rnorm(length(names)), names),
+           diagnostics = list(error = NULL))
+    }
+  )
+  set.seed(3)
+  before <- .Random.seed
+  out <- kfold_groups(object, group = "cell", K = 2, seed = 5)
+  expect_identical(.Random.seed, before)
+  expect_s3_class(out, "kfold")
+})
+
+test_that("bnec() refuses leave_out = \"kfold\" before fitting", {
+  utils::data("nec_data", package = "bayesnec", envir = environment())
+  expect_error(
+    bnec(y ~ crf(x, model = c("nec3param", "ecx4param")), data = nec_data,
+         loo_controls = list(leave_out = "kfold")),
+    "computed from a fitted set"
+  )
+})
+
+test_that("single fits rebuild a set by K-fold only on one assignment", {
+  one <- function(folds) {
+    structure(list(fit = list(criteria = list(
+      kfold = bayesnec:::kfold_criterion(c(a = -1, b = -2, c = -3, d = -4),
+                                         "cell", folds, list(), list(), "k")
+    ))), class = c("bayesnecfit", "bnecfit"))
+  }
+  folds <- c(a = 1L, b = 2L, c = 1L, d = 2L)
+  same <- bayesnec:::recorded_expand_args(list(one(folds), one(folds)),
+                                          fam_tag = "gaussian")
+  expect_identical(same$loo_controls$leave_out, "kfold")
+  other <- bayesnec:::recorded_expand_args(list(one(folds), one(rev(folds))),
+                                           fam_tag = "gaussian")
+  expect_identical(other$loo_controls$leave_out, "group")
+})
+
+test_that("check_fit names the K-fold criterion behind a set's weights", {
+  x <- list(mod_stats = list(wi = structure(c(a = 1), leave_out = "kfold")))
+  expect_identical(bayesnec:::check_fit_weight_criterion(x), "kfold")
+  attr(x$mod_stats$wi, "leave_out") <- "cell"
+  expect_identical(bayesnec:::check_fit_weight_criterion(x), "logo")
 })
 
 test_that("a fold that loses another grouping's level is refused", {
@@ -113,6 +211,7 @@ test_that("a refit error is retained with the failed fold", {
     class = c("bayesnecfit", "bnecfit"))
   local_mocked_bindings(
     kfold_fit_settings = function(fit) c(iter = 300, warmup = 150),
+    kfold_fit_key = function(fit, data) "key",
     kfold_refit = function(...) stop("sampler stopped")
   )
   expect_warning(part <- kfold_groups(
@@ -166,6 +265,23 @@ test_that("exact weights survive rebuilding and combining a stored set", {
   expect_identical(attr(weighted$mod_stats$wi, "leave_out"), "kfold")
   expect_identical(weighted$mod_fits[[1]]$fit$criteria$kfold,
                    criteria[[1]])
+  # The fingerprint ignores the criteria a weighted set stores, so the set
+  # can be weighted again by the same scores.
+  restacked <- suppressWarnings(suppressMessages(
+    kfold_weights(weighted, criteria, method = "stacking")
+  ))
+  expect_identical(attr(restacked$mod_stats$wi, "method"), "stacking")
+  expect_identical(attr(restacked$mod_stats$wi, "leave_out"), "kfold")
+  changed <- weighted$mod_fits[[1]]$fit
+  key <- attr(criteria[[1]], "fit_key")
+  expect_identical(bayesnec:::kfold_fit_key(changed, data), key)
+  last <- length(changed$fit@sim$samples[[1]][[1]])
+  changed$fit@sim$samples[[1]][[1]][last] <- 0.5
+  expect_false(identical(bayesnec:::kfold_fit_key(changed, data), key))
+  expect_error(amend(weighted, add = "ecxlin"),
+               "ecxlin would not have")
+  expect_error(update(weighted, iter = 200),
+               "A refit replaces the fits")
   amended <- suppressWarnings(suppressMessages(amend(
     weighted, loo_controls = list(weights = list(BB = FALSE))
   )))
@@ -246,8 +362,11 @@ two_deviation_kfold_fixture <- local({
 test_that("a fitted equation scores a fold with two cell deviations", {
   skip_unless_full_suite()
   fit <- two_deviation_kfold_fixture()
+  set.seed(4)
+  before <- .Random.seed
   part <- kfold_groups(fit, group = "cell", K = 2, fold = 1,
                        iter = 200, warmup = 100, seed = 11)
+  expect_identical(.Random.seed, before)
   expect_s3_class(part, "kfold_groups_part")
   expect_length(part$results$ecx4param$elpd, 6)
   expect_true(all(is.finite(part$results$ecx4param$elpd)))

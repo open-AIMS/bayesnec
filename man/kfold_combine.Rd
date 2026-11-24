@@ -7,15 +7,24 @@
 kfold_combine(...)
 }
 \arguments{
-\item{...}{\code{kfold_groups_part} objects from the same original fit,
-assignment and refit settings. A list of parts may also be supplied.}
+\item{...}{\code{kfold_groups_part} objects from the same fit, grouping,
+fold assignment and refit settings, or one list of them. A part returned
+by an earlier call with folds still unscored may be among them.}
 }
 \value{
-One \code{kfold} criterion per equation, or a named list for a set.
-If a fold failed or is absent, a \code{kfold_groups_part} is returned with
-the available scores and diagnostic records. It can be combined later with
-replacement parts.
+Where every level of every equation has a score, one criterion of
+class \code{c("kfold", "loo")} per equation, or a named list of them for a
+model set, as \code{\link{kfold_groups}} returns. Otherwise a warning names
+the folds without a score, and a \code{kfold_groups_part} holds the scores
+and diagnostics so far. Pass it to \code{kfold_combine()} again with the
+parts that recompute those folds.
 }
 \description{
-Combine separately computed folds
+Joins the folds that \code{\link{kfold_groups}} computed in separate calls
+into one criterion per equation.
+}
+\details{
+The parts may be given in any order, and may repeat a fold. For
+each fold and equation the first scored result is used, so that a part
+recomputing a failed fold replaces it whether it comes before or after it.
 }

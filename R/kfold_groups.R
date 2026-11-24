@@ -1,40 +1,75 @@
 #' Exact K-fold cross-validation over grouping levels
 #'
-#' @param x A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
-#' @param group The grouping whose levels are held out. Required when the
-#' grouping has no deviation in the equation, such as a cell identifier in an
-#' equation with only a plate term. Its column may be retained outside the
-#' fitted model frame.
-#' @param K Number of folds. Ignored when \code{folds} is supplied.
-#' @param folds An optional named integer vector assigning every level of the
-#' selected grouping to a fold numbered from one.
-#' @param fold One fold number to compute in this process. By default every
-#' fold is computed in sequence.
-#' @param iter,warmup Optional iteration and warm-up counts for the refits.
-#' The original fit's settings are used when these are omitted.
-#' @param seed Seed used to assign levels to folds and to prepare the held-out
-#' predictions. It seeds a refit if the original fit recorded no seed. The
-#' realised assignment is stored in the result.
+#' Refits each equation once without each fold of the levels of a grouping,
+#' and scores every held-out level from that refit with all of its own
+#' deviations integrated out.
 #'
-#' @return For a complete run, a \code{\link[loo]{loo}} object of class
-#' \code{kfold} for one equation, or a named list of them for a model set.
-#' Each pointwise row is one level. With \code{fold} specified, a
-#' \code{kfold_groups_part} is returned; combine the parts with
+#' @param x A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#' @param group The grouping whose levels are held out, as a column name or
+#' an interaction such as \code{"plate:conc_rank"}. By default, the one
+#' grouping with a deviation in the fit whose levels are each observed at a
+#' single concentration. Name it where its levels have no deviation in the
+#' equation, such as a cell identifier in an equation with only a plate term.
+#' Its column may then be one kept in \code{x$retained_data} rather than in
+#' the fitted data.
+#' @param K The number of folds. Ignored when \code{folds} is supplied.
+#' @param folds A named integer vector assigning every level of the grouping
+#' to a fold, numbered consecutively from one. By default the levels at each
+#' concentration are assigned to the folds in turn, in random order, so that
+#' each fold spans the concentration series.
+#' @param fold One fold to compute in this process. By default every fold is
+#' computed in sequence.
+#' @param iter,warmup The iterations and warm-up of each refit. By default,
+#' those of the fit.
+#' @param seed The seed of the fold assignment and of the draws that start
+#' the integration over each held-out level's deviations. The refits use the
+#' seed the fit recorded, and this one only where it recorded none.
+#'
+#' @details Each level of the grouping must be observed at a single
+#' concentration. Each equation may have up to two deviations on the grouping.
+#' Each must be a normal intercept, independent of the other, as for an
+#' \code{ogl()} term together with one \code{(par | group)} term. Every other
+#' grouping must keep all its levels in each training set, so a fold that
+#' removes a whole plate is refused.
+#'
+#' Each refit takes the fit's formula, priors, family, backend, chains,
+#' sampler control and seed, with the fit's initial values and its
+#' group-level deviations started at zero. As in \code{brms::update()}, its
+#' chains run on \code{getOption("mc.cores", 1)} cores. A held-out level is
+#' scored by the log of the mean, over the refit's draws, of the likelihood of
+#' its observations with its deviations integrated out by Gauss--Legendre
+#' quadrature, nested where there are two. The other group-level deviations
+#' are taken at each draw. The likelihood is evaluated by
+#' \code{brms::log_lik()}, so censoring, the transform of an \code{ogl()} term
+#' and a \code{disp()} model are taken from the fit.
+#'
+#' To compute the folds in separate R processes, read the same saved fit in
+#' each, pass the same \code{folds} (or \code{K} and \code{seed}), \code{iter}
+#' and \code{warmup}, and one \code{fold}, and save the returned part.
+#' \code{\link{kfold_combine}} joins the parts.
+#'
+#' The result records each refit's largest R-hat, number of divergent
+#' transitions, share of transitions at the maximum tree depth, elapsed
+#' seconds and any error. A fold whose refit fails, or which gives a held-out
+#' level no finite log predictive density, leaves its levels without a score
+#' and gives a warning.
+#'
+#' \code{loo::loo_compare()} compares the criteria of two fits to the same
+#' data and levels. The pointwise rows are named by level, so that the
+#' differences can be summed within a coarser grouping, such as plate, for
+#' its standard error. The \code{p_kfold} column is \code{NA}, because the log
+#' predictive density of the full fit is not computed.
+#'
+#' @return Where every fold is computed and scored, a criterion of class
+#' \code{c("kfold", "loo")} with one pointwise row per level, or for a model
+#' set a named list of them, one per equation. Its attributes \code{group},
+#' \code{folds}, \code{refit_settings} and \code{refit_diagnostics} record the
+#' grouping, the realised assignment, the refits' \code{iter}, \code{warmup}
+#' and \code{seed}, and each refit's diagnostics. Where \code{fold} is given,
+#' or any fold has no score, a \code{kfold_groups_part} for
 #' \code{\link{kfold_combine}}.
 #'
-#' @details The grouping must have one concentration per level and at most two
-#' independent normal intercept deviations per equation. The deviations of a
-#' held-out level are integrated jointly through \code{brms::log_lik()}.
-#' Other groupings must retain all their levels in every training fold.
-#' A separate process can read the same saved fit, pass \code{fold = 1} and
-#' save the returned part. Pass its \code{folds} vector to the calls for the
-#' remaining folds, then pass all parts to \code{kfold_combine()}.
-#' \code{loo::loo_compare()} accepts the complete criteria. The result records
-#' each refit's largest R-hat, divergent transitions, share at maximum tree
-#' depth, elapsed seconds and any error. The \code{p_kfold} column is
-#' \code{NA}: the full-data log predictive density needed for that difference
-#' is not computed. The \code{elpd_kfold} and \code{kfoldic} columns are exact
-#' cross-validation estimates.
+#' @seealso \code{\link{kfold_combine}}, \code{\link{kfold_weights}}
 #'
 #' @export
 kfold_groups <- function(x, group = NULL, K = 10, folds = NULL, fold = NULL,
@@ -134,7 +169,7 @@ kfold_groups <- function(x, group = NULL, K = 10, folds = NULL, fold = NULL,
   }
   signature <- lapply(fits, function(o) kfold_fit_key(o$fit, data))
   fold_ids <- if (is.null(fold)) seq_len(K) else as.integer(fold)
-  parts <- lapply(fold_ids, function(k) {
+  parts <- with_preserved_rng_state(lapply(fold_ids, function(k) {
     result <- lapply(names(fits), function(m) {
       o <- fits[[m]]
       started <- proc.time()[["elapsed"]]
@@ -157,20 +192,30 @@ kfold_groups <- function(x, group = NULL, K = 10, folds = NULL, fold = NULL,
     structure(list(group = group, folds = fold_map, settings = settings,
                    signature = signature, fold = k, results = result),
               class = "kfold_groups_part")
-  })
+  }))
   if (!is.null(fold)) return(parts[[1]])
   do.call(kfold_combine, parts)
 }
 
 #' Combine separately computed folds
 #'
-#' @param ... \code{kfold_groups_part} objects from the same original fit,
-#' assignment and refit settings. A list of parts may also be supplied.
+#' Joins the folds that \code{\link{kfold_groups}} computed in separate calls
+#' into one criterion per equation.
 #'
-#' @return One \code{kfold} criterion per equation, or a named list for a set.
-#' If a fold failed or is absent, a \code{kfold_groups_part} is returned with
-#' the available scores and diagnostic records. It can be combined later with
-#' replacement parts.
+#' @param ... \code{kfold_groups_part} objects from the same fit, grouping,
+#' fold assignment and refit settings, or one list of them. A part returned
+#' by an earlier call with folds still unscored may be among them.
+#'
+#' @details The parts may be given in any order, and may repeat a fold. For
+#' each fold and equation the first scored result is used, so that a part
+#' recomputing a failed fold replaces it whether it comes before or after it.
+#'
+#' @return Where every level of every equation has a score, one criterion of
+#' class \code{c("kfold", "loo")} per equation, or a named list of them for a
+#' model set, as \code{\link{kfold_groups}} returns. Otherwise a warning names
+#' the folds without a score, and a \code{kfold_groups_part} holds the scores
+#' and diagnostics so far. Pass it to \code{kfold_combine()} again with the
+#' parts that recompute those folds.
 #'
 #' @export
 kfold_combine <- function(...) {
@@ -181,12 +226,10 @@ kfold_combine <- function(...) {
                                    "kfold_groups_part"))) {
     stop("Supply kfold_groups_part objects.", call. = FALSE)
   }
-  bundled <- any(vapply(parts, function(p) !is.null(p$parts), logical(1)))
-  if (bundled) {
-    parts <- unlist(lapply(parts, function(p) {
-      if (is.null(p$parts)) list(p) else p$parts
-    }), recursive = FALSE)
-  }
+  # An incomplete result holds the parts it was combined from.
+  parts <- unlist(lapply(parts, function(p) {
+    if (is.null(p$parts)) list(p) else p$parts
+  }), recursive = FALSE)
   first <- parts[[1]]
   for (part in parts[-1]) {
     for (field in c("group", "folds", "settings", "signature")) {
@@ -195,37 +238,36 @@ kfold_combine <- function(...) {
       }
     }
   }
-  ids <- vapply(parts, `[[`, integer(1), "fold")
-  if (anyDuplicated(ids)) {
-    if (!bundled) {
-      stop("The fold parts contain a duplicate fold.", call. = FALSE)
-    }
-    keep <- !duplicated(ids, fromLast = TRUE)
-    parts <- parts[keep]
-    ids <- ids[keep]
-  }
-  parts <- parts[order(ids)]
-  names(parts) <- as.character(sort(ids))
-  all_ids <- seq_len(max(first$folds))
+  all_ids <- as.character(seq_len(max(first$folds)))
   scores <- lapply(names(first$signature), function(m) {
     val <- stats::setNames(rep(NA_real_, length(first$folds)),
                            names(first$folds))
-    diagnostics <- vector("list", length(all_ids))
-    names(diagnostics) <- as.character(all_ids)
+    diagnostics <- stats::setNames(vector("list", length(all_ids)), all_ids)
     for (part in parts) {
+      k <- as.character(part$fold)
+      held <- diagnostics[[k]]
+      if (!is.null(held) && is.null(held$error)) next
       one <- part$results[[m]]
       if (is.null(one$error)) val[names(one$elpd)] <- one$elpd
-      diagnostics[[as.character(part$fold)]] <- if (is.null(one$diagnostics))
+      diagnostics[[k]] <- if (is.null(one$diagnostics))
         list(error = one$error) else one$diagnostics
     }
     list(elpd = val, diagnostics = diagnostics)
   })
   names(scores) <- names(first$signature)
-  if (!setequal(ids, all_ids) || any(vapply(scores, function(s)
-                                          any(!is.finite(s$elpd)), logical(1)))) {
-    warning("Some folds have no score; combine the missing or replacement",
-            " fold parts before comparing or weighting equations.",
-            call. = FALSE)
+  unscored <- lapply(scores, function(s) {
+    sort(unique(first$folds[names(s$elpd)[!is.finite(s$elpd)]]))
+  })
+  unscored <- unscored[lengths(unscored) > 0]
+  if (length(unscored) > 0) {
+    warning("Not every fold has a score (",
+            paste0("fold", ifelse(lengths(unscored) > 1, "s ", " "),
+                   vapply(unscored, paste0, character(1), collapse = ", "),
+                   " of ", names(unscored), collapse = "; "),
+            "). Pass the parts that recompute ",
+            if (length(unlist(unscored)) > 1) "them" else "it",
+            " to kfold_combine() with this result before comparing or",
+            " weighting equations.", call. = FALSE)
     return(structure(c(first[c("group", "folds", "settings", "signature")],
                        list(fold = NA_integer_, results = scores,
                             parts = parts)), class = "kfold_groups_part"))
@@ -239,6 +281,14 @@ kfold_combine <- function(...) {
   if (length(out) == 1L) out[[1]] else out
 }
 
+#' Assign the levels of a grouping to folds
+#'
+#' @param level The level of every observation.
+#' @param predictor The concentration of every observation.
+#' @param K,folds,seed As in \code{kfold_groups()}.
+#'
+#' @return A named integer vector, one element per level.
+#'
 #' @noRd
 kfold_assign <- function(level, predictor, K, folds, seed) {
   lev <- levels(level)
@@ -263,30 +313,60 @@ kfold_assign <- function(level, predictor, K, folds, seed) {
   }
   concentration <- vapply(lev, function(g) unique(predictor[level == g]),
                           numeric(1))
-  old <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
-    get(".Random.seed", envir = .GlobalEnv) else NULL
-  on.exit({
-    if (is.null(old)) {
-      if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
-        rm(".Random.seed", envir = .GlobalEnv)
-    } else assign(".Random.seed", old, envir = .GlobalEnv)
+  with_preserved_rng_state({
+    kfold_set_seed(seed)
+    out <- stats::setNames(integer(length(lev)), lev)
+    offset <- 0L
+    for (value in sort(unique(concentration))) {
+      at <- sample(lev[concentration == value])
+      out[at] <- (seq_along(at) - 1L + offset) %% K + 1L
+      offset <- offset + length(at)
+    }
+    out
   })
-  set.seed(seed)
-  out <- stats::setNames(integer(length(lev)), lev)
-  offset <- 0L
-  for (value in sort(unique(concentration))) {
-    at <- sample(lev[concentration == value])
-    out[at] <- (seq_along(at) - 1L + offset) %% K + 1L
-    offset <- offset + length(at)
-  }
-  out
 }
 
+#' Seed R's generator independently of the session's generator kinds
+#' @param seed An integer seed.
+#' @noRd
+kfold_set_seed <- function(seed) {
+  set.seed(seed, kind = "Mersenne-Twister", normal.kind = "Inversion",
+           sample.kind = "Rejection")
+}
+
+#' A fingerprint of a fit and the data its folds were drawn from
+#'
+#' @param fit A \code{\link[brms]{brmsfit}}.
+#' @param data The data, with any retained columns.
+#'
+#' @details Hashes the data and the last draw of every parameter in every
+#' chain. It omits \code{fit$criteria}, which \pkg{bayesnec} rewrites when it
+#' weights a set. Write no \code{serialize()} output into the hash: its header
+#' records the R version and the native encoding.
+#'
+#' @return An MD5 hash.
+#'
 #' @noRd
 kfold_fit_key <- function(fit, data = fit$data) {
   path <- tempfile("bayesnec-kfold-")
   on.exit(unlink(path))
-  saveRDS(list(fit = fit, data = data), path, compress = FALSE)
+  con <- file(path, open = "wb")
+  put <- function(v) {
+    v <- as.vector(v)
+    if (is.numeric(v) || is.logical(v)) {
+      writeBin(as.double(v), con, size = 8L, endian = "big")
+    } else {
+      writeBin(enc2utf8(as.character(v)), con)
+    }
+  }
+  put(names(data))
+  for (v in data) put(v)
+  for (chain in fit$fit@sim$samples) {
+    put(names(chain))
+    put(vapply(chain, function(v) if (length(v)) v[[length(v)]] else NA_real_,
+               numeric(1)))
+  }
+  close(con)
   unname(tools::md5sum(path))
 }
 
@@ -329,6 +409,18 @@ kfold_set_data <- function(x, fits) {
   data
 }
 
+#' Refit an equation without one fold and score its held-out levels
+#'
+#' @param o The equation's \code{\link{prebayesnecfit}} or
+#' \code{\link{bayesnecfit}}.
+#' @param data The data, with any retained columns.
+#' @param group,level The grouping and the level of every observation.
+#' @param fold_map The fold of every level.
+#' @param fold The fold to hold out.
+#' @param settings The refits' \code{iter}, \code{warmup} and \code{seed}.
+#'
+#' @return From \code{kfold_result()}. A refit that fails is an error.
+#'
 #' @noRd
 kfold_refit <- function(o, data, group, level, fold_map, fold, settings) {
   f <- o$fit
@@ -346,8 +438,7 @@ kfold_refit <- function(o, data, group, level, fold_map, fold, settings) {
   seconds <- proc.time()[["elapsed"]] - start
   if (brms::ndraws(refit) == 0L) stop("the refit returned no draws.",
                                     call. = FALSE)
-  set.seed(as.integer((as.double(settings$seed) + fold) %%
-                      .Machine$integer.max))
+  kfold_set_seed((as.double(settings$seed) + fold) %% .Machine$integer.max)
   lev <- droplevels(level[held])
   chunks <- split(seq_len(brms::ndraws(refit)),
                   ceiling(seq_len(brms::ndraws(refit)) / 250L))
@@ -362,20 +453,37 @@ kfold_refit <- function(o, data, group, level, fold_map, fold, settings) {
     m <- max(v)
     m + log(mean(exp(v - m)))
   })
-  if (!all(is.finite(elpd))) {
-    stop("A held-out level had no finite log predictive density.",
-         call. = FALSE)
-  }
   np <- brms::nuts_params(refit)
   depth <- np$Value[np$Parameter == "treedepth__"]
   max_depth <- refit$stan_args$control$max_treedepth
   if (!is.numeric(max_depth) || length(max_depth) != 1L) max_depth <- 10
   rh <- suppressWarnings(max(brms::rhat(refit), na.rm = TRUE))
-  list(elpd = elpd, diagnostics = list(
+  kfold_result(elpd, list(
     max_rhat = if (is.finite(rh)) rh else NA_real_,
     divergent = sum(np$Value[np$Parameter == "divergent__"]),
     share_max_treedepth = if (length(depth)) mean(depth >= max_depth) else NA_real_,
     seconds = seconds, error = NULL))
+}
+
+#' The result of one fold for one equation
+#'
+#' @param elpd The held-out levels' log predictive densities, named by level.
+#' @param diagnostics The refit's diagnostics.
+#'
+#' @return A \code{\link[base]{list}} of \code{elpd} and \code{diagnostics}.
+#' Where a level's density is not finite, \code{error} names the levels, and
+#' \code{kfold_combine()} leaves the fold unscored but keeps the diagnostics.
+#'
+#' @noRd
+kfold_result <- function(elpd, diagnostics) {
+  bad <- names(elpd)[!is.finite(elpd)]
+  if (length(bad) == 0L) {
+    return(list(elpd = elpd, diagnostics = diagnostics))
+  }
+  error <- paste0("no finite log predictive density for ",
+                  paste0(bad, collapse = ", "))
+  diagnostics$error <- error
+  list(elpd = elpd, error = error, diagnostics = diagnostics)
 }
 
 #' @noRd
@@ -396,15 +504,30 @@ kfold_criterion <- function(elpd, group, folds, settings, diagnostics,
             refit_diagnostics = diagnostics, fit_key = signature)
 }
 
-#' Apply exact groupwise scores as model weights
+#' Weight a model set by exact K-fold scores
+#'
+#' Stores each equation's criterion from \code{\link{kfold_groups}} with the
+#' equation and reweights the set by them, recording
+#' \code{loo_controls$leave_out = "kfold"} so that \code{\link{amend}},
+#' \code{\link{pull_out}} and \code{c()} keep the scores.
 #'
 #' @param x A \code{\link{bayesmanecfit}}.
-#' @param criteria The named list returned by \code{kfold_groups()} or
-#' \code{kfold_combine()} for the same fit.
+#' @param criteria The named list returned by \code{\link{kfold_groups}} or
+#' \code{\link{kfold_combine}} for the same set.
 #' @param method \code{"pseudobma"} or \code{"stacking"}. By default the
 #' set's current weighting method is retained.
 #'
+#' @details Each criterion must come from the same fit and data as the
+#' equation it is given to, which is checked against a fingerprint of the
+#' posterior draws and the data. \code{update()} and an \code{amend()} that
+#' adds an equation refuse a set weighted this way unless
+#' \code{loo_controls} names another \code{leave_out}, because the refitted
+#' or added equations have no such score.
+#'
 #' @return The model set reweighted by the exact K-fold scores.
+#'
+#' @seealso \code{\link{kfold_groups}}
+#'
 #' @export
 kfold_weights <- function(x, criteria, method = NULL) {
   if (!inherits(x, "bayesmanecfit") || !is.list(criteria) ||

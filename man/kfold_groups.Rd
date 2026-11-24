@@ -18,48 +18,82 @@ kfold_groups(
 \arguments{
 \item{x}{A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 
-\item{group}{The grouping whose levels are held out. Required when the
-grouping has no deviation in the equation, such as a cell identifier in an
-equation with only a plate term. Its column may be retained outside the
-fitted model frame.}
+\item{group}{The grouping whose levels are held out, as a column name or
+an interaction such as \code{"plate:conc_rank"}. By default, the one
+grouping with a deviation in the fit whose levels are each observed at a
+single concentration. Name it where its levels have no deviation in the
+equation, such as a cell identifier in an equation with only a plate term.
+Its column may then be one kept in \code{x$retained_data} rather than in
+the fitted data.}
 
-\item{K}{Number of folds. Ignored when \code{folds} is supplied.}
+\item{K}{The number of folds. Ignored when \code{folds} is supplied.}
 
-\item{folds}{An optional named integer vector assigning every level of the
-selected grouping to a fold numbered from one.}
+\item{folds}{A named integer vector assigning every level of the grouping
+to a fold, numbered consecutively from one. By default the levels at each
+concentration are assigned to the folds in turn, in random order, so that
+each fold spans the concentration series.}
 
-\item{fold}{One fold number to compute in this process. By default every
-fold is computed in sequence.}
+\item{fold}{One fold to compute in this process. By default every fold is
+computed in sequence.}
 
-\item{iter, warmup}{Optional iteration and warm-up counts for the refits.
-The original fit's settings are used when these are omitted.}
+\item{iter, warmup}{The iterations and warm-up of each refit. By default,
+those of the fit.}
 
-\item{seed}{Seed used to assign levels to folds and to prepare the held-out
-predictions. It seeds a refit if the original fit recorded no seed. The
-realised assignment is stored in the result.}
+\item{seed}{The seed of the fold assignment and of the draws that start
+the integration over each held-out level's deviations. The refits use the
+seed the fit recorded, and this one only where it recorded none.}
 }
 \value{
-For a complete run, a \code{\link[loo]{loo}} object of class
-\code{kfold} for one equation, or a named list of them for a model set.
-Each pointwise row is one level. With \code{fold} specified, a
-\code{kfold_groups_part} is returned; combine the parts with
+Where every fold is computed and scored, a criterion of class
+\code{c("kfold", "loo")} with one pointwise row per level, or for a model
+set a named list of them, one per equation. Its attributes \code{group},
+\code{folds}, \code{refit_settings} and \code{refit_diagnostics} record the
+grouping, the realised assignment, the refits' \code{iter}, \code{warmup}
+and \code{seed}, and each refit's diagnostics. Where \code{fold} is given,
+or any fold has no score, a \code{kfold_groups_part} for
 \code{\link{kfold_combine}}.
 }
 \description{
-Exact K-fold cross-validation over grouping levels
+Refits each equation once without each fold of the levels of a grouping,
+and scores every held-out level from that refit with all of its own
+deviations integrated out.
 }
 \details{
-The grouping must have one concentration per level and at most two
-independent normal intercept deviations per equation. The deviations of a
-held-out level are integrated jointly through \code{brms::log_lik()}.
-Other groupings must retain all their levels in every training fold.
-A separate process can read the same saved fit, pass \code{fold = 1} and
-save the returned part. Pass its \code{folds} vector to the calls for the
-remaining folds, then pass all parts to \code{kfold_combine()}.
-\code{loo::loo_compare()} accepts the complete criteria. The result records
-each refit's largest R-hat, divergent transitions, share at maximum tree
-depth, elapsed seconds and any error. The \code{p_kfold} column is
-\code{NA}: the full-data log predictive density needed for that difference
-is not computed. The \code{elpd_kfold} and \code{kfoldic} columns are exact
-cross-validation estimates.
+Each level of the grouping must be observed at a single
+concentration. Each equation may have up to two deviations on the grouping.
+Each must be a normal intercept, independent of the other, as for an
+\code{ogl()} term together with one \code{(par | group)} term. Every other
+grouping must keep all its levels in each training set, so a fold that
+removes a whole plate is refused.
+
+Each refit takes the fit's formula, priors, family, backend, chains,
+sampler control and seed, with the fit's initial values and its
+group-level deviations started at zero. As in \code{brms::update()}, its
+chains run on \code{getOption("mc.cores", 1)} cores. A held-out level is
+scored by the log of the mean, over the refit's draws, of the likelihood of
+its observations with its deviations integrated out by Gauss--Legendre
+quadrature, nested where there are two. The other group-level deviations
+are taken at each draw. The likelihood is evaluated by
+\code{brms::log_lik()}, so censoring, the transform of an \code{ogl()} term
+and a \code{disp()} model are taken from the fit.
+
+To compute the folds in separate R processes, read the same saved fit in
+each, pass the same \code{folds} (or \code{K} and \code{seed}), \code{iter}
+and \code{warmup}, and one \code{fold}, and save the returned part.
+\code{\link{kfold_combine}} joins the parts.
+
+The result records each refit's largest R-hat, number of divergent
+transitions, share of transitions at the maximum tree depth, elapsed
+seconds and any error. A fold whose refit fails, or which gives a held-out
+level no finite log predictive density, leaves its levels without a score
+and gives a warning.
+
+\code{loo::loo_compare()} compares the criteria of two fits to the same
+data and levels. The pointwise rows are named by level, so that the
+differences can be summed within a coarser grouping, such as plate, for
+its standard error. The \code{p_kfold} column is \code{NA}, because the log
+predictive density of the full fit is not computed.
+}
+\seealso{
+\code{\link{kfold_combine}}, \code{\link{kfold_weights}}
 }

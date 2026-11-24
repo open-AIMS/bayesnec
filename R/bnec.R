@@ -45,15 +45,16 @@
 #' \code{alpha}) or of \code{\link[loo]{stacking_weights}}
 #' (\code{optim_method} and \code{optim_control}); any other argument is
 #' refused. If no \code{method} is named, \pkg{bayesnec} uses "pseudobma",
-#' whichever function assembles the model set. "leave_out" is
-#' "group" (the default), "observation" or "kfold", and sets what is left out when the
+#' whichever function assembles the model set. "leave_out" is "group" (the
+#' default), "observation" or "kfold", and sets what is left out when the
 #' score behind the weights is computed. Under "group", where each level of a
 #' group-level term is observed at a single concentration, each level is left
 #' out whole; otherwise, and always under "observation", each observation is
-#' left out. "kfold" selects complete exact scores previously computed by
-#' \code{\link{kfold_groups}} and attached with \code{\link{kfold_weights}};
-#' it cannot be requested on an initial \code{bnec()} call. "refit" is
-#' \code{FALSE} (the default) or \code{TRUE}, and applies
+#' left out. "kfold" selects the exact K-fold scores that
+#' \code{\link{kfold_weights}} stores with each equation. \code{bnec()} refuses
+#' it, as do \code{update()} and an \code{amend()} that adds an equation,
+#' because a new fit has no such score. "refit" is \code{FALSE} (the default)
+#' or \code{TRUE}, and applies
 #' under "group" only: where \code{TRUE}, each equation is refitted without
 #' each level whose Pareto k is at or above 0.7. The "fitting" arguments
 #' apply to the score computed by leaving out each observation.
@@ -774,12 +775,13 @@
 #' \code{amend(x, loo_controls = list(leave_out = "group"))} recomputes its
 #' weights.
 #'
-#' For exact K-fold scoring of grouping levels, call
-#' \code{\link{kfold_groups}} on a single fit or set. It refits without each
-#' fold and integrates every independent deviation on the held-out grouping.
-#' Use its \code{fold} argument to compute folds in separate R processes and
-#' combine them with \code{\link{kfold_combine}}. For a set,
-#' \code{\link{kfold_weights}} uses the complete scores for model weights.
+#' \code{\link{kfold_groups}} computes exact scores instead, for a single
+#' equation or a set. It refits each equation once without each of K folds of
+#' the levels, and scores each held-out level from that refit with all its
+#' deviations integrated out. Its \code{fold} argument computes one fold in
+#' each R process, and \code{\link{kfold_combine}} joins the folds.
+#' \code{\link{kfold_weights}} weights a set by these scores, which replace
+#' the score of every level, not only of those whose Pareto k is high.
 #'
 #' \bold{Reproducing a fit}
 #'
@@ -1131,6 +1133,14 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   )
   report_substitutions(substitutions)
   loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)
+  # Refuse before the model loop: an equation has no K-fold score until
+  # kfold_groups() is run on its finished fit.
+  if (identical(loo_controls$leave_out, "kfold")) {
+    stop("loo_controls$leave_out = \"kfold\" selects exact K-fold scores,",
+         " which are computed from a fitted set. Fit the set, then pass the",
+         " result of kfold_groups() to kfold_weights(). See ?kfold_groups.",
+         call. = FALSE)
+  }
   if (length(model) == 0) {
     stop("No valid models have been supplied for this data type.")
   }

@@ -621,24 +621,28 @@ the same call returns.
 
 ## Model weights
 
-- `kfold_groups()` refits a single equation or a model set without each fold
-  of grouping levels and scores each held-out level jointly. It accepts a
-  stored fold assignment, can compute one fold per R process, and returns
-  criteria that `loo::loo_compare()` can compare after `kfold_combine()`.
-  `kfold_weights()` uses complete exact scores to weight a model set.
-  The existing leave-one-group-out score also integrates two independent
-  deviations on the same grouping, so a set with both a height and a
-  position term can be weighted over cells (#598).
+- `kfold_groups()` computes exact K-fold scores over the levels of a
+  grouping, for a single equation or each equation of a model set. Each
+  equation is refitted once without each fold of levels, and each held-out
+  level is scored from that refit with its own deviations integrated out.
+  The levels are assigned to folds within each concentration, or by the
+  caller, and the assignment is stored with the scores. A fold can be
+  computed in its own R process, and `kfold_combine()` joins the folds. The
+  scores compare with `loo::loo_compare()`. `kfold_weights()` weights a model
+  set by them and records `loo_controls$leave_out = "kfold"`, so that
+  `amend()`, `pull_out()` and `c()` keep them (#598).
 
 - `loo_controls` takes three new elements. `leave_out` is `"group"`, the
-  default, or `"observation"`. `"group"` leaves out each level of a
+  default, `"observation"` or `"kfold"`. `"group"` leaves out each level of a
   group-level term whole where every level is observed at a single
-  concentration, and otherwise scores each observation, with a warning where
-  such a term exists but cannot be left out. `refit = TRUE` refits each
+  concentration, integrating out up to two independent normal intercepts per
+  level, such as an `ogl()` term together with a `(par | group)` term.
+  Otherwise each observation is scored, with a warning where such a term
+  exists but cannot be left out. `refit = TRUE` refits each
   equation without each level whose Pareto *k* is at or above 0.7 and scores
   that level from the refit, and a message says when it has no effect.
   `report_k = FALSE` silences the Pareto *k* report. `pull_out()` says when
-  it ignores `leave_out` or `refit` (#529, #531, #536, #578).
+  it ignores `leave_out` or `refit` (#529, #531, #536, #578, #598).
 
 - When a model set is built, a message gives the number of Pareto *k* values
   at or above 0.7 among the scores behind its weights, for each equation with

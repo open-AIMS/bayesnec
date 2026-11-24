@@ -453,6 +453,13 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   needs_fit <- !vapply(model_set, function(model) {
     inherits(try(old_fits[[model]], silent = TRUE), "prebayesnecfit")
   }, logical(1))
+  if (identical(loo_controls$leave_out, "kfold") && any(needs_fit)) {
+    stop("The weights are to use exact K-fold scores, which ",
+         paste0(model_set[needs_fit], collapse = ", "), " would not have.",
+         " Pass loo_controls = list(leave_out = \"group\") to weight the",
+         " amended set by leaving out each level, then run kfold_groups()",
+         " and kfold_weights() on it.", call. = FALSE)
+  }
   # check_data() never runs on this route, which fits with skip_check = TRUE,
   # so refuse a missing trials() term and a response at a bound here, once,
   # before the loop. Only the equations to be fitted are tested: ecxflat alone

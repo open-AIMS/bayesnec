@@ -365,6 +365,12 @@ update_bnec_fit <- function(object, newdata = NULL, recompile = NULL,
     fam_tag = object[[1]]$fit$family$family
   )
   loo_controls <- expand_args$loo_controls
+  if (length(object) > 1 && identical(loo_controls$leave_out, "kfold")) {
+    stop("A refit replaces the fits that the exact K-fold scores were",
+         " computed from. Pass loo_controls = list(leave_out = \"group\") to",
+         " weight the refitted set by leaving out each level, then run",
+         " kfold_groups() and kfold_weights() on it.", call. = FALSE)
+  }
   dot_args <- list(...)
   # Validate the family here, not in brms::update(). Beta() and
   # Beta(link = "logit") are identical objects, so the caller's intent is

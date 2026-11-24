@@ -2,15 +2,15 @@
 % Please edit documentation in R/kfold_groups.R
 \name{kfold_weights}
 \alias{kfold_weights}
-\title{Apply exact groupwise scores as model weights}
+\title{Weight a model set by exact K-fold scores}
 \usage{
 kfold_weights(x, criteria, method = NULL)
 }
 \arguments{
 \item{x}{A \code{\link{bayesmanecfit}}.}
 
-\item{criteria}{The named list returned by \code{kfold_groups()} or
-\code{kfold_combine()} for the same fit.}
+\item{criteria}{The named list returned by \code{\link{kfold_groups}} or
+\code{\link{kfold_combine}} for the same set.}
 
 \item{method}{\code{"pseudobma"} or \code{"stacking"}. By default the
 set's current weighting method is retained.}
@@ -19,5 +19,19 @@ set's current weighting method is retained.}
 The model set reweighted by the exact K-fold scores.
 }
 \description{
-Apply exact groupwise scores as model weights
+Stores each equation's criterion from \code{\link{kfold_groups}} with the
+equation and reweights the set by them, recording
+\code{loo_controls$leave_out = "kfold"} so that \code{\link{amend}},
+\code{\link{pull_out}} and \code{c()} keep the scores.
+}
+\details{
+Each criterion must come from the same fit and data as the
+equation it is given to, which is checked against a fingerprint of the
+posterior draws and the data. \code{update()} and an \code{amend()} that
+adds an equation refuse a set weighted this way unless
+\code{loo_controls} names another \code{leave_out}, because the refitted
+or added equations have no such score.
+}
+\seealso{
+\code{\link{kfold_groups}}
 }

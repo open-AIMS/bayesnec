@@ -533,6 +533,11 @@ test_that("refit_inits sizes the deviations to the refit's levels", {
   expect_identical(dim(out[[1]]$z_2), c(1L, 6L))
   expect_identical(out[[1]]$b_top, 1)
   expect_identical(bayesnec:::refit_inits("random", fit, train), "random")
+  # A number applies at any number of levels, so the refit keeps it.
+  expect_identical(bayesnec:::refit_inits(0, fit, train), 0)
+  expect_identical(bayesnec:::refit_inits(NULL, fit, train), "random")
+  expect_identical(bayesnec:::refit_inits(function() list(), fit, train),
+                   "random")
 })
 
 # Five groups at each of six concentrations, three observations each. The

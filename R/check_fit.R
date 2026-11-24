@@ -171,7 +171,7 @@ check_fit <- function(x, group = NULL, ndraws = 1000, seed = 10, ...) {
 
 #' Read Pareto diagnostics from the criterion used for weights
 #' @param fit A \code{bayesnecfit}.
-#' @param criterion \code{"logo"} or \code{"loo"}.
+#' @param criterion \code{"logo"}, \code{"loo"} or \code{"kfold"}.
 #' @param weight The model weight, or \code{NA} for a single equation.
 #' @return A one-row data frame.
 #' @noRd
@@ -202,12 +202,13 @@ check_fit_pareto_row <- function(fit, criterion, weight = NA_real_) {
 
 #' The stored criterion selected when a model set was weighted
 #' @param x A \code{bayesmanecfit}.
-#' @return \code{"logo"} or \code{"loo"}.
+#' @return \code{"logo"}, \code{"loo"} or \code{"kfold"}. An exact K-fold
+#' criterion has no Pareto k, so its rows are reported as unavailable.
 #' @noRd
 check_fit_weight_criterion <- function(x) {
   leave_out <- attr(x$mod_stats$wi, "leave_out")
   if (!is.null(leave_out)) {
-    return(if (identical(leave_out, "observation")) "loo" else "logo")
+    return(switch(leave_out, observation = "loo", kfold = "kfold", "logo"))
   }
   # Older sets did not record leave_out. Only choose logo if every equation
   # holds one; otherwise the stored observation-wise criterion is unambiguous.
