@@ -85,7 +85,7 @@
 #'   return. \code{print()} on the summary warns where a level fails
 #'   \code{rhat_cutoff}, or where the divergent transitions of the fit are a
 #'   larger proportion of its retained draws than \code{divergence_cutoff},
-#'   0.00125 (0.125\%) by default as in \code{\link{check_sampling}}.
+#'   0.00125 (0.125%) by default as in \code{\link{check_sampling}}.
 #'   \item \code{plot()} draws one base-graphics panel per level, as it draws
 #'   a \code{\link{bayesnecfit}}.
 #'   \item \code{fitted()}, \code{predict()}, \code{posterior_epred()} and

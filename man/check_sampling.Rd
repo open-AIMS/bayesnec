@@ -125,14 +125,14 @@ reported \code{min_ess} is the minimum over parameters of
 \code{min(bulk-ESS, tail-ESS)}, obtained as
 \code{min(neff_ratio(x)) * ndraws(x)}.
 
-\bold{Divergences 0.125\\%} is a proportion of the retained draws: a model
-fails where more than 0.125\\% of its retained draws are divergent
+\bold{Divergences 0.125\%} is a proportion of the retained draws: a model
+fails where more than 0.125\% of its retained draws are divergent
 transitions. That is 10 of the 8,000 draws \code{\link{bnec}} retains by
 default, so at the defaults a model with 11 or more fails. The value has no
 analysis of bias behind it, and is a working default rather than a
 recommendation. Stan's guidance is that any divergence means the sampler may
 not have explored the posterior, and the published tolerances we found are
-proportions, for example 0.1\\% of post-warm-up iterations in Fuglstad et al.
+proportions, for example 0.1\% of post-warm-up iterations in Fuglstad et al.
 (2020). A value of 1 or more is refused, and \code{Inf} turns the divergence
 criterion off.
 

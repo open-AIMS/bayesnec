@@ -103,7 +103,7 @@ NULL
 #' and EC90.
 #' @param divergence_cutoff A \code{\link[base]{numeric}} vector of length 1.
 #' The proportion of retained draws above which the divergent transitions of
-#' a model are reported in a warning. Defaults to 0.00125 (0.125\%, or 10 of
+#' a model are reported in a warning. Defaults to 0.00125 (0.125%, or 10 of
 #' 8,000 draws), the cutoff \code{\link{check_sampling}} and
 #' \code{\link{screen_models}} use. A value of 1 or more is refused, and
 #' \code{Inf} turns the warning off. On a model set the warning gives each
