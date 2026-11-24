@@ -27,7 +27,7 @@
 #' \code{\link{bayesnecformula}}.
 #'
 #' \code{Estimate} is the posterior median, as in \code{\link{ecx}} and
-#' \code{\link{dispersion}}, and \code{Q2.5} and \code{Q97.5} bound the 95\%
+#' \code{\link{dispersion}}, and \code{Q2.5} and \code{Q97.5} bound the 95%
 #' credible interval. \code{\link[brms]{VarCorr}} reports the posterior mean
 #' instead.
 #'
