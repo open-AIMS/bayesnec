@@ -41,8 +41,12 @@
 #' @slot divergences A named \code{\link[base]{numeric}} vector of length 1
 #' giving the number of divergent transitions after warmup, \code{NA} for a
 #' model not sampled by NUTS.
-#' @slot divergence_cutoff The number of divergent transitions above which the
-#' printed summary warns.
+#' @slot divergence_draws A named \code{\link[base]{numeric}} vector of
+#' length 1 giving the number of retained draws the divergent transitions were
+#' counted over. Absent from a summary made before it was recorded, in which
+#' case \code{divergence_cutoff} is a count.
+#' @slot divergence_cutoff The proportion of retained draws above which the
+#' divergent transitions of the model are reported in a printed warning.
 #' @slot failed_models Any models from the original set that could not be
 #' fitted, with the priors and initial values used. See
 #' \code{\link{failed_models}}.

@@ -596,12 +596,18 @@ the same call returns.
   (#56, #148).
 
 - `check_sampling()` reports the largest Rhat, the smallest effective sample
-  size and the number of divergent transitions of each equation, and
-  `screen_models()` drops the equations that fail and reports why (#148).
+  size and the number and proportion of divergent transitions of each
+  equation, and `screen_models()` drops the equations that fail and reports
+  why. An equation fails on divergences where more than `divergence_cutoff`
+  of its retained draws are divergent, by default 0.00125 (0.125%), which is
+  10 of the 8,000 draws `bnec()` retains by default. Because the cutoff is a
+  proportion, thinning or a longer run at the same rate of divergence does
+  not change, in expectation, the quantity it is compared with (#148, #597).
 
 - `summary()` of a single fit or a model set reports the number of divergent
-  transitions of each equation, and its printed output warns where one exceeds
-  the new `divergence_cutoff`, 10 by default (#447).
+  transitions of each equation, and its printed output warns where they
+  exceed the new `divergence_cutoff`, the proportion of retained draws that
+  `check_sampling()` uses (#447, #597).
 
 - `bnec()` reports an equation that does not reproduce the mean or spread of
   the control. `summary()` of a model set does the same by default, which

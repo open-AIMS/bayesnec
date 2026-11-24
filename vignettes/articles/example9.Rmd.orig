@@ -407,8 +407,8 @@ concentrations.
 `summary()` gives the model weights, computed from leave-one-cell-out scores,
 the model-averaged *N(S)EC*, and the Bayesian R² and number of divergent
 transitions of each equation. It ends with a warning that names each equation
-whose maximum Rhat exceeds 1.01 or which has more than ten divergent
-transitions, and each equation whose control mean or spread is not reproduced
+whose maximum Rhat exceeds 1.01 or whose divergent transitions exceed 0.125%
+of its draws, and each equation whose control mean or spread is not reproduced
 within 15%.
 
 ```{r zinc-summary}
@@ -421,7 +421,7 @@ summary_default
 
 ```{r zinc-summary-text, include = FALSE}
 flag_default <- with(check_sampling(fit_default),
-                     model[which(max_rhat > 1.01 | n_divergent > 10)])
+                     model[which(max_rhat > 1.01 | divergent_ratio > 0.00125)])
 flag_weight <- sum(summary_default$mod_weights[flag_default, "wi"])
 flag_text <- if (!length(flag_default)) {
   paste("In this run no equation exceeds the Rhat or divergence cutoff,",
@@ -446,9 +446,9 @@ equation and removes those that fail them before any estimate is read.
 
 An attempted equation that produces draws must still be checked. The package
 screen uses a maximum Rhat of 1.01, a minimum effective sample size (ESS, the
-smaller of the bulk and tail values) of 400, and at most ten divergent
-transitions. The Rhat and ESS cutoffs follow the recommendations of
-@Vehtari2021, whereas the allowance of ten divergences is a `bayesnec`
+smaller of the bulk and tail values) of 400, and divergent transitions in at
+most 0.125% of the retained draws (10 of 8,000). The Rhat and ESS cutoffs follow
+the recommendations of @Vehtari2021, whereas the divergence allowance is a `bayesnec`
 convention (Stan regards any divergence as evidence that some part of the
 posterior was not explored). A screen result is specific to the data, priors,
 sampler settings and seed. The table gives the curve parameters of each valid
@@ -480,7 +480,7 @@ data.frame(
 passed <- function(tab) tab$model[!tab$failed]
 bot_models <- valid[vapply(curve_parameters, function(p) "bot" %in% p,
                            logical(1))]
-n_divergence_fail <- function(tab) sum(tab$failed & tab$n_divergent > 10)
+n_divergence_fail <- function(tab) sum(tab$failed & tab$divergent_ratio > 0.00125)
 ```
 
 A row of `NA` marks an attempted equation with no draws, which is distinct from
@@ -488,8 +488,8 @@ a fitted equation that missed a cutoff. Under the default priors
 `r length(passed(sampling_default))` of the `r nrow(sampling_default)` fitted
 equations passed (`r name_list(passed(sampling_default))`), and
 `r n_divergence_fail(sampling_default)` of the
-`r sum(sampling_default$failed)` that failed had more than ten divergent
-transitions. Of the `r length(bot_models)` equations with a `bot` parameter,
+`r sum(sampling_default$failed)` that failed had more than 0.125% divergent
+draws. Of the `r length(bot_models)` equations with a `bot` parameter,
 `r sum(bot_models %in% passed(sampling_default))` passed, against
 `r sum(setdiff(valid, bot_models) %in% passed(sampling_default))` of the
 `r length(valid) - length(bot_models)` equations without one. The diagnostics do
@@ -508,9 +508,10 @@ warns about maximum tree depth, `max_treedepth` is the relevant control to
 examine (see `?check_sampling`). An equation that never initialises is recorded
 by `failed_models()`, and has no sampler diagnostics to screen.
 
-The ESS floor and the divergence allowance are both absolute counts. At an
-unchanged divergence rate a longer run will record more divergences, while it
-may also provide enough draws for an ESS above 400. A comparison between runs
+The ESS floor is an absolute count, whereas the divergence allowance is a
+proportion of the retained draws. At an unchanged divergence rate a longer run
+has, in expectation, the same proportion of divergent draws, but may provide enough draws for an
+ESS above 400. A comparison between runs
 therefore needs their chain counts, iterations and warmup beside the diagnostic
 table. The decision also uses `min_ess` (an absolute count) and not
 `min_ess_ratio` (a measure of sampling efficiency), so a model can meet the
@@ -518,19 +519,19 @@ count after many draws while still sampling inefficiently; `check_sampling()`
 returns both. The 1.01 Rhat cutoff is also the one used by `rhat()` and
 `summary()`.
 
-An equation that fails on Rhat or ESS with no more than ten divergent
-transitions should be refitted under the same prior with more iterations before
+An equation that fails on Rhat or ESS with no more than 0.125% divergent
+draws should be refitted under the same prior with more iterations before
 it is excluded, because changing the prior would not test whether the original
 run was too short. The chunk below refits any such equation with twice the
 iterations and warmup, and replaces it in the set before screening. The refit
 keeps more draws than the other equations, which the model weights allow. An equation
-with more than ten divergent transitions is instead refitted with the same
+with more than 0.125% divergent draws is instead refitted with the same
 iterations at `adapt_delta = 0.99`, or at 0.999 if its first fit already used
 0.99. Steps 4 and 5 apply the same rules to their refits.
 
 ```{r zinc-retry, results = "hide"}
-retry_models <- function(tab) tab$model[tab$failed & tab$n_divergent <= 10]
-tune_models <- function(tab) tab$model[tab$failed & tab$n_divergent > 10]
+retry_models <- function(tab) tab$model[tab$failed & tab$divergent_ratio <= 0.00125]
+tune_models <- function(tab) tab$model[tab$failed & tab$divergent_ratio > 0.00125]
 refit_failed <- function(fit, retry, tune) {
   if (!length(retry) && !length(tune)) return(fit)
   longer <- lapply(retry, function(m) {
@@ -1434,9 +1435,9 @@ the package's default (uninformative) priors. Each equation was fitted with four
 chains of 10,000 iterations, of which the first 8,000 were discarded as warmup.
 Equations were excluded where the maximum R-hat exceeded 1.01 or the minimum
 bulk or tail effective sample size was below 400 [@Vehtari2021], or where more
-than ten divergent transitions occurred; an equation that failed only on R-hat
+than 0.125% of the retained draws were divergent transitions; an equation that failed only on R-hat
 or effective sample size was first refitted with twice the number of
-iterations, and one with more than ten divergent transitions with a target
+iterations, and one with more than 0.125% divergent draws with a target
 acceptance rate (`adapt_delta`) of 0.99, or 0.999 where its first fit had
 already used 0.99 (S3). `r regular_reason` candidate set was refitted with the
 package's regularising priors, which are narrower and centre the upper and lower

@@ -72,8 +72,13 @@ model exhibited convergence issues based on the Rhat evaluation.}
 number of divergent transitions after warmup for each model, \code{NA} for
 a model not sampled by NUTS.}
 
-\item{\code{divergence_cutoff}}{The number of divergent transitions above which the
-printed summary warns of a model.}
+\item{\code{divergence_draws}}{A named \code{\link[base]{numeric}} vector giving
+the number of retained draws of each model, over which its divergent
+transitions were counted. Absent from a summary made before it was
+recorded, in which case \code{divergence_cutoff} is a count.}
+
+\item{\code{divergence_cutoff}}{The proportion of retained draws above which the
+divergent transitions of a model are reported in a printed warning.}
 
 \item{\code{failed_models}}{Any models from the requested set that could not be
 fitted, with the priors and initial values used. See

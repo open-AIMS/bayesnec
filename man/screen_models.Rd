@@ -8,7 +8,7 @@ screen_models(
   x,
   rhat_cutoff = 1.01,
   ess_cutoff = 400,
-  divergence_cutoff = 10,
+  divergence_cutoff = 0.00125,
   quiet = FALSE,
   group_action = c("per_level", "common")
 )
@@ -22,7 +22,10 @@ screen_models(
 
 \item{ess_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
-\item{divergence_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
+\item{divergence_cutoff}{A \code{\link[base]{numeric}} vector of length 1.
+The proportion of retained draws, from 0 to less than 1, above which the
+divergent transitions fail a model. Defaults to 0.00125, which is 10 of
+8,000 draws. \code{Inf} turns the divergence criterion off.}
 
 \item{quiet}{A \code{\link[base]{logical}}. Suppress the message reporting
 what was dropped. Defaults to \code{FALSE}; there is rarely a good reason to

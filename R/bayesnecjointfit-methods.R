@@ -1381,11 +1381,11 @@ joint_summary_ecx_rows <- function(..., .fit, .ecx_vals) {
 summary.bayesnecjointfit <- function(object, ..., ecx = FALSE,
                                      ecx_vals = c(10, 50, 90),
                                      rhat_cutoff = 1.01,
-                                     divergence_cutoff = 10) {
+                                     divergence_cutoff = 0.00125) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
   chk_number(rhat_cutoff)
-  chk_number(divergence_cutoff)
+  check_divergence_cutoff(divergence_cutoff)
   check_summary_ecx_posterior(list(...))
   ne_xform <- summary_ecx_xform(list(...))
   ecs <- NULL
@@ -1423,6 +1423,7 @@ summary.bayesnecjointfit <- function(object, ..., ecx = FALSE,
     ecs = ecs,
     bayesr2 = bayesr2,
     divergences = divergences,
+    divergence_draws = as.numeric(ndraws(fit)),
     divergence_cutoff = divergence_cutoff,
     rhat_issues = lapply(rhat(object, rhat_cutoff = rhat_cutoff), "[[",
                          "failed"),
@@ -1498,7 +1499,13 @@ print.jointsummary <- function(x, ...) {
   cat("\n")
   print_version(x$bnec_version)
   rhat_bad <- names(x$rhat_issues)[which(unlist(x$rhat_issues))]
-  div_bad <- isTRUE(x$divergences > x$divergence_cutoff)
+  # A summary stored before the draws were recorded holds a count cutoff.
+  div_bad <- if (is.null(x$divergence_draws)) {
+    isTRUE(x$divergences > x$divergence_cutoff)
+  } else {
+    divergence_failed(divergent_ratio(x$divergences, x$divergence_draws),
+                      x$divergence_cutoff)
+  }
   if (length(rhat_bad) > 0 || div_bad) {
     msg <- character(0)
     if (length(rhat_bad) > 0) {
@@ -1506,9 +1513,15 @@ print.jointsummary <- function(x, ...) {
                            paste0("\"", rhat_bad, "\"", collapse = ", "),
                            "; see rhat()."))
     }
-    if (div_bad) {
+    if (div_bad && is.null(x$divergence_draws)) {
       msg <- c(msg, paste0(x$divergences, " divergent transitions after",
                            " warmup, more than ", x$divergence_cutoff, "."))
+    } else if (div_bad) {
+      msg <- c(msg, paste0(x$divergences, " divergent transitions after",
+                           " warmup (",
+                           format_percent(x$divergences / x$divergence_draws),
+                           " of ", x$divergence_draws, " draws), more than ",
+                           format_percent(x$divergence_cutoff, 3), "."))
     }
     warning(paste(msg, collapse = "\n"), "\nConsider refitting with more",
             " iterations or a larger adapt_delta, passed to update() as",

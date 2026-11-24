@@ -2,9 +2,10 @@
 #'
 #' Reports, per candidate model, whether the sampler explored the posterior:
 #' the largest Rhat, the smallest effective sample size, and the number of
-#' divergent transitions. It sits alongside \code{\link{check_chains}} (chain
-#' mixing, visually), \code{\link{check_priors}} (the priors) and
-#' \code{\link{check_fit}} (the fit against the data).
+#' divergent transitions with their proportion of the retained draws. The
+#' other checks are \code{\link{check_chains}} (chain mixing, visually),
+#' \code{\link{check_priors}} (the priors) and \code{\link{check_fit}} (the
+#' fit against the data).
 #'
 #' \code{check_sampling()} asks \emph{did this model sample properly}, where
 #' \code{\link{check_fit}} asks \emph{does this model reproduce the data}. Both
@@ -27,11 +28,21 @@
 #' \code{min(bulk-ESS, tail-ESS)}, obtained as
 #' \code{min(neff_ratio(x)) * ndraws(x)}.
 #'
-#' \bold{Divergences 10} \emph{has no literature behind it}. Stan's own guidance
-#' is that \emph{any} divergence means the sampler failed to explore the
-#' posterior and estimates may be biased. Ten is pragmatic, from practice with
-#' these non-linear models, which routinely produce a handful near a boundary.
-#' It is a working default and should be described that way rather than cited.
+#' \bold{Divergences 0.125%} is a proportion of the retained draws: a model
+#' fails where more than 0.125% of its retained draws are divergent
+#' transitions. That is 10 of the 8,000 draws \code{\link{bnec}} retains by
+#' default, so at the defaults a model with 11 or more fails. The value has no
+#' analysis of bias behind it, and is a working default rather than a
+#' recommendation. Stan's guidance is that any divergence means the sampler may
+#' not have explored the posterior, and the published tolerances we found are
+#' proportions, for example 0.1% of post-warm-up iterations in Fuglstad et al.
+#' (2020). A value of 1 or more is refused, and \code{Inf} turns the divergence
+#' criterion off.
+#'
+#' Stan records sampler diagnostics only on the iterations it saves. Thinning
+#' therefore lowers the number of divergent transitions recorded, but not, in
+#' expectation, their proportion of the retained draws, and a longer run at the
+#' same rate of divergence records more of them in the same proportion.
 #'
 #' @section A heavily thinned fit can fail ESS that a ratio would pass:
 #'
@@ -67,7 +78,8 @@
 #' level. The Rhat and ESS of a row are reduced over that level's own
 #' coefficients and the parameters the levels share, such as \code{lp__}.
 #' \code{n_divergent} is the count for the whole fit, because a divergent
-#' transition cannot be attributed to one level.
+#' transition cannot be attributed to one level, and \code{divergent_ratio}
+#' divides it by the draws of the whole fit.
 #'
 #' @param x An object of class \code{\link{bayesnecfit}},
 #' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}},
@@ -75,11 +87,16 @@
 #' @param rhat_cutoff A \code{\link[base]{numeric}} vector of length 1.
 #' @param ess_cutoff A \code{\link[base]{numeric}} vector of length 1.
 #' @param divergence_cutoff A \code{\link[base]{numeric}} vector of length 1.
+#' The proportion of retained draws, from 0 to less than 1, above which the
+#' divergent transitions fail a model. Defaults to 0.00125, which is 10 of
+#' 8,000 draws. \code{Inf} turns the divergence criterion off.
 #' @param ... Unused by the default method, which names unsupported classes.
 #'
 #' @return A \code{\link[base]{data.frame}} with one row per candidate model and
 #' columns \code{model}, \code{max_rhat}, \code{min_ess}, \code{min_ess_ratio},
-#' \code{n_divergent} and \code{failed}. For a
+#' \code{n_divergent}, \code{divergent_ratio} and \code{failed}.
+#' \code{divergent_ratio} is \code{n_divergent} divided by the number of
+#' retained draws, and is \code{NA} where there are none. For a
 #' \code{\link{bayesnecgroupfit}} or a \code{\link{bayesnecjointfit}}, the
 #' same table includes a leading \code{level} column. For a
 #' \code{\link{bayesnechurdlefit}}, a named \code{\link[base]{list}} of two
@@ -91,6 +108,10 @@
 #' Rank-normalization, folding, and localization: An improved Rhat for assessing
 #' convergence of MCMC (with discussion). \emph{Bayesian Analysis}, 16(2),
 #' 667--718. doi:10.1214/20-BA1221
+#'
+#' Fuglstad, G.-A., Hem, I. G., Knight, A., Rue, H., & Riebler, A. (2020).
+#' Intuitive joint priors for variance parameters. \emph{Bayesian Analysis},
+#' 15(4), 1109--1137. doi:10.1214/19-BA1185
 #'
 #' @seealso \code{\link{screen_models}}, \code{\link{check_fit}},
 #' \code{\link{check_chains}}, \code{\link{rhat}}
@@ -106,12 +127,12 @@
 #'
 #' @export
 check_sampling <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
-                           divergence_cutoff = 10) {
+                           divergence_cutoff = 0.00125) {
   # chk_number, not chk_numeric: chk_numeric admits a vector of any length, and
   # each cutoff is a single number.
   chk_number(rhat_cutoff)
   chk_number(ess_cutoff)
-  chk_number(divergence_cutoff)
+  check_divergence_cutoff(divergence_cutoff)
   UseMethod("check_sampling")
 }
 
@@ -120,7 +141,7 @@ check_sampling <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
 #' @export
 check_sampling.bayesnecfit <- function(x, rhat_cutoff = 1.01,
                                       ess_cutoff = 400,
-                                      divergence_cutoff = 10) {
+                                      divergence_cutoff = 0.00125) {
   check_sampling_rows(x, rhat_cutoff, ess_cutoff, divergence_cutoff)
 }
 
@@ -151,7 +172,7 @@ check_sampling_rows <- function(x, rhat_cutoff, ess_cutoff,
 #' @export
 check_sampling.bayesnechurdlefit <- function(x, rhat_cutoff = 1.01,
                                             ess_cutoff = 400,
-                                            divergence_cutoff = 10) {
+                                            divergence_cutoff = 0.00125) {
   hurdle_delegate(x, check_sampling, rhat_cutoff = rhat_cutoff,
                   ess_cutoff = ess_cutoff,
                   divergence_cutoff = divergence_cutoff)
@@ -162,7 +183,7 @@ check_sampling.bayesnechurdlefit <- function(x, rhat_cutoff = 1.01,
 #' @export
 check_sampling.bayesnecgroupfit <- function(x, rhat_cutoff = 1.01,
                                            ess_cutoff = 400,
-                                           divergence_cutoff = 10) {
+                                           divergence_cutoff = 0.00125) {
   tabs <- group_lapply(x, check_sampling, rhat_cutoff = rhat_cutoff,
                        ess_cutoff = ess_cutoff,
                        divergence_cutoff = divergence_cutoff)
@@ -178,7 +199,7 @@ check_sampling.bayesnecgroupfit <- function(x, rhat_cutoff = 1.01,
 #' @export
 check_sampling.bayesnecjointfit <- function(x, rhat_cutoff = 1.01,
                                            ess_cutoff = 400,
-                                           divergence_cutoff = 10) {
+                                           divergence_cutoff = 0.00125) {
   joint_sampling_table(x, rhat_cutoff, ess_cutoff, divergence_cutoff)
 }
 
@@ -240,17 +261,19 @@ sampling_row <- function(fit, model, rhat_cutoff, ess_cutoff,
   n_draws <- ndraws(fit)
   min_ess <- ratio * n_draws
   max_rhat <- max_or_na(screenable_pars(keep(rhat(fit))))
+  div_ratio <- divergent_ratio(n_div, n_draws)
   data.frame(
     model = model,
     max_rhat = max_rhat,
     min_ess = min_ess,
     min_ess_ratio = ratio,
     n_divergent = n_div,
+    divergent_ratio = div_ratio,
     # isTRUE, so that a model with nothing assessable reports FALSE rather than
     # NA. "Not assessable" is visible in the NA of max_rhat and min_ess, which
     # is where it belongs; `failed` is read as a logical downstream.
     failed = isTRUE(max_rhat > rhat_cutoff) || isTRUE(min_ess < ess_cutoff) ||
-      isTRUE(n_div > divergence_cutoff),
+      divergence_failed(div_ratio, divergence_cutoff),
     stringsAsFactors = FALSE
   )
 }
@@ -296,6 +319,85 @@ count_divergent <- function(fit) {
   # Read through brms, a required dependency; bayesnec lists rstan only
   # in Suggests.
   sum(nuts_params(fit, pars = "divergent__")$Value)
+}
+
+#' The proportion of retained draws that are divergent transitions
+#'
+#' @param n_div The number of divergent transitions after warmup.
+#' @param n_draws The number of retained draws they were counted over.
+#'
+#' @return A \code{\link[base]{numeric}} vector, \code{NA} where
+#' \code{n_draws} is \code{NA} or 0.
+#'
+#' @noRd
+divergent_ratio <- function(n_div, n_draws) {
+  out <- n_div / n_draws
+  out[is.na(n_draws) | n_draws <= 0] <- NA_real_
+  out
+}
+
+#' Whether a proportion of divergent draws fails the cutoff
+#'
+#' Every function that screens or warns on divergences decides through this
+#' one, so that they agree at the boundary.
+#'
+#' @param ratio A proportion from \code{divergent_ratio()}.
+#' @param cutoff The proportion above which a fit fails.
+#'
+#' @return A \code{\link[base]{logical}} vector, \code{FALSE} where
+#' \code{ratio} is \code{NA}.
+#'
+#' @noRd
+divergence_failed <- function(ratio, cutoff) {
+  !is.na(ratio) & ratio > cutoff
+}
+
+#' Refuse a divergence cutoff that is not a proportion of draws
+#'
+#' @param divergence_cutoff The value supplied by the caller.
+#'
+#' @return \code{divergence_cutoff}, invisibly, or an error.
+#'
+#' @noRd
+check_divergence_cutoff <- function(divergence_cutoff) {
+  chk_number(divergence_cutoff)
+  if (divergence_cutoff < 0) {
+    stop("divergence_cutoff must not be negative; got ", divergence_cutoff,
+         ".", call. = FALSE)
+  }
+  if (is.finite(divergence_cutoff) && divergence_cutoff >= 1) {
+    stop("divergence_cutoff is now a proportion of the retained draws, not a",
+         " count, so it must be less than 1, or Inf to turn the divergence",
+         " criterion off; got ", divergence_cutoff, ". For example, 10",
+         " divergent transitions of 8,000 draws is 0.00125.", call. = FALSE)
+  }
+  invisible(divergence_cutoff)
+}
+
+#' A proportion written as a percentage
+#'
+#' @param x A proportion.
+#' @param digits The number of significant digits.
+#'
+#' @return A \code{\link[base]{character}} vector such as \code{"0.125\%"}.
+#'
+#' @noRd
+format_percent <- function(x, digits = 2) {
+  paste0(format(signif(100 * x, digits), scientific = FALSE, trim = TRUE), "%")
+}
+
+#' The divergence rule in the message that every model passed
+#'
+#' @param cutoff The divergence cutoff.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+divergence_rule_label <- function(cutoff) {
+  if (is.infinite(cutoff)) {
+    return("divergences not screened")
+  }
+  paste0("divergent draws <= ", format_percent(cutoff, 3))
 }
 
 #' max() and min() that return NA rather than -Inf/Inf on an empty vector

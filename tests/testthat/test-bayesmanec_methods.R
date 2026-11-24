@@ -149,7 +149,8 @@ test_that("summary behaves as expected", {
                                    "mod_weights", "mod_weights_method",
                                    "mod_weights_leave_out", "ecx_mods", "nec_vals", "ecs", "bayesr2",
                                    "rhat_issues", "rhat_cutoff",
-                                   "divergences", "divergence_cutoff",
+                                   "divergences", "divergence_draws",
+                                   "divergence_cutoff",
                                    "fit_issues", "fit_ratio_cutoff",
                                    "failed_models", "bnec_version"))
   expect_equal(summary.p$rhat_cutoff, 1.01)
