@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -63,12 +63,9 @@
       <a href="../articles/example8.html">Grouping and factor covariates</a>
     </li>
     <li class="divider"></li>
-    <li class="dropdown-header">Worked analyses</li>
+    <li class="dropdown-header">A worked analysis</li>
     <li>
       <a href="../articles/example9.html">A complete analysis workflow</a>
-    </li>
-    <li>
-      <a href="../articles/example10.html">Hormesis and the no-significant-effect concentration</a>
     </li>
   </ul></li>
 <li>
@@ -90,7 +87,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Generates posterior predictions for a <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code></h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bayesnechurdlefit-methods.R" class="external-link"><code>R/bayesnechurdlefit-methods.R</code></a></small>
     <div class="hidden name"><code>posterior_epred.bayesnechurdlefit.Rd</code></div>
     </div>
 
@@ -150,10 +147,7 @@ values as columns.</p>
     <p>The combined curve is the product of the growth curve and the
 probability of survival, i.e. the expected response per individual
 <em>exposed</em>. Draws are paired by row, which is valid because the two
-posteriors are independent – see <code><a href="bnec_hurdle.html">bnec_hurdle</a></code>.
-Without <code>newdata</code>, a group term spanning concentrations is predicted
-for its observed levels and mixed by their observation counts. A level
-observed at one concentration is excluded.</p>
+posteriors are independent – see <code><a href="bnec_hurdle.html">bnec_hurdle</a></code>.</p>
     </div>
 
   </div>

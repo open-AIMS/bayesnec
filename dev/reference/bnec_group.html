@@ -20,7 +20,7 @@ available from the per-level weights alone."><meta property="og:image" content="
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -66,12 +66,9 @@ available from the per-level weights alone."><meta property="og:image" content="
       <a href="../articles/example8.html">Grouping and factor covariates</a>
     </li>
     <li class="divider"></li>
-    <li class="dropdown-header">Worked analyses</li>
+    <li class="dropdown-header">A worked analysis</li>
     <li>
       <a href="../articles/example9.html">A complete analysis workflow</a>
-    </li>
-    <li>
-      <a href="../articles/example10.html">Hormesis and the no-significant-effect concentration</a>
     </li>
   </ul></li>
 <li>
@@ -93,7 +90,7 @@ available from the per-level weights alone."><meta property="og:image" content="
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Fit a concentration-response model separately at each level of a factor</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/bnec_group.R" class="external-link"><code>R/bnec_group.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/bnec_group.R" class="external-link"><code>R/bnec_group.R</code></a></small>
     <div class="hidden name"><code>bnec_group.Rd</code></div>
     </div>
 
@@ -155,20 +152,7 @@ before any level is fitted.</p></dd>
     </div>
     <div id="details">
     <h2>Details</h2>
-    <p><b>Reading and pooling levels</b></p>
-<p><code><a href="ecx.html">ecx</a></code>, <code><a href="nsec.html">nsec</a></code>, <code><a href="nec.html">nec</a></code> and
-<code><a href="ecnsec.html">ecnsec</a></code> return one row per fitted level by default. With
-<code>posterior = TRUE</code> and <code>pool = "none"</code>, they return a named list
-of per-level draws. <code>pool = "mixture"</code> combines levels in proportion
-to their observation counts; <code>"mean_estimate"</code> averages their
-estimates and <code>"mean_curve"</code> reads the estimate from their weighted
-mean curves. A NEC parameter has no curve to average, so <code><a href="nec.html">nec()</a></code> does
-not accept <code>"mean_curve"</code>. Each level uses the control recorded at
-fitting, or its own lowest observed concentration if none was stated.
-<code>x_control = "shared"</code> or a
-number reads all levels at one concentration and warns where this lies
-below a level's observations.</p>
-<p><b>Why the levels can be fitted separately</b></p>
+    <p><b>Why the levels can be fitted separately</b></p>
 <p>Factor levels partition the data disjointly and share no parameters, so the
 log likelihood is a sum over levels and the expected log predictive density
 is additive. Under pseudo-BMA — the package default — the crossed model
@@ -210,8 +194,10 @@ counted, and <code>plan(list(sequential, ...))</code> asks for the levels in
 sequence explicitly.</p>
 <p>No argument turns this on or off: the plan already holds that state, as it
 does for <code><a href="bnec.html">bnec</a></code>.</p>
-<p>A worked example, including the nested plan that drives both loops, is in
-<code><a href="../articles/example8.html">vignette("example8")</a></code> under <em>Fitting the levels in parallel</em>.</p>
+<p>The worked treatment — why the inner worker count needs <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code>, what a
+parallel grouped call does to compilation and to memory, and the warning a
+nested plan emits — is in <code><a href="../articles/example2.html">vignette("example2")</a></code> under <em>The
+levels of a grouped call</em>.</p>
 <p><b>What a plan does and does not reproduce</b></p>
 <p>Each level is given its own seed, realised in the calling session before the
 levels are dispatched and derived from <code>seed</code> where you passed one. The

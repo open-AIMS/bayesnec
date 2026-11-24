@@ -18,7 +18,7 @@ object of class bayesnecfit or bayesmanecfit."><meta property="og:image" content
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -64,12 +64,9 @@ object of class bayesnecfit or bayesmanecfit."><meta property="og:image" content
       <a href="../articles/example8.html">Grouping and factor covariates</a>
     </li>
     <li class="divider"></li>
-    <li class="dropdown-header">Worked analyses</li>
+    <li class="dropdown-header">A worked analysis</li>
     <li>
       <a href="../articles/example9.html">A complete analysis workflow</a>
-    </li>
-    <li>
-      <a href="../articles/example10.html">Hormesis and the no-significant-effect concentration</a>
     </li>
   </ul></li>
 <li>
@@ -91,7 +88,7 @@ object of class bayesnecfit or bayesmanecfit."><meta property="og:image" content
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Extracts the percent effect associated with a predicted NSEC value from an object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/ecnsec.R" class="external-link"><code>R/ecnsec.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/ecnsec.R" class="external-link"><code>R/ecnsec.R</code></a></small>
     <div class="hidden name"><code>ecnsec.Rd</code></div>
     </div>
 
@@ -104,15 +101,12 @@ object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">ecnsec</span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
 <span>  <span class="va">nsec</span>,</span>
-<span>  resolution <span class="op">=</span> <span class="fl">500</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">200</span>,</span>
 <span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  type <span class="op">=</span> <span class="st">"absolute"</span>,</span>
-<span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
 <span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>,</span>
-<span>  <span class="va">...</span>,</span>
-<span>  pool <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  x_control <span class="op">=</span> <span class="st">"own"</span>,</span>
-<span>  extrapolate <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -126,21 +120,19 @@ object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 
 
 <dt id="arg-nsec">nsec<a class="anchor" aria-label="anchor" href="#arg-nsec"></a></dt>
-<dd><p>A single number, the concentration at which to read the
-percentage effect. A vector is refused, including the three values
-<code><a href="nsec.html">nsec</a></code> returns; pass the one wanted.</p></dd>
+<dd><p>A numeric value indicating the NSEC value for which to extract
+the percentage effect.</p></dd>
 
 
 <dt id="arg-resolution">resolution<a class="anchor" aria-label="anchor" href="#arg-resolution"></a></dt>
 <dd><p>The number of unique x values over which the curve is
 predicted. It affects only <code>type = "range"</code>, where the denominator is
-the lowest response the curve predicts over the grid. The default of 500
+the lowest response the curve predicts over the grid. The default of 200
 matches <code><a href="ecx.html">ecx</a></code> and <code><a href="nsec.html">nsec</a></code>.</p></dd>
 
 
 <dt id="arg-x-range">x_range<a class="anchor" aria-label="anchor" href="#arg-x-range"></a></dt>
-<dd><p>A range of x values over which to predict the curve. An
-<code>nsec</code> outside it is refused; see Details.</p></dd>
+<dd><p>A range of x values over which to consider extracting NSEC.</p></dd>
 
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
@@ -149,9 +141,8 @@ matches <code><a href="ecx.html">ecx</a></code> and <code><a href="nsec.html">ns
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p><code>NULL</code>, the default, or a function applied to
-<code>nsec</code> before the curve is read there. <code>NULL</code> reads <code>nsec</code>
-as given, on the recorded scale. See Details.</p></dd>
+<dd><p>A function to apply to the returned estimated NSEC concentration
+values prior to estimating the percentage effect.</p></dd>
 
 
 <dt id="arg-prob-vals">prob_vals<a class="anchor" aria-label="anchor" href="#arg-prob-vals"></a></dt>
@@ -162,38 +153,6 @@ return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Further arguments to pass to class specific methods.</p></dd>
-
-
-<dt id="arg-pool">pool<a class="anchor" aria-label="anchor" href="#arg-pool"></a></dt>
-<dd><p>How observed group levels are combined. <code>"none"</code> returns
-per-level estimates. <code>"mixture"</code> gives each posterior draw to one level, in
-proportion to the levels' observation counts, and keeps it at its position,
-so that draw <em>i</em> of the mixture comes from posterior iteration
-<em>i</em>. Separate fits with different numbers of draws are instead each
-sampled over their full posterior. <code>"mean_estimate"</code> averages the levels'
-estimates at each draw, and <code>"mean_curve"</code> estimates from their weighted
-mean curve. A joint fit defaults to <code>"none"</code>; other fits with spanning group
-terms default to <code>"mixture"</code>.</p></dd>
-
-
-<dt id="arg-x-control">x_control<a class="anchor" aria-label="anchor" href="#arg-x-control"></a></dt>
-<dd><p><code>"own"</code> reads each level's control recorded at fitting, or
-its lowest observed concentration for an older fit or one fitted without
-<code>x_control</code>. <code>"shared"</code> reads the lowest control across levels;
-a single finite number specifies
-the concentration directly. A control below a level's observations
-extrapolates its curve, and gives a warning unless it is the control
-recorded at fitting. Level controls are recorded in the result's
-<code>x_control</code> attribute.</p></dd>
-
-
-<dt id="arg-extrapolate">extrapolate<a class="anchor" aria-label="anchor" href="#arg-extrapolate"></a></dt>
-<dd><p><code>FALSE</code>, the default, uses the prediction range.
-A single finite number extends the upper end; two finite numbers may
-extend both ends. The original grid points are retained. Limits are on
-the recorded predictor scale. <code>TRUE</code> and narrowing limits are refused.
-For <code>type = "range"</code> the lowest response is taken over the prediction
-range before it is extended.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -208,58 +167,17 @@ at which the modeled mean response is statistically indistinguishable from
 the mean control response. See the detailed derivation in
 Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated
 effect size. This function estimates the effect of a given NSEC estimate.</p>
-<p>With a fitted group term whose levels span concentrations, the curve and
-control are predicted for each observed level with its group deviations.
-Terms whose levels each occur at one concentration are set to zero. The
-level of a spanning term observed at only one concentration is excluded from
-the estimate, with a message naming it. The default mixes the remaining
-observed levels by their observation counts;
-<code>pool = "none"</code> returns them separately.</p>
-<p>On a <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code>, each level of the refit is mixed over
-its own observed group levels. A group term whose values occur in the data
-of more than one level, such as a batch in which two levels were both
-tested, is read at the same value for every level at each posterior draw,
-as often as their observation counts on that term allow. Terms they do not
-share are chosen for each level independently. The levels can therefore be
-contrasted draw by draw, as <code><a href="compare_posterior.html">compare_posterior</a></code> does.</p>
 <p>The effect is measured from the control — the predicted mean at the
-control concentration, per posterior draw — and
+lowest concentration in the supplied predictor, per posterior draw — and
 <code>type</code> names what it is measured towards, exactly as in
 <code><a href="ecx.html">ecx</a></code>: "absolute" (the default) towards 0, "relative" towards
 the equation's theoretical asymptote, "range" towards the lowest response
 the curve predicts. <code>ecnsec</code> is the inverse of the <code>ecx</code>
 reference construction under the same <code>type</code>, so the two answer the
 same question of the same curve. "direct" names a response value rather
-than a percentage and is refused here. On a joint two-block fit
-(<code>family = "hurdle_gamma"</code>, <code>"zero_inflated_beta"</code>,
-<code>"hurdle_poisson"</code> or <code>"hurdle_negbinomial"</code>) the curve read is
-the combined one, <code>(1 - hu) * E[Y | Y &gt; 0]</code>, and "relative" is refused,
-because that curve's asymptote is the product of the two blocks' asymptotes
-rather than a fitted parameter.</p>
-<p>Each posterior draw of the control is compared with the same draw's value
-of the curve at <code>nsec</code>, as <code><a href="ecx.html">ecx</a></code> reads each draw's own
-curve. The interval therefore includes the uncertainty of the curve at
-<code>nsec</code> as well as that of the control. On <code>nec4param</code>, for
-example, every draw returns 0 at an <code>nsec</code> below the <code>nec</code> of
-every draw, where every draw of the curve still equals its control.</p>
+than a percentage and is refused here.</p>
 <p>The <code>hormesis_def</code> argument has been removed; the control is now
 always the reference. See <code><a href="ecx.html">ecx</a></code>.</p>
-<p><code>nsec</code> is read on the recorded predictor scale once <code>xform</code> has
-been applied to it. <code><a href="nsec.html">nsec</a></code> returns its estimate on that scale
-by default, so <code>ecnsec(fit, nsec = nsec(fit)[1])</code> reads the curve at
-the NSEC whether or not <code>crf()</code> transforms the predictor inline. Where
-it does, as in <code>crf(log(concentration))</code>, an NSEC taken with
-<code>xform = identity</code> is on the transformed scale, and needs the inverse,
-here <code>xform = exp</code>.</p>
-<p>The curve is read at <code>nsec</code> only inside the range it is predicted
-over: the observed range of the predictor, or <code>x_range</code> where one is
-supplied. An <code>nsec</code> outside that range once <code>xform</code> has been
-applied is refused with a message naming the range, rather than read off
-the curve extended past the data without a message. Supply an
-<code>x_range</code> or finite <code>extrapolate</code> that includes <code>nsec</code> to
-read the curve there. On a
-<code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> each level is read over its own observed
-range, and the message names the level that refused <code>nsec</code>.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
@@ -274,7 +192,7 @@ range, and the message names the level that refused <code>nsec</code>.</p>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">ecnsec</span><span class="op">(</span><span class="va">manec_example</span>, nsec <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      50%     2.5%    97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 115.3088  94.6385 129.3796 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 115.1307 113.8823 116.0049 </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

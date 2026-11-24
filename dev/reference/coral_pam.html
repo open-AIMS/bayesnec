@@ -20,7 +20,7 @@ coral_colour."><meta property="og:image" content="https://open-aims.github.io/ba
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -66,12 +66,9 @@ coral_colour."><meta property="og:image" content="https://open-aims.github.io/ba
       <a href="../articles/example8.html">Grouping and factor covariates</a>
     </li>
     <li class="divider"></li>
-    <li class="dropdown-header">Worked analyses</li>
+    <li class="dropdown-header">A worked analysis</li>
     <li>
       <a href="../articles/example9.html">A complete analysis workflow</a>
-    </li>
-    <li>
-      <a href="../articles/example10.html">Hormesis and the no-significant-effect concentration</a>
     </li>
   </ul></li>
 <li>
@@ -93,7 +90,7 @@ coral_colour."><meta property="og:image" content="https://open-aims.github.io/ba
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Coral photosynthetic yield under diuron and three climate scenarios</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/data.R" class="external-link"><code>R/data.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/data.R" class="external-link"><code>R/data.R</code></a></small>
     <div class="hidden name"><code>coral_pam.Rd</code></div>
     </div>
 
@@ -117,17 +114,15 @@ chamber, so the chambers hold five to eight readings each and the rows are
 not balanced. As with <code><a href="coral_colour.html">coral_colour</a></code> a chamber sits at one
 concentration and admits only a displacement, and 54 chambers of several
 readings is the better conditioned of the two for a
-<code>ogl(chamber)</code> term. The model weights leave out each chamber whole,
-as for <code><a href="coral_colour.html">coral_colour</a></code>.</p>
+<code>ogl(chamber)</code> term.</p>
 <p>Chamber was numbered 1 to 3 within each climate-by-concentration cell in the
 source records rather than across the experiment, so <code>chamber</code> here
 combines the three to give a unique identifier.</p>
 <p>Yield is a proportion and 63 of the 414 readings are exactly 0, all of them
-at 9.6 and 29 \(\mu\)g/L. They are readings at the floor of the
-fluorometer: no reading lies between 0 and the smallest positive value,
-0.007, and a fragment read twice can give one 0 and one positive reading. A
-<code>Beta</code> likelihood cannot represent a 0, so <code><a href="../articles/example4.html">vignette("example4")</a></code>
-treats these readings as left-censored at the smallest positive value.</p>
+at the higher concentrations where photosynthesis had stopped. These are
+measurements at a boundary rather than substitutions, and a <code>Beta</code>
+likelihood cannot represent them; <code><a href="../articles/example6.html">vignette("example6")</a></code> covers the
+options.</p>
 <p>The control concentration is reported as <code>0</code>, and the substitution the
 source file holds for it is not shipped, for the reason given under
 <code><a href="coral_colour.html">coral_colour</a></code>.</p>

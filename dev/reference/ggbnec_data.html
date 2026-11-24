@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -63,12 +63,9 @@
       <a href="../articles/example8.html">Grouping and factor covariates</a>
     </li>
     <li class="divider"></li>
-    <li class="dropdown-header">Worked analyses</li>
+    <li class="dropdown-header">A worked analysis</li>
     <li>
       <a href="../articles/example9.html">A complete analysis workflow</a>
-    </li>
-    <li>
-      <a href="../articles/example10.html">Hormesis and the no-significant-effect concentration</a>
     </li>
   </ul></li>
 <li>
@@ -90,7 +87,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Creates the data.frame for plotting with <code><a href="autoplot.html">autoplot</a></code>.</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/autoplot.R" class="external-link"><code>R/autoplot.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/autoplot.R" class="external-link"><code>R/autoplot.R</code></a></small>
     <div class="hidden name"><code>ggbnec_data.Rd</code></div>
     </div>
 
@@ -103,11 +100,9 @@
 <span>  <span class="va">x</span>,</span>
 <span>  add_nec <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  add_ecx <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  group <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  x_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"recorded"</span>, <span class="st">"fitted"</span><span class="op">)</span>,</span>
-<span>  which <span class="op">=</span> <span class="st">"combined"</span></span>
+<span>  group <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -118,8 +113,7 @@
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>, as returned by function <code><a href="bnec.html">bnec</a></code>,
-a <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> returned by <code><a href="bnec_group.html">bnec_group</a></code>, or
-a <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> returned by <code><a href="bnec_joint.html">bnec_joint</a></code>.</p></dd>
+or a <code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> returned by <code><a href="bnec_group.html">bnec_group</a></code>.</p></dd>
 
 
 <dt id="arg-add-nec">add_nec<a class="anchor" aria-label="anchor" href="#arg-add-nec"></a></dt>
@@ -131,19 +125,13 @@ a <code><a href="bayesnecjointfit-class.html">bayesnecjointfit</a></code> return
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p><code>NULL</code>, the default, or a function. Where <code>crf()</code>
-does not transform the predictor inline, a function is applied to the
-predictor and to the estimates. Where it does, the predictor is on the
-recorded scale, and the estimates are those <code><a href="nec.html">nec</a></code> and
-<code><a href="ecx.html">ecx</a></code> return by default, which are on that scale. A function
-other than <code>identity</code> is then applied to the estimates on the
-transformed scale instead, as the estimators apply it.</p></dd>
+<dd><p>A function to apply to the returned estimated concentration
+values.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Additional arguments to be passed to <code><a href="ecx.html">ecx</a></code>. By
-default, function <code><a href="ecx.html">ecx</a></code> returns EC10. <code>dpar</code> is refused:
-select a block with <code>which</code>.</p></dd>
+default, function <code><a href="ecx.html">ecx</a></code> returns EC10.</p></dd>
 
 
 <dt id="arg-group">group<a class="anchor" aria-label="anchor" href="#arg-group"></a></dt>
@@ -156,39 +144,13 @@ group-level variable, or independently fitted <code>bayesnecgroupfit</code>
 panels use it. A
 <code>bayesnecgroupfit</code> returns its fitted grouping variable automatically.</p></dd>
 
-
-<dt id="arg-x-scale">x_scale<a class="anchor" aria-label="anchor" href="#arg-x-scale"></a></dt>
-<dd><p><code>"recorded"</code> (the default) returns the predictor in
-supplied units. <code>"fitted"</code> returns the scale transformed inside
-<code>crf()</code> and attaches <code>"x_axis"</code>, a list of fitted-scale breaks
-and labels in supplied units. A fitted axis cannot be combined with a
-non-identity <code>xform</code>.</p></dd>
-
-
-<dt id="arg-which">which<a class="anchor" aria-label="anchor" href="#arg-which"></a></dt>
-<dd><p>For a <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> with a two-block family, the
-curve or curves to return: <code>"combined"</code> (the default),
-<code>"growth"</code>, <code>"survival"</code> or <code>"all"</code>, as described for
-<code><a href="autoplot.html">autoplot</a></code>. Every other class and family has one curve, and
-refuses any value but <code>"combined"</code>.</p></dd>
-
 </dl></div>
     <div id="value">
     <h2>Value</h2>
     <p>A <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code>. When <code>group</code> is supplied, or
-<code>x</code> is a <code>bayesnecgroupfit</code> or a <code>bayesnecjointfit</code>, the
-frame includes a <code>group</code> column and a <code>"group_var"</code> attribute.
-Those two classes also include a <code>panel</code> column containing the level
-drawn in each panel. For a <code>bayesnecfit</code> with a two-block family, the
-<code>panel</code> column holds the title of the curve each row belongs to, a
-factor whose levels follow <code>which</code>.</p>
-    </div>
-    <div id="details">
-    <h2>Details</h2>
-    <p>The curve and credible band are those <code><a href="autoplot.html">autoplot</a></code>
-draws: where a group-level term spans the predictor, the population curve,
-with every group deviation set to zero. See the Details of
-<code><a href="autoplot.html">autoplot</a></code>.</p>
+<code>x</code> is a <code>bayesnecgroupfit</code>, the frame includes a <code>group</code>
+column and a <code>"group_var"</code> attribute. A <code>bayesnecgroupfit</code> also
+includes a <code>panel</code> column containing the level fitted in each panel.</p>
     </div>
 
     <div id="ref-examples">
@@ -8619,9 +8581,9 @@ with every group deviation set to zero. See the Details of
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2101     1.45       0.75       1.53       NA      NA     &lt;NA&gt;       &lt;NA&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2102     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt;       NA      NA     &lt;NA&gt;       &lt;NA&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2103     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt;       NA      NA     &lt;NA&gt;       &lt;NA&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2104     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 2.161016      50     2.16       2.05</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2105     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 2.052603      NA     &lt;NA&gt;       &lt;NA&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2106     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 2.335709      NA     &lt;NA&gt;       &lt;NA&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2104     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 2.161022      50     2.16       2.05</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2105     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 2.052612      NA     &lt;NA&gt;       &lt;NA&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2106     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 2.335705      NA     &lt;NA&gt;       &lt;NA&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      ecx_labs_u</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1          &lt;NA&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2          &lt;NA&gt;</span>

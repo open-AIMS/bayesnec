@@ -21,7 +21,7 @@ and 2100."><meta property="og:image" content="https://open-aims.github.io/bayesn
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -67,12 +67,9 @@ and 2100."><meta property="og:image" content="https://open-aims.github.io/bayesn
       <a href="../articles/example8.html">Grouping and factor covariates</a>
     </li>
     <li class="divider"></li>
-    <li class="dropdown-header">Worked analyses</li>
+    <li class="dropdown-header">A worked analysis</li>
     <li>
       <a href="../articles/example9.html">A complete analysis workflow</a>
-    </li>
-    <li>
-      <a href="../articles/example10.html">Hormesis and the no-significant-effect concentration</a>
     </li>
   </ul></li>
 <li>
@@ -94,7 +91,7 @@ and 2100."><meta property="og:image" content="https://open-aims.github.io/bayesn
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Coral colour score under diuron and three climate scenarios</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/data.R" class="external-link"><code>R/data.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/data.R" class="external-link"><code>R/data.R</code></a></small>
     <div class="hidden name"><code>coral_colour.Rd</code></div>
     </div>
 
@@ -109,34 +106,30 @@ and 2100.</p>
 
     <div id="format">
     <h2>Format</h2>
-    <p>An object of class <code>data.frame</code> with 171 rows and 8 columns.</p>
+    <p>An object of class <code>data.frame</code> with 180 rows and 8 columns.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
     <p>The design is three climate scenarios by five diuron concentrations by three
 chambers, with four coral fragments in each chamber: 45 chambers and 180
-fragments. 171 fragments have a colour score: all 12 at each combination of
-scenario and concentration, except at 9.6 \(\mu\)g/L, where 10 have one
-under 2050 and 5 under 2100. <code><a href="coral_pam.html">coral_pam</a></code> has a sixth concentration, 29
-\(\mu\)g/L, at which the corals died before they could be photographed.
-A chamber sits at one concentration, so it spans no part of the
+fragments. A chamber sits at one concentration, so it spans no part of the
 concentration-response curve and admits only a displacement — the
-within-concentration structure <code><a href="../articles/example8.html">vignette("example8")</a></code> demonstrates.
-<code><a href="../articles/example4.html">vignette("example4")</a></code> fits it with <code>ogl(chamber)</code>. The model weights of a set fitted with that term leave
-out each chamber whole; see the <code>loo_controls</code> argument of
-<code><a href="bnec.html">bnec</a></code>.</p>
+within-concentration structure <code><a href="../articles/example8.html">vignette("example8")</a></code> demonstrates with
+<code>ogl(chamber)</code>.</p>
 <p>Five concentrations is at the conventional minimum for a
 concentration-response design, and this dataset exists partly to show what
 that limit does. Equations of four curve parameters do not sample reliably
 against five concentrations while equations of three do, and the failure
 appears as divergent transitions rather than as an error.</p>
 <p>Colour was scored from image pixel intensity before and after the exposure,
-reported here as <code>t0_pixel</code> and <code>t14_pixel</code>. <code>intensity</code> is
-<code>t14_pixel</code> rescaled to the unit interval by the smallest and largest
-values in the two pixel columns together, and <code>proportion</code> is exactly
-its complement. The fragment that sets the largest value therefore has an
-<code>intensity</code> of 1 and a <code>proportion</code> of 0, a boundary a
-<code>Beta</code> likelihood cannot represent. See
+reported here as <code>t0_pixel</code> and <code>t14_pixel</code>. <code>intensity</code> is a
+derived score on the unit interval and <code>proportion</code> is exactly its
+complement. How <code>intensity</code> was derived is not recorded, and it is not
+any of the obvious normalisations of the two pixel columns, so it is shipped
+as supplied rather than reconstructed. Exactly one fragment has an
+<code>intensity</code> of 1 and therefore a <code>proportion</code> of 0, which is the
+signature of a score normalised to the largest value in the dataset and is a
+boundary a <code>Beta</code> likelihood cannot represent. See
 <code><a href="../articles/example6.html">vignette("example6")</a></code> for what to do with a value on a boundary.</p>
 <p>The control concentration is reported as <code>0</code>. The source file also
 holds a column substituting <code>0.1</code> for it so that a log predictor can be
@@ -150,12 +143,11 @@ wants it can make it and say so.</p>
 
 <dt>diuron</dt>
 <dd><p>Diuron concentration in \(\mu\)g/L (dbl), one of 0, 0.29,
-0.96, 2.9 and 9.6.</p></dd>
+0.96, 2.9 and 29.</p></dd>
 
 <dt>chamber</dt>
 <dd><p>Exposure chamber (fct), 45 levels, each at one climate
-scenario and one concentration, numbered as in the experiment. The
-numbers of the nine 29 \(\mu\)g/L chambers are absent.</p></dd>
+scenario and one concentration.</p></dd>
 
 <dt>fragment</dt>
 <dd><p>Coral fragment within chamber (int), 1 to 4.</p></dd>
@@ -173,7 +165,7 @@ Exactly one observation is 1.</p></dd>
 
 <dt>proportion</dt>
 <dd><p><code>1 - intensity</code> (dbl), the response used in
-<code><a href="../articles/example4.html">vignette("example4")</a></code>. Exactly one observation is 0.</p></dd>
+<code><a href="../articles/example8.html">vignette("example8")</a></code>. Exactly one observation is 0.</p></dd>
 
 
 </dl></div>
@@ -188,19 +180,19 @@ doi: 10.1016/j.marpolbul.2021.112582.</p>
     <div id="ref-examples">
     <h2>Examples</h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">coral_colour</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   climate diuron chamber fragment  t0_pixel t14_pixel intensity proportion</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    2018      0     c01        1  75.81906  95.44927 0.2108899  0.7891101</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2    2018      0     c01        2  95.05869 101.85243 0.2504112  0.7495888</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3    2018      0     c01        3  81.94823 121.37804 0.3709260  0.6290740</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4    2018      0     c01        4 105.77677 117.13836 0.3447581  0.6552419</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5    2018      0     c02        1  70.10533 118.08873 0.3506239  0.6493761</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6    2018      0     c02        2  77.61232 100.37342 0.2412825  0.7587175</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   climate diuron chamber fragment t0_pixel t14_pixel intensity proportion</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1    2018      0     c01        1    75.63     95.61 0.2081114  0.7918886</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2    2018      0     c01        2    94.82    102.03 0.2468549  0.7531451</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3    2018      0     c01        3    81.74    121.59 0.3648959  0.6351041</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4    2018      0     c01        4   105.51    117.34 0.3392479  0.6607521</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5    2018      0     c02        1    69.93    118.29 0.3449810  0.6550190</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6    2018      0     c02        2    77.41    100.55 0.2379233  0.7620767</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span><span class="va">coral_colour</span>, <span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">climate</span>, <span class="va">diuron</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        diuron</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> climate  0 0.29 0.96 2.9 9.6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    2018 12   12   12  12  12</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    2050 12   12   12  12  10</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    2100 12   12   12  12   5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> climate  0 0.29 0.96 2.9 29</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    2018 12   12   12  12 12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    2050 12   12   12  12 12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    2100 12   12   12  12 12</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

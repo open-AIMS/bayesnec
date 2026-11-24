@@ -21,7 +21,7 @@ the fit against the data."><meta property="og:image" content="https://open-aims.
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.44</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.39</span>
       </span>
     </div>
 
@@ -67,12 +67,9 @@ the fit against the data."><meta property="og:image" content="https://open-aims.
       <a href="../articles/example8.html">Grouping and factor covariates</a>
     </li>
     <li class="divider"></li>
-    <li class="dropdown-header">Worked analyses</li>
+    <li class="dropdown-header">A worked analysis</li>
     <li>
       <a href="../articles/example9.html">A complete analysis workflow</a>
-    </li>
-    <li>
-      <a href="../articles/example10.html">Hormesis and the no-significant-effect concentration</a>
     </li>
   </ul></li>
 <li>
@@ -94,7 +91,7 @@ the fit against the data."><meta property="og:image" content="https://open-aims.
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Check a fit against the data it was fitted to</h1>
-    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/predev/R/check_fit.R" class="external-link"><code>R/check_fit.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/dev/R/check_fit.R" class="external-link"><code>R/check_fit.R</code></a></small>
     <div class="hidden name"><code>check_fit.Rd</code></div>
     </div>
 
@@ -115,17 +112,8 @@ the fit against the data.</p>
 <span><span class="co"># S3 method for class 'bayesmanecfit'</span></span>
 <span><span class="fu">check_fit</span><span class="op">(</span><span class="va">x</span>, group <span class="op">=</span> <span class="cn">NULL</span>, ndraws <span class="op">=</span> <span class="fl">1000</span>, seed <span class="op">=</span> <span class="fl">10</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># S3 method for class 'bayesnecgroupfit'</span></span>
-<span><span class="fu">check_fit</span><span class="op">(</span><span class="va">x</span>, group <span class="op">=</span> <span class="cn">NULL</span>, ndraws <span class="op">=</span> <span class="fl">1000</span>, seed <span class="op">=</span> <span class="fl">10</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
 <span><span class="co"># S3 method for class 'bayesnechurdlefit'</span></span>
-<span><span class="fu">check_fit</span><span class="op">(</span><span class="va">x</span>, group <span class="op">=</span> <span class="cn">NULL</span>, ndraws <span class="op">=</span> <span class="fl">1000</span>, seed <span class="op">=</span> <span class="fl">10</span>, combined <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># S3 method for class 'checkfit_group'</span></span>
-<span><span class="fu"><a href="print.html">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># S3 method for class 'checkfit_group'</span></span>
-<span><span class="fu"><a href="plot.html">plot</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">check_fit</span><span class="op">(</span><span class="va">x</span>, group <span class="op">=</span> <span class="cn">NULL</span>, ndraws <span class="op">=</span> <span class="fl">1000</span>, seed <span class="op">=</span> <span class="fl">10</span>, combined <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -134,23 +122,16 @@ the fit against the data.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
-<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> as returned by <code><a href="bnec.html">bnec</a></code>, or a
-<code><a href="bayesnecgroupfit-class.html">bayesnecgroupfit</a></code> returned by <code><a href="bnec_group.html">bnec_group</a></code>.</p></dd>
+<code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> as returned by <code><a href="bnec.html">bnec</a></code>.</p></dd>
 
 
 <dt id="arg-group">group<a class="anchor" aria-label="anchor" href="#arg-group"></a></dt>
-<dd><p>A numeric, character or factor vector of the same length as the
-data giving the group each row belongs to, or a single numeric value giving
-the number of bins to cut the predictor
+<dd><p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector of the same length as the
+data giving the group each row belongs to, or a single
+<code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> giving the number of bins to cut the predictor
 into. If <code>NULL</code> (the default) the distinct values of the predictor are
 used where they are replicated, and the predictor is binned otherwise, with a
-warning.
-For a <code>bayesnecgroupfit</code>, an explicit vector has one value per row of
-the original data passed to <code><a href="bnec_group.html">bnec_group()</a></code>, in its original order. It
-is split by fitted level before the checks. The fitted-level factor is not
-the predictor grouping used within each level.
-For a <code>bayesnechurdlefit</code>, an explicit vector has one value per exposed
-row; the growth check uses the values for surviving rows.</p></dd>
+warning.</p></dd>
 
 
 <dt id="arg-ndraws">ndraws<a class="anchor" aria-label="anchor" href="#arg-ndraws"></a></dt>
@@ -177,13 +158,7 @@ because <code>set.seed(NULL)</code> re-initialises the stream from the clock.</p
 <code>TRUE</code> (the default) a third table is returned checking the two
 components against the response they jointly predict, which is what the user
 actually observed. The growth component is predicted onto the full exposed
-set rather than onto its own data, since it is fitted on survivors only.
-Where either component is a model set, the third table has one block of rows
-per pair of growth and survival equations, named <code>"growth / survival"</code>
-in the column <code>model</code>. When one component has one equation, <code>wi</code>
-is the other component's model weight. With model sets in both components,
-<code>wi</code> is available under pseudo-BMA through
-<code><a href="crossed_weights.html">crossed_weights</a></code>; it is omitted for other weighting methods.</p></dd>
+set rather than onto its own data, since it is fitted on survivors only.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -193,30 +168,7 @@ for a <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>), carryi
 observations, the observed and simulated mean and standard deviation, their
 ratios, a posterior predictive p-value for each, and a logical flag marking
 the control group. For the mixture families it also carries the observed and
-simulated proportion of zeros. A group with one observation has no standard
-deviation; its standard deviation statistics are <code>NA</code>, while its mean
-statistics remain available. Where the formula includes a <code>cens()</code>
-term, the column <code>n_cens</code> gives the number of censored readings in each
-group.
-A <code>bayesnecgroupfit</code> returns a <code>checkfit_group</code> object containing
-the original <code>checkfit</code> table for each fitted level in <code>$fits</code>.
-Each table retains its attributes, including any stored Pareto diagnostics.
-<code><a href="print.html">print()</a></code> labels and prints each level; <code><a href="plot.html">plot()</a></code> returns a named
-list of plots with one plot per fitted level.</p>
-<p>The separate <code>"pareto"</code> attribute is a
-data frame with one row per equation. It names the stored criterion used for
-model weights, its Pareto cutoff, the count and IDs of held-out units at or
-above that cutoff, the largest k, and any successful or failed group refits.
-<code>flagged_ids</code>, <code>refitted_ids</code>, and <code>refit_failed_ids</code> are list
-columns of character vectors. A missing criterion has <code>status =
-"unavailable"</code> and missing counts, not a clean result. Single-equation fits
-have no model-weight comparison. For hurdle fits the growth and survival
-tables have their own attributes; the combined predictive table has no
-leave-one-out criterion.</p>
-<p>Pareto k assesses the approximation to a leave-one-out score. It does not
-assess sampler convergence or the posterior predictive discrepancies in the
-concentration-level table. Grouped scores use the package's 0.7 cutoff;
-observation-wise scores use the applicable <span class="pkg">loo</span> cutoff.</p>
+simulated proportion of zeros.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
@@ -244,44 +196,12 @@ deviation of the response mixes residual variability with the slope of the
 curve across the group, which would make every steep-region group look
 overdispersed.</p>
 <p><b>Model averaging does not protect you here</b></p>
-<p>Model weights come from a global <code>elpd</code>, whether they are the
-pseudo-BMA weights <code><a href="bnec.html">bnec</a></code> computes by default or stacking
-weights requested through <code>loo_controls</code>. The control is a handful of
+<p>Stacking weights come from a global <code>elpd</code>. The control is a handful of
 rows out of many, so a candidate model can hold high weight while fitting the
 control badly — it wins on the bulk of the curve and pays almost nothing
 for the control. For a <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> the per-model rows are
 therefore reported alongside the averaged rows, or the table could not say
 which model is doing the damage.</p>
-<p>Posterior predictive p-values give half weight to simulated statistics that
-tie the observed statistic. Ties are common for count families because their
-statistics take few distinct values.
-When both an observed statistic and the median simulated statistic are zero,
-their ratio is reported as 1 to denote agreement in the control check.</p>
-<p><b>Censored readings</b></p>
-<p>Where the formula includes a <code>cens()</code> term, a censored reading is
-recorded at its bound, whereas the responses simulated from the fit are not
-censored. In each group that includes a censored reading, the observed and
-the simulated responses are therefore both held at one bound before the
-statistics are computed: values below the largest left-censoring bound in
-the group are raised to it, and values above the smallest right-censoring
-bound are lowered to it. An interval-censored reading is treated as
-left-censored at the upper end of its interval. A group whose lower holding
-bound exceeds its upper holding bound cannot be compared this way and is
-refused. The true value of every censored reading is known to be beyond the
-bound, so its held value is known exactly, and the observed and simulated
-statistics are computed from the same quantity. Where the observed statistic
-equals the median simulated one, as when every value is held, its ratio is 1. A
-structural zero of a hurdle or zero-inflated family stays at zero, unless a
-left-censored reading in the group could itself be a zero; the zeros are
-then held with the other values and the group's zero proportions are
-<code>NA</code>.</p>
-<p>Holding the values discards what the data show beyond the bound. The column
-<code>n_cens</code> gives the number of censored readings in each group, and where
-it approaches <code>n</code> the statistics of that group show little more than
-whether the fitted model predicts readings beyond the bound.
-<code><a href="pp_check.html">pp_check</a></code> instead leaves censored readings out, which in a
-partly censored group compares the uncensored readings, all on the measured
-side of the bound, with simulations that fall on either side.</p>
 <p>For a <code><a href="bayesnechurdlefit.html">bayesnechurdlefit</a></code> one table is returned per
 component, following the precedent <code><a href="dispersion.html">dispersion</a></code> sets. The two
 carry different response vectors — growth is fitted on survivors only,
@@ -301,12 +221,6 @@ both.</p>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/">bayesnec</a></span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">nec4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">manec_example</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">check_fit</span><span class="op">(</span><span class="va">nec4param</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">nec_data</span><span class="op">$</span><span class="va">site</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span><span class="op">)</span>, length.out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">grouped</span> <span class="op">&lt;-</span> <span class="fu"><a href="bnec_group.html">bnec_group</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span></span>
-<span class="r-in"><span>                      group_var <span class="op">=</span> <span class="st">"site"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">checks</span> <span class="op">&lt;-</span> <span class="fu">check_fit</span><span class="op">(</span><span class="va">grouped</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="plot.html">plot</a></span><span class="op">(</span><span class="va">checks</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
