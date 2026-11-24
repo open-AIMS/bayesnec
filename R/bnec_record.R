@@ -255,7 +255,9 @@ attach_expand_args <- function(out, expand_args) {
 #' recorded \code{weights} list is used only where it names \code{method}.
 #' A \code{weights} list that names no method is given \code{method}, and the
 #' default where \code{method} is \code{NULL}. \code{leave_out},
-#' \code{refit} and \code{report_k} are read from model sets only. Where a
+#' \code{refit} and \code{report_k} are read from model sets only, except
+#' that single fits all holding K-fold criteria for one grouping and fold
+#' assignment give \code{leave_out = "kfold"}. Where a
 #' set's record names no \code{leave_out}, the attribute of its weights is read
 #' instead, and a set whose weights carry none was scored by observation without
 #' refits. An absent \code{report_k} takes the reporting default.
@@ -328,6 +330,16 @@ recorded_expand_args <- function(objects, x_range = NULL, resolution = NULL,
         }
       }, set_objects, set_records
     ))
+    # Equations pulled out of a set weighted by exact K-fold scores keep them.
+    kfold <- lapply(objects, function(o) {
+      if (inherits(o, "bayesnecfit")) o$fit$criteria$kfold
+    })
+    if (length(set_objects) == 0L && length(objects) > 0L &&
+        all(vapply(kfold, inherits, logical(1), "kfold")) &&
+        length(unique(lapply(kfold, attr, "group"))) == 1L &&
+        length(unique(lapply(kfold, attr, "folds"))) == 1L) {
+      loo$leave_out <- "kfold"
+    }
   }
   if (!"refit" %in% named) {
     loo$refit <- agreed("loo_controls$refit", lapply(

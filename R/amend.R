@@ -355,6 +355,11 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
                             asymptote_observed = TRUE,
                             predictor_scale = "auto", timeout = Inf) {
   check_prior_input(priors, "priors")
+  kfold_changed <- any(vapply(intersect(names(mod_fits),
+                                         names(object$mod_fits)), function(m) {
+    !identical(mod_fits[[m]]$fit$criteria$kfold,
+               object$mod_fits[[m]]$fit$criteria$kfold)
+  }, logical(1)))
   # handle_set() would otherwise drop nothing, or try to fit a misspelt name.
   check_equation_names(setdiff(c(drop, add), names(mod_groups)))
   general_error <- amend_general_error()
@@ -367,7 +372,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   inherited <- recorded_expand_args(list(object), method = old_method,
                                     fam_tag = fam_tag)
   if (!is.null(loo_controls)) {
-    if (identical(expand_args$loo_controls, inherited$loo_controls)) {
+    if (identical(expand_args$loo_controls, inherited$loo_controls) &&
+        !kfold_changed) {
       message("No new LOO fitting/weighting arguments have been specified;",
               " ignoring argument loo_controls.")
       if (is.null(drop) && is.null(add) &&
@@ -396,6 +402,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # estimate rebuilt with the same resolution and arguments it recorded.
   if (identical(model_set, names(mod_fits)) &&
         identical(expand_args, inherited) &&
+        !kfold_changed &&
         !needs_observed_rebuild(object) && !needs_ne_rebuild(object)) {
     message("Nothing to amend, please specify a model to ",
             "either add or drop that differs from the original set.")
@@ -446,6 +453,13 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   needs_fit <- !vapply(model_set, function(model) {
     inherits(try(old_fits[[model]], silent = TRUE), "prebayesnecfit")
   }, logical(1))
+  if (identical(loo_controls$leave_out, "kfold") && any(needs_fit)) {
+    stop("The weights are to use exact K-fold scores, which ",
+         paste0(model_set[needs_fit], collapse = ", "), " would not have.",
+         " Pass loo_controls = list(leave_out = \"group\") to weight the",
+         " amended set by leaving out each level, then run kfold_groups()",
+         " and kfold_weights() on it.", call. = FALSE)
+  }
   # check_data() never runs on this route, which fits with skip_check = TRUE,
   # so refuse a missing trials() term and a response at a bound here, once,
   # before the loop. Only the equations to be fitted are tested: ecxflat alone

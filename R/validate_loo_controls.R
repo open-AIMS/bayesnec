@@ -24,9 +24,9 @@ validate_loo_controls <- function(loo_controls, fam_tag) {
   if (!is.null(loo_controls$leave_out) &&
         !(is.character(loo_controls$leave_out) &&
             length(loo_controls$leave_out) == 1 &&
-            loo_controls$leave_out %in% c("group", "observation"))) {
-    stop("Element \"leave_out\" of loo_controls should be \"group\" or",
-         " \"observation\". See ?bnec")
+            loo_controls$leave_out %in% c("group", "observation", "kfold"))) {
+    stop("Element \"leave_out\" of loo_controls should be \"group\",",
+         " \"observation\" or \"kfold\". See ?bnec")
   }
   if (!is.null(loo_controls$refit) &&
         !(is.logical(loo_controls$refit) && length(loo_controls$refit) == 1 &&
