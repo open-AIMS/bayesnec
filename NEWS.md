@@ -837,6 +837,13 @@ the same call returns.
 
 ## Bug fixes
 
+- `ecxll5` no longer fails to initialise when its starting value of `f`
+  makes the powered denominator overflow. The curve is evaluated in a
+  numerically stable, mathematically equivalent form. The default priors
+  are unchanged. `update()` retains the formula stored in a saved fit;
+  refit a previously saved `ecxll5` object with `bnec()` to use this form
+  (#600).
+
 - `models()` accepts every model group, including `"decline"` and
   `"hormesis"`, and gives an informative error for input it cannot map
   (#170).
