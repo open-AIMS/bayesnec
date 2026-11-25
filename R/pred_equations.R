@@ -94,7 +94,8 @@ pred_ecxwb2p3 <- function(b_top, b_beta, b_ec50, x) {
 
 #' @noRd
 pred_ecxll5 <- function(b_bot, b_top, b_beta, b_ec50, b_f, x) {
-  b_bot + (b_top - b_bot) / (1 + exp(exp(b_beta) * (x - b_ec50))) ^ exp(b_f)
+  b_bot + (b_top - b_bot) *
+    exp(-exp(b_f) * log1p(exp(exp(b_beta) * (x - b_ec50))))
 }
 
 #' @noRd
