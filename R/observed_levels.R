@@ -1012,19 +1012,6 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   curve <- NULL
   control <- NULL
   asymptote <- NULL
-  at_nsec <- NULL
-  if (identical(what, "ecnsec")) {
-    xform <- dots$xform
-    if (!is.null(xform) && !is.function(xform)) {
-      stop("`xform` must be a function or NULL.", call. = FALSE)
-    }
-    nsec_use <- if (is.null(xform)) dots$nsec else xform(dots$nsec)
-    if (length(nsec_use) != 1L || !is.finite(nsec_use) ||
-        nsec_use < low || nsec_use > high) {
-      stop("The supplied NSEC lies outside the shared prediction range.",
-           call. = FALSE)
-    }
-  }
   for (i in seq_along(fits)) {
     if (is_bayesnechurdlefit(fits[[i]])) {
       pred <- hurdle_component_preds(fits[[i]], resolution = length(x_vec),
@@ -1037,19 +1024,10 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     } else {
       part <- level_curve_draws(fits[[i]], x_vec, x_control, type, dpar)
     }
-    if (identical(what, "ecnsec")) {
-      at_part <- if (is_bayesnechurdlefit(fits[[i]])) {
-        curve_draws_at(part$curve, x_vec, nsec_use)
-      } else {
-        level_curve_draws(fits[[i]], rep(nsec_use, 2),
-                          x_control, type, dpar)$curve[, 1]
-      }
-    }
     if (is.null(curve)) {
       curve <- part$curve * weights[i]
       control <- part$control * weights[i]
       asymptote <- rep_len(part$asymptote, length(control)) * weights[i]
-      if (identical(what, "ecnsec")) at_nsec <- at_part * weights[i]
     } else {
       n <- min(nrow(curve), nrow(part$curve))
       curve <- curve[seq_len(n), , drop = FALSE] +
@@ -1057,16 +1035,20 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
       control <- control[seq_len(n)] + part$control[seq_len(n)] * weights[i]
       asymptote <- asymptote[seq_len(n)] +
         rep_len(part$asymptote, n)[seq_len(n)] * weights[i]
-      if (identical(what, "ecnsec")) {
-        at_nsec <- at_nsec[seq_len(n)] + at_part[seq_len(n)] * weights[i]
-      }
     }
   }
   if (identical(what, "ecnsec")) {
     floor <- switch(type, absolute = 0, relative = asymptote,
                     range = apply(curve[, original, drop = FALSE], 1, min,
                                   na.rm = TRUE))
-    out <- (control - at_nsec) / (control - floor) * 100
+    sig <- if (is.null(dots$sig_val)) 0.01 else dots$sig_val
+    reference <- stats::quantile(control, sig)
+    out <- pmax(control - reference, 0) / (control - floor) * 100
+    if (identical(type, "range")) {
+      start <- if (own) min(controls) else as.numeric(x_control)
+      crossing <- nsec_from_posterior(curve, reference, x_vec, start, control)
+      out[is.na(crossing) & control > reference] <- Inf
+    }
     if (isTRUE(dots$posterior)) return(out)
     probs <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else
       dots$prob_vals
@@ -1089,7 +1071,7 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
       out[!is.na(out) & out == start] <- low
     }
     attr(out, "ecnsec_relativeP") <-
-      as.numeric((control - reference) / control * 100)
+      as.numeric(pmax(control - reference, 0) / control * 100)
   }
   below <- attr(out, "below_range")
   above <- is.na(out) & !below

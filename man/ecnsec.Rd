@@ -7,12 +7,10 @@ object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 \usage{
 ecnsec(
   object,
-  nsec,
   resolution = 500,
   x_range = NA,
   type = "absolute",
-  xform = NULL,
-  x_scale = c("recorded", "fitted"),
+  sig_val = 0.01,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
   posterior = FALSE,
@@ -25,29 +23,18 @@ ecnsec(
 \item{object}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
 
-\item{nsec}{A single number, the concentration at which to read the
-percentage effect. A vector is refused, including the three values
-\code{\link{nsec}} returns; pass the one wanted.}
-
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is
 the lowest response the curve predicts over the grid. The default of 500
 matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
-\item{x_range}{A range of x values over which to predict the curve. An
-\code{nsec} outside it is refused; see Details.}
+\item{x_range}{A range of x values over which to predict the curve.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
 "absolute" (the default), "relative" or "range". See Details.}
 
-\item{xform}{\code{NULL} or \code{identity} reads \code{nsec} as
-given. Any other function is applied to \code{nsec} before the curve is
-read there and requires \code{x_scale = "recorded"} for an
-predictor with an inline transformation. See Details.}
-
-\item{x_scale}{\code{"recorded"} (the default) or \code{"fitted"}.
-\code{"fitted"} gives the same result as the former
-\code{xform = identity}; \code{nsec} is read as given in either case.}
+\item{sig_val}{The control posterior quantile used as the NSEC reference.
+The default is 0.01, as in \code{\link{nsec}}.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
@@ -87,85 +74,36 @@ For \code{type = "range"} the lowest response is taken over the prediction
 range before it is extended.}
 }
 \value{
-A vector containing the estimated ECNSEC value, including upper and
-lower 95\% credible interval bounds, or with \code{posterior = TRUE} the
-value for each posterior draw. This percentage is read at the supplied
-concentration; no draw is censored by a search for a crossing.
+A percentage summary or, with \code{posterior = TRUE}, one
+percentage per posterior draw. Grouped results follow \code{\link{nsec}}.
 }
 \description{
 Extracts the percent effect associated with a predicted NSEC value from an
 object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
 \details{
-NSEC is no-effect toxicity metric that estimates the concentration
-at which the modelled mean response is statistically indistinguishable from
-the mean control response. See the detailed derivation in
-Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated
-effect size. This function estimates the effect of a given NSEC estimate.
+Each posterior draw is evaluated at its own NSEC, where its
+curve reaches the \code{sig_val} quantile of the control posterior. The
+effect is the decline from that draw's control to the reference, divided
+by the distance from its control to the floor selected by \code{type}.
+The floor is zero for \code{"absolute"}, the fitted asymptote for
+\code{"relative"}, and the lowest predicted response over the original
+range for \code{"range"}. A draw whose control is at or below the
+reference has zero effect at the control concentration. With
+\code{type = "range"}, a draw whose NSEC lies above the prediction
+range is censored because its effect exceeds the response span read there.
+The \code{"absolute"} values equal the \code{ecnsec_relativeP}
+attribute of \code{\link{nsec}} under matching options.
 
-With a fitted group term whose levels span concentrations, the curve and
-control are predicted for each observed level with its group deviations.
-Terms whose levels each occur at one concentration are set to zero. The
-level of a spanning term observed at only one concentration is excluded from
-the estimate, with a message naming it. The default mixes the remaining
-observed levels by their observation counts;
-\code{pool = "none"} returns them separately.
-
-On a \code{\link{bayesnecjointfit}}, each level of the refit is mixed over
-its own observed group levels. A group term whose values occur in the data
-of more than one level, such as a batch in which two levels were both
-tested, is read at the same value for every level at each posterior draw,
-as often as their observation counts on that term allow. Terms they do not
-share are chosen for each level independently. The levels can therefore be
-contrasted draw by draw, as \code{\link{compare_posterior}} does.
-
-The effect is measured from the control --- the predicted mean at the
-control concentration, per posterior draw --- and
-\code{type} names what it is measured towards, exactly as in
-\code{\link{ecx}}: "absolute" (the default) towards 0, "relative" towards
-the equation's theoretical asymptote, "range" towards the lowest response
-the curve predicts. \code{ecnsec} is the inverse of the \code{ecx}
-reference construction under the same \code{type}, so the two answer the
-same question of the same curve. "direct" names a response value rather
-than a percentage and is refused here. On a joint two-block fit
-(\code{family = "hurdle_gamma"}, \code{"zero_inflated_beta"},
-\code{"hurdle_poisson"} or \code{"hurdle_negbinomial"}) the curve read is
-the combined one, \code{(1 - hu) * E[Y | Y > 0]}, and "relative" is refused,
-because that curve's asymptote is the product of the two blocks' asymptotes
-rather than a fitted parameter.
-
-Each posterior draw of the control is compared with the same draw's value
-of the curve at \code{nsec}, as \code{\link{ecx}} reads each draw's own
-curve. The interval therefore includes the uncertainty of the curve at
-\code{nsec} as well as that of the control. On \code{nec4param}, for
-example, every draw returns 0 at an \code{nsec} below the \code{nec} of
-every draw, where every draw of the curve still equals its control.
-
-\code{nsec} is read on the recorded predictor scale once \code{xform} has
-been applied to it. \code{\link{nsec}} returns its estimate on that scale
-by default, so \code{ecnsec(fit, nsec = nsec(fit)[1])} reads the curve at
-the NSEC whether or not \code{crf()} transforms the predictor inline. Where
-it does, as in \code{crf(log(concentration))}, an NSEC taken with
-\code{nsec(fit, x_scale = "fitted")} instead returns the transformed
-scale. That value needs the inverse, here \code{xform = exp}, before
-\code{ecnsec()} reads the curve at that concentration.
-
-The curve is read at \code{nsec} only inside the range it is predicted
-over: the observed range of the predictor, or \code{x_range} where one is
-supplied. An \code{nsec} outside that range once \code{xform} has been
-applied is refused with a message naming the range, rather than read off
-the curve extended past the data without a message. Supply an
-\code{x_range} or finite \code{extrapolate} that includes \code{nsec} to
-read the curve there. On a
-\code{\link{bayesnecjointfit}} each level is read over its own observed
-range, and the message names the level that refused \code{nsec}.
+The \code{pool}, \code{x_control} and \code{extrapolate} options use
+the same rules as \code{\link{nsec}}. \code{type = "relative"} is
+unavailable for a joint two-block hurdle curve.
 }
 \examples{
 \donttest{
 library(bayesnec)
-
 data(manec_example)
-ecnsec(manec_example, nsec = 2)
+ecnsec(manec_example)
 }
 
 }

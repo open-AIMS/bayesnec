@@ -381,6 +381,11 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
   attr(estimate, "toxicity_estimate") <- "nsec"
   attr(estimate, "component") <- which
   attr(out, "toxicity_estimate") <- "nsec"
+  effect <- as.numeric(pmax(preds$control[[which]] - reference, 0) /
+                         preds$control[[which]] * 100)
+  attr(estimate, "ecnsec_relativeP") <-
+    stats::quantile(effect, probs = prob_vals, na.rm = TRUE)
+  attr(out, "ecnsec_relativeP") <- effect
   if (!posterior) estimate else censored_infinite(out)
 }
 
@@ -1516,7 +1521,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
   p
 }
 
-#' Extracts ECx corresponding to an NSEC from a
+#' Extracts the percent effect at each draw's own NSEC from a
 #' \code{\link{bayesnechurdlefit}}
 #'
 #' @inheritParams ecnsec
@@ -1527,27 +1532,14 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' @param posterior Should the full posterior be returned instead of a summary?
 #'
 #' @details \code{type = "absolute"} (the default) and \code{"range"} are
-#' defined here and invert the \code{\link{ecx}} reference construction under
-#' the same \code{type}. \code{"relative"} is refused, as it is by
+#' defined here. \code{"relative"} is refused, as it is by
 #' \code{\link{ecx}} for this class: a two-block fit has no single \code{bot}
 #' parameter to measure towards. \code{"direct"} is refused because it names a
 #' response value rather than a percentage.
 #'
-#' \code{xform} is applied to \code{nsec}, and the curve is read at the
-#' result on the recorded predictor scale, as in \code{\link{ecnsec}} on a
-#' \code{\link{bayesnecfit}}. \code{NULL}, the default, reads \code{nsec} as
-#' given, the scale \code{\link{nsec}} returns by default. The percentage
-#' returned is not transformed; to transform it, apply the function to the
-#' value returned.
-#'
-#' Without \code{x_range}, every curve is read over the whole concentration
+#' Without \code{x_range}, every curve is searched over the whole concentration
 #' series, as in \code{\link{ecx.bayesnechurdlefit}}. The range sets the
-#' lowest predicted response that \code{type = "range"} measures towards. The
-#' curve is read at \code{nsec} by linear interpolation between the two grid
-#' points either side of it. An \code{nsec} outside the range is refused with a
-#' message naming the range, for the combined, growth and survival curves
-#' alike and whether or not \code{x_range} is supplied. Supply an
-#' \code{x_range} that includes \code{nsec} to read the curve there.
+#' lowest predicted response that \code{type = "range"} measures towards.
 #' For a group term spanning concentrations, each observed level pairs its
 #' growth and survival predictions before the percentage is read. A level
 #' observed at one concentration is excluded. \code{pool} and
@@ -1555,27 +1547,22 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #'
 #' @return A vector of estimates.
 #'
-#' @importFrom chk chk_number
-#'
 #' @method ecnsec bayesnechurdlefit
 #'
 #' @export
-ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
+ecnsec.bayesnechurdlefit <- function(object, resolution = 500,
                                      x_range = NA,
-                                     type = "absolute", xform = NULL,
-                                     x_scale = c("recorded", "fitted"),
+                                     type = "absolute", sig_val = 0.01,
                                      prob_vals = c(0.5, 0.025, 0.975), ...,
                                      posterior = FALSE, which = "combined",
                                      pool = NULL, x_control = "own",
                                      extrapolate = FALSE) {
   which <- hurdle_check_which(which)
-  check_removed_args(list(...))
-  check_unused_dots(list(...), "ecnsec")
+  check_ecnsec_dots(list(...))
+  check_sig_val(sig_val)
   check_resolution(resolution)
   chk_flag(posterior)
   if (!is.null(pool)) validate_pool(pool, "ecnsec")
-  # One value: the curve is interpolated at one point.
-  chk_number(nsec)
   # "relative" is refused below, so it is not warned about.
   type <- validate_ecx_type(type, match.call(), warn = FALSE)
   if (identical(type, "direct")) {
@@ -1589,9 +1576,12 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
          "asymptote is not a single fitted parameter. Use ",
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
-  xform <- resolve_estimator_xform(object, xform, x_scale)
-  if (is.null(xform)) {
-    xform <- identity
+  if (identical(type, "absolute")) {
+    result <- nsec(object, sig_val = sig_val, resolution = resolution,
+                   x_range = x_range, extrapolate = extrapolate,
+                   prob_vals = prob_vals, posterior = TRUE, pool = pool,
+                   x_control = x_control, which = which)
+    return(ecnsec_from_nsec(result, posterior, prob_vals))
   }
   if (is.null(object$observed_group)) {
     spec <- observed_level_spec(object)
@@ -1599,22 +1589,21 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
       result <- estimate_observed_levels(
         object, spec, "ecnsec",
         function(level, control_value, range_override) {
-          ecnsec(level, nsec = nsec, resolution = resolution,
+          ecnsec(level, resolution = resolution,
                  x_range = range_override, extrapolate = extrapolate,
-                 type = type, xform = xform, x_scale = x_scale,
+                 type = type, sig_val = sig_val,
                  prob_vals = prob_vals, posterior = TRUE, which = which,
                  pool = "none", x_control = control_value)
         }, pool, posterior, prob_vals, x_control, x_range,
-        curve_args = list(nsec = nsec, resolution = resolution,
+        curve_args = list(sig_val = sig_val, resolution = resolution,
                           extrapolate = extrapolate,
-                          type = type, xform = xform, x_scale = x_scale, prob_vals = prob_vals,
+                          type = type, prob_vals = prob_vals,
                           which = which)
       )
       attr(result, "component") <- which
       return(result)
     }
   }
-  nsec_use <- xform(nsec)
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "ECNSEC")
   # The grid ecx() and nsec() read, so that all three read one curve.
@@ -1626,13 +1615,8 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
                            x_range = x_range, x_control = x_control,
                            grid_limits = lims)
   }
-  # Check nsec against the grid the curve was predicted over, so that the range
-  # refused and the range read cannot differ.
-  check_ecnsec_range(object, nsec, nsec_use, range(preds$x), x_range, xform,
-                     curve = paste("the", which, "curve"))
   p_samples <- preds[[which]]
-  # The percentage effect at nsec, against the reference ecx() uses for the
-  # same type, with the control at the control concentration.
+  # Use the same control quantile as nsec() for this component.
   control <- preds$control[[which]]
   original <- if (is.null(preds$original)) TRUE else preds$original
   floor_draws <- switch(
@@ -1640,8 +1624,13 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
     absolute = 0,
     range = apply(p_samples[, original, drop = FALSE], 1, min, na.rm = TRUE)
   )
-  at_nsec <- curve_draws_at(p_samples, preds$x, nsec_use)
-  out <- (control - at_nsec) / (control - floor_draws) * 100
+  reference <- stats::quantile(control, sig_val)
+  out <- pmax(control - reference, 0) / (control - floor_draws) * 100
+  crossing <- nsec(object, sig_val = sig_val, resolution = resolution,
+                   x_range = x_range, extrapolate = extrapolate,
+                   posterior = TRUE, pool = pool, x_control = x_control,
+                   which = which)
+  out[is.infinite(crossing) & crossing > 0 & control > reference] <- Inf
   estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "component") <- which

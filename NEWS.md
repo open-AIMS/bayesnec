@@ -23,7 +23,7 @@
 
 ### Changed defaults
 
-- `nec()`, `nsec()`, `ecx()`, `ecnsec()`, `curve_params()`,
+- `nec()`, `nsec()`, `ecx()`, `curve_params()`,
   `exceedance()`, `ggbnec_data()`, `plot()` and `autoplot()` default to
   `xform = NULL`, and `summary()` reports on the same scale. Where
   `crf()` transforms the predictor inline, as in `crf(log(concentration))`, an
@@ -107,8 +107,10 @@
   gaussian response. The same applies to `compare_estimates()` and
   `compare_posterior()` (#195, #578).
 
-- The `ecnsec_relativeP` attribute of `nsec()` is the percent effect at the
-  NSEC measured from the control (#195).
+- The `ecnsec_relativeP` attribute of `nsec()` is the percent effect at each
+  draw's own NSEC measured from the control, and equals `ecnsec()` under
+  `type = "absolute"`. Draws whose controls are at or below the reference
+  have zero effect at the control concentration (#195, #605).
 
 - `nec()`, `summary()` and the plots report the NSEC as the no-effect estimate
   of the six hormesis threshold equations, `nechorme`, `nechorme4`,
@@ -792,9 +794,10 @@ the same call returns.
 - `curve_params()` reports the curve parameters of each equation with their
   credible intervals and model weight (#297).
 
-- `ecnsec()` reports the percent effect at a given NSEC, comparing each
-  posterior draw of the control with the same draw of the curve. It refuses a
-  value outside the prediction range (#195, #437, #488).
+- `ecnsec()` returns the percent effect at each posterior draw's own NSEC.
+  It takes `sig_val` to select the control reference and no longer takes
+  `nsec`, `xform` or `x_scale`. For `type = "range"`, draws whose NSEC is
+  above the prediction range have a censored effect (#195, #605).
 
 - `amend()` has a method for `bayesnecfit`. Adding an equation returns a model
   set (#176).

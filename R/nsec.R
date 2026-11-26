@@ -110,13 +110,12 @@
 #'
 #' The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 #' defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
-#' the decline from the control towards zero.
+#' the decline from the control towards zero. It is the same quantity returned
+#' by \code{\link{ecnsec}} for the same options.
 #'
 #' The reference is a quantile of the control posterior, so some draws start
-#' at or below it. A draw with a later decreasing crossing takes that crossing.
-#' Without one, it takes the control concentration unless its response first
-#' changes away from the effect and later rises above the reference. Such a
-#' draw shows no decreasing effect in the searched range and is censored there.
+#' at or below it. Such a draw takes the control concentration, where its
+#' effect is zero. Other draws take the first decreasing crossing.
 #' The crossing is sought at or above the control, so extending \code{x_range}
 #' below the data does not place an estimate below any tested concentration.
 #'
@@ -351,7 +350,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   reference <- quantile(control, sig_val)
   # ecnsec is the percent effect at the NSEC, defined as ecx() defines it: the
   # decline from the control towards zero, not across the fitted range.
-  ecnsecP <- as.numeric((control - reference) / control * 100)
+  ecnsecP <- as.numeric(pmax(control - reference, 0) / control * 100)
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
   # The control is the reference whether or not the curve shows hormesis.
   nsec_out <- nsec_from_posterior(p_samples, reference, x_vec,
