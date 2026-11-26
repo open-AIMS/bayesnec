@@ -192,6 +192,21 @@ test_that("bnec_hurdle validates the full predictor before either fit (#317)", {
   expect_equal(calls, 0L)
 })
 
+test_that("bnec_hurdle passes a prior with x_control to the component fits", {
+  set.seed(1)
+  x <- rep(c(0.1, 0.5, 1, 2, 4, 8), each = 4)
+  dat <- data.frame(x = x, y = exp(1 - 0.3 * x + stats::rnorm(24, 0, 0.2)))
+  dat$y[x == 8][1:2] <- 0
+  local_mocked_bindings(
+    bnec = function(...) stop("reached the component fit"),
+    .package = "bayesnec"
+  )
+  # A prior is not read as prior_type, which would stop before either fit.
+  expect_error(suppressMessages(bnec_hurdle(
+    y ~ crf(x, "nec3param"), data = dat, prior = list(), x_control = 0.5
+  )), "reached the component fit")
+})
+
 test_that("bnec_hurdle refuses a component with no equation left (#470)", {
   # Each component's bnec() call excludes such an equation. A survival set
   # with none left would otherwise be refused only after the growth component
@@ -476,6 +491,32 @@ test_that("the hurdle methods run on a growth disp() term (#410)", {
   expect_length(d$growth, 0)
   expect_true(all(is.finite(nec(fit))))
   expect_s3_class(autoplot(fit), "ggplot")
+})
+
+test_that("hurdle predictions forward draw and newdata settings", {
+  skip_on_cran()
+  fit <- disp_hurdle_fixture()$fit
+  nd <- bnec_newdata(fit, resolution = 6)
+  for (which in c("combined", "growth", "survival")) {
+    expect_equal(dim(posterior_epred(fit, which = which, ndraws = 4,
+                                     resolution = 6)), c(4L, 6L))
+    expect_equal(dim(posterior_epred(fit, which = which, ndraws = 4,
+                                     newdata = nd)), c(4L, 6L))
+    expect_equal(dim(posterior_predict(fit, which = which, ndraws = 4,
+                                       newdata = nd)), c(4L, 6L))
+    expect_equal(dim(fitted(fit, which = which, summary = FALSE,
+                            ndraws = 4, newdata = nd)), c(4L, 6L))
+    expect_equal(dim(predict(fit, which = which, summary = FALSE,
+                             ndraws = 4, newdata = nd)), c(4L, 6L))
+  }
+  expect_equal(posterior_epred(fit, which = "growth", newdata = nd,
+                               draw_ids = 1:4),
+               posterior_epred(fit$growth, newdata = nd,
+                               re_formula = NA, draw_ids = 1:4))
+  formulas <- formula(fit)
+  expect_named(formulas, c("growth", "survival"))
+  expect_s3_class(formulas$growth, "bayesnecformula")
+  expect_s3_class(formulas$survival, "bayesnecformula")
 })
 
 test_that("bnec_joint builds the growth disp() term into the joint model (#410)", {

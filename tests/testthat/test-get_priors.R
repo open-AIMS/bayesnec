@@ -165,6 +165,37 @@ test_that("get_priors rejects what it cannot build priors from", {
   )
 })
 
+test_that("get_priors refuses arguments it would not use", {
+  expect_error(get_priors(nec4param, x_control = 1),
+               "takes no further argument, but this call supplied `x_control`")
+  expect_error(get_priors(manec_example, prior_type = "regularizing"),
+               "supplied `prior_type`")
+  hurdle <- structure(list(growth = nec4param, survival = manec_example),
+                      class = c("bayesnechurdlefit", "bnecfit"))
+  expect_error(get_priors(hurdle, nec_data), "supplied an unnamed argument")
+  expect_error(get_priors(y ~ crf(x, "nec3param"), data = nec_data, foo = 1),
+               "does not use `foo`")
+  expect_error(get_priors(bnf(y ~ crf(x, "nec3param")), data = nec_data,
+                          foo = 1), "does not use `foo`")
+  expect_error(get_priors("y ~ crf(x, \"nec3param\")", data = nec_data,
+                          foo = 1), "does not use `foo`")
+})
+
+test_that("get_priors reads grouped levels and a joint fit", {
+  grouped <- structure(list(fits = list(a = nec4param, b = nec4param),
+                            levels = c("a", "b"), group_var = "site"),
+                       class = c("bayesnecgroupfit", "bnecfit"))
+  grouped_priors <- get_priors(grouped)
+  expect_named(grouped_priors, c("a", "b"))
+  expect_identical(grouped_priors$a, get_priors(nec4param))
+  expect_identical(grouped_priors$b, get_priors(nec4param))
+  expect_error(get_priors(grouped, level = "c"), "level of a bayesnecgroupfit")
+  # A joint refit is one brmsfit, so its priors are read as a single fit's.
+  joint <- joint_split()
+  expect_identical(get_priors(joint), get_priors(nec4param))
+  expect_error(get_priors(joint, foo = 1))
+})
+
 test_that("a disp variance function's priors come back with the curve's", {
   # Return the variance-function coefficients with the curve's priors. A set
   # without c0 and c1 is incomplete, and bnec() refills them with a warning.
@@ -328,8 +359,9 @@ test_that("a user prior on zi round trips for a zero-inflated count family", {
   set.seed(1)
   x <- as.numeric(rep(1:10, each = 5))
   y <- as.numeric(rpois(50, 20) * rbinom(50, 1, 0.6))
-  gp <- get_priors(y ~ crf(x, "nec4param"), data = data.frame(x = x, y = y),
-                   family = "zero_inflated_poisson")
+  gp <- suppressWarnings(get_priors(y ~ crf(x, "nec4param"),
+                                    data = data.frame(x = x, y = y),
+                                    family = "zero_inflated_poisson"))
   with_zi <- gp + brms::prior_string("beta(2, 5)", class = "zi")
   out <- bayesnec:::usable_prior(with_zi)
   expect_true("zi" %in% out$class)
@@ -355,8 +387,9 @@ test_that("a zi prior does not disturb the initial-value search", {
   set.seed(2)
   x <- as.numeric(rep(1:10, each = 5))
   y <- as.numeric(rpois(50, 20) * rbinom(50, 1, 0.6))
-  gp <- get_priors(y ~ crf(x, "nec4param"), data = data.frame(x = x, y = y),
-                   family = "zero_inflated_poisson")
+  gp <- suppressWarnings(get_priors(y ~ crf(x, "nec4param"),
+                                    data = data.frame(x = x, y = y),
+                                    family = "zero_inflated_poisson"))
   with_zi <- gp + brms::prior_string("beta(2, 5)", class = "zi")
   fct_args <- c("b_top", "b_beta", "b_bot", "b_nec")
   out <- bayesnec:::make_inits("nec4param", fct_args, with_zi, chains = 2)

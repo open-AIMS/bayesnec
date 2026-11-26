@@ -11,7 +11,7 @@
 #' \code{\link{bayesnecjointfit}}.
 #' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
 #' @param nec Should NEC values be added to the plot? Defaults to TRUE.
-#' @param ecx Should ECx values be added to the plot? Defaults to FALSE..
+#' @param ecx Should ECx values be added to the plot? Defaults to FALSE.
 #' @param xform \code{NULL}, the default, or a function. See
 #' \code{\link{ggbnec_data}}.
 #' @param x_scale \code{"recorded"} (the default) draws the predictor as
@@ -49,8 +49,9 @@
 #' \code{"all"} for a panel of each. The panels and their titles are those
 #' \code{\link{autoplot.bayesnechurdlefit}} draws for a factorised fit, and
 #' each title names the equation of its block. A growth or survival panel marks
-#' the \code{nec} parameter of its block where the block's equation has one,
-#' and otherwise the NSEC of its curve, and draws the ECx that
+#' the \code{nec} parameter of its block where the block's equation is a
+#' monotone threshold equation, and otherwise the NSEC of its curve, as
+#' \code{\link{nec}} reports them, and draws the ECx that
 #' \code{\link{ecx}} returns with the matching \code{dpar}. A model set, a
 #' \code{\link{bayesnecgroupfit}}, a \code{\link{bayesnecjointfit}} and a fit
 #' of any other family draw one curve and refuse any value but
@@ -749,7 +750,7 @@ plot_x_axis <- function(recorded, formula) {
   }
   ticks <- ticks[ticks >= min(observed) & ticks <= max(observed)]
   if (0 %in% observed) ticks <- c(0, ticks)
-  ticks <- sort(unique(ticks))
+  ticks <- add_end_ticks(sort(unique(ticks)), observed, formula)
   breaks <- as.numeric(sub_x_transformation(ticks, formula))
   keep <- is.finite(breaks)
   breaks <- breaks[keep]
@@ -758,6 +759,37 @@ plot_x_axis <- function(recorded, formula) {
   }, character(1))
   order <- order(breaks)
   list(breaks = breaks[order], labels = labels[order])
+}
+
+#' Label the lowest and highest tested concentrations on a fitted axis
+#'
+#' @param ticks The tick values chosen so far, on the recorded scale.
+#' @param observed The sorted distinct recorded predictor values.
+#' @param formula The fit's \code{\link{bayesnecformula}}.
+#'
+#' @details An end of the series is added unless an existing tick lies within
+#' a tenth of the axis span of it, measured on the fitted scale, where its
+#' label would overlap that tick's.
+#'
+#' @return The ticks, with the ends added where they fit.
+#'
+#' @noRd
+add_end_ticks <- function(ticks, observed, formula) {
+  at <- function(v) as.numeric(sub_x_transformation(v, formula))
+  fitted <- at(observed)
+  ok <- is.finite(fitted)
+  if (sum(ok) < 2) {
+    return(ticks)
+  }
+  span <- diff(range(fitted[ok]))
+  ends <- observed[ok][c(which.min(fitted[ok]), which.max(fitted[ok]))]
+  for (end in ends) {
+    gaps <- abs(at(ticks) - at(end))
+    if (!any(is.finite(gaps) & gaps < span / 10)) {
+      ticks <- c(ticks, end)
+    }
+  }
+  sort(unique(ticks))
 }
 
 #' Creates the data.frame for plotting with \code{\link{autoplot}}.
@@ -1061,7 +1093,7 @@ plot_block_labels <- function(object, blocks, combined_tag) {
   tag <- vapply(curves, function(w) {
     if (identical(w, "combined")) {
       combined_tag
-    } else if (block_has_nec(object, blocks[[w]])) {
+    } else if (block_nec_is_no_effect(object, blocks[[w]])) {
       "NEC"
     } else {
       "NSEC"
@@ -1102,6 +1134,22 @@ block_nec_nlpar <- function(dpar) {
 block_has_nec <- function(object, dpar) {
   paste0("b_", block_nec_nlpar(dpar), "_Intercept") %in%
     variables(object$fit)
+}
+
+#' Whether one block of a joint two-block fit reports its nec parameter
+#'
+#' A hormesis threshold equation has a \code{nec} parameter, but its no-effect
+#' estimate is the NSEC, as \code{\link{nec}} reports it.
+#'
+#' @inheritParams block_has_nec
+#'
+#' @return A \code{\link[base]{logical}} value.
+#' @noRd
+block_nec_is_no_effect <- function(object, dpar) {
+  if (identical(dpar, "mu")) {
+    return(sampled_nec_is_no_effect(object$model, object$fit))
+  }
+  hu_block_samples_nec(object, dpar, block_has_nec(object, dpar))
 }
 
 #' The credible band of one curve of a single fit
@@ -1188,8 +1236,8 @@ plot_block_ne_fit <- function(object, dpar) {
 
 #' The no-effect posterior of one block of a joint two-block fit
 #'
-#' The block's \code{nec} parameter where its equation has one, and otherwise
-#' the NSEC of its curve, read as \code{nec(which = "growth")} reads one
+#' The block's \code{nec} parameter where its equation is a monotone threshold
+#' equation, and otherwise the NSEC of its curve, read as \code{nec(which = "growth")} reads one
 #' component of a \code{\link{bayesnechurdlefit}}. A group term whose levels
 #' span concentrations is read at each observed level, and the levels are
 #' mixed by observation count, as for the stored combined estimate.
@@ -1203,7 +1251,7 @@ plot_block_ne_fit <- function(object, dpar) {
 #' @noRd
 joint_block_ne <- function(object, dpar) {
   formula <- object$bayesnecformula
-  if (!block_has_nec(object, dpar)) {
+  if (!block_nec_is_no_effect(object, dpar)) {
     args <- recorded_expand_args(list(object))
     return(suppressMessages(nsec(
       object, sig_val = args$sig_val, resolution = args$resolution,

@@ -156,7 +156,7 @@ test_that("pull_out() keeps the record of the equations it keeps", {
   expect_partitioned(rec)
   # An object with no record still has none.
   expect_null(bnec_record(suppressMessages(
-    pull_out(manec_example, model = "nec4param")
+    pull_out(legacy_fit(manec_example), model = "nec4param")
   )))
 })
 
@@ -182,7 +182,8 @@ test_that("c() and + join the records of the objects they combine", {
 
 test_that("c() returns no record where an object combined has none", {
   a <- suppressMessages(pull_out(recorded_manec(), model = "nec4param"))
-  b <- suppressMessages(pull_out(manec_example, model = "ecx4param"))
+  b <- suppressMessages(pull_out(legacy_fit(manec_example),
+                                 model = "ecx4param"))
   expect_null(bnec_record(suppressWarnings(suppressMessages(c(a, b)))))
   expect_null(bnec_record(suppressWarnings(suppressMessages(c(b, a)))))
 })
@@ -297,9 +298,9 @@ test_that("recorded_expand_args() takes each argument supplied, then recorded", 
   )
   # A weights list that names no method keeps the set's.
   expect_identical(
-    args(list(x), loo_controls = list(weights = list(BB = FALSE)),
+    args(list(x), loo_controls = list(weights = list(optim_method = "BFGS")),
          method = "stacking")$loo_controls$weights,
-    list(BB = FALSE, method = "stacking")
+    list(optim_method = "BFGS", method = "stacking")
   )
   # A recorded weights list is used only where it names the set's method. A
   # bayesnecfit holds no weights, so its set takes the default.

@@ -41,9 +41,11 @@
 #' well, on the draws the estimator returns for that level of the joint refit.
 #' Under \code{"nec"} a level whose equation has no \code{nec} parameter has
 #' only \code{NA} draws, as \code{\link{nec}} reports for it, so its
-#' probabilities are \code{NA} and its \code{n_draws} is 0. Passing
-#' \code{no_effect = TRUE} compares the NSEC of that level's fitted curve
-#' instead, as \code{nec(x, no_effect = TRUE)} reports it.
+#' probabilities are \code{NA} and its \code{n_draws} is 0. Where every level
+#' lacks a \code{nec} parameter, \code{exceedance} stops. For a
+#' \code{\link{bayesnecjointfit}}, passing \code{no_effect = TRUE} compares
+#' the NSEC of that level's fitted curve instead, as
+#' \code{nec(x, no_effect = TRUE)} reports it.
 #'
 #' \code{threshold} and the estimate are compared on one scale, the scale the
 #' estimator returns the estimate on. Without \code{xform} that is the scale
@@ -169,11 +171,29 @@ exceedance.bayesnecgroupfit <- function(object, threshold,
   # raised before any level's curve is evaluated.
   check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
                         list(...))
-  # Each level is an ordinary fit, so the per-level comparison is a map over
-  # them, as group_lapply() makes it for the estimators themselves.
-  rows <- group_lapply(object, exceedance_fit, threshold = threshold,
-                       estimate = estimate, ecx_val = ecx_val, xform = xform,
-                       ...)
+  # Under "nec" a level with no nec parameter has no draws to compare, so its
+  # row is NA, as nec() returns NA for it.
+  lacking <- if (estimate == "nec") {
+    vapply(object$fits, level_lacks_nec, logical(1))
+  } else {
+    rep(FALSE, length(object$fits))
+  }
+  if (any(lacking)) {
+    models <- vapply(object$fits, group_model_label, character(1))
+    if (all(lacking)) {
+      refuse_every_level_lacks_nec(object$levels, models)
+    }
+    message_levels_lack_nec(object$levels[lacking], models[lacking])
+  }
+  rows <- lapply(seq_along(object$fits), function(i) {
+    if (lacking[i]) {
+      return(exceedance_from_draws(NA_real_, threshold))
+    }
+    with_level_error(object$levels[i], exceedance_fit(
+      object$fits[[i]], threshold = threshold, estimate = estimate,
+      ecx_val = ecx_val, xform = xform, ...
+    ))
+  })
   out <- do.call(rbind, lapply(seq_along(rows), function(i) {
     cbind(data.frame(level = object$levels[i], stringsAsFactors = FALSE),
           rows[[i]])
@@ -288,7 +308,12 @@ exceedance_posterior <- function(object, estimate, ecx_val, xform, ...) {
     nsec = function(...) nsec(object, posterior = TRUE, ...),
     ecx = function(...) ecx(object, ecx_val = ecx_val, posterior = TRUE, ...)
   )
-  read_posterior(xform = xform, ...)
+  tryCatch(read_posterior(xform = xform, ...),
+           bayesnec_unused_args = function(e) {
+             stop("exceedance() does not use ",
+                  paste(e$args, collapse = ", "), ". See ?exceedance for ",
+                  "its arguments.", call. = FALSE)
+           })
 }
 
 #' The probability that posterior draws exceed a threshold, with the bounds the

@@ -25,7 +25,8 @@
 #' \code{\link{bnec_version}}).
 #' Warning messages are also printed to screen in case
 #' model fits are not satisfactory with regards to their Rhats or their
-#' divergent transitions.
+#' divergent transitions, the latter as a proportion of the retained draws
+#' (see \code{divergence_cutoff}).
 #' 
 #' @details The summary method for both \code{\link{bayesnecfit}} and
 #' \code{\link{bayesmanecfit}} also returns a no-effect toxicity
@@ -72,7 +73,7 @@
 #' 
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
-#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028. 
 #' doi: 10.1002/etc.5610.
 #'
 #' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -81,7 +82,7 @@
 #' 
 #' Fox DR (2010). A Bayesian Approach for Determining the No Effect
 #' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-#' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+#' and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 #'
 #' @examples
 #' \donttest{
@@ -96,13 +97,16 @@ NULL
 #' @order 2
 #'
 #' @param ecx Should summary ECx values be calculated? Defaults to FALSE.
-#' @param ecx_vals ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
+#' @param ecx_vals ECx targets, as percentages greater than 0, as for
+#' \code{ecx_val} in \code{\link{ecx}}. Only relevant if ecx = TRUE.
 #' If no value is specified by the user, returns calculations for EC10, EC50,
 #' and EC90.
 #' @param divergence_cutoff A \code{\link[base]{numeric}} vector of length 1.
-#' The summary warns of a model with more divergent transitions after warmup
-#' than this. Defaults to 10, the cutoff \code{\link{check_sampling}} and
-#' \code{\link{screen_models}} use. On a model set the warning gives each
+#' The proportion of retained draws above which the divergent transitions of
+#' a model are reported in a warning. Defaults to 0.00125 (0.125%, or 10 of
+#' 8,000 draws), the cutoff \code{\link{check_sampling}} and
+#' \code{\link{screen_models}} use. A value of 1 or more is refused, and
+#' \code{Inf} turns the warning off. On a model set the warning gives each
 #' flagged equation's model weight beside its count.
 #'
 #' @method summary bayesnecfit
@@ -115,10 +119,10 @@ NULL
 #' @export
 summary.bayesnecfit <- function(object, ..., ecx = FALSE,
                                 ecx_vals = c(10, 50, 90),
-                                divergence_cutoff = 10) {
+                                divergence_cutoff = 0.00125) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
-  chk_number(divergence_cutoff)
+  check_divergence_cutoff(divergence_cutoff)
   x <- object
   warn_stale_observed_display(x)
   warn_stale_ne_type(x)
@@ -153,6 +157,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     ecs = ecs,
     bayesr2 = bayes_R2(x$fit),
     divergences = summary_divergences(x),
+    divergence_draws = summary_divergence_draws(x),
     divergence_cutoff = divergence_cutoff,
     failed_models = failed_models(x),
     bnec_version = bnec_version(x)
@@ -189,7 +194,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
                                   ecx_vals = c(10, 50, 90),
                                   rhat_cutoff = 1.01,
-                                  divergence_cutoff = 10,
+                                  divergence_cutoff = 0.00125,
                                   fit_ratio_cutoff = 1.15,
                                   check_fit = TRUE) {
   chk_lgl(ecx)
@@ -197,7 +202,7 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
   # chk_number, not chk_numeric: the documented type of each cutoff is a
   # vector of length 1, and chk_numeric admits any length.
   chk_number(rhat_cutoff)
-  chk_number(divergence_cutoff)
+  check_divergence_cutoff(divergence_cutoff)
   chk_number(fit_ratio_cutoff)
   chk_lgl(check_fit)
   x <- object
@@ -241,6 +246,7 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     rhat_issues = lapply(rhat(x, rhat_cutoff = rhat_cutoff), "[[", "failed"),
     rhat_cutoff = rhat_cutoff,
     divergences = summary_divergences(x),
+    divergence_draws = summary_divergence_draws(x),
     divergence_cutoff = divergence_cutoff,
     # Recompute the control check rather than store a prediction matrix on the
     # object, which bnec() leaves out to keep fits small. It uses 200 draws,
@@ -275,18 +281,11 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
 #'
 #' @noRd
 summary_ecx_rows <- function(..., .fit, .ecx_vals, .stored_range) {
-  # The helper's own arguments follow ... and are dotted, because a formal
-  # before ... is matched by partial name: an ecx_val meant for ecx() would be
-  # taken as ecx_vals and shift every positional argument. After ..., a
-  # duplicate ecx_val stops with "matched by multiple actual arguments".
+  # Keep these formals after ... and dotted: before ..., an ecx_val meant for
+  # ecx() would partially match ecx_vals.
   #
-  # ecx_row()'s own x_range formal takes a caller's x_range in place of the
-  # default, so ecx() receives it once; forwarded in ... beside the default it
-  # would stop with "matched by multiple actual arguments". The hurdle summary
-  # applies the same rule. The formal follows ..., so it takes no positional
-  # argument and matches only the full name: an abbreviation such as x_ran
-  # reaches ecx() through ... and is ignored. NULL leaves ecx() to build its
-  # own grid from the data.
+  # ecx_row() takes a caller's x_range in place of the default, so that ecx()
+  # receives it once. NULL leaves ecx() to build its own grid from the data.
   ecx_row <- function(..., .v, x_range = .stored_range) {
     if (is.null(x_range)) {
       ecx(.fit, ecx_val = .v, ...)
@@ -483,4 +482,16 @@ summary_divergences <- function(x) {
     }
     count_divergent(fit)
   }, numeric(1))
+}
+
+#' The number of retained draws in each model of a fit
+#'
+#' @param x A \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#'
+#' @return A named \code{\link[base]{numeric}} vector, one element per model,
+#' named as \code{summary_divergences()} names its counts.
+#'
+#' @noRd
+summary_divergence_draws <- function(x) {
+  vapply(sampling_fits(x), function(fit) as.numeric(ndraws(fit)), numeric(1))
 }

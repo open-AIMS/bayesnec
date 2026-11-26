@@ -25,17 +25,18 @@ knitr::opts_chunk$set(
   # rendered by the browser's pdf plugin, complete with its own toolbar and
   # scrollbars, instead of as an image.
   dev = "png",
-  dpi = 150,
+  dpi = 100,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2]: https://open-aims.github.io/bayesnec/articles/example2.html
-[e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
-[e3]: https://open-aims.github.io/bayesnec/articles/example3.html
+[e1]: example1.html
+[e2]: example2.html
+[e2b]: example2b.html
+[e3]: example3.html
 [e4]: https://open-aims.github.io/bayesnec/articles/example4.html
 [e5]: https://open-aims.github.io/bayesnec/articles/example5.html
+[e6]: https://open-aims.github.io/bayesnec/articles/example6.html
 
 # `bayesnec`
 
@@ -78,7 +79,7 @@ section on this
 [link](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started)
 for further instructions on how to get the compilers running.
 
-The [Installation and setup][e5] vignette describes this in detail, including
+The [Installation and setup][e5] article describes this in detail, including
 both `brms` back ends (`rstan` and `cmdstanr`), the `cmdstanr` installation used
 to build these vignettes, and the failures most often encountered on Windows.
 
@@ -94,7 +95,7 @@ library(tidyr)
 
 Concentration—response experiments are usually designed as a dilution series, in which each concentration is a fixed multiple of the one below it. On a linear scale this design places the low concentrations close together and the high concentrations far apart. The model equation then uses its flexibility at the top of the range, where the response has often already levelled off, and has few distinct concentrations in the region where the response is changing.
 
-The scale on which the predictor is modelled is therefore an important decision, and one that is left to the user: `bnec` uses the concentration as supplied, without transformation. This decision is best made before any model is fitted, because it will generally have more influence on the results than the choice of model equation. For example, for one algal dataset, fitting `nec4param` to `log(dose)` instead of the raw dose reduced the maximum lack of fit in the mean from 0.2115 to 0.0676 (on a response spanning about 0.7), whereas five different equations fitted to `log(dose)` were all within 1.2 `elpd_loo` of one another.
+The scale on which the predictor is modelled is therefore an important decision, and one that is left to the user: `bnec` uses the concentration as supplied, without transformation. This decision is best made before any model is fitted, because the scale changes where the equation has data to constrain it and can change the fitted curve and its `elpd_loo`. A log transformation also requires a decision about a control concentration of zero, which has no logarithm, so the control must be omitted or assigned a small positive value before the transformation.
 
 The appropriate scale can be identified from the spacing of the concentrations in the design, not from the response. If the concentrations are close to evenly spaced after a log transformation, the series was designed on a log scale and is usually best modelled on that scale:
 
@@ -193,7 +194,7 @@ autoplot(exp_1, xform = exp) +
 
 There are many built in methods available for `brmsfit` objects and we encourage you to make use of these in full.
 
-This model fit does not look great. You can see that the error bounds around the fit are far too narrow for this data given the variability among the points, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). For models whose response data are Binomial- or Poisson-distributed, an estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_1$dispersion`. Values > 1 indicate overdispersion and values < 1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model does not properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.
+The error bounds around the fit are narrower than the variability among the points, which suggests overdispersion (the data are more variable than this model fit predicts). For models whose response data are Binomial- or Poisson-distributed, an estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_1$dispersion`. Values > 1 indicate overdispersion and values < 1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model does not properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.
 
 ```{r}
 exp_1$dispersion
@@ -227,7 +228,7 @@ Now that we have a better fit to these data, we can interpret the results. The e
 summary(exp(exp_1b$ne_posterior))
 ```
 
-EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
+EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See the [Model details][e2b] vignette and the [Comparisons and exceedance probabilities][e4] article for more information.
 
 ```{r, warning = FALSE}
 ecx(exp_1b, xform = exp)
@@ -321,7 +322,7 @@ count_data_od <- data.frame(
 )
 ```
 
-Fitting these data with a Poisson distribution gives credible bands that are far too narrow for the variability among the points and a dispersion estimate well above one, which indicates that a different distribution should be used.
+Fitting these data with a Poisson distribution gives credible bands that are narrower than the variability among the points and a dispersion estimate well above one, which indicates that a different distribution should be used.
 
 ```{r, warning = FALSE, results = "hide"}
 exp_3b <- bnec(y ~ crf(x, model = "nec4param"), data = count_data_od,
@@ -475,7 +476,7 @@ Interval censoring (third row of the table) resolves this problem. A population 
 
 There are two implications for practice. First, identification should be judged from the contraction from prior to posterior, and not from the interval. Across these three fits the contraction was 0.996, 0.379 and 0.953 respectively, and the middle value identifies the problem that the interval does not show. This can be computed from `pull_prior()` and the posterior draws. Second, the problem propagates, because any quantity derived from the deep part of the fitted curve (well below the bound) also depends on the prior, so an `ecx()` value whose target is near the asymptote should be treated with as much caution as `bot` itself.
 
-Whether a value is censored at all is a separate question from how to handle it once it is. A zero that marks a distinct event (e.g. an organism that died, and not a measurement that fell below a limit) is structural, and should be modelled with a hurdle model and not with a censoring declaration (see `vignette("example6")`).
+Whether a value is censored at all is a separate question from how to handle it once it is. A zero that marks a distinct event (e.g. an organism that died, and not a measurement that fell below a limit) is structural, and should be modelled with a hurdle model and not with a censoring declaration (see the [Hurdle and zero-inflated concentration-response models][e6] article).
 
 # Non-constant dispersion
 
@@ -557,7 +558,7 @@ brms::loo_compare(brms::loo(pull_brmsfit(disp_const)),
                   brms::loo(pull_brmsfit(disp_power)))
 ```
 
-The model with the variance function has the higher expected log predictive density (the constant-dispersion model has an `elpd_diff` of −25.7, with a standard error of 5.4).
+The model with the variance function has the higher expected log predictive density (the constant-dispersion model has an `elpd_diff` of −25.9, with a standard error of 5.4).
 
 The estimated exponent should be interpreted through the family. `disp("power")` models the dispersion parameter, which for a `Gamma` is `shape`, and the implied standard deviation is proportional to $\mu^{1 - c_1/2}$ (see the table in `?bayesnecformula`). The value used to simulate the data, $\mu^{0.4}$, therefore corresponds to $c_1 = 1.2$:
 
@@ -565,7 +566,7 @@ The estimated exponent should be interpreted through the family. `disp("power")`
 brms::fixef(pull_brmsfit(disp_power))[c("c0_Intercept", "c1_Intercept"), ]
 ```
 
-The estimate of 1.30 (95% interval 0.94 to 1.68) includes this value. A value of zero would correspond to the constant-dispersion model (i.e. the constant coefficient of variation a `Gamma` already implies). The default prior bounds `c1` to the range 0 to 2 for a `Gamma` response, from a constant coefficient of variation to a constant variance, so a posterior concentrated at 0 would show that the data do not support the variance function, whereas one well inside the range reflects the data and not the bound.
+The estimate of 1.30 (95% interval 0.93 to 1.68) includes this value. A value of zero would correspond to the constant-dispersion model (i.e. the constant coefficient of variation a `Gamma` already implies). The default prior bounds `c1` to the range 0 to 2 for a `Gamma` response, from a constant coefficient of variation to a constant variance, so a posterior concentrated at 0 would show that the data do not support the variance function, whereas one well inside the range reflects the data and not the bound.
 
 Finally, for the third check (lack of fit in the mean), we calculate the departure of the fitted curve from the observed mean at each concentration, in units of the within-concentration replicate standard deviation. Values of a few standard deviations or more would indicate a problem with the mean model that a variance function would conceal and not resolve.
 

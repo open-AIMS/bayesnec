@@ -8,21 +8,24 @@ screen_models(
   x,
   rhat_cutoff = 1.01,
   ess_cutoff = 400,
-  divergence_cutoff = 10,
+  divergence_cutoff = 0.00125,
   quiet = FALSE,
   group_action = c("per_level", "common")
 )
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}},
-\code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
-\code{\link{bayesnecgroupfit}}.}
+\code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}},
+\code{\link{bayesnecgroupfit}} or \code{\link{bayesnecjointfit}}.}
 
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
 \item{ess_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
-\item{divergence_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
+\item{divergence_cutoff}{A \code{\link[base]{numeric}} vector of length 1.
+The proportion of retained draws, from 0 to less than 1, above which the
+divergent transitions fail a model. Defaults to 0.00125, which is 10 of
+8,000 draws. \code{Inf} turns the divergence criterion off.}
 
 \item{quiet}{A \code{\link[base]{logical}}. Suppress the message reporting
 what was dropped. Defaults to \code{FALSE}; there is rarely a good reason to
@@ -39,7 +42,8 @@ The object with failing candidates removed. A
 \code{\link{bayesnecfit}}, as \code{\link{amend}} already does. A
 \code{\link{bayesnechurdlefit}} comes back as one, with each component
 screened. A \code{\link{bayesnecgroupfit}} comes back as one, with each
-element of \code{fits} replaced by its screened fit.
+element of \code{fits} replaced by its screened fit. A
+\code{\link{bayesnecjointfit}} that passes comes back unchanged.
 }
 \description{
 Runs \code{\link{check_sampling}}, drops every candidate that failed, and
@@ -63,23 +67,14 @@ So report the two side by side and screen on this one.
 \emph{Nothing failed} --- returns the object unchanged, and says so.
 \code{\link{amend}} is not called at all.
 
-\emph{Some failed} --- the failures are intersected against the models the
-object actually holds before \code{\link{amend}} is called. That guard lives
-here rather than in \code{\link{amend}}, which is deliberately not modified:
-\code{amend(drop = )} already handles a mix of present and absent names
-correctly, and silently returns the object unchanged only when \emph{every}
-named model is absent.
+\emph{Some failed} --- the failed models the object holds are dropped with
+\code{\link{amend}}.
 
-\emph{Everything failed} --- decided here, from the table, before
-\code{\link{amend}} is called at all, and reported as a result rather than
-a usage error, with the same per-model reasons the drop message carries: a
-fit where no candidate sampled properly is an outcome the analysis has to
-state, and stating it without saying what failed is not enough to write up. Deciding it up front rather than catching an error out
-of \code{\link{amend}} matters, because \code{\link{amend}} raises
-unrelated errors that would otherwise be reported as convergence results ---
-a \code{\link{bayesnecfit}} raises "Cannot drop models from a bayesnecfit",
-and refitting the model weights can fail for reasons of its own. Everything
-except the all-failed case now propagates as itself.
+\emph{Everything failed} --- an error, raised before \code{\link{amend}}
+is called, that gives the reason each model failed. A fit where no candidate
+sampled properly is an outcome the analysis has to state, with what failed.
+An error raised by \code{\link{amend}} in the other cases is passed on
+unchanged.
 }
 
 \section{Hurdle fits}{
@@ -105,6 +100,17 @@ where it is present when it fails at any level. This keeps an initially
 common candidate set aligned, but discards fits which passed their own
 sampler diagnostics. Existing differences caused by equations that failed
 to fit cannot be restored by screening.
+}
+
+\section{Joint refits}{
+
+
+A \code{\link{bayesnecjointfit}} is screened one level at a time, on the
+table \code{\link{check_sampling}} returns. Each level has one equation in
+one posterior, so no level can be dropped. The refit is returned unchanged
+where every level passes, and the call stops, naming each level that
+failed, where any does, as it stops for a \code{\link{bayesnecfit}} that
+fails.
 }
 
 \examples{

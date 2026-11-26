@@ -76,6 +76,22 @@ test_that("an explicit group vector is used as given", {
   expect_equal(as.character(g[1]), "a")
 })
 
+test_that("a group vector with a missing value or the wrong length is refused", {
+  # A row with no group would drop out of every statistic without a message.
+  x <- seq_len(12)
+  g <- rep(c("a", "b", "c"), each = 4)
+  g[c(2, 7)] <- NA
+  expect_error(bayesnec:::check_fit_groups(x, g),
+               "`group` is missing for row(s) 2, 7", fixed = TRUE)
+  expect_error(bayesnec:::check_fit_groups(x, rep("a", 5)),
+               "12 rows), or be a single whole number of bins; it has length 5",
+               fixed = TRUE)
+  expect_error(bayesnec:::check_fit_groups(x, NA_real_), "whole number of bins")
+  expect_error(bayesnec:::check_fit_groups(x, 2.5), "whole number of bins")
+  expect_error(bayesnec:::check_fit_groups(x, 0), "whole number of bins")
+  expect_equal(nlevels(suppressWarnings(bayesnec:::check_fit_groups(x, 3))), 3)
+})
+
 test_that("a singleton group retains its mean statistics", {
   x <- c(0, 0, 0.03, 0.03, 0.09, 0.29, 0.29)
   y <- c(0.95, 1.38, 1.18, 1.40, 0.81, 0.94, 0.96)
@@ -273,7 +289,13 @@ test_that("the Pareto section is separate from concentration rows", {
 test_that("model-set checks read stored fits without recalculating criteria", {
   skip_on_cran()
   local_mocked_bindings(pull_out = function(...) stop("recalculated"))
-  expect_no_error(check_fit(manec_example, group = 3, ndraws = 20))
+  set_table <- check_fit(manec_example, group = 3, ndraws = 20)
+  single <- check_fit(nec4param, group = 3, ndraws = 20)
+  own <- set_table[set_table$model == "nec4param", , drop = FALSE]
+  for (column in names(single)) {
+    expect_equal(unname(own[[column]]), unname(single[[column]]))
+  }
+  expect_s3_class(attr(set_table, "pareto"), "data.frame")
 })
 
 test_that("stored grouped scores retain corrected and failed refit IDs", {
@@ -497,7 +519,7 @@ test_that("print reports both axes in one block, with different advice", {
   # Report sampler failure and control misfit together but give different
   # advice: a converged model's control discrepancy is a modelling result.
   skip_on_cran()
-  s <- suppressWarnings(summary(manec_example))
+  s <- suppressWarnings(summary(unconverged_manec()))
   msg <- tryCatch({ print(s); "" }, warning = function(w) conditionMessage(w))
   expect_match(msg, "Rhat > 1.01")
   expect_match(msg, "control observed/simulated ratio beyond 1.15")

@@ -5,6 +5,7 @@ capture_family <- function(manec) {
 
 #' @noRd
 #' @importFrom utils capture.output
+#' @export
 capture_family.bayesmanecfit <- function(manec) {
   x <- manec$mod_fits[[1]]$fit
   out <- capture.output(print(summary(x)))

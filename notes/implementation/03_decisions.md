@@ -678,3 +678,70 @@ merges. The result, and whether `toxval` is to follow, is recorded on a
 model weights alters the fitted object, from which `toxval` also computes its
 estimates, and a new message or refusal changes no returned value. This
 replaces D11's rule that every fix is recorded.
+
+## D47 — The release is 3.0.0 (#582)
+
+RF, 2026-11-12: `predev` is released as 3.0.0, not 2.2.0, because the change
+since 2.1.3.1 includes breaking changes (D45, the removal of `nsec()` for
+`brmsfit` and `drc` objects, and changed estimates for the same call). The
+version is raised in the release-render step, before the pull request from
+`predev` into `dev`.
+
+## D48 — A joint refit has the methods of an ordinary fit
+
+RF, 2026-11-13: every method an ordinary `bayesnecfit` has is given to a
+`bayesnecjointfit`, reversing a ruling made during the release review that
+inherited methods would refuse a joint refit. The methods reuse the per-level
+view through which the estimators already read a joint refit. A generic that
+cannot apply to one brmsfit with several levels refuses with its reason.
+
+## D49 — Four vignettes ship with the package
+
+RF, 2026-11-13: `example1`, `example2`, `example2b` and `example3` ship as
+vignettes, because they are the closest to true vignettes. `example4` to
+`example10` become pkgdown articles, which the website builds and the package
+tarball does not contain. This brings the tarball within CRAN's 5 MB guidance.
+The shipped vignettes and help pages link to the articles by their website
+address, which resolves only once the 3.0.0 site is published, so the CRAN
+submission follows the site's deployment.
+
+## D50 — Hurdle, grouped and joint fitting stay separate functions
+
+RF, 2026-11-13: `bnec_hurdle()`, `bnec_group()` and `bnec_joint()` stay
+separate exported functions rather than becoming arguments of `bnec()`. Making
+them arguments would be a cleaner design, but it would make `?bnec`, already
+long, harder to read, and in 3.0.0 it would require refitting the `example8`
+fit store, whose units are keyed on the fitting call.
+
+## D51 — Every fit class has its own method or a clear refusal
+
+RF, 2026-11-13: for every exported generic, each fit class has a method written
+for it or a refusal that names the class, so that no class reaches a parent
+method by accident. The `bnecfit` methods of `c()`, `+` and `update()` refuse a
+class they were not written for, and the work is done by shared internal
+functions that the ordinary, model-set and hurdle classes call. A grouped fit
+has the methods of an ordinary fit, each delegating to the fit of the level it
+names: `update()` refits every level, and `c()` and `+` combine two grouped
+fits of the same data and levels into a model set at each level. The internal
+view of one level of a joint refit exposes only the estimators. Estimates
+returned by `ecx()`, `nsec()`, `nec()` and `ecnsec()` do not change.
+
+## D52 — A censored posterior draw is returned as an infinite value
+
+RF, 2026-11-13: with `posterior = TRUE`, `ecx()`, `nsec()`, `nec()` and
+`ecnsec()` return a draw censored above the search range as `Inf` and one
+censored below it as `-Inf`, in place of `NA`, keeping `attr(, "censored")`.
+An infinite draw keeps its rank, so `quantile()` and `sort()` treat it
+correctly without special handling, whereas an `NA` invites `na.rm = TRUE`,
+which drops the censored draws and biases the estimate low. `toxval` already
+returns an unresolved draw as `Inf`. Summaries and comparisons, which read the
+censoring record, return the same values as before.
+
+A curve-read NSEC draw stored in a fit's `ne_posterior` or `w_ne_posterior`
+takes the same `±Inf` form (2026-11-20). A sampled NEC draw outside the search
+range keeps its sampled value in the stored posterior, marked by the record,
+because the `extrapolate` release and the prior-bound note read it there; the
+estimators still return it as `±Inf`. A fit read at observed levels is the
+exception: its stored posterior is pooled from `nec()` output, so a censored
+draw is stored as `±Inf`. An object saved with `NA` plus a record is
+read by the record and returns the same results as one saved with `±Inf`.

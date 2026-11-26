@@ -28,7 +28,7 @@ mark_joint_survivor_cens <- function(formula, data, family) {
   }
   bases <- c(".bayesnec_survivor_left", ".bayesnec_joint_cens",
              ".bayesnec_joint_upper")
-  names <- tail(make.unique(c(names(data), bases), sep = "_"), 3)
+  names <- utils::tail(make.unique(c(names(data), bases), sep = "_"), 3)
   attr(formula, "bayesnec_survivor_cens") <- stats::setNames(
     as.list(names), c("left", "code", "upper")
   )

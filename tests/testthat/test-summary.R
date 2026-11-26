@@ -270,23 +270,36 @@ print_summary <- function(s) {
 
 # The warning line a model set's summary gives an equation over the cutoff.
 flagged_line <- function(s, model, n) {
-  sprintf("%s (%s, model weight %.2f)", model, n, s$mod_weights[model, "wi"])
+  draws <- s$divergence_draws[[model]]
+  sprintf("%s (%s, %s of %s draws, model weight %.2f)", model, n,
+          bayesnec:::format_percent(n / draws), draws,
+          s$mod_weights[model, "wi"])
 }
 
 test_that("summary() defaults to the divergence cutoff of check_sampling()", {
   cutoff <- formals(check_sampling)$divergence_cutoff
-  for (cls in c("bayesnecfit", "bayesmanecfit")) {
+  expect_identical(cutoff, 0.00125)
+  for (cls in c("bayesnecfit", "bayesmanecfit", "bayesnecjointfit")) {
     expect_identical(formals(getS3method("summary", cls))$divergence_cutoff,
                      cutoff)
+  }
+  for (cls in c("bayesnecfit", "bayesmanecfit", "bayesnechurdlefit",
+                "bayesnecgroupfit", "bayesnecjointfit")) {
+    expect_identical(
+      formals(getS3method("check_sampling", cls))$divergence_cutoff, cutoff
+    )
   }
   expect_identical(formals(screen_models)$divergence_cutoff, cutoff)
 })
 
+# Each fit of manec_example retains 2,400 draws, so the default cutoff of
+# 0.00125 passes 3 divergent transitions and fails 4.
 test_that("summary() reports the divergences of every model in a set", {
   local_divergences(c(nec4param = 3, ecx4param = 0))
   s <- summarise(manec_example, rhat_cutoff = 99)
   expect_equal(s$divergences, c(nec4param = 3, ecx4param = 0))
-  expect_equal(s$divergence_cutoff, 10)
+  expect_equal(s$divergence_draws, c(nec4param = 2400, ecx4param = 2400))
+  expect_equal(s$divergence_cutoff, 0.00125)
   out <- print_summary(s)
   i <- grep("Divergent transitions after warmup", out$printed, fixed = TRUE)
   expect_length(i, 1)
@@ -301,11 +314,13 @@ test_that("a model over the divergence cutoff is named in the summary warning", 
   s <- summarise(manec_example, rhat_cutoff = 99)
   out <- print_summary(s)
   expect_length(out$warnings, 1)
-  expect_match(out$warnings, "Divergent transitions > 10", fixed = TRUE)
+  expect_match(out$warnings, "Divergent transitions > 0.125% of draws",
+               fixed = TRUE)
   # A literal weight, so that a lookup returning the wrong equation's weight
   # fails here.
   expect_match(out$warnings, paste0(
-    "(see ?check_sampling):\n  -  ecx4param (14, model weight 0.17)\n",
+    "(see ?check_sampling):\n",
+    "  -  ecx4param (14, 0.58% of 2400 draws, model weight 0.17)\n",
     "Consider dropping"
   ), fixed = TRUE)
   expect_no_match(out$warnings, "nec4param", fixed = TRUE)
@@ -313,11 +328,11 @@ test_that("a model over the divergence cutoff is named in the summary warning", 
 })
 
 test_that("the summary flags the models check_sampling() fails on divergences", {
-  # 10 is not flagged and 11 is: both compare with >.
-  local_divergences(c(nec4param = 10, ecx4param = 11))
+  # 3 of 2,400 draws is not flagged and 4 is: both compare with >.
+  local_divergences(c(nec4param = 3, ecx4param = 4))
   s <- summarise(manec_example, rhat_cutoff = 99)
   w <- print_summary(s)$warnings
-  expect_match(w, flagged_line(s, "ecx4param", 11), fixed = TRUE)
+  expect_match(w, flagged_line(s, "ecx4param", 4), fixed = TRUE)
   expect_no_match(w, "nec4param", fixed = TRUE)
   tab <- check_sampling(manec_example, rhat_cutoff = 99, ess_cutoff = 0)
   expect_equal(tab$model[tab$failed], "ecx4param")
@@ -325,40 +340,74 @@ test_that("the summary flags the models check_sampling() fails on divergences", 
 
 test_that("summary() honours a supplied divergence cutoff", {
   local_divergences(c(nec4param = 3, ecx4param = 14))
-  s <- summarise(manec_example, rhat_cutoff = 99, divergence_cutoff = 2)
-  expect_equal(s$divergence_cutoff, 2)
+  s <- summarise(manec_example, rhat_cutoff = 99, divergence_cutoff = 0.001)
+  expect_equal(s$divergence_cutoff, 0.001)
   w <- print_summary(s)$warnings
-  expect_match(w, "Divergent transitions > 2", fixed = TRUE)
+  expect_match(w, "Divergent transitions > 0.1% of draws", fixed = TRUE)
   expect_match(w, flagged_line(s, "nec4param", 3), fixed = TRUE)
   expect_match(w, flagged_line(s, "ecx4param", 14), fixed = TRUE)
+  s <- summarise(manec_example, rhat_cutoff = 99, divergence_cutoff = Inf)
+  expect_length(print_summary(s)$warnings, 0)
   expect_error(summary(manec_example, divergence_cutoff = c(1, 2)))
   expect_error(summary(nec4param, divergence_cutoff = "10"))
+  expect_error(summary(manec_example, divergence_cutoff = 10),
+               "10 divergent transitions of 8,000 draws is 0.00125",
+               fixed = TRUE)
+  expect_error(summary(joint_split(), divergence_cutoff = 10),
+               "10 divergent transitions of 8,000 draws is 0.00125",
+               fixed = TRUE)
 })
 
 test_that("a single fit reports its divergences under the cutoff", {
-  local_divergences(4)
+  local_divergences(3)
   s <- summarise(nec4param)
-  expect_equal(s$divergences, c(nec4param = 4))
-  expect_equal(s$divergence_cutoff, 10)
+  expect_equal(s$divergences, c(nec4param = 3))
+  expect_equal(s$divergence_draws, c(nec4param = 2400))
+  expect_equal(s$divergence_cutoff, 0.00125)
   out <- print_summary(s)
-  expect_true("Divergent transitions after warmup: 4" %in% out$printed)
+  expect_true("Divergent transitions after warmup: 3" %in% out$printed)
   expect_length(out$warnings, 0)
-  s <- summarise(nec4param, divergence_cutoff = 3)
-  expect_equal(s$divergence_cutoff, 3)
-  expect_match(print_summary(s)$warnings, "nec4param (4)", fixed = TRUE)
+  s <- summarise(nec4param, divergence_cutoff = 0.001)
+  expect_equal(s$divergence_cutoff, 0.001)
+  expect_match(print_summary(s)$warnings,
+               "nec4param (3, 0.12% of 2400 draws)", fixed = TRUE)
 })
 
 test_that("a single fit over the divergence cutoff is flagged", {
   local_divergences(12)
-  out <- print_summary(summarise(nec4param))
+  s <- summarise(nec4param)
+  out <- print_summary(s)
   expect_true("Divergent transitions after warmup: 12" %in% out$printed)
   expect_length(out$warnings, 1)
-  expect_match(out$warnings, "nec4param (12)", fixed = TRUE)
+  expect_match(out$warnings, "Divergent transitions > 0.125% of draws",
+               fixed = TRUE)
+  expect_match(out$warnings, "nec4param (12, 0.5% of 2400 draws)",
+               fixed = TRUE)
   expect_match(out$warnings, "adapt_delta", fixed = TRUE)
 })
 
-test_that("a divergence failure beside a control mis-fit gives both advices", {
+test_that("a summary stored before the draws were recorded compares counts", {
+  # Its divergence_cutoff was a count, so the count is compared with it.
   local_divergences(c(nec4param = 3, ecx4param = 14))
+  s <- summarise(manec_example, rhat_cutoff = 99)
+  s$divergence_draws <- NULL
+  s$divergence_cutoff <- 10
+  w <- print_summary(s)$warnings
+  expect_length(w, 1)
+  expect_match(w, "Divergent transitions > 10 (see ?check_sampling)",
+               fixed = TRUE)
+  expect_match(w, sprintf("ecx4param (14, model weight %.2f)",
+                          s$mod_weights["ecx4param", "wi"]), fixed = TRUE)
+  expect_no_match(w, "nec4param", fixed = TRUE)
+  local_divergences(3)
+  single <- summarise(nec4param)
+  single$divergence_draws <- NULL
+  single$divergence_cutoff <- 2
+  expect_match(print_summary(single)$warnings, "nec4param (3)", fixed = TRUE)
+})
+
+test_that("a divergence failure beside a control mis-fit gives both advices", {
+  local_divergences(c(nec4param = 0, ecx4param = 14))
   s <- summarise(manec_example, rhat_cutoff = 99)
   s$fit_issues <- list(nec4param = TRUE, ecx4param = FALSE)
   w <- print_summary(s)$warnings
@@ -377,24 +426,26 @@ test_that("a grouped summary reports divergences at each level", {
   )
   s <- suppressWarnings(suppressMessages(
     summary(grouped, check_fit = FALSE, rhat_cutoff = 99,
-            divergence_cutoff = 5)
+            divergence_cutoff = 0.05)
   ))
   expect_named(s, c("a", "b"))
   for (lvl in s) {
     expect_equal(lvl$divergences, c(nec4param = 3, ecx4param = 14))
-    expect_equal(lvl$divergence_cutoff, 5)
+    expect_equal(lvl$divergence_cutoff, 0.05)
   }
 })
 
 test_that("a summary stored before divergences were recorded still prints", {
   s <- summarise(manec_example, rhat_cutoff = 99)
   s$divergences <- NULL
+  s$divergence_draws <- NULL
   s$divergence_cutoff <- NULL
   out <- print_summary(s)
   expect_false(any(grepl("Divergent", out$printed)))
   expect_length(out$warnings, 0)
   single <- summarise(nec4param)
   single$divergences <- NULL
+  single$divergence_draws <- NULL
   single$divergence_cutoff <- NULL
   out <- print_summary(single)
   expect_false(any(grepl("Divergent", out$printed)))
@@ -415,4 +466,19 @@ test_that("a model not sampled by NUTS reports NA and is not flagged", {
   out <- print_summary(summarise(single))
   expect_true("Divergent transitions after warmup: NA" %in% out$printed)
   expect_length(out$warnings, 0)
+})
+
+test_that("summary() warns of the relative rename once", {
+  skip_on_cran()
+  n <- 0
+  withCallingHandlers(
+    invisible(summary(nec4param, ecx = TRUE, ecx_vals = c(10, 50, 90),
+                      type = "relative")),
+    warning = function(w) {
+      if (grepl("now measures", conditionMessage(w))) n <<- n + 1
+      invokeRestart("muffleWarning")
+    },
+    message = function(m) invokeRestart("muffleMessage")
+  )
+  expect_equal(n, 1)
 })

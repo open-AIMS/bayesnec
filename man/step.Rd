@@ -20,3 +20,8 @@ step
 This function is currently exported to allow for non-linear
 formula evaluation in brms.
 }
+\examples{
+library(bayesnec)
+step(c(-1, 0, 2))
+
+}

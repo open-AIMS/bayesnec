@@ -38,7 +38,7 @@ test_that("check_priors on a model set restores the page prompt it set", {
 })
 
 test_that("check_priors restores the prompt and closes its PDF on an error", {
-  local_mocked_bindings(pull_out = function(...) stop("drawing failed"),
+  local_mocked_bindings(prior_posterior_plot = function(...) stop("drawing failed"),
                         .package = "bayesnec")
   pdf(NULL)
   screen <- dev.cur()

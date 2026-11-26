@@ -835,7 +835,7 @@ test_that("amend() computes the estimates with the arguments the set records", {
                    expand_record(sig_val = 0.01))
   # An object that records none takes the bnec() defaults, and records them.
   # A model set that records no leave_out was scored by observation.
-  out <- q(amend(manec_example, drop = "nec4param"))
+  out <- q(amend(legacy_fit(manec_example), drop = "nec4param"))
   expect_equal(out$ne_posterior, defaults$ne_posterior)
   expect_identical(attr(out, "bnec_expand_args"),
                    default_expand_record(leave_out = "observation"))
@@ -885,7 +885,7 @@ test_that("update records supplied settings on a fit saved without a call", {
   )
   obj <- amend_fixture(validate_family("gaussian"))
   ctrl <- list(adapt_delta = 0.97, max_treedepth = 12)
-  updated <- update.bnecfit(obj, control = ctrl, seed = 19)
+  updated <- update.bayesnecfit(obj, control = ctrl, seed = 19)
   expect_identical(updated$call_args,
                    list(model_survival = NULL, control = ctrl, seed = 19))
   amended <- fit_inputs(amend(updated, add = "nec4param"))
@@ -893,10 +893,10 @@ test_that("update records supplied settings on a fit saved without a call", {
   expect_identical(amended$calls[[1]]$control, ctrl)
   expect_identical(amended$calls[[1]]$seed, 19)
 
-  unchanged <- update.bnecfit(obj)
+  unchanged <- update.bayesnecfit(obj)
   expect_identical(unchanged$call_args,
                    list(model_survival = NULL, control = NULL, seed = NULL))
-  reset <- update.bnecfit(updated, seed = NULL)
+  reset <- update.bayesnecfit(updated, seed = NULL)
   expect_null(reset$call_args$seed)
   expect_identical(reset$call_args$control, ctrl)
 })
@@ -911,7 +911,7 @@ test_that("update recovers a legacy set's shared survival equation", {
   )
   d <- hurdle_data()
   fam <- validate_family("hurdle_gamma")
-  obj <- manec_example
+  obj <- legacy_fit(manec_example)
   for (model in names(obj$mod_fits)) {
     fit <- obj$mod_fits[[model]]
     fit$fit$data <- d
@@ -922,7 +922,7 @@ test_that("update recovers a legacy set's shared survival equation", {
     )
     obj$mod_fits[[model]] <- fit
   }
-  updated <- update.bnecfit(obj, seed = 19)
+  updated <- update.bayesmanecfit(obj, seed = 19)
   for (fit in updated$mod_fits) {
     expect_identical(fit$call_args,
                      list(model_survival = "nec4param", control = NULL,
@@ -946,7 +946,7 @@ test_that("amend preserves a legacy survival equation after dropping models", {
   )
   d <- hurdle_data()
   fam <- validate_family("hurdle_gamma")
-  obj <- manec_example
+  obj <- legacy_fit(manec_example)
   for (model in names(obj$mod_fits)) {
     fit <- obj$mod_fits[[model]]
     fit$fit$data <- d
@@ -1019,8 +1019,37 @@ test_that("update records only settings brms reuses after backend or algorithm c
   }
   legacy <- obj
   legacy$fit$backend <- NULL
-  legacy$fit$version$brms <- package_version("2.13.1")
+  legacy$fit$version$brms <- package_version("2.21.0")
   legacy$fit$version$restructure <- NULL
   updated <- stats::update(legacy, recompile = TRUE)
   expect_identical(updated$call_args, obj$call_args)
+})
+
+test_that("amend() refuses a sig_val outside (0, 1) before recomputing", {
+  expect_error(amend(manec_example, sig_val = 2),
+               "`sig_val` must be one number strictly between 0 and 1",
+               fixed = TRUE)
+  expect_error(amend(manec_example, sig_val = c(0.01, 0.02)),
+               "`sig_val` must be one number strictly between 0 and 1",
+               fixed = TRUE)
+})
+
+test_that("amend() refuses a name in drop or add that is no equation", {
+  msg <- "\"necfoo\" is not an equation that bayesnec fits"
+  expect_error(amend(manec_example, drop = "necfoo"), msg, fixed = TRUE)
+  expect_error(amend(manec_example, add = c("necfoo", "ecxlin")), msg,
+               fixed = TRUE)
+  # A bayesnecfit names the remedy without the removed model argument.
+  single <- suppressMessages(pull_out(manec_example, model = "nec4param"))
+  err <- expect_error(amend(single, drop = "nec4param"),
+                      "naming the equation in crf()", fixed = TRUE)
+  expect_no_match(conditionMessage(err), "model = ")
+})
+
+test_that("amend() refuses a reversed, partial or over-long x_range", {
+  for (bad in list(c(10, 0), c(0, 1, 2), c(0, NA))) {
+    expect_error(amend(manec_example, x_range = bad),
+                 "`x_range` must be NA, or two finite numbers in",
+                 fixed = TRUE)
+  }
 })

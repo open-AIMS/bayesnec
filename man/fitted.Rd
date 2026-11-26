@@ -88,6 +88,10 @@ object is of class \code{\link{bayesnecfit}}, or to
 }
 \value{
 See \code{?brms:fitted.brmsfit}.
+
+For a \code{bayesnecfit}, a matrix with one row per prediction
+point and columns for the estimate, error and requested quantiles; with
+\code{summary = FALSE}, a draws-by-point matrix.
 }
 \description{
 Generates mean posterior linear predictions for objects fitted by

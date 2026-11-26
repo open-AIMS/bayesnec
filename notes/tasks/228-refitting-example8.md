@@ -14,7 +14,7 @@ defaults that followed review.
 
 ## The current source
 
-`vignettes/example8.Rmd.orig` is an introduction to the three group-level
+`vignettes/articles/example8.Rmd.orig` is an introduction to the three group-level
 syntaxes followed by three case studies, one per dataset. Every figure is on a
 log concentration axis. The two coral endpoints are fitted on
 `crf(log(diuron_adj), ...)`, where `diuron_adj` substitutes 0.1 µg/L for the
@@ -114,7 +114,7 @@ the herbicide call to Stan's 0.8.
 
 ## The log-axis run
 
-`vignettes/example8.Rmd.orig` draws every figure on a log concentration axis
+`vignettes/articles/example8.Rmd.orig` draws every figure on a log concentration axis
 and fits the two coral endpoints on `crf(log(diuron_adj), ...)`. Six of the
 nine fit calls were already on `crf(log(...))` and are unchanged. The
 `lum31` and `herbicide` datasets contain no zero concentration; `coral_colour`

@@ -7,6 +7,8 @@
 #' @inheritParams compare_posterior
 #' @param x A named \code{\link[base]{list}} of
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} objects.
+#' @param resolution The number of grid points each curve is read over.
+#' Defaults to 500, as in \code{\link{ecx}} and \code{\link{nsec}}.
 #' 
 #' @importFrom chk chk_numeric chk_number
 #'
@@ -48,12 +50,12 @@
 #' applies to every comparison type. An ECx or NSEC draw whose curve does not
 #' reach the target is such a draw, and so is a threshold equation's
 #' \code{nec} draw above the prediction range, which is sampled and has a
-#' number but is reported by \code{\link{nec}} as a bound. Under "nec" and
-#' "n(s)ec", \code{posterior_list} and \code{posterior_data} still hold that
-#' sampled value, as \code{\link{nec}} returns it with \code{posterior = TRUE}.
-#' The \code{"censored"} attribute of \code{posterior_list} marks the draw and
-#' \code{posterior_data} does not, so a value there beyond the prediction range
-#' is not an identified estimate.
+#' number but is reported by \code{\link{nec}} as a bound. In
+#' \code{posterior_list} and \code{posterior_data} such a draw is \code{Inf}
+#' above the range and \code{-Inf} below it, as the estimator returns it with
+#' \code{posterior = TRUE}. The \code{"censored"} attribute of
+#' \code{posterior_list} records the bounds, and \code{posterior_data} holds
+#' only the infinite value.
 #'
 #' The comparison does not delete these draws. For many pairs the censoring
 #' record fixes the sign of the difference whatever the censored value is: a
@@ -141,11 +143,10 @@
 #' @export
 compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
                               type = "absolute",
-                              sig_val = 0.01, resolution = 100, x_range = NA,
+                              sig_val = 0.01, resolution = 500, x_range = NA,
                               seed = 10) {
-  if ((comparison %in% c("nec", "n(s)ec", "ecx", "nsec")) == FALSE) {
-    stop("comparison must be one of nec, n(s)ec, ecx or nsec.")
-  }
+  check_comparison_list(x)
+  check_comparison_choice(comparison, c("nec", "n(s)ec", "ecx", "nsec"))
   chk_numeric(ecx_val)
   # Use ecx()'s validator rather than a copy of the type vocabulary, which
   # would fall out of step with it.
@@ -165,6 +166,16 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   # Every comparison type takes the estimators' default, the recorded scale,
   # so that fits with different crf() transformations are compared on one.
   if (comparison == "nec") {
+    smooth <- vapply(x, function(fit) {
+      inherits(fit, "bayesnecfit") && !has_nec_parameter(fit$model, fit$fit)
+    }, logical(1))
+    if (any(smooth)) {
+      stop("comparison = \"nec\" needs a nec parameter in every fit, and ",
+           paste0("\"", names(x)[smooth], "\"", collapse = ", "),
+           " fit(s) a smooth equation. Use comparison = \"n(s)ec\" to",
+           " compare the no-effect estimate each fit's equation supports.",
+           call. = FALSE)
+    }
     posterior_list <- lapply(x, nec, posterior = TRUE)
   }
   if (comparison == "n(s)ec") {

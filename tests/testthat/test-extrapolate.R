@@ -167,7 +167,8 @@ test_that("TRUE returns the posterior a truncated grid had censored", {
   censored <- suppressWarnings(nec(fit))
   # Every draw of this posterior lies above the cut, so the default reports the
   # bound at every entry and states the fraction.
-  expect_equal(attr(censored, "censored_summary")$n_above, 100L)
+  expect_equal(attr(censored, "censored_summary")$n_above,
+               length(fit$ne_posterior))
   expect_true(all(as.numeric(censored) == 0.9))
   released <- suppressMessages(suppressWarnings(nec(fit, extrapolate = TRUE)))
   expect_null(attr(released, "censored_summary"))
@@ -188,7 +189,7 @@ test_that("a finite limit censors at the limit and not at the grid", {
   cens <- attr(part, "censored_summary")
   expect_equal(cens$upper, 1.45)
   expect_gt(cens$n_above, 0)
-  expect_lt(cens$n_above, 100)
+  expect_lt(cens$n_above, length(fit$ne_posterior))
   # The fraction falls as the limit rises, and the reported entries that are
   # bounds are the limit itself.
   expect_lt(cens$n_above, attr(suppressWarnings(nec(fit)),
@@ -457,6 +458,15 @@ test_that("a draw with no value is refused rather than dropped in silence", {
   expect_error(
     suppressMessages(
       bayesnec:::extrapolated_manec_ne(m, lims, bounds, 0.01, 200)
+    ),
+    "has no value for 2 of"
+  )
+  # A curve-read draw with no value is stored as Inf or -Inf.
+  post[c(5, 11)] <- c(Inf, -Inf)
+  expect_error(
+    suppressMessages(
+      bayesnec:::extrapolated_manec_ne(pure_nec_stub(post), lims, bounds,
+                                       0.01, 200)
     ),
     "has no value for 2 of"
   )

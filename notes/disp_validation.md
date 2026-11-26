@@ -67,6 +67,17 @@ Two ways it bit during this exercise:
    | `crf(dose, "nec4param")` | 0.2115 | 96.0 |
    | `crf(logdose, "nec4param")` | **0.0676** | **148.8** |
 
+   Rerun on the release build (3.0.0, `nec4param`, `gaussian()`, constant
+   dispersion, `bnec(seed = 1)`, 4 chains of 2000 iterations), these two rows did
+   not reproduce. On `c_proliferum` × A the raw dose gave a maximum difference
+   in the group means of 0.0679 and `elpd_loo` 148.9, which are the values
+   recorded above for `logdose`. Two definitions of `logdose` (control
+   dropped; control set to half the smallest nonzero dose) gave
+   0.0693 (elpd 105.5, on 65 observations), 0.0690 (149.8) and no value near
+   0.2115 or 96.0. The other three groups also gave no pair of values near the
+   table. The 1.2 `elpd_loo` spread was not tested. The definition of `logdose`
+   used in the original session was not recorded.
+
    The choice of *equation* barely matters by comparison — on `log(dose)`,
    `nec4param`, `ecx4param`, `ecxwb1`, `ecxll4` and `nechorme4` all land within
    1.2 elpd of one another.

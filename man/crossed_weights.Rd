@@ -30,3 +30,14 @@ objective whose solution is not generally an outer product; obtaining stacked
 crossed weights requires building the full pointwise matrix and is not done
 here.
 }
+\examples{
+\dontrun{
+library(bayesnec)
+data(nec_data)
+# code a few individuals as having died
+nec_data$y[nec_data$x > 2.5] <- 0
+fit <- bnec_hurdle(y ~ crf(x, c("nec3param", "ecx4param")), data = nec_data)
+crossed_weights(fit)
+}
+
+}

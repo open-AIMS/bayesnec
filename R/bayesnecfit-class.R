@@ -31,14 +31,11 @@
 #' spans concentrations, the summaries describe the population curve, and the
 #' flags \code{observed_levels} and \code{band = "population"} record that
 #' the no-effect summaries read the observed levels and the band does not.
-#' Up to and including version 2.1.3.6 it also held \code{posterior}, the full
-#' \code{n_draws x resolution} matrix those summaries came from. That matrix
-#' dominated the size of a fitted object and is no longer stored; it is
-#' recomputed from \code{fit} where it is needed. To obtain it directly, use
+#' It does not hold the matrix of draws those summaries came from, which is
+#' recomputed from \code{fit} where it is needed. To obtain it, use
 #' \code{posterior_epred(x, newdata = bnec_newdata(x, resolution = 1000),
-#' re_formula = NA)}. A fit saved by an earlier development version without
-#' both flags retains its earlier values and gives a warning when they are
-#' displayed.
+#' re_formula = NA)}. A fit saved by an earlier version without both flags
+#' retains its earlier values and gives a warning when they are displayed.
 #' @slot top The estimate for parameter "top" in the fitted model.
 #' @slot beta The estimate for parameter "beta" in the fitted model.
 #' @slot ne The no-effect estimate, a NEC for a monotone threshold equation
@@ -56,7 +53,12 @@
 #' @slot dispersion An estimate of dispersion.
 #' @slot predicted_y The predicted values for the observed data.
 #' @slot residuals Residual values of the observed data from the fitted model.
-#' @slot ne_posterior The posterior of that no-effect estimate.
+#' @slot ne_posterior The posterior of that no-effect estimate, one value per
+#' draw. Attribute \code{"censored"} records the draws that lie beyond either
+#' end of the prediction range; a summary keeps their rank and gives them no
+#' value. A draw read off the curve there is stored as \code{Inf} above the
+#' range and \code{-Inf} below it, the form in which \code{\link{nec}} and
+#' \code{\link{nsec}} return a censored draw with \code{posterior = TRUE}.
 #' @slot ne_type A \code{\link[base]{character}} vector indicating the type of
 #' no-effect toxicity estimate. A monotone threshold equation contributes its
 #' sampled no-effect-concentration (\code{NEC}, see Fox 2010). A smooth or
@@ -78,7 +80,7 @@
 #' doi:10.18637/jss.v110.i05.
 #' 
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
-#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028. 
 #' doi: 10.1002/etc.5610.
 #'
 #' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -87,7 +89,7 @@
 #' 
 #' Fox DR (2010). A Bayesian Approach for Determining the No Effect
 #' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-#' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+#' and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 #'
 NULL
 

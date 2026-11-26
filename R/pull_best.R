@@ -7,54 +7,27 @@
 #'
 #' @param object An object of class \code{\link{bayesnecfit}},
 #' \code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}} as returned by
-#' \code{\link{bnec}}.
-#' @param ... Not used. Any argument supplied here is refused; see Details.
+#' \code{\link{bnec}}, or of class \code{\link{bayesnecjointfit}} as returned
+#' by \code{\link{bnec_joint}}, or of class
+#' \code{\link{bayesnecgroupfit}} as returned by \code{\link{bnec_group}}.
+#' @param ... Refused except for \code{level} on a grouped fit.
 #'
 #' @details The highest-weighted candidate contributes most to the
 #' model-averaged estimate, so its fit is the one normally inspected with
-#' \code{\link{pp_check}} and \code{\link{check_fit}}. Selecting it by hand
-#' requires two things that are not obvious. The weights are held in
-#' \code{mod_stats} and \code{\link{pull_out}} takes a model name, so the name
-#' has to be found before it can be passed; and \code{mod_stats} exists on a
-#' \code{\link{bayesmanecfit}} alone, so the same code applied to a set that
-#' \code{\link{screen_models}} has reduced to one equation --- which is returned
-#' as a \code{\link{bayesnecfit}} --- reads a \code{NULL}. Both cases reach the
-#' same result here.
+#' \code{\link{pp_check}} and \code{\link{check_fit}}.
 #'
-#' The weight selected on is reported along with the number of candidates it was
-#' selected from, since the two together are what says whether the selection
-#' means anything. The highest weight of a flat set of ten candidates is little
-#' more than the equal share of 0.1, and one such candidate describes the
-#' model-averaged estimate hardly at all. No warning is raised against a
-#' threshold, because what counts as a small weight depends on the size of the
-#' set, and a cut placed anywhere would be either noise on a set of two or false
-#' comfort on a set of twenty. \code{\link{summary}} reports the whole weights
-#' table, which is what a judgement of a marginal case needs.
+#' The weight selected on is reported with the number of candidates it was
+#' selected from: the highest weight of a flat set of ten candidates is little
+#' more than the equal share of 0.1. No threshold is applied;
+#' \code{\link{summary}} prints the whole weights table. Where two or more
+#' candidates hold exactly the same highest weight, the first in the order of
+#' the set is returned and the tie is reported.
 #'
-#' Where two or more candidates hold exactly the same highest weight, the first
-#' in the order of the set is returned and the tie is reported. Only exact ties
-#' are detected; two weights differing in the last decimal place are not a tie
-#' and the larger is taken.
-#'
-#' The object is the only argument. This function selects a model rather than
-#' re-specifying a fit, so \code{x_range}, \code{resolution}, \code{sig_val}
-#' and \code{loo_controls} are not accepted and are refused rather than
-#' ignored: honouring them on the \code{\link{bayesmanecfit}} branch, where
-#' \code{\link{pull_out}} rebuilds the fit, and ignoring them on the
-#' \code{\link{bayesnecfit}} branch, where nothing is rebuilt, would make the
-#' returned object depend on the class the caller was told not to test for.
-#' \code{\link{pull_out}} takes them alongside a model name, and
-#' \code{\link{amend}} rebuilds a fit that already exists.
-#'
-#' Which equation was selected is reported on both branches, including the
-#' pass-through, so that a workflow leaves the same record whether or not the
-#' set had been reduced to one equation before the call. \code{suppressMessages}
-#' silences it.
-#'
-#' The refusal of \code{...} is raised in the generic, before dispatch, so a
-#' method written for another class outside this package cannot take an
-#' argument of its own either. \code{\link{screen_models}} and
-#' \code{\link{amend}} are closed to extension in the same way.
+#' On an ordinary, hurdle or joint fit, any other argument is refused. To rebuild a fit
+#' at a different \code{x_range}, \code{resolution}, \code{sig_val} or
+#' \code{loo_controls}, use \code{\link{pull_out}} with a model name, or
+#' \code{\link{amend}}. The selected equation is reported for a
+#' \code{\link{bayesnecfit}} as well; \code{suppressMessages} silences it.
 #'
 #' A \code{\link{bayesnechurdlefit}} is handled one component at a time and
 #' rewrapped, as \code{\link{screen_models}} and \code{\link{amend}} already do
@@ -65,7 +38,13 @@
 #' @return For a \code{\link{bayesmanecfit}}, an object of class
 #' \code{\link{bayesnecfit}}. For a \code{\link{bayesnecfit}}, \code{object}
 #' unchanged. For a \code{\link{bayesnechurdlefit}}, an object of the same class
-#' with each component reduced to its own highest-weighted model.
+#' with each component reduced to its own highest-weighted model. For a
+#' \code{\link{bayesnecjointfit}}, \code{object} unchanged, because each level
+#' already has a single equation, the one its own model weights favoured
+#' when \code{\link{bnec_joint}} chose it. For a
+#' \code{\link{bayesnecgroupfit}}, a named list of selected
+#' \code{\link{bayesnecfit}} objects by level, or one such fit when
+#' \code{level} names a level.
 #'
 #' @seealso \code{\link{pull_out}}, \code{\link{screen_models}},
 #' \code{\link{check_fit}}, \code{\link{summary}}
@@ -82,10 +61,11 @@
 #'
 #' @export
 pull_best <- function(object, ...) {
-  # Refuse `...` in the generic, before dispatch, so that the refusal cannot
-  # depend on the class or follow the selection report. A `model` argument
-  # would otherwise fail in pull_out() as "matched by multiple actual
-  # arguments".
+  UseMethod("pull_best")
+}
+
+#' @noRd
+refuse_pull_best_dots <- function(...) {
   if (...length() > 0) {
     supplied <- ...names()
     supplied <- supplied[nzchar(supplied)]
@@ -98,21 +78,22 @@ pull_best <- function(object, ...) {
          " instead; and rebuild a fit at a different x_range, resolution,",
          " sig_val or loo_controls with ?pull_out or ?amend.", call. = FALSE)
   }
-  UseMethod("pull_best")
+  invisible(NULL)
 }
 
 #' @noRd
 #' @export
 pull_best.default <- function(object, ...) {
-  stop("pull_best() applies to an object of class bayesnecfit, bayesmanecfit",
-       " or bayesnechurdlefit, as returned by bnec(). A bayesnecgroupfit holds",
-       " one such fit per level in `fits`; select on each of those.",
+  refuse_pull_best_dots(...)
+  stop("pull_best() applies to a fit of class bayesnecfit, bayesmanecfit,",
+       " bayesnechurdlefit, bayesnecgroupfit or bayesnecjointfit.",
        call. = FALSE)
 }
 
 #' @noRd
 #' @export
 pull_best.bayesnecfit <- function(object, ...) {
+  refuse_pull_best_dots(...)
   # Not a usage error: screen_models() returns a bayesnecfit when one equation
   # is left, and this saves the caller testing the class. Report it anyway, so
   # that the record of the selection does not depend on the branch.
@@ -123,7 +104,20 @@ pull_best.bayesnecfit <- function(object, ...) {
 
 #' @noRd
 #' @export
+pull_best.bayesnecjointfit <- function(object, ...) {
+  refuse_pull_best_dots(...)
+  models <- vapply(object$levels, joint_level_model, character(1),
+                   object = object, USE.NAMES = FALSE)
+  message("Each level of this joint refit has one equation (",
+          paste0(object$levels, " = ", models, collapse = ", "),
+          "); returning it unchanged.")
+  object
+}
+
+#' @noRd
+#' @export
 pull_best.bayesmanecfit <- function(object, ...) {
+  refuse_pull_best_dots(...)
   model <- best_weighted_model(object$mod_stats)
   # Delegate to pull_out(), which rebuilds the weighted quantities and copies
   # the record of failed models. It returns a bayesnecfit for every set the
@@ -134,6 +128,7 @@ pull_best.bayesmanecfit <- function(object, ...) {
 #' @noRd
 #' @export
 pull_best.bayesnechurdlefit <- function(object, ...) {
+  refuse_pull_best_dots(...)
   # Label each component's report. The components hold different candidate
   # sets, so they often select different equations.
   message("Growth component:")

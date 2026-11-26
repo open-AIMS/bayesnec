@@ -28,7 +28,9 @@ hurdle_no_combined <- function(what) {
 #' @param x_range A range of predictor values to predict over.
 #' @param newdata An optional \code{\link[base]{data.frame}} of predictor
 #' values. When supplied, \code{resolution} and \code{x_range} are ignored.
-#' @param ... Unused.
+#' @param re_formula Optional group-effects setting passed to both components.
+#' @param ... Passed to each component posterior method, including
+#' \code{ndraws} and \code{draw_ids}.
 #'
 #' @details The combined curve is the product of the growth curve and the
 #' probability of survival, i.e. the expected response per individual
@@ -48,16 +50,21 @@ hurdle_no_combined <- function(what) {
 #' @export
 posterior_epred.bayesnechurdlefit <- function(object, which = "combined",
                                               resolution = 1000, x_range = NA,
-                                              newdata = NULL, ...) {
+                                              newdata = NULL,
+                                              re_formula = NULL, ...) {
   which <- hurdle_check_which(which)
   if (is.null(newdata)) {
     return(hurdle_component_preds(object, resolution = resolution,
-                                  x_range = x_range)[[which]])
+                                  x_range = x_range,
+                                  re_formula = re_formula, ...)[[which]])
   }
   # Use a supplied grid as given: a caller such as compare_fitted() pairs its
   # columns with its own x vector. Both components share the predictor term.
-  g <- posterior_epred(object$growth, newdata = newdata, re_formula = NA)
-  s <- posterior_epred(object$survival, newdata = newdata, re_formula = NA)
+  re_formula <- if (is.null(re_formula)) NA else re_formula
+  g <- posterior_epred(object$growth, newdata = newdata,
+                       re_formula = re_formula, ...)
+  s <- posterior_epred(object$survival, newdata = newdata,
+                       re_formula = re_formula, ...)
   n <- min(nrow(g), nrow(s))
   g <- g[seq_len(n), , drop = FALSE]
   s <- s[seq_len(n), , drop = FALSE]
@@ -93,7 +100,7 @@ fitted.bayesnechurdlefit <- function(object, which = "combined",
   chk_lgl(robust)
   chk_numeric(probs)
   preds <- posterior_epred(object, which = which, resolution = resolution,
-                           x_range = x_range)
+                           x_range = x_range, ...)
   if (!summary) {
     return(preds)
   }
@@ -105,7 +112,7 @@ fitted.bayesnechurdlefit <- function(object, which = "combined",
 #' Generates posterior draws of the response for a
 #' \code{\link{bayesnechurdlefit}}
 #'
-#' @inheritParams fitted.bayesnechurdlefit
+#' @inheritParams posterior_epred.bayesnechurdlefit
 #'
 #' @details For \code{which = "combined"} this simulates from the two-part
 #' process itself rather than summarising a mean curve: a survival outcome is
@@ -123,19 +130,30 @@ fitted.bayesnechurdlefit <- function(object, which = "combined",
 #' @export
 posterior_predict.bayesnechurdlefit <- function(object, which = "combined",
                                                 resolution = 1000,
-                                                x_range = NA, ...) {
+                                                x_range = NA, newdata = NULL,
+                                                re_formula = NA, ...) {
   which <- hurdle_check_which(which)
-  nd <- hurdle_newdata_pair(object, resolution = resolution, x_range = x_range)
+  nd <- if (is.null(newdata)) {
+    hurdle_newdata_pair(object, resolution = resolution, x_range = x_range)
+  } else {
+    if (!is.data.frame(newdata)) {
+      stop("newdata for a bayesnechurdlefit must be a data frame.",
+           call. = FALSE)
+    }
+    list(growth = newdata, survival = newdata)
+  }
   if (which == "growth") {
     return(posterior_predict(object$growth, newdata = nd$growth,
-                             re_formula = NA))
+                             re_formula = re_formula, ...))
   }
   if (which == "survival") {
     return(posterior_predict(object$survival, newdata = nd$survival,
-                             re_formula = NA))
+                             re_formula = re_formula, ...))
   }
-  g <- posterior_predict(object$growth, newdata = nd$growth, re_formula = NA)
-  s <- posterior_epred(object$survival, newdata = nd$survival, re_formula = NA)
+  g <- posterior_predict(object$growth, newdata = nd$growth,
+                         re_formula = re_formula, ...)
+  s <- posterior_epred(object$survival, newdata = nd$survival,
+                       re_formula = re_formula, ...)
   n <- min(nrow(g), nrow(s))
   g <- g[seq_len(n), , drop = FALSE]
   s <- s[seq_len(n), , drop = FALSE]
@@ -162,7 +180,7 @@ predict.bayesnechurdlefit <- function(object, which = "combined",
                                       probs = c(0.025, 0.975), ...) {
   chk_lgl(summary)
   preds <- posterior_predict(object, which = which, resolution = resolution,
-                             x_range = x_range)
+                             x_range = x_range, ...)
   if (!summary) {
     return(preds)
   }
@@ -204,6 +222,7 @@ hurdle_newdata_pair <- function(object, resolution = 1000, x_range = NA) {
 #' @param x An object of class \code{\link{bayesnechurdlefit}}.
 #' @param resolution The number of unique predictor values.
 #' @param x_range A range of predictor values.
+#' @param ... Unused; other arguments are refused.
 #'
 #' @return A \code{\link[base]{data.frame}}.
 #'
@@ -211,7 +230,8 @@ hurdle_newdata_pair <- function(object, resolution = 1000, x_range = NA) {
 #'
 #' @export
 bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
-                                           x_range = NA) {
+                                           x_range = NA, ...) {
+  check_unused_dots(list(...), "bnec_newdata")
   object <- x
   # Taken from the survival component, which sees every row and therefore the
   # full exposed predictor range; the growth component stops short of any
@@ -265,7 +285,9 @@ hurdle_disp_placeholders <- function(newdata, object) {
 #' observed at one concentration is excluded. \code{pool} and
 #' \code{x_control} use the same rules as for a single fit.
 #'
-#' @return A vector containing the estimated NSEC value and credible bounds.
+#' @return The NSEC estimate and credible bounds, or one value per draw
+#' with \code{posterior = TRUE}. Censored draws are \code{Inf} above the
+#' search range and \code{-Inf} below it.
 #'
 #' @importFrom stats quantile
 #' @importFrom chk chk_logical
@@ -282,7 +304,12 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
                                    pool = NULL, x_control = "own") {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
-  chk_logical(posterior)
+  check_nsec_no_type(list(...))
+  check_unused_dots(list(...), "nsec")
+  check_sig_val(sig_val)
+  check_resolution(resolution)
+  chk_flag(posterior)
+  if (!is.null(pool)) validate_pool(pool, "nsec")
   which <- hurdle_check_which(which)
   check_xform(xform)
   if (is.null(object$observed_group)) {
@@ -354,7 +381,7 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
   attr(estimate, "toxicity_estimate") <- "nsec"
   attr(estimate, "component") <- which
   attr(out, "toxicity_estimate") <- "nsec"
-  if (!posterior) estimate else out
+  if (!posterior) estimate else censored_infinite(out)
 }
 
 #' Back-transform predictor values through any function applied inside crf()
@@ -619,6 +646,7 @@ check_chains.bayesnechurdlefit <- function(x, ...) {
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param filename Optional filename to save plots to.
 #' @param ask Should the user be prompted between plots?
+#' @param ... Unused; other arguments are refused.
 #'
 #' @return A named \code{\link[base]{list}}.
 #'
@@ -626,7 +654,8 @@ check_chains.bayesnechurdlefit <- function(x, ...) {
 #'
 #' @export
 check_priors.bayesnechurdlefit <- function(object, filename = NA,
-                                           ask = TRUE) {
+                                           ask = TRUE, ...) {
+  check_unused_dots(list(...), "check_priors")
   message(hurdle_no_combined("check_priors"))
   hurdle_delegate(object, check_priors, filename = filename, ask = ask)
 }
@@ -648,6 +677,21 @@ check_priors.bayesnechurdlefit <- function(object, filename = NA,
 model.frame.bayesnechurdlefit <- function(formula, ...) {
   list(growth = model.frame(formula$growth, ...),
        survival = model.frame(formula$survival, ...))
+}
+
+#' Formulas of both hurdle components
+#'
+#' @param x A \code{bayesnechurdlefit}.
+#' @param ... Passed to each component's formula method.
+#' @param model One equation in each component, or \code{NULL} for all.
+#' @return A named list with \code{growth} and \code{survival}. Each entry
+#' is a \code{bayesnecformula} for a single fit, or a named list of those
+#' formulas by equation for a model set.
+#' @method formula bayesnechurdlefit
+#' @export
+formula.bayesnechurdlefit <- function(x, ..., model = NULL) {
+  list(growth = group_model_method(x$growth, model, stats::formula, ...),
+       survival = group_model_method(x$survival, model, stats::formula, ...))
 }
 
 
@@ -992,21 +1036,6 @@ c.bayesnechurdlefit <- function(x, ...) {
                 do.call(c, lapply(objects, `[[`, "survival")))
 }
 
-#' Combines two \code{\link{bayesnechurdlefit}} objects
-#'
-#' @param e1 An object of class \code{\link{bayesnechurdlefit}}.
-#' @param e2 An object of class \code{\link{bayesnechurdlefit}}.
-#'
-#' @return An object of class \code{\link{bayesnechurdlefit}}.
-#'
-#' @method + bayesnechurdlefit
-#'
-#' @export
-`+.bayesnechurdlefit` <- function(e1, e2) {
-  hurdle_check_pair(list(e1, e2))
-  hurdle_rewrap(e1, e1$growth + e2$growth, e1$survival + e2$survival)
-}
-
 # ---------------------------------------------------------------------------
 # Plotting
 #
@@ -1197,8 +1226,10 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
         suppressMessages(nec(x, which = w, xform = ne_map))
       )
       abline(v = ne, col = "red", lty = c(1, 3, 3))
+      ne_tag <- attr(ne, "toxicity_estimate")
+      ne_tag <- if (is.null(ne_tag)) "N(S)EC" else toupper(ne_tag)
       legend("topright", bty = "n", lty = 1, col = "red",
-             legend = paste0("N(S)EC: ", bound_prefix(ne, 1),
+             legend = paste0(ne_tag, ": ", bound_prefix(ne, 1),
                              signif(ne[[1]], 2), " (", bound_prefix(ne, 2),
                              signif(ne[[2]], 2), "-", bound_prefix(ne, 3),
                              signif(ne[[3]], 2), ")"))
@@ -1207,11 +1238,42 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
   invisible(x)
 }
 
+#' Refuse an argument a hurdle plot would ignore
+#'
+#' The hurdle plot methods take every argument they use as a formal after
+#' \code{...}, so what reaches \code{...} is unused. \code{dpar} is left to
+#' \code{check_plot_dpar()}, whose message names the remedy.
+#'
+#' @param dots The calling method's \code{list(...)}.
+#' @param what The function name, as \code{"autoplot"}.
+#'
+#' @return \code{NULL}, invisibly, or an error.
+#' @noRd
+hurdle_check_plot_dots <- function(dots, what) {
+  nms <- names(dots)
+  if (is.null(nms)) {
+    nms <- rep("", length(dots))
+  }
+  unused <- unique(nms[nzchar(nms) & nms != "dpar"])
+  if (length(unused) > 0) {
+    stop(what, "() on a bayesnechurdlefit does not use ",
+         paste0("`", unused, "`", collapse = ", "), ". See ?", what,
+         ".bayesnechurdlefit for the arguments it takes.", call. = FALSE)
+  }
+  if (any(!nzchar(nms))) {
+    stop(what, "() on a bayesnechurdlefit takes every argument after the",
+         " fit by name, as in `which = \"all\"`.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' Data underlying a \code{\link{bayesnechurdlefit}} plot
 #'
 #' @param x An object of class \code{\link{bayesnechurdlefit}}.
-#' @param add_nec Unused; retained for consistency with the generic.
-#' @param add_ecx Unused; retained for consistency with the generic.
+#' @param add_nec,add_ecx \code{FALSE}, the default. The data hold no
+#' estimates, so \code{TRUE} is refused: read the estimates with
+#' \code{\link{nec}} or \code{\link{ecx}} and \code{which}, or draw them
+#' with \code{autoplot()}.
 #' @param xform \code{NULL}, the default, or a function to apply to the
 #' predictor where \code{crf()} does not transform it inline. Where it does,
 #' the predictor is returned on the recorded scale, the scale the prediction
@@ -1220,7 +1282,8 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' The fitted option returns the predictor on the scale transformed inside
 #' \code{crf()}, with breaks in attribute \code{"x_axis"} labelled in
 #' recorded units.
-#' @param ... Unused. \code{dpar} is refused: select a curve with \code{which}.
+#' @param ... Not used. \code{dpar} is refused, so select a curve with
+#' \code{which}, and any other argument is refused as well.
 #' @param which Which curve(s) to return. See \code{\link{plot}}.
 #' @param resolution The number of unique predictor values.
 #' @param x_range A range of predictor values.
@@ -1231,14 +1294,24 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' @method ggbnec_data bayesnechurdlefit
 #'
 #' @export
-ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                          xform = NULL, ...,
+ggbnec_data.bayesnechurdlefit <- function(x, add_nec = FALSE,
+                                          add_ecx = FALSE, xform = NULL, ...,
                                           which = "combined", resolution = 1000,
                                           x_range = NA,
                                           x_scale = c("recorded", "fitted")) {
   which <- hurdle_check_plot_which(which)
+  chk_lgl(add_nec)
+  chk_lgl(add_ecx)
+  if (add_nec || add_ecx) {
+    stop("ggbnec_data() on a bayesnechurdlefit returns the curves and the",
+         " observations only, so it cannot add the estimates `add_nec` and",
+         " `add_ecx` ask for. Read them with nec() or ecx() and `which`, or",
+         " draw them with autoplot(x, nec = TRUE, ecx = TRUE).",
+         call. = FALSE)
+  }
   check_xform(xform)
   check_plot_dpar(list(...), x)
+  hurdle_check_plot_dots(list(...), "ggbnec_data")
   x_scale <- plot_x_scale(x, x_scale, xform)
   panels <- if (which == "all") {
     c("combined", "growth", "survival")
@@ -1367,6 +1440,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
                                        nec = TRUE, ecx = FALSE, ecx_val = 10) {
   which <- hurdle_check_plot_which(which)
   check_plot_dpar(list(...), object)
+  hurdle_check_plot_dots(list(...), "autoplot")
   chk_lgl(CI)
   check_point_alpha(point_alpha)
   chk_lgl(nec)
@@ -1461,11 +1535,9 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' \code{xform} is applied to \code{nsec}, and the curve is read at the
 #' result on the recorded predictor scale, as in \code{\link{ecnsec}} on a
 #' \code{\link{bayesnecfit}}. \code{NULL}, the default, reads \code{nsec} as
-#' given, the scale \code{\link{nsec}} returns by default. In earlier
-#' versions this method applied \code{xform} to the percentage it returned. A
-#' call that supplies an \code{xform} other than \code{identity} is warned of
-#' the change in this release. To transform the percentage, apply the function
-#' to the value returned.
+#' given, the scale \code{\link{nsec}} returns by default. The percentage
+#' returned is not transformed; to transform it, apply the function to the
+#' value returned.
 #'
 #' Without \code{x_range}, every curve is read over the whole concentration
 #' series, as in \code{\link{ecx.bayesnechurdlefit}}. The range sets the
@@ -1496,9 +1568,14 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
                                      extrapolate = FALSE) {
   which <- hurdle_check_which(which)
   check_removed_args(list(...))
+  check_unused_dots(list(...), "ecnsec")
+  check_resolution(resolution)
+  chk_flag(posterior)
+  if (!is.null(pool)) validate_pool(pool, "ecnsec")
   # One value: the curve is interpolated at one point.
   chk_number(nsec)
-  type <- validate_ecx_type(type, match.call())
+  # "relative" is refused below, so it is not warned about.
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
   if (identical(type, "direct")) {
     stop("type = \"direct\" names a response value rather than a ",
          "percentage, so there is no percent effect for ecnsec to report. ",
@@ -1513,20 +1590,6 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
   check_xform(xform)
   if (is.null(xform)) {
     xform <- identity
-  }
-  if (!identical(xform, identity)) {
-    # Warn for one release that xform now applies to nsec rather than to the
-    # percentage returned, then remove this warning. It is a classed
-    # warning() because lifecycle is not in Imports.
-    warning(structure(
-      class = c("bayesnec_ecnsec_xform_changed", "warning", "condition"),
-      list(message = paste0(
-        "xform in ecnsec() on a hurdle pair is now applied to nsec before ",
-        "the curve is read, as it is on every other class. In earlier ",
-        "versions it was applied to the percentage returned. To transform the ",
-        "percentage, apply the function to the value ecnsec() returns."
-      ), call = NULL)
-    ))
   }
   if (is.null(object$observed_group)) {
     spec <- observed_level_spec(object)

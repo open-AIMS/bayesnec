@@ -28,8 +28,9 @@
 #' @slot mod_weights_leave_out What the criterion behind the weights left out:
 #' the name of a grouping, each of whose levels was left out whole, or
 #' \code{"observation"}.
-#' @slot ecx_mods A \code{\link[base]{logical}} indicating which \code{models}
-#' are ECx-type models.
+#' @slot ecx_mods A \code{\link[base]{character}} vector naming the equations
+#' that have no \code{nec} parameter, or \code{NULL} where every equation has
+#' one.
 #' @slot nec_vals The model-averaged NEC values. Note that if model stack
 #' contains ECx-type models, these will be via NSEC proxies. Where any draw of
 #' the weighted posterior lies beyond the range the models were predicted over,
@@ -53,8 +54,12 @@
 #' @slot divergences A named \code{\link[base]{numeric}} vector giving the
 #' number of divergent transitions after warmup for each model, \code{NA} for
 #' a model not sampled by NUTS.
-#' @slot divergence_cutoff The number of divergent transitions above which the
-#' printed summary warns of a model.
+#' @slot divergence_draws A named \code{\link[base]{numeric}} vector giving
+#' the number of retained draws of each model, over which its divergent
+#' transitions were counted. Absent from a summary made before it was
+#' recorded, in which case \code{divergence_cutoff} is a count.
+#' @slot divergence_cutoff The proportion of retained draws above which the
+#' divergent transitions of a model are reported in a printed warning.
 #' @slot failed_models Any models from the requested set that could not be
 #' fitted, with the priors and initial values used. See
 #' \code{\link{failed_models}}.
@@ -74,7 +79,7 @@
 #' doi:10.18637/jss.v110.i05.
 #' 
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
-#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028. 
 #' doi: 10.1002/etc.5610.
 #'
 #' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -83,7 +88,7 @@
 #' 
 #' Fox DR (2010). A Bayesian Approach for Determining the No Effect
 #' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-#' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+#' and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 #'
 NULL
 
@@ -92,6 +97,14 @@ NULL
 #' @param x An \R object
 #' 
 #' @return A \code{\link[base]{logical}}
+#'
+#' @examples
+#' library(bayesnec)
+#' data(manec_example)
+#' is_manecsummary(manec_example)
+#' \donttest{
+#' is_manecsummary(summary(manec_example))
+#' }
 #'
 #' @export
 is_manecsummary <- function(x) {

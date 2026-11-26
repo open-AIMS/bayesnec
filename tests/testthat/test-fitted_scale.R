@@ -439,6 +439,14 @@ test_that("disabled plot annotations do not require an inverse", {
 })
 
 
+test_that("a censored draw is mapped as NA whatever its stored value", {
+  cens <- bayesnec:::censoring_record(10, 1, c(FALSE, FALSE, TRUE),
+                                      c(TRUE, FALSE, FALSE))
+  expect_silent(out <- bayesnec:::map_draws(c(-Inf, 4, Inf), log, cens))
+  expect_equal(out, c(NA, log(4), NA))
+  expect_identical(bayesnec:::map_draws(c(NA, 4, NA), log, cens), out)
+})
+
 test_that("numeric inversion retains infinite fitted endpoints", {
   grid <- seq(0, 3.22, length.out = 1000)
   at <- c(0, 1e-10, 1e-5, 0.1, 1, 3)

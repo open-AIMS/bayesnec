@@ -14,6 +14,7 @@ ecnsec(
   xform = NULL,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
+  posterior = FALSE,
   pool = NULL,
   x_control = "own",
   extrapolate = FALSE
@@ -46,7 +47,12 @@ as given, on the recorded scale. See Details.}
 return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
 
-\item{...}{Further arguments to pass to class specific methods.}
+\item{...}{Further arguments to pass to class specific methods. A method
+refuses any argument it does not use.}
+
+\item{posterior}{A \code{\link[base]{logical}} value indicating if the full
+posterior sample of calculated ECNSEC values should be returned instead of
+just the median and 95 credible intervals.}
 
 \item{pool}{How observed group levels are combined. \code{"none"} returns
 per-level estimates. \code{"mixture"} gives each posterior draw to one level, in
@@ -76,7 +82,9 @@ range before it is extended.}
 }
 \value{
 A vector containing the estimated ECNSEC value, including upper and
-lower 95\% credible interval bounds.
+lower 95\% credible interval bounds, or with \code{posterior = TRUE} the
+value for each posterior draw. This percentage is read at the supplied
+concentration; no draw is censored by a search for a crossing.
 }
 \description{
 Extracts the percent effect associated with a predicted NSEC value from an
@@ -84,7 +92,7 @@ object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
 \details{
 NSEC is no-effect toxicity metric that estimates the concentration
-at which the modeled mean response is statistically indistinguishable from
+at which the modelled mean response is statistically indistinguishable from
 the mean control response. See the detailed derivation in
 Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated
 effect size. This function estimates the effect of a given NSEC estimate.
@@ -126,9 +134,6 @@ curve. The interval therefore includes the uncertainty of the curve at
 \code{nsec} as well as that of the control. On \code{nec4param}, for
 example, every draw returns 0 at an \code{nsec} below the \code{nec} of
 every draw, where every draw of the curve still equals its control.
-
-The \code{hormesis_def} argument has been removed; the control is now
-always the reference. See \code{\link{ecx}}.
 
 \code{nsec} is read on the recorded predictor scale once \code{xform} has
 been applied to it. \code{\link{nsec}} returns its estimate on that scale

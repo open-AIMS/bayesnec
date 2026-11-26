@@ -37,10 +37,13 @@
 #'
 #' Factor levels partition the data disjointly and share no parameters, so the
 #' log likelihood is a sum over levels and the expected log predictive density
-#' is additive. Under pseudo-BMA --- the package default --- the crossed model
-#' weights are then exactly the outer product of the per-level weight vectors,
-#' which is the same identity \code{\link{crossed_weights}} rests on for the two
-#' blocks of a hurdle fit. See \code{\link{crossed_group_weights}}.
+#' is additive. For pseudo-BMA weights computed without the Bayesian bootstrap,
+#' the crossed model weights are then exactly the outer product of the
+#' per-level weight vectors, the identity \code{\link{crossed_weights}} rests
+#' on for the two blocks of a hurdle fit. The default pseudo-BMA weights use
+#' the bootstrap, which each level applies to its own observations, so for them
+#' the outer product approximates the weight of a combination scored on all
+#' levels together. See \code{\link{crossed_group_weights}}.
 #'
 #' \bold{The family is chosen once}
 #'
@@ -57,13 +60,9 @@
 #' break the factorisation the crossed weights depend on. A model with structure
 #' spanning levels --- shared dispersion, a group-level effect crossing levels,
 #' an explicit contrast --- is a different model, and is not what this function
-#' fits.
-#'
-#' \bold{What this does not do}
-#'
-#' It does not refit the favoured combination jointly. That is stage 2 of #33
-#' and lands in the post-processing that the \code{toxval} migration moves, so
-#' it is deliberately out of scope here.
+#' fits. The favoured combination is not refitted jointly here;
+#' \code{\link{bnec_joint}} composes the equation each level favours into one
+#' model and fits it.
 #'
 #' \bold{Fitting the levels in parallel}
 #'
@@ -73,7 +72,7 @@
 #' list, so \code{bnec_group()} decides which and says which.
 #'
 #' The two arrangements are counted in rounds of one fit and the smaller is
-#' taken, a tie going to the models, which is what earlier versions did. Writing
+#' taken, a tie going to the models. Writing
 #' \emph{L} for the levels, \emph{M} for the equations the formula asks for and
 #' \emph{W} for the workers, the levels take \code{ceiling(L / W) * M} rounds
 #' and the models \code{L * ceiling(M / W)}. Seven levels of eleven equations
@@ -88,7 +87,9 @@
 #' does for \code{\link{bnec}}.
 #'
 #' A worked example, including the nested plan that drives both loops, is in
-#' \code{vignette("example8")} under \emph{Fitting the levels in parallel}.
+#' the article \emph{Grouping and factor covariates}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example8.html}) under
+#' \emph{Fitting the levels in parallel}.
 #'
 #' \bold{What a plan does and does not reproduce}
 #'
@@ -106,12 +107,8 @@
 #' trusted to be the same one years later --- \code{sample.int()}'s algorithm
 #' changed once already, in R 3.6.0 --- and these objects are archived and
 #' reopened, so the realisation is stored rather than described.
-#'
-#' The estimates a grouped call reports are not those earlier versions reported,
-#' because the levels are now seeded rather than drawing from the session's
-#' stream as each is reached. They are another realisation of the same
-#' weighting. \code{\link{bnec}} describes the rest of what a plan does to a
-#' fit, and none of that changes here.
+#' \code{\link{bnec}} describes the rest of what a plan does to a fit, and none
+#' of that changes here.
 #'
 #' @return An object of class \code{\link{bayesnecgroupfit}}.
 #'
@@ -183,12 +180,24 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # sampled, and the row names would refer to a subset.
   mod_dat <- model.frame(formula, data = data)
   check_complete_cases(mod_dat)
+  check_finite_cases(mod_dat)
+  check_rate_denominator(mod_dat)
+  check_level_concentrations(mod_dat, grp, group_var)
   validate_predictor_scale(
     predictor_scale, retrieve_var(mod_dat, "x_var", error = TRUE)
   )
   check_disp_finite(formula, data)
   check_reserved_names(data)
   dots <- list(...)
+  sig_val <- dots_arg(dots, "sig_val")
+  if (!is.null(sig_val)) {
+    check_sig_val(sig_val)
+  }
+  check_x_range(dots_arg(dots, "x_range"))
+  timeout <- dots_arg(dots, "timeout")
+  if (!is.null(timeout)) {
+    check_timeout(timeout)
+  }
   # dots_arg() matches an abbreviation such as `asymptote = FALSE`, as bnec()
   # does when do.call() passes it these arguments.
   declared <- dots_arg(dots, "asymptote_observed", TRUE)
@@ -208,11 +217,11 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   # Refuse a missing trials() term before the reports below read the response,
   # which they cannot do without it.
   check_trials_term(mod_dat, family)
+  check_trials_values(mod_dat, family)
   # A level with every observation at a bound is fitted with ecxflat alone, and
   # the other levels with the requested set. constant_fallback_levels() reports
-  # those levels, refuses a level ecxflat cannot fit either, and refuses a name
-  # that is not an equation. It must run before the flatness report, which
-  # reads the set each level will fit.
+  # those levels and refuses a level ecxflat cannot fit either. It must run
+  # before the flatness report, which reads the set each level will fit.
   requested_models <- try(get_model_from_formula(formula), silent = TRUE)
   flat_levels <- constant_fallback_levels(
     mod_dat, family, grp, group_var,
@@ -427,6 +436,42 @@ bnec_group <- function(formula, data, group_var, family = NULL,
   allot_class(out, c("bayesnecgroupfit", "bnecfit"))
 }
 
+#' Refuse a level observed at one concentration, and warn of one at two
+#'
+#' @param data The model frame of the whole data, rows in the order of
+#' \code{group}.
+#' @param group The grouping factor.
+#' @param group_name The name of the grouping column, for the messages.
+#'
+#' @return \code{NULL}, invisibly. Called for its error and warning.
+#'
+#' @noRd
+check_level_concentrations <- function(data, group, group_name) {
+  x <- retrieve_var(data, "x_var", error = TRUE)
+  n_conc <- tapply(x, group, function(v) length(unique(v)))
+  name_levels <- function(levels) {
+    paste0("Level(s) ", paste0("\"", levels, "\"", collapse = ", "), " of \"",
+           group_name, "\"")
+  }
+  single <- names(n_conc)[n_conc < 2]
+  if (length(single) > 0) {
+    stop(name_levels(single), " have observations at a single",
+         " concentration. Each level is fitted as a complete",
+         " concentration-response model, which needs observations at two or",
+         " more concentrations; remove those levels before calling",
+         " bnec_group().", call. = FALSE)
+  }
+  pair <- names(n_conc)[n_conc == 2]
+  if (length(pair) > 0) {
+    warning(name_levels(pair), " have observations at only two",
+            " concentrations. Two concentrations give two mean responses, so",
+            " the data cannot identify an equation with more than two curve",
+            " parameters, whose fitted shape then depends on its priors.",
+            call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' The weighting method a fit was built with
 #'
 #' Reads the method \code{expand_manec()} stores on the weight vector.
@@ -478,13 +523,20 @@ fit_model_weights <- function(x) {
 #'
 #' @details Levels partition the data disjointly and share no parameters, so
 #' \code{elpd} is additive across them:
-#' \code{elpd(m_1, ..., m_G) = sum_g elpd_g(m_g)}. Under pseudo-BMA the crossed
-#' weight of a combination is proportional to the product of its per-level
-#' weights, so the whole table follows from the per-level vectors and never has
-#' to be materialised --- which matters, because with the 24 equations of the
+#' \code{elpd(m_1, ..., m_G) = sum_g elpd_g(m_g)}. For pseudo-BMA weights
+#' computed without the Bayesian bootstrap, the crossed weight of a combination
+#' is therefore exactly proportional to the product of its per-level weights,
+#' so the whole table follows from the per-level vectors and never has to be
+#' materialised --- which matters, because with the 24 equations of the
 #' default set and \emph{G} levels it has \code{24^G} cells.
 #'
-#' \bold{This identity is specific to pseudo-BMA}, the package default, and
+#' The default pseudo-BMA weights use the Bayesian bootstrap, which each level
+#' applies to its own observations. A combination scored on all levels together
+#' would resample them jointly, so for the default weights the product of the
+#' per-level weights that \code{crossed_group_weights()} returns approximates
+#' that combination's weight rather than equalling it.
+#'
+#' The identity is specific to pseudo-BMA, and
 #' \code{crossed_group_weights()} enforces it rather than assuming it: a fit
 #' built with any other weighting method is refused, because there is no
 #' correct crossed table to return for one.
@@ -557,6 +609,10 @@ fit_model_weights <- function(x) {
 #' @examples
 #' \dontrun{
 #' library(bayesnec)
+#' data(nec_data)
+#' nec_data$site <- rep(c("a", "b"), length.out = nrow(nec_data))
+#' fit <- bnec_group(y ~ crf(x, c("nec3param", "ecx4param")), data = nec_data,
+#'                   group_var = "site")
 #' crossed_group_weights(fit)
 #' }
 #'
@@ -587,10 +643,11 @@ crossed_group_weights <- function(object, pooled = NULL) {
   }
   if (!identical(method, "pseudobma")) {
     stop("crossed_group_weights is defined for pseudo-BMA weights only, and",
-         " this fit used \"", method, "\". The crossed weight of a",
-         " combination is the product of its per-level weights because a",
-         " pseudo-BMA weight is a deterministic function of that model's own",
-         " elpd, which is additive over levels. Stacking optimises a",
+         " this fit used \"", method, "\". The product of a combination's",
+         " per-level weights is its crossed weight, exactly without the",
+         " Bayesian bootstrap and approximately with it, because a pseudo-BMA",
+         " weight is a function of that model's own elpd, which is additive",
+         " over levels. Stacking optimises a",
          " different objective over the whole set at once and its solution is",
          " not an outer product, so multiplying stacked weights gives a table",
          " that looks right and is not. Refit with the default weighting, or",
@@ -766,13 +823,20 @@ compare_pooled_logo <- function(object, pooled, best, pooled_model) {
        n_groups = n_groups)
 }
 
-#' One argument of \code{bnec()}, read from a \code{bnec_group()} dot list
+# Read when the package is built, so that a test that mocks bnec() does not
+# change which names abbreviate its formals.
+bnec_formal_names <- setdiff(names(formals(bnec)), "...")
+
+#' One argument of \code{bnec()}, read from a dot list passed on to it
 #'
-#' @details Matches \code{name} as \code{do.call(bnec, ...)} will, so that an
-#' abbreviation is found: \code{model_s = "nec3param"} reaches \code{bnec()} as
-#' \code{model_survival}, and an exact lookup would read it as absent.
+#' @details Matches \code{name} as \code{do.call(bnec, ...)} will. An exact
+#' name is taken first. Otherwise a supplied name that is not itself a formal
+#' of \code{bnec()} is read as \code{name} where it abbreviates \code{name}
+#' and no other formal not supplied exactly, so \code{model_s = "nec3param"}
+#' is \code{model_survival}, while \code{prior} is never \code{prior_type}.
 #'
-#' @param dots The dot list \code{\link{bnec_group}} collected.
+#' @param dots The dot list \code{\link{bnec_group}} or
+#' \code{\link{bnec_hurdle}} collected.
 #' @param name The \code{\link{bnec}} formal to read.
 #' @param default What to return where the argument was not supplied.
 #'
@@ -780,6 +844,20 @@ compare_pooled_logo <- function(object, pooled, best, pooled_model) {
 #'
 #' @noRd
 dots_arg <- function(dots, name, default = NULL) {
-  hit <- which(!is.na(pmatch(names(dots), name)))
+  supplied <- names(dots)
+  if (is.null(supplied)) {
+    return(default)
+  }
+  exact <- which(supplied == name)
+  if (length(exact) > 0) {
+    return(dots[[exact[1]]])
+  }
+  formal_names <- bnec_formal_names
+  open_formals <- setdiff(formal_names, supplied)
+  abbreviates <- function(s) {
+    nzchar(s) && !s %in% formal_names && startsWith(name, s) &&
+      sum(startsWith(open_formals, s)) == 1L
+  }
+  hit <- which(vapply(supplied, abbreviates, logical(1)))
   if (length(hit) == 1) dots[[hit]] else default
 }

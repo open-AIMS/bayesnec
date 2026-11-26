@@ -41,8 +41,12 @@
 #' @slot divergences A named \code{\link[base]{numeric}} vector of length 1
 #' giving the number of divergent transitions after warmup, \code{NA} for a
 #' model not sampled by NUTS.
-#' @slot divergence_cutoff The number of divergent transitions above which the
-#' printed summary warns.
+#' @slot divergence_draws A named \code{\link[base]{numeric}} vector of
+#' length 1 giving the number of retained draws the divergent transitions were
+#' counted over. Absent from a summary made before it was recorded, in which
+#' case \code{divergence_cutoff} is a count.
+#' @slot divergence_cutoff The proportion of retained draws above which the
+#' divergent transitions of the model are reported in a printed warning.
 #' @slot failed_models Any models from the original set that could not be
 #' fitted, with the priors and initial values used. See
 #' \code{\link{failed_models}}.
@@ -62,7 +66,7 @@
 #' doi:10.18637/jss.v110.i05.
 #' 
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
-#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028. 
 #' doi: 10.1002/etc.5610.
 #'
 #' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -71,7 +75,7 @@
 #' 
 #' Fox DR (2010). A Bayesian Approach for Determining the No Effect
 #' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-#' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+#' and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 #'
 NULL
 

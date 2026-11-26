@@ -10,7 +10,7 @@ compare_estimates(
   ecx_val = 10,
   type = "absolute",
   sig_val = 0.01,
-  resolution = 100,
+  resolution = 500,
   x_range = NA,
   seed = 10
 )
@@ -34,11 +34,8 @@ Details.}
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.}
 
-\item{resolution}{The number of unique x values over which to find ECx.
-The crossing is located by linear interpolation between the two grid values
-that bracket it, so precision saturates well below the grid spacing.
-The default is 500 grid values, matching \pkg{toxval}. A finer grid can
-change an interpolated crossing and increases prediction time.}
+\item{resolution}{The number of grid points each curve is read over.
+Defaults to 500, as in \code{\link{ecx}} and \code{\link{nsec}}.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -100,12 +97,12 @@ value, and it is known only to lie at or beyond the end of the range. This
 applies to every comparison type. An ECx or NSEC draw whose curve does not
 reach the target is such a draw, and so is a threshold equation's
 \code{nec} draw above the prediction range, which is sampled and has a
-number but is reported by \code{\link{nec}} as a bound. Under "nec" and
-"n(s)ec", \code{posterior_list} and \code{posterior_data} still hold that
-sampled value, as \code{\link{nec}} returns it with \code{posterior = TRUE}.
-The \code{"censored"} attribute of \code{posterior_list} marks the draw and
-\code{posterior_data} does not, so a value there beyond the prediction range
-is not an identified estimate.
+number but is reported by \code{\link{nec}} as a bound. In
+\code{posterior_list} and \code{posterior_data} such a draw is \code{Inf}
+above the range and \code{-Inf} below it, as the estimator returns it with
+\code{posterior = TRUE}. The \code{"censored"} attribute of
+\code{posterior_list} records the bounds, and \code{posterior_data} holds
+only the infinite value.
 
 The comparison does not delete these draws. For many pairs the censoring
 record fixes the sign of the difference whatever the censored value is: a

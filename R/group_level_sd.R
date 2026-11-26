@@ -6,8 +6,8 @@
 #' \code{\link{summary}} does not report them.
 #'
 #' @param x An object of class \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}}, \code{\link{bayesnecgroupfit}} or
-#' \code{\link{bayesnechurdlefit}}.
+#' \code{\link{bayesmanecfit}}, \code{\link{bayesnecgroupfit}},
+#' \code{\link{bayesnechurdlefit}} or \code{\link{bayesnecjointfit}}.
 #'
 #' @details Each equation of a model set estimates its own group-level
 #' standard deviations. Read each one against the weight of the equation it
@@ -27,7 +27,7 @@
 #' \code{\link{bayesnecformula}}.
 #'
 #' \code{Estimate} is the posterior median, as in \code{\link{ecx}} and
-#' \code{\link{dispersion}}, and \code{Q2.5} and \code{Q97.5} bound the 95\%
+#' \code{\link{dispersion}}, and \code{Q2.5} and \code{Q97.5} bound the 95%
 #' credible interval. \code{\link[brms]{VarCorr}} reports the posterior mean
 #' instead.
 #'
@@ -42,7 +42,10 @@
 #' the same table with a leading \code{level} column; each weight is from that
 #' level's own model set. For a \code{\link{bayesnechurdlefit}}, a
 #' named \code{\link[base]{list}} of two such tables, \code{growth} and
-#' \code{survival}.
+#' \code{survival}. For a \code{\link{bayesnecjointfit}}, one table for the
+#' fit, with \code{wi} 1: a group-level term of a joint refit is shared by
+#' every level, which \code{\link{bnec_joint}} allows only where every level
+#' is fitted one equation.
 #'
 #' @seealso \code{\link[brms]{VarCorr}}, \code{\link{check_sampling}},
 #' \code{\link{dispersion}}, \code{\link{pull_out}}
@@ -61,31 +64,69 @@
 #'
 #' @export
 group_level_sd <- function(x) {
-  if (is_bayesnechurdlefit(x)) {
-    out <- hurdle_delegate(x, gl_sd_table)
-    none <- names(out)[vapply(out, nrow, integer(1)) == 0]
-    if (length(none) > 0) {
-      message("The ", paste(none, collapse = " and "), " component",
-              if (length(none) > 1) "s have" else " has",
-              " no group-level term.")
-    }
-    return(out)
-  }
-  if (is_bayesnecgroupfit(x)) {
-    tabs <- group_lapply(x, gl_sd_table)
-    out <- do.call(rbind, Map(function(tab, level) {
-      cbind(data.frame(level = rep(level, nrow(tab)),
-                       stringsAsFactors = FALSE), tab)
-    }, tabs, x$levels))
-    rownames(out) <- NULL
-  } else {
-    out <- gl_sd_table(x)
-  }
+  UseMethod("group_level_sd")
+}
+
+#' @rdname group_level_sd
+#' @return The diagnostic data frame for this single fit.
+#' @export
+group_level_sd.bayesnecfit <- function(x) {
+  out <- gl_sd_table(x)
   if (nrow(out) == 0) {
     message("No equation of this fit has a group-level term, so there are no",
             " group-level standard deviations to report.")
   }
   out
+}
+
+#' @rdname group_level_sd
+#' @return The diagnostic data frame with model weights for this set.
+#' @export
+group_level_sd.bayesmanecfit <- group_level_sd.bayesnecfit
+
+#' @rdname group_level_sd
+#' @return The diagnostic data frame for the joint fit.
+#' @export
+group_level_sd.bayesnecjointfit <- group_level_sd.bayesnecfit
+
+#' @rdname group_level_sd
+#' @return A named list of growth and survival diagnostic tables.
+#' @export
+group_level_sd.bayesnechurdlefit <- function(x) {
+  out <- hurdle_delegate(x, gl_sd_table)
+  none <- names(out)[vapply(out, nrow, integer(1)) == 0]
+  if (length(none) > 0) {
+    message("The ", paste(none, collapse = " and "), " component",
+            if (length(none) > 1) "s have" else " has",
+            " no group-level term.")
+  }
+  out
+}
+
+#' @rdname group_level_sd
+#' @return A diagnostic data frame with a leading level column.
+#' @export
+group_level_sd.bayesnecgroupfit <- function(x) {
+  tabs <- group_lapply(x, gl_sd_table)
+  out <- do.call(rbind, Map(function(tab, level) {
+    cbind(data.frame(level = rep(level, nrow(tab)),
+                     stringsAsFactors = FALSE), tab)
+  }, tabs, x$levels))
+  rownames(out) <- NULL
+  if (nrow(out) == 0) {
+    message("No equation of this fit has a group-level term, so there are no",
+            " group-level standard deviations to report.")
+  }
+  out
+}
+
+#' @rdname group_level_sd
+#' @return An error naming the unsupported class.
+#' @export
+group_level_sd.default <- function(x) {
+  stop("group_level_sd requires a bayesnecfit, a bayesmanecfit, a",
+       " bayesnecgroupfit, a bayesnechurdlefit or a bayesnecjointfit; got ",
+       class(x)[1], ".", call. = FALSE)
 }
 
 #' The group-level standard deviations of a bayesnecfit or bayesmanecfit
@@ -97,19 +138,40 @@ group_level_sd <- function(x) {
 #'
 #' @noRd
 gl_sd_table <- function(x) {
-  if (is_bayesmanecfit(x)) {
-    models <- x$success_models
-    fits <- lapply(models, function(m) x$mod_fits[[m]]$fit)
-    wi <- x$mod_stats[models, "wi"]
-  } else if (is_bayesnecfit(x)) {
-    models <- x$model
-    fits <- list(pull_brmsfit(x))
-    wi <- 1
-  } else {
-    stop("group_level_sd requires a bayesnecfit, a bayesmanecfit, a",
-         " bayesnecgroupfit or a bayesnechurdlefit. For a bayesnecjointfit,",
-         " use brms::VarCorr(x$fit).", call. = FALSE)
-  }
+  UseMethod("gl_sd_table")
+}
+
+#' @return This fit's group-level standard-deviation table.
+#' @noRd
+#' @export
+gl_sd_table.bayesnecfit <- function(x) {
+  gl_sd_rows_table(list(x$fit), x$model, 1)
+}
+
+#' @return A table with each equation's standard deviations and weight.
+#' @noRd
+#' @export
+gl_sd_table.bayesmanecfit <- function(x) {
+  models <- x$success_models
+  fits <- lapply(models, function(m) x$mod_fits[[m]]$fit)
+  gl_sd_rows_table(fits, models, x$mod_stats[models, "wi"])
+}
+
+#' @return The joint fit's group-level standard-deviation table.
+#' @noRd
+#' @export
+gl_sd_table.bayesnecjointfit <- function(x) {
+  gl_sd_rows_table(list(x$fit), x$model, 1)
+}
+
+#' Assemble group-level standard deviations from stored fits
+#'
+#' @param fits Stored brms fits.
+#' @param models Equation names.
+#' @param wi Model weights.
+#' @return The group-level standard-deviation table.
+#' @noRd
+gl_sd_rows_table <- function(fits, models, wi) {
   rows <- Map(gl_sd_rows, fits, models, wi)
   out <- do.call(rbind, c(list(gl_sd_empty()), rows))
   rownames(out) <- NULL

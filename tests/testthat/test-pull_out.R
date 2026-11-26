@@ -40,8 +40,53 @@ test_that("pull_out() computes the estimates with the arguments the set records"
                    expand_record(sig_val = 0.01))
   # An object that records none takes the bnec() defaults, and records them.
   # A model set that records no leave_out was scored by observation.
-  out <- q(pull_out(manec_example, "ecx4param"))
+  out <- q(pull_out(legacy_fit(manec_example), "ecx4param"))
   expect_equal(out$ne_posterior, defaults$ne_posterior)
   expect_identical(attr(out, "bnec_expand_args"),
                    default_expand_record(leave_out = "observation"))
+})
+
+test_that("pull_out() refuses an argument it does not use", {
+  expect_error(pull_out(manec_example, "nec4param", foo = 1),
+               "pull_out\\(\\) takes no further arguments, so `foo`")
+  expect_error(pull_out(manec_example, "nec4param", , , , , 1),
+               "pull_out\\(\\) takes no further arguments\\.")
+})
+
+test_that("pull_out() says which loo_controls elements it ignores", {
+  q <- function(expr) suppressWarnings(expr)
+  msgs <- function(expr) {
+    out <- character(0)
+    withCallingHandlers(q(expr), message = function(m) {
+      out <<- c(out, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    })
+    out
+  }
+  ignored <- msgs(pull_out(manec_example, "ecx4param",
+                           loo_controls = list(leave_out = "observation",
+                                               refit = TRUE)))
+  expect_true(any(grepl(
+    "loo_controls$leave_out, loo_controls$refit are ignored here", ignored,
+    fixed = TRUE
+  )))
+  weights <- msgs(pull_out(manec_example, "ecx4param",
+                           loo_controls = list(weights = list(BB = FALSE))))
+  expect_true(any(grepl("loo_controls$weights is ignored here. Use ?amend",
+                        weights, fixed = TRUE)))
+  fitting <- msgs(pull_out(manec_example, "ecx4param",
+                           loo_controls = list(fitting = list())))
+  expect_false(any(grepl("ignored here", fitting)))
+})
+
+test_that("pull_out() refuses a sig_val outside (0, 1) before rebuilding", {
+  expect_error(pull_out(manec_example, "ecx4param", sig_val = 2), "sig_val")
+})
+
+test_that("pull_out refuses a joint refit", {
+  expect_error(pull_out(joint_split(), model = "nec4param"),
+               "pull_out() is not defined for a bayesnecjointfit",
+               fixed = TRUE)
+  expect_error(pull_out(joint_split(), model = "nec4param"),
+               "no equation or level can be taken out of it", fixed = TRUE)
 })

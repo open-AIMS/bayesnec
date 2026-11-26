@@ -344,7 +344,9 @@ test_that("relative count-hurdle asymptotes use the positive-count scale", {
   )
 })
 
-test_that("count asymptotes apply a non-identity mean link first", {
+test_that("count asymptotes take the asymptote on the mean scale", {
+  # ecx_asymptote() applies the inverse link, so the asymptote arrives on the
+  # mean scale and is not transformed again.
   bot_eta <- log(c(0.5, 2))
   expected <- as.numeric(
     bayesnec:::hurdle_positive_mean(exp(bot_eta), "poisson")
@@ -355,7 +357,7 @@ test_that("count asymptotes apply a non-identity mean link first", {
   )
   expect_equal(
     bayesnec:::count_positive_asymptote(
-      joint, "mu", bot_eta, data.frame(x = 0)
+      joint, "mu", bayesnec:::mean_scale(joint, bot_eta), data.frame(x = 0)
     ),
     expected
   )
@@ -368,17 +370,18 @@ test_that("count asymptotes apply a non-identity mean link first", {
   )
   expect_equal(
     bayesnec:::count_positive_asymptote(
-      factorised, NULL, bot_eta, data.frame(x = 0)
+      factorised, NULL, bayesnec:::mean_scale(factorised, bot_eta),
+      data.frame(x = 0)
     ),
     expected
   )
-  # An equation without bot tends to zero on the link scale, hence to one on
-  # the mean scale under a log link.
+  # An equation without bot that a log link allows is linear on the log
+  # scale, so its mean tends to 0.
+  expect_equal(bayesnec:::mean_scale(factorised, 0), 1)
   expect_equal(
-    bayesnec:::count_positive_asymptote(
-      factorised, NULL, 0, data.frame(x = 0)
-    ),
-    as.numeric(bayesnec:::hurdle_positive_mean(1, "poisson"))
+    bayesnec:::count_positive_asymptote(factorised, NULL, 0,
+                                        data.frame(x = 0)),
+    as.numeric(bayesnec:::hurdle_positive_mean(0, "poisson"))
   )
 })
 
@@ -414,7 +417,8 @@ test_that("count asymptotes support brms-specific mean links", {
     ))
     expect_equal(
       bayesnec:::count_positive_asymptote(
-        case$object, case$dpar, bot_eta, data.frame(x = 0)
+        case$object, case$dpar, bayesnec:::mean_scale(case$object, bot_eta),
+        data.frame(x = 0)
       ),
       expected
     )

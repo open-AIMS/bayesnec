@@ -1,8 +1,17 @@
 test_that("input errors work as intended", {
   expect_error(compare_posterior(list(ecx4param, nec4param)),
                "Argument x must be a named list.")
-  expect_error(compare_posterior(ecx4param, nec4param),
-               "Argument comparison must be a character vector.")
+  expect_error(compare_posterior(ecx4param), "named list of fits")
+  expect_error(compare_posterior(list(a = ecx4param)), "at least two fits")
+  fits <- list(a = ecx4param, b = nec4param)
+  expect_error(compare_posterior(fits, comparison = nec4param),
+               "comparison must be one of")
+  expect_error(compare_posterior(fits, comparison = c("nec", "ecx")),
+               "comparison must be one of")
+  expect_error(compare_posterior(fits, comparison = NA_character_),
+               "comparison must be one of")
+  expect_error(compare_posterior(fits, comparison = "nec"),
+               "\"a\" fit\\(s\\) a smooth equation.*n\\(s\\)ec")
   # message now names all three accepted classes, hurdle fits included
   m_0 <- "Not all objects in x are of class bayesnecfit, bayesmanecfit or"
   expect_error(compare_posterior(list(g = ecx4param, h = 12)), m_0)
@@ -28,7 +37,8 @@ test_that("joint comparisons pair estimates and retain censoring", {
     10, 0, c(FALSE, TRUE, FALSE, FALSE), rep(FALSE, 4)
   )
   b <- c(1, 5, 5, 5)
-  joint <- structure(list(levels = c("a", "b"), model = "nec4param"),
+  # A hormesis threshold level reads its NSEC off the curve with these.
+  joint <- structure(list(levels = c("a", "b"), model = "nechorme4"),
                      class = "bayesnecjointfit")
   passed <- NULL
   local_mocked_bindings(nec = function(...) {
@@ -45,6 +55,38 @@ test_that("joint comparisons pair estimates and retain censoring", {
   expect_equal(result$prob_diff$censored_first, 0.25)
   expect_identical(compare_posterior(joint, comparison = "nec", seed = 99),
                    result)
+  # Sampled NEC levels read no curve, so nec() is not given the defaults.
+  joint$model <- "nec4param"
+  compare_posterior(joint, comparison = "n(s)ec")
+  expect_false(any(c("sig_val", "resolution", "x_range") %in% names(passed)))
+})
+
+test_that("a joint nec() reports curve arguments only where no level used them", {
+  joint <- structure(list(levels = c("a", "b"),
+                          models = c(a = "nec4param", b = "ecx4param")),
+                     class = "bayesnecjointfit")
+  calls <- list()
+  local_mocked_bindings(
+    joint_level_fit = function(object, level) level,
+    nec = function(object, ...) {
+      calls[[length(calls) + 1]] <<- list(fun = "nec", args = list(...))
+      c(Q50 = 1, Q2.5 = 0.5, Q97.5 = 2)
+    },
+    nsec = function(object, ...) {
+      calls[[length(calls) + 1]] <<- list(fun = "nsec", args = list(...))
+      c(Q50 = 1, Q2.5 = 0.5, Q97.5 = 2)
+    }
+  )
+  expect_no_message(bayesnec:::joint_ne_table(joint, no_effect = TRUE,
+                                              sig_val = 0.05,
+                                              resolution = 40))
+  expect_equal(vapply(calls, `[[`, "", "fun"), c("nec", "nsec"))
+  expect_null(calls[[1]]$args$sig_val)
+  expect_equal(calls[[2]]$args$sig_val, 0.05)
+  joint$models[["b"]] <- "nec3param"
+  expect_message(bayesnec:::joint_ne_table(joint, no_effect = TRUE,
+                                           sig_val = 0.05),
+                 "did not use `sig_val`")
 })
 
 test_that("joint fitted curves retain shared posterior rows", {
@@ -134,4 +176,38 @@ test_that("a joint fitted comparison asks for the rows it predicts", {
   expect_error(compare_posterior(joint, comparison = "fitted",
                                  re_formula = NULL),
                "`re_formula`")
+})
+
+test_that("an estimate comparison of separate fits refuses unused arguments", {
+  fits <- list(a = ecx4param, b = nec4param)
+  expect_error(compare_posterior(fits, comparison = "nsec", foo = 1),
+               "`foo`")
+  expect_error(compare_posterior(fits, comparison = "nsec",
+                                 hormesis_def = "max"),
+               "hormesis_def has been removed")
+  expect_error(compare_posterior(fits, comparison = "fitted",
+                                 hormesis_def = "max"),
+               "hormesis_def has been removed")
+})
+
+test_that("a joint comparison refuses hormesis_def by name", {
+  joint <- joint_split()
+  expect_error(compare_posterior(joint, comparison = "ecx",
+                                 hormesis_def = "max"),
+               "hormesis_def has been removed")
+})
+
+test_that("a fitted comparison checks the draws it is asked for", {
+  fits <- list(a = ecx4param, b = nec4param)
+  expect_error(compare_posterior(fits, comparison = "fitted", ndraws = 1e6),
+               "`ndraws` must be one whole number from 1 to")
+  expect_error(compare_posterior(fits, comparison = "fitted",
+                                 draw_ids = c(0, 1)),
+               "`draw_ids` must be whole numbers")
+  one <- compare_posterior(fits, comparison = "fitted", resolution = 5,
+                           ndraws = 1)
+  expect_equal(dim(one$diff_list[["a-b"]]), c(1L, 5L))
+  joint <- joint_split()
+  expect_error(compare_posterior(joint, comparison = "fitted", ndraws = 1e6),
+               "`ndraws` must be one whole number from 1 to")
 })

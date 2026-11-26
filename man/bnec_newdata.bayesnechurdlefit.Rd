@@ -4,7 +4,7 @@
 \alias{bnec_newdata.bayesnechurdlefit}
 \title{Predictor grid for a \code{\link{bayesnechurdlefit}}}
 \usage{
-\method{bnec_newdata}{bayesnechurdlefit}(x, resolution = 100, x_range = NA)
+\method{bnec_newdata}{bayesnechurdlefit}(x, resolution = 100, x_range = NA, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnechurdlefit}}.}
@@ -12,6 +12,8 @@
 \item{resolution}{The number of unique predictor values.}
 
 \item{x_range}{A range of predictor values.}
+
+\item{...}{Unused; other arguments are refused.}
 }
 \value{
 A \code{\link[base]{data.frame}}.

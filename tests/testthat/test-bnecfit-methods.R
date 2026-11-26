@@ -459,13 +459,13 @@ test_that("update() reports a shift without naming priors (#486)", {
   nd <- nec_data
   nd$y[which.max(nd$y)] <- 1
   msgs <- messages_before_refit(
-    stats::update(manec_example, newdata = nd,
+    stats::update(legacy_fit(manec_example), newdata = nd,
                   family = Beta(link = "identity"), force_fit = TRUE)
   )
   shift <- grep("shifted to", msgs, value = TRUE)
   expect_length(shift, 1)
   expect_match(shift, "1 value(s) at 1", fixed = TRUE)
-  # manec_example holds no bnec_record(), so the message cannot point to it.
+  # A fit without a bnec_record() gives the message nothing to point to.
   expect_no_match(shift, "prior|bnec_record")
   # A fit that holds a record is pointed to it.
   with_record <- manec_example
@@ -500,7 +500,7 @@ test_that("update returns a bayesnecfit when only one model survives", {
   assign("update.brmsfit", stub, envir = tbl)
   # try(silent = FALSE) in the refit loop prints the stub's stop to stderr.
   invisible(capture.output(
-    upd <- suppressMessages(update(manec_example)),
+    upd <- suppressWarnings(suppressMessages(update(manec_example))),
     type = "message"
   ))
   expect_s3_class(upd, "bayesnecfit")
@@ -531,6 +531,18 @@ test_that("c() and + weight by the documented default", {
     suppressMessages() |>
     suppressWarnings()
   expect_equal(attr(added$mod_stats$wi, "method"), "pseudobma")
+})
+
+test_that("parent combination and update methods refuse an unknown fit class", {
+  unknown <- structure(list(), class = c("unknownfit", "bnecfit"))
+  expect_error(c(unknown, unknown), "class unknownfit")
+  expect_error(unknown + unknown, "class unknownfit")
+  expect_error(update(unknown), "class unknownfit")
+  expect_error(c(nec4param, unknown), "class unknownfit")
+  for (generic in c("c", "+", "update")) {
+    expect_true(is.function(getS3method(generic, "bayesnecfit")))
+    expect_true(is.function(getS3method(generic, "bayesmanecfit")))
+  }
 })
 
 test_that("c() compares stored fit data by column name", {
@@ -703,9 +715,62 @@ test_that("update() computes the estimates with the arguments the set records", 
   expect_identical(attr(out, "bnec_expand_args"), default_expand_record())
   # A set that records none takes the bnec() defaults, except that it was
   # scored by observation.
-  out <- q(update(manec_example, recompile = FALSE))
+  out <- q(update(legacy_fit(manec_example), recompile = FALSE))
   expect_identical(attr(out, "bnec_expand_args"),
                    default_expand_record(leave_out = "observation"))
   expect_equal(range(out$w_pred_vals$data$x),
                range(manec_example$mod_fits[[1]]$fit$data$x))
+})
+
+test_that("unsupported fit methods refuse their concrete class", {
+  group <- structure(list(fits = list(a = nec4param, b = nec4param),
+                          levels = c("a", "b"), group_var = "site"),
+                     class = c("bayesnecgroupfit", "bnecfit"))
+  hurdle <- structure(list(growth = nec4param, survival = nec4param),
+                      class = c("bayesnechurdlefit", "bnecfit"))
+  joint <- joint_split()
+  fits <- list(nec4param, manec_example, hurdle, group, joint)
+  for (fit in fits) {
+    expect_error(check_formula(fit), paste0("class ", class(fit)[1]),
+                 fixed = TRUE)
+  }
+  for (fit in fits[c(1, 2, 5)]) {
+    expect_error(bnec_joint(fit), paste0("class ", class(fit)[1]),
+                 fixed = TRUE)
+  }
+  for (fit in fits[1:3]) {
+    expect_error(compare_posterior(fit), paste0("class ", class(fit)[1]),
+                 fixed = TRUE)
+  }
+  expect_error(c(joint, joint), "class bayesnecjointfit", fixed = TRUE)
+  expect_error(joint + joint, "class bayesnecjointfit", fixed = TRUE)
+  expect_error(nec4param + joint, "class bayesnecjointfit", fixed = TRUE)
+  expect_error(hurdle + nec4param,
+               "bayesnechurdlefit with class bayesnecfit", fixed = TRUE)
+})
+
+test_that("explicit ordinary methods retain parent result contracts", {
+  expect_s3_class(failed_models(nec4param), "bnecfailures")
+  expect_s3_class(failed_models(manec_example), "bnecfailures")
+  expect_s3_class(failed_models(joint_split()), "bnecfailures")
+  for (fit in list(nec4param, manec_example)) {
+    expect_identical(ecnsec(fit, nsec = 1.5),
+                     bayesnec:::ecnsec.bnecfit(fit, nsec = 1.5))
+    expect_identical(exceedance(fit, threshold = 2),
+                     bayesnec:::exceedance.bnecfit(fit, threshold = 2))
+  }
+})
+
+test_that("pull_prior keeps full priors in class-specific containers", {
+  group <- structure(list(fits = list(a = nec4param, b = manec_example),
+                          levels = c("a", "b"), group_var = "site"),
+                     class = c("bayesnecgroupfit", "bnecfit"))
+  hurdle <- structure(list(growth = nec4param, survival = manec_example),
+                      class = c("bayesnechurdlefit", "bnecfit"))
+  expect_s3_class(pull_prior(nec4param)[[1]], "brmsprior")
+  expect_named(pull_prior(manec_example), names(manec_example$mod_fits))
+  expect_named(pull_prior(group), c("a", "b"))
+  expect_named(pull_prior(hurdle), c("growth", "survival"))
+  expect_s3_class(pull_prior(joint_split())[[1]], "brmsprior")
+  expect_error(pull_prior(1L), "class integer")
 })

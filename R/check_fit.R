@@ -10,12 +10,14 @@
 #' @order 1
 #'
 #' @param x An object of class \code{\link{bayesnecfit}} or
-#' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, or a
-#' \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.
+#' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}, a
+#' \code{\link{bayesnechurdlefit}} returned by \code{\link{bnec_hurdle}}, or
+#' a \code{\link{bayesnecgroupfit}} returned by \code{\link{bnec_group}}.
 #' @param group A numeric, character or factor vector of the same length as the
-#' data giving the group each row belongs to, or a single numeric value giving
+#' data giving the group each row belongs to, or a single whole number giving
 #' the number of bins to cut the predictor
-#' into. If \code{NULL} (the default) the distinct values of the predictor are
+#' into. A vector with a missing value is refused. If \code{NULL} (the
+#' default) the distinct values of the predictor are
 #' used where they are replicated, and the predictor is binned otherwise, with a
 #' warning.
 #' For a \code{bayesnecgroupfit}, an explicit vector has one value per row of
@@ -124,6 +126,10 @@
 #' Each table retains its attributes, including any stored Pareto diagnostics.
 #' \code{print()} labels and prints each level; \code{plot()} returns a named
 #' list of plots with one plot per fitted level.
+#' A \code{bayesnechurdlefit} returns a plain \code{\link[base]{list}} of
+#' such tables, named \code{growth}, \code{survival} and, unless
+#' \code{combined = FALSE}, \code{combined}. Plot each element separately, as
+#' in \code{plot(checks$growth)}.
 #'
 #' The separate \code{"pareto"} attribute is a
 #' data frame with one row per equation. It names the stored criterion used for
@@ -165,7 +171,7 @@ check_fit <- function(x, group = NULL, ndraws = 1000, seed = 10, ...) {
 
 #' Read Pareto diagnostics from the criterion used for weights
 #' @param fit A \code{bayesnecfit}.
-#' @param criterion \code{"logo"} or \code{"loo"}.
+#' @param criterion \code{"logo"}, \code{"loo"} or \code{"kfold"}.
 #' @param weight The model weight, or \code{NA} for a single equation.
 #' @return A one-row data frame.
 #' @noRd
@@ -196,12 +202,13 @@ check_fit_pareto_row <- function(fit, criterion, weight = NA_real_) {
 
 #' The stored criterion selected when a model set was weighted
 #' @param x A \code{bayesmanecfit}.
-#' @return \code{"logo"} or \code{"loo"}.
+#' @return \code{"logo"}, \code{"loo"} or \code{"kfold"}. An exact K-fold
+#' criterion has no Pareto k, so its rows are reported as unavailable.
 #' @noRd
 check_fit_weight_criterion <- function(x) {
   leave_out <- attr(x$mod_stats$wi, "leave_out")
   if (!is.null(leave_out)) {
-    return(if (identical(leave_out, "observation")) "loo" else "logo")
+    return(switch(leave_out, observation = "loo", kfold = "kfold", "logo"))
   }
   # Older sets did not record leave_out. Only choose logo if every equation
   # holds one; otherwise the stored observation-wise criterion is unambiguous.
@@ -225,9 +232,23 @@ check_fit_weight_criterion <- function(x) {
 #' @noRd
 check_fit_groups <- function(predictor, group = NULL) {
   if (!is.null(group) && length(group) == length(predictor)) {
+    if (anyNA(group)) {
+      stop("`group` is missing for row(s) ",
+           paste(which(is.na(group)), collapse = ", "), ". Give every row a",
+           " group; check_fit() would otherwise leave those rows out of",
+           " every statistic.", call. = FALSE)
+    }
     return(factor(group))
   }
-  n_bins <- if (!is.null(group) && length(group) == 1) group else NULL
+  if (!is.null(group) &&
+      (length(group) != 1 || !is.numeric(group) || !is.finite(group) ||
+         group < 1 || group != round(group))) {
+    stop("`group` must hold one value per row of the data (",
+         length(predictor), " rows), or be a single whole number of bins",
+         if (length(group) != 1) paste0("; it has length ", length(group)),
+         ".", call. = FALSE)
+  }
+  n_bins <- if (!is.null(group)) group else NULL
   reps <- table(predictor)
   if (is.null(n_bins) && length(reps) > 0 && min(reps) > 1) {
     return(factor(predictor))
@@ -366,6 +387,23 @@ hold_at_bound <- function(v, lower, upper, keep_zero) {
 #'
 #' @noRd
 check_fit_table <- function(fit, formula, y, grp, ndraws, seed, is_mixture) {
+  sims <- check_fit_draws(fit, formula, ndraws, seed)
+  check_fit_stats(y, sims$yrep, sims$mu, grp, is_mixture,
+                  cens = check_fit_cens(fit))
+}
+
+#' Simulated responses and the fitted mean at every fitted row
+#'
+#' @inheritParams check_fit_table
+#'
+#' @return A \code{\link[base]{list}} of \code{yrep}, a draws-by-rows
+#' \code{\link[base]{matrix}}, and \code{mu}, the posterior median of the mean
+#' at each row.
+#'
+#' @importFrom brms posterior_predict ndraws
+#'
+#' @noRd
+check_fit_draws <- function(fit, formula, ndraws, seed) {
   # brms errors when ndraws exceeds the draws a fit holds, so cap it.
   available <- brms::ndraws(fit)
   if (ndraws > available) {
@@ -382,7 +420,7 @@ check_fit_table <- function(fit, formula, y, grp, ndraws, seed, is_mixture) {
     mu <- apply(factorised_count_epred(fit, formula, ndraws = ndraws),
                 2, median)
   })
-  check_fit_stats(y, yrep, mu, grp, is_mixture, cens = check_fit_cens(fit))
+  list(yrep = yrep, mu = mu)
 }
 
 #' The per-group statistics, given a response and a simulated response
@@ -491,6 +529,8 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture, cens = NULL) {
 #' @method check_fit bayesnecfit
 #'
 #' @inherit check_fit description return examples
+#' @return A \code{checkfit} table for this single fit, with model and
+#' Pareto diagnostic attributes.
 #'
 #' @importFrom stats model.frame
 #' @importFrom chk chk_number
@@ -498,22 +538,33 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture, cens = NULL) {
 #' @export
 check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
                                   ...) {
-  # Validate the seed: set.seed(NULL) is not an error but reseeds from the
-  # clock, so the diagnostic would not repeat.
+  # Reject NULL: set.seed(NULL) reseeds from the clock and cannot repeat.
   chk_number(seed)
-  mod_dat <- model.frame(x$bayesnecformula, data = x$fit$data)
+  check_fit_one_table(x, group, ndraws, seed)
+}
+
+#' Build one diagnostic table from a stored fitted component
+#'
+#' @param part A stored component with a brms fit and formula.
+#' @param group Optional observation grouping.
+#' @param ndraws Number of predictive draws.
+#' @param seed Reproducible simulation seed.
+#' @return A \code{checkfit} table with its model and Pareto attributes.
+#' @noRd
+check_fit_one_table <- function(part, group, ndraws, seed) {
+  mod_dat <- model.frame(part$bayesnecformula, data = part$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
-  y <- x$fit$data[[y_var]]
-  predictor <- x$fit$data[[x_var]]
+  y <- part$fit$data[[y_var]]
+  predictor <- part$fit$data[[x_var]]
   grp <- check_fit_groups(predictor, group)
-  out <- check_fit_table(x$fit, x$bayesnecformula, y, grp, ndraws, seed,
-                         is_hurdle_family(x$fit$family))
-  ctrl <- check_fit_control_groups(predictor, grp, recorded_x_control(x))
+  out <- check_fit_table(part$fit, part$bayesnecformula, y, grp, ndraws, seed,
+                         is_hurdle_family(part$fit$family))
+  ctrl <- check_fit_control_groups(predictor, grp, recorded_x_control(part))
   out$control <- out$group %in% ctrl
-  attr(out, "model") <- x$model
+  attr(out, "model") <- part$model
   attr(out, "pareto") <- check_fit_pareto_row(
-    x, if (!is.null(x$fit$criteria$logo)) "logo" else "loo"
+    part, if (!is.null(part$fit$criteria$logo)) "logo" else "loo"
   )
   allot_class(out, c("checkfit", "data.frame"))
 }
@@ -524,18 +575,15 @@ check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
 #' @method check_fit bayesmanecfit
 #'
 #' @inherit check_fit description return examples
+#' @return A \code{checkfit} table with one row block per model and
+#' columns for model weights, with Pareto diagnostics as an attribute.
 #'
 #' @export
 check_fit.bayesmanecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
                                     ...) {
-  # Validated here as well as in the bayesnecfit method it delegates to, so
-  # that a bad seed is refused before the first pull_out() rather than after.
   chk_number(seed)
   out <- lapply(names(x$mod_fits), function(m) {
-    # pull_out() expands a fit and recalculates its criteria. This check only
-    # needs the stored brms fit, formula, and equation name.
-    fit_m <- allot_class(x$mod_fits[[m]], c("bayesnecfit", "bnecfit"))
-    res <- check_fit(fit_m, group = group, ndraws = ndraws, seed = seed)
+    res <- check_fit_one_table(x$mod_fits[[m]], group, ndraws, seed)
     res$model <- m
     res$wi <- x$mod_stats[m, "wi"]
     res
@@ -641,7 +689,7 @@ print.checkfit <- function(x, ...) {
   print(y)
   if (!any(y$control)) {
     cat("\nNo observed row is at the stated control concentration, so",
-        " no group is labelled as the control.\n")
+        "no group is labelled as the control.\n")
   }
   flagged <- y$ppp_mean < 0.05 | y$ppp_mean > 0.95 |
     y$ppp_sd < 0.05 | y$ppp_sd > 0.95
@@ -689,13 +737,13 @@ print.checkfit <- function(x, ...) {
       }
       if (length(shown) < nrow(p)) {
         cat(nrow(p) - length(shown), "lower-weight equations omitted from",
-            " print; see attr(x, \"pareto\") for all equations.\n")
+            "print; see attr(x, \"pareto\") for all equations.\n")
       }
       if (all(p$status == "available" & p$n_high_k == 0)) {
         cat("No held-out unit is at or above the Pareto cutoff.\n")
       }
       cat("High k concerns the leave-one-out approximation, not sampler",
-          " convergence or the posterior predictive check.\n")
+          "convergence or the posterior predictive check.\n")
     }
   }
   invisible(x)
@@ -995,19 +1043,14 @@ hurdle_observed_response <- function(x) {
 #' observation appears in the location panel only, because its residual
 #' standard deviation is undefined.
 #'
-#' Two panels rather than one: the location and the scale fail independently and
-#' for different reasons. A model can get the mean of every group right while
-#' simulating far too much spread, which is the case
-#' \code{\link{check_fit}} exists to catch and which a single combined panel
-#' would hide.
+#' Location and scale are drawn in separate panels, because a model can
+#' reproduce the mean of every group while simulating far more spread than the
+#' data show.
 #'
 #' The control is drawn differently because it is not just another group:
 #' \code{\link{nsec}} reads its reference from the control, so a discrepancy
 #' there moves a reported no-effect concentration in a way that a discrepancy at
 #' the top of the curve does not.
-#'
-#' Built directly in \pkg{ggplot2}, which is already in \code{Depends}. No
-#' \pkg{bayesplot} dependency -- see #148.
 #'
 #' @param x An object of class \code{checkfit}, from \code{\link{check_fit}}.
 #' @param ... Unused.
@@ -1028,8 +1071,6 @@ hurdle_observed_response <- function(x) {
 #' @export
 plot.checkfit <- function(x, ...) {
   d <- as.data.frame(x)
-  # Reshaped by rbind rather than a tidyr call: R/ is base R by convention, and
-  # two statistics do not justify a reshape dependency in package code.
   long <- rbind(
     data.frame(group = d$group, control = d$control,
                statistic = "location (mean)",

@@ -11,7 +11,7 @@
   ...,
   ecx = FALSE,
   ecx_vals = c(10, 50, 90),
-  divergence_cutoff = 10
+  divergence_cutoff = 0.00125
 )
 
 \method{summary}{bayesmanecfit}(
@@ -20,7 +20,7 @@
   ecx = FALSE,
   ecx_vals = c(10, 50, 90),
   rhat_cutoff = 1.01,
-  divergence_cutoff = 10,
+  divergence_cutoff = 0.00125,
   fit_ratio_cutoff = 1.15,
   check_fit = TRUE
 )
@@ -36,14 +36,17 @@ with or without \code{ecx = TRUE}. See Details.}
 
 \item{ecx}{Should summary ECx values be calculated? Defaults to FALSE.}
 
-\item{ecx_vals}{ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
+\item{ecx_vals}{ECx targets, as percentages greater than 0, as for
+\code{ecx_val} in \code{\link{ecx}}. Only relevant if ecx = TRUE.
 If no value is specified by the user, returns calculations for EC10, EC50,
 and EC90.}
 
 \item{divergence_cutoff}{A \code{\link[base]{numeric}} vector of length 1.
-The summary warns of a model with more divergent transitions after warmup
-than this. Defaults to 10, the cutoff \code{\link{check_sampling}} and
-\code{\link{screen_models}} use. On a model set the warning gives each
+The proportion of retained draws above which the divergent transitions of
+a model are reported in a warning. Defaults to 0.00125 (0.125\%, or 10 of
+8,000 draws), the cutoff \code{\link{check_sampling}} and
+\code{\link{screen_models}} use. A value of 1 or more is refused, and
+\code{Inf} turns the warning off. On a model set the warning gives each
 flagged equation's model weight beside its count.}
 
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1. The
@@ -74,7 +77,8 @@ and the installation of \pkg{bayesnec} that fitted it (see
 \code{\link{bnec_version}}).
 Warning messages are also printed to screen in case
 model fits are not satisfactory with regards to their Rhats or their
-divergent transitions.
+divergent transitions, the latter as a proportion of the retained draws
+(see \code{divergence_cutoff}).
 }
 \description{
 Generates a summary for objects fitted by \code{\link{bnec}}.
@@ -135,7 +139,7 @@ summary(nec4param)
 }
 \references{
 Fisher R, Fox DR (2023). Introducing the no significant effect concentration
-(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028.
 doi: 10.1002/etc.5610.
 
 Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -144,5 +148,5 @@ Environmental Assessment and Management. doi:10.1002/ieam.4809.
 
 Fox DR (2010). A Bayesian Approach for Determining the No Effect
 Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 }

@@ -13,23 +13,17 @@
 #' @docType data
 NULL
 
-#' Custom beta-binomial family
-#'
-#' @format An object of class \code{\link[brms]{customfamily}}
-#'
-#' @name "beta_binomial"
-#' @docType data
-NULL
-
 #' Example bayesmanecfit object
 #'
-#' @format An object of class \code{\link{bayesmanecfit}}. This was created
-#' to reduce run time in examples and tests, and to give the user an example
-#' to toy with. This was fitted to \code{\link{bayesnec}} built-in mock dataset
-#' (see ?\code{\link{nec_data}}), using models "nec4param" and "ecx4param".
-#' The number of chains were set to 2 and number of iterations were 50 only
-#' to make sure that package size was below 5 Mb. See help files for function
-#' \code{\link{bnec}} and class \code{\link{bayesmanecfit}} for details.
+#' @format An object of class \code{\link{bayesmanecfit}}, created to reduce
+#' run time in examples and tests and to give the user an example to toy with.
+#' It was fitted to the logit-transformed response of the \code{\link{bayesnec}}
+#' built-in mock dataset (see ?\code{\link{nec_data}}), using the equations
+#' \code{nec4param} and \code{ecx4param}. Each of the 2 chains ran 500 warmup
+#' iterations and 1200 post-warmup draws, with seed 10. Both equations pass
+#' \code{\link{screen_models}} at its defaults, with an effective sample size
+#' of at least 700. The draws are few, to keep the package small. See help files
+#' for function \code{\link{bnec}} and class \code{\link{bayesmanecfit}} for details.
 #'
 #' @source Code used to generate these models can be downloaded from \url{https://github.com/open-AIMS/bayesnec/blob/master/data-raw/manec_example.R}
 #'
@@ -56,7 +50,7 @@ NULL
 #'
 #' \describe{ 
 #'\item{herbicide}{The herbicide (chr).}
-#'\item{concentration}{The treatment concentration in µg / L (dbl).}
+#'\item{concentration}{The treatment concentration in \eqn{\mu}{u}g / L (dbl).}
 #'\item{fvfm}{Maximum effective quantum yield (dbl).}
 #' }
 #'
@@ -80,11 +74,14 @@ NULL
 #' in four chronic toxicity tests, reconstructed to one row per individual
 #' snail that entered the experiment. The test method follows Trenfield et al.
 #' (2016), although that publication does not describe the mortality scenario
-#' these data are used to illustrate.
+#' these data are used to illustrate. Unpublished data from the Australian
+#' Institute of Marine Science.
 #'
 #' This dataset exists to demonstrate the hurdle concentration-response models
-#' (see \code{\link{bnec_hurdle}} and \code{vignette("example6")}). Exposure
-#' both suppresses growth in the snails that live and kills others, so an
+#' (see \code{\link{bnec_hurdle}} and the article
+#' \emph{Hurdle and zero-inflated concentration-response models}
+#' at \url{https://open-aims.github.io/bayesnec/articles/example6.html}).
+#' Exposure both suppresses growth in the snails that live and kills others, so an
 #' analysis of the survivors alone silently conditions on survival.
 #'
 #' \bold{Mortality is recorded as a zero growth value}, with \code{alive}
@@ -100,7 +97,9 @@ NULL
 #' obtained by referencing each individual to a baseline mean rather than to
 #' its own starting size, and that referencing carries enough error to put a
 #' strongly suppressed individual below zero. They are retained rather than
-#' floored because flooring is the practice \code{vignette("example6")} argues
+#' floored because flooring is the practice that the article
+#' \emph{Hurdle and zero-inflated concentration-response models}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example6.html}) argues
 #' against; a Gamma fit requires handling them explicitly.
 #'
 #' \bold{Contaminant B is the most severely affected test.} Only 63 of the 284
@@ -143,6 +142,8 @@ NULL
 #'
 #' \code{record} is retained so that the distinction stays visible and a fit
 #' can be repeated without the reinstated rows.
+#'
+#' @source Unpublished data from the Australian Institute of Marine Science.
 #'
 #' @name nassarius
 #' @docType data
@@ -190,7 +191,10 @@ NULL
 #' the same test --- so a culture that was lost entirely is recorded as
 #' \emph{less} affected than one that was merely declining. Correcting it in
 #' the shipped data would remove the example, and substitution at a boundary is
-#' the practice \code{vignette("example6")} argues against.
+#' the practice that the article
+#' \emph{Hurdle and zero-inflated concentration-response models}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example6.html}) argues
+#' against.
 #'
 #' \bold{The two species grow on very different scales,} which is why they were
 #' run over different exposure durations --- seven days for
@@ -242,6 +246,8 @@ NULL
 #' \item{density_initial}{Cell density at the start of the exposure (dbl).}
 #' }
 #'
+#' @source Unpublished data from the Australian Institute of Marine Science.
+#'
 #' @name alga
 #' @docType data
 #' @format An object of class `data.frame` with 310 rows and 9 columns.
@@ -261,8 +267,10 @@ NULL
 #' separate endpoint is scored. The analysis code accompanying the paper is at
 #' \url{https://github.com/open-AIMS/Lum31-tox-assays}.
 #'
-#' This dataset exists to demonstrate group-level terms (see
-#' \code{vignette("example8")}). Its design supplies replication at three
+#' This dataset exists to demonstrate group-level terms (see the article
+#' \emph{Grouping and factor covariates}
+#' at \url{https://open-aims.github.io/bayesnec/articles/example8.html}).
+#' Its design supplies replication at three
 #' nested scales --- four wells within a concentration (\code{conc_group}), 33
 #' plates each spanning a whole dilution series (\code{plate}), and two
 #' toxicants read at two exposure times --- so the same data support a
@@ -311,7 +319,9 @@ NULL
 #' March batches. The published analysis removes this by dividing each plate by
 #' the median of its four control wells; a group-level term on the control
 #' parameter estimates the same per-plate factor and propagates its
-#' uncertainty, which is what \code{vignette("example8")} compares.
+#' uncertainty, which is what the article
+#' \emph{Grouping and factor covariates}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example8.html}) compares.
 #'
 #' The columns are as follows:
 #'
@@ -345,6 +355,19 @@ NULL
 #'   throughout, and the response to fit with \code{censoring}.}
 #' }
 #'
+#' @source Australian Institute of Marine Science (2025) A bioluminescent
+#' bacterial toxicity assay for tropical marine environments. AIMS data record,
+#' \url{https://apps.aims.gov.au/metadata/view/6aae0b3b-fe15-47cc-9a11-9fb669479f61}.
+#' The data are licensed under Creative Commons Attribution 3.0 Australia
+#' (CC BY 3.0 AU, \url{https://creativecommons.org/licenses/by/3.0/au/}) and
+#' remain under that licence in this package. They were changed as follows. The
+#' acute copper and zinc workbooks were combined; the 5 minute reads were
+#' omitted; the 15 and 30 minute reads were reshaped to one row per well and
+#' exposure time; the \code{batch}, \code{plate}, \code{well} and
+#' \code{conc_group} identifiers were constructed; and \code{censoring} and
+#' \code{rlu_cens} were added. The readings in \code{rlu} and the
+#' concentrations in \code{conc} are unchanged.
+#'
 #' @name lum31
 #' @docType data
 #' @format An object of class `data.frame` with 2904 rows and 10 columns.
@@ -376,8 +399,12 @@ NULL
 #' \eqn{\mu}g/L, at which the corals died before they could be photographed.
 #' A chamber sits at one concentration, so it spans no part of the
 #' concentration-response curve and admits only a displacement --- the
-#' within-concentration structure \code{vignette("example8")} demonstrates.
-#' \code{vignette("example4")} fits it with \code{ogl(chamber)}. The model weights of a set fitted with that term leave
+#' within-concentration structure that the article
+#' \emph{Grouping and factor covariates}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example8.html}) demonstrates. The article
+#' \emph{Comparisons and exceedance probabilities}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example4.html}) fits it
+#' with \code{ogl(chamber)}. The model weights of a set fitted with that term leave
 #' out each chamber whole; see the \code{loo_controls} argument of
 #' \code{\link{bnec}}.
 #'
@@ -393,13 +420,18 @@ NULL
 #' values in the two pixel columns together, and \code{proportion} is exactly
 #' its complement. The fragment that sets the largest value therefore has an
 #' \code{intensity} of 1 and a \code{proportion} of 0, a boundary a
-#' \code{Beta} likelihood cannot represent. See
-#' \code{vignette("example6")} for what to do with a value on a boundary.
+#' \code{Beta} likelihood cannot represent. See the article
+#' \emph{Hurdle and zero-inflated concentration-response models}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example6.html}) for what to
+#' do with a value on a boundary.
 #'
 #' The control concentration is reported as \code{0}. The source file also
 #' holds a column substituting \code{0.1} for it so that a log predictor can be
 #' taken; that substitution is not shipped, because substituting at a boundary
-#' is the practice \code{vignette("example6")} argues against and a user who
+#' is the practice that the article
+#' \emph{Hurdle and zero-inflated concentration-response models}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example6.html}) argues
+#' against, and a user who
 #' wants it can make it and say so.
 #'
 #' The columns are as follows:
@@ -419,8 +451,15 @@ NULL
 #' \item{intensity}{Derived colour intensity on the unit interval (dbl).
 #'   Exactly one observation is 1.}
 #' \item{proportion}{\code{1 - intensity} (dbl), the response used in
-#'   \code{vignette("example4")}. Exactly one observation is 0.}
+#'   the article \emph{Comparisons and exceedance probabilities}
+#'   (\url{https://open-aims.github.io/bayesnec/articles/example4.html}).
+#'   Exactly one observation is 0.}
 #' }
+#'
+#' @source The experiment of Flores et al. (2021), \doi{10.1016/j.marpolbul.2021.112582}.
+#' The colour scores have no public data record, unlike the photosynthetic
+#' yield data of \code{\link{coral_pam}}. Where the source files and the
+#' paper differ, the paper is followed.
 #'
 #' @name coral_colour
 #' @docType data
@@ -442,12 +481,12 @@ NULL
 #'
 #' Effective quantum yield of photosystem II in the reef-building coral
 #' \emph{Acropora millepora} exposed to the herbicide diuron, crossed with
-#' three climate scenarios, from the same 14-day experiment as
-#' \code{\link{coral_colour}}.
+#' three climate scenarios, from the same experiment as
+#' \code{\link{coral_colour}}. Yield was read after 7 days of exposure.
 #'
 #' The design is three climate scenarios by six diuron concentrations by three
 #' chambers: 54 chambers. Yield was read repeatedly on the fragments in each
-#' chamber, so the chambers hold five to eight readings each and the rows are
+#' chamber, so the chambers hold six to eight readings each and the rows are
 #' not balanced. As with \code{\link{coral_colour}} a chamber sits at one
 #' concentration and admits only a displacement, and 54 chambers of several
 #' readings is the better conditioned of the two for a
@@ -462,8 +501,10 @@ NULL
 #' at 9.6 and 29 \eqn{\mu}g/L. They are readings at the floor of the
 #' fluorometer: no reading lies between 0 and the smallest positive value,
 #' 0.007, and a fragment read twice can give one 0 and one positive reading. A
-#' \code{Beta} likelihood cannot represent a 0, so \code{vignette("example4")}
-#' treats these readings as left-censored at the smallest positive value.
+#' \code{Beta} likelihood cannot represent a 0, so the article
+#' \emph{Comparisons and exceedance probabilities}
+#' (\url{https://open-aims.github.io/bayesnec/articles/example4.html}) treats
+#' these readings as left-censored at the smallest positive value.
 #'
 #' The control concentration is reported as \code{0}, and the substitution the
 #' source file holds for it is not shipped, for the reason given under
@@ -482,6 +523,17 @@ NULL
 #' \item{yield}{Effective quantum yield of photosystem II (dbl), a proportion.
 #'   63 readings are exactly 0.}
 #' }
+#'
+#' @source Flores F, Uthicke S, Patel F, Negri A, Marques J, Sarit K (2020)
+#' Combined effects of climate change and the herbicide diuron on the coral
+#' \emph{Acropora millepora} (NESP 2.1.6 and NESP TWQ 5.2, AIMS). eAtlas,
+#' Dataset, \doi{10.25909/mnt4-g127}. The data are licensed under Creative
+#' Commons Attribution 3.0 Australia (CC BY 3.0 AU,
+#' \url{https://creativecommons.org/licenses/by/3.0/au/}) and remain under that
+#' licence in this package. They were changed as follows. The day 7 yield
+#' readings were reshaped to one row per reading; \code{chamber} was rebuilt
+#' from climate, concentration and the chamber number within that combination;
+#' and the substitute control concentration was dropped.
 #'
 #' @name coral_pam
 #' @docType data

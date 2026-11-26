@@ -159,7 +159,7 @@ test_that("checks that gsub statement is replacing all wanted x correctly", {
   new_ecxll5 <- substitute_x_in_formula("new_x", ecxll5_rhs)
   expect_identical(
     new_ecxll5,
-    "bot + (top - bot)/(1 + exp(exp(beta) * (new_x - ec50)))^exp(f)"
+    "bot + (top - bot) * exp(-exp(f) * log1p(exp(exp(beta) * (new_x - ec50))))"
   )
   
   # ecxll4

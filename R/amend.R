@@ -2,12 +2,14 @@
 #' object
 #'
 #' Amends an existing \code{\link{bayesmanecfit}} or \code{\link{bayesnecfit}}
-#' object, for example, by adding or removing fitted models.
+#' object, for example, by adding or removing fitted models. A
+#' \code{\link{bayesnecgroupfit}} is amended level by level.
 #'
 #' @inheritParams bnec
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}} or
-#' \code{\link{bayesnecfit}}, as returned by \code{\link{bnec}}.
+#' \code{\link{bayesnecfit}}, as returned by \code{\link{bnec}}, or of class
+#' \code{\link{bayesnecgroupfit}}, as returned by \code{\link{bnec_group}}.
 #' @param drop A \code{\link[base]{character}} vector containing the names of
 #' model types you which to exclude for the modified fit. A
 #' \code{\link{bayesnecfit}} contains a single model, so there is nothing that
@@ -104,10 +106,13 @@
 #' the stored fits without refitting any model.
 #'
 #' A \code{\link{bayesnecgroupfit}} is amended level by level, with the same
-#' arguments applied to the fit of each level.
+#' arguments applied to the fit of each level. Each message, warning and error
+#' raised for a level names that level, and an error stops the call.
 #'
 #' @return All successfully fitted model fits. A \code{\link{bayesmanecfit}} if
-#' more than one model remains, otherwise a \code{\link{bayesnecfit}}.
+#' more than one model remains, otherwise a \code{\link{bayesnecfit}}. For a
+#' \code{\link{bayesnecgroupfit}}, an object of the same class holding the
+#' amended fit of each level.
 #'
 #' @examples
 #' library(bayesnec)
@@ -143,10 +148,7 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls,
                                 predictor_scale = NULL) {
   prior_args <- recorded_prior_args(object, prior_type, asymptote_observed,
                                     predictor_scale)
-  chk_number(timeout)
-  if (timeout <= 0) {
-    stop("Argument `timeout` must be a positive number (or Inf).")
-  }
+  check_timeout(timeout)
 
   if (missing(drop) && missing(add) && missing(loo_controls) &&
         is.null(x_range) && is.null(resolution) && is.null(sig_val) &&
@@ -206,17 +208,14 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls,
                               predictor_scale = NULL) {
   prior_args <- recorded_prior_args(object, prior_type, asymptote_observed,
                                     predictor_scale)
-  chk_number(timeout)
-  if (timeout <= 0) {
-    stop("Argument `timeout` must be a positive number (or Inf).")
-  }
+  check_timeout(timeout)
   if (!missing(drop)) {
     chk_character(drop)
     # Refuse rather than ignore `drop`: a bayesnecfit holds one model, so
     # dropping it would leave nothing.
     stop("Cannot drop models from a bayesnecfit: it contains the single model",
-         " \"", object$model, "\". Refit with bnec(..., model = ) to change",
-         " which model is fitted.", call. = FALSE)
+         " \"", object$model, "\". To fit another equation, refit with bnec(),",
+         " naming the equation in crf().", call. = FALSE)
   }
   if (missing(add) && missing(loo_controls) &&
         is.null(x_range) && is.null(resolution) && is.null(sig_val) &&
@@ -254,15 +253,64 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls,
 #' @noRd
 check_expand_args <- function(x_range = NULL, resolution = NULL,
                               sig_val = NULL) {
-  if (!is.null(x_range) && !is.na(x_range[1])) {
-    chk_numeric(x_range)
-  }
+  check_x_range(x_range)
   if (!is.null(resolution)) {
     chk_numeric(resolution)
     check_resolution(resolution)
   }
   if (!is.null(sig_val)) {
-    chk_numeric(sig_val)
+    check_sig_val(sig_val)
+  }
+  invisible(NULL)
+}
+
+#' Refuse a timeout that is not positive, or that cannot be applied
+#'
+#' A finite \code{timeout} needs \pkg{R.utils}, which is in Suggests. Check
+#' it here, before any model is fitted, so that a model set does not record
+#' every equation as failed for want of the package.
+#'
+#' @param timeout The value supplied.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @importFrom chk chk_number
+#'
+#' @noRd
+check_timeout <- function(timeout) {
+  chk_number(timeout)
+  if (timeout <= 0) {
+    stop("Argument `timeout` must be a positive number (or Inf).",
+         call. = FALSE)
+  }
+  if (is.finite(timeout) && !has_r_utils()) {
+    stop("Package \"R.utils\" is required to use the `timeout` argument.",
+         " Install it, or leave `timeout` at Inf.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' @noRd
+has_r_utils <- function() {
+  requireNamespace("R.utils", quietly = TRUE)
+}
+
+#' Refuse an x_range that is not NA or two increasing finite numbers
+#'
+#' @param x_range The value supplied, or \code{NULL} where none was.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_x_range <- function(x_range) {
+  if (is.null(x_range) || (length(x_range) == 1 && is.na(x_range))) {
+    return(invisible(NULL))
+  }
+  if (!is.numeric(x_range) || length(x_range) != 2 ||
+        !all(is.finite(x_range)) || x_range[1] >= x_range[2]) {
+    stop("`x_range` must be NA, or two finite numbers in increasing order",
+         " giving the lowest and highest predictor values to predict over;",
+         " it was ", deparse1(x_range), ".", call. = FALSE)
   }
   invisible(NULL)
 }
@@ -307,6 +355,13 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
                             asymptote_observed = TRUE,
                             predictor_scale = "auto", timeout = Inf) {
   check_prior_input(priors, "priors")
+  kfold_changed <- any(vapply(intersect(names(mod_fits),
+                                         names(object$mod_fits)), function(m) {
+    !identical(mod_fits[[m]]$fit$criteria$kfold,
+               object$mod_fits[[m]]$fit$criteria$kfold)
+  }, logical(1)))
+  # handle_set() would otherwise drop nothing, or try to fit a misspelt name.
+  check_equation_names(setdiff(c(drop, add), names(mod_groups)))
   general_error <- amend_general_error()
   fam_tag <- mod_fits[[1]]$fit$family$family
   expand_args <- recorded_expand_args(
@@ -317,7 +372,8 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   inherited <- recorded_expand_args(list(object), method = old_method,
                                     fam_tag = fam_tag)
   if (!is.null(loo_controls)) {
-    if (identical(expand_args$loo_controls, inherited$loo_controls)) {
+    if (identical(expand_args$loo_controls, inherited$loo_controls) &&
+        !kfold_changed) {
       message("No new LOO fitting/weighting arguments have been specified;",
               " ignoring argument loo_controls.")
       if (is.null(drop) && is.null(add) &&
@@ -346,6 +402,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # estimate rebuilt with the same resolution and arguments it recorded.
   if (identical(model_set, names(mod_fits)) &&
         identical(expand_args, inherited) &&
+        !kfold_changed &&
         !needs_observed_rebuild(object) && !needs_ne_rebuild(object)) {
     message("Nothing to amend, please specify a model to ",
             "either add or drop that differs from the original set.")
@@ -396,6 +453,13 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   needs_fit <- !vapply(model_set, function(model) {
     inherits(try(old_fits[[model]], silent = TRUE), "prebayesnecfit")
   }, logical(1))
+  if (identical(loo_controls$leave_out, "kfold") && any(needs_fit)) {
+    stop("The weights are to use exact K-fold scores, which ",
+         paste0(model_set[needs_fit], collapse = ", "), " would not have.",
+         " Pass loo_controls = list(leave_out = \"group\") to weight the",
+         " amended set by leaving out each level, then run kfold_groups()",
+         " and kfold_weights() on it.", call. = FALSE)
+  }
   # check_data() never runs on this route, which fits with skip_check = TRUE,
   # so refuse a missing trials() term and a response at a bound here, once,
   # before the loop. Only the equations to be fitted are tested: ecxflat alone

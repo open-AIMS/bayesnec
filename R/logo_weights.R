@@ -64,8 +64,8 @@ logo_levels <- function(fit, group) {
 #'
 #' @return A \code{\link[base]{list}}. \code{path} is \code{NULL} where the
 #' equation has no deviation on \code{group}, and otherwise locates its draws
-#' in \code{prep}. \code{reason} is \code{NULL} unless the deviations cannot be
-#' integrated out one level at a time by \code{logo_integrate()}.
+#' in \code{prep}. \code{slots} holds one entry per independent deviation.
+#' \code{reason} names an unsupported term or correlation.
 #'
 #' @noRd
 logo_slot <- function(fit, group, prep = NULL) {
@@ -73,30 +73,91 @@ logo_slot <- function(fit, group, prep = NULL) {
   if (nrow(re) == 0) {
     return(list(path = NULL, reason = NULL))
   }
-  if (nrow(re) > 1) {
-    return(list(path = NULL, reason = paste0(
-      "the grouping ", group, " has a deviation on more than one parameter"
-    )))
+  unsupported <- if (nrow(re) > 2) {
+    "more than two deviations"
+  } else if (anyDuplicated(re$id)) {
+    "correlated deviations"
+  } else if (anyDuplicated(paste(re$nlpar, re$dpar))) {
+    "more than one deviation on one parameter"
+  } else NULL
+  if (!is.null(unsupported)) {
+    return(list(path = NULL,
+                reason = paste0("the grouping ", group, " has ", unsupported)))
   }
-  if (!identical(re$coef, "Intercept") || !identical(re$dist, "gaussian")) {
+  if (!all(re$coef == "Intercept") ||
+      ("dist" %in% names(re) && !all(re$dist == "gaussian"))) {
     return(list(path = NULL, reason = paste0(
       "the grouping ", group, " has a term other than a normal intercept"
     )))
   }
-  path <- if (nzchar(re$nlpar)) c("nlpars", re$nlpar) else c("dpars", re$dpar)
-  out <- list(path = path, reason = NULL)
-  if (!is.null(prep)) {
-    out$r <- prep[[path[1]]][[path[2]]]$re$r[[group]]
-    # brms names the parameter, not the deviation, in the standard deviation.
-    par <- if (nzchar(re$nlpar)) re$nlpar else re$dpar
-    out$sd_name <- paste0("sd_", group, "__",
-                          if (par == "mu") "" else paste0(par, "_"),
-                          "Intercept")
-    z <- which(as.matrix(prep[[path[1]]][[path[2]]]$re$Z[[group]]) != 0,
-               arr.ind = TRUE)
-    out$col_of_obs <- z[order(z[, "row"]), "col"]
+  slots <- lapply(seq_len(nrow(re)), function(i) {
+    path <- if (nzchar(re$nlpar[i])) c("nlpars", re$nlpar[i]) else
+      c("dpars", re$dpar[i])
+    par <- if (nzchar(re$nlpar[i])) re$nlpar[i] else re$dpar[i]
+    slot <- list(path = path, sd_name = paste0("sd_", group, "__",
+      if (par == "mu") "" else paste0(par, "_"), "Intercept"))
+    if (!is.null(prep)) {
+      part <- prep[[path[1]]][[path[2]]]$re
+      slot$r <- part$r[[group]]
+      z <- which(as.matrix(part$Z[[group]]) != 0, arr.ind = TRUE)
+      slot$col_of_obs <- z[order(z[, "row"]), "col"]
+    }
+    slot
+  })
+  c(slots[[1]], list(slots = slots, reason = NULL))
+}
+
+#' Each level's log-likelihood with its deviations on a grouping integrated out
+#'
+#' @param fit A \code{\link[brms]{brmsfit}}.
+#' @param prep Its \code{brms::prepare_predictions()} output for the draws
+#' \code{draw_ids}.
+#' @param group The grouping, as \code{fit$ranef$group} names it.
+#' @param level The level of every observation in \code{prep}.
+#' @param draw_ids The draws in \code{prep}, or \code{NULL} for all of them.
+#' @param starts Optionally, one matrix of starting deviations per deviation,
+#' in place of the draws in \code{prep}.
+#'
+#' @return The draws by levels matrix of \code{log p(y_g | theta_s)}, with
+#' columns in the order of \code{levels(level)}. Up to two deviations are
+#' integrated, the second nested within the first.
+#'
+#' @noRd
+logo_integrate_slots <- function(fit, prep, group, level, draw_ids = NULL,
+                                 starts = NULL) {
+  slot <- logo_slot(fit, group, prep)
+  if (!is.null(slot$reason)) stop(slot$reason, call. = FALSE)
+  if (is.null(slot$path)) {
+    # No deviation to integrate: a level's joint log-likelihood is the sum
+    # over its observations.
+    return(t(rowsum(t(log_lik(prep)), level, reorder = TRUE)))
   }
-  out
+  slots <- slot$slots
+  columns <- slots[[1]]$col_of_obs
+  if (!all(vapply(slots, function(s) identical(s$col_of_obs, columns),
+                  logical(1)))) {
+    stop("The grouping's deviations use different level orders.",
+         call. = FALSE)
+  }
+  likelihood <- function() t(rowsum(t(log_lik(prep)), columns,
+                                reorder = TRUE))
+  sds <- lapply(slots, function(part) {
+    sd <- as.vector(as_draws_matrix(fit, variable = part$sd_name))
+    if (is.null(draw_ids)) sd else sd[draw_ids]
+  })
+  integrate <- function(i) {
+    if (i > length(slots)) return(likelihood())
+    part <- slots[[i]]
+    h <- function(z) {
+      # Assign with <<-: likelihood() and the nested integral read this prep.
+      prep[[part$path[1]]][[part$path[2]]]$re$r[[group]] <<- z
+      integrate(i + 1L)
+    }
+    logo_integrate(h, if (is.null(starts)) part$r else starts[[i]], sds[[i]])
+  }
+  out <- integrate(1L)
+  col_level <- tapply(as.integer(level), columns, unique)
+  out[, order(col_level), drop = FALSE]
 }
 
 #' The log predictive density of each group with its deviation integrated out
@@ -183,7 +244,7 @@ logo_integrate <- function(h, r0, sd, nodes = 10, newton_steps = 2,
   out
 }
 
-#' Gauss--Legendre nodes and weights on [-1, 1]
+#' Gauss--Legendre nodes and weights on the interval -1 to 1
 #'
 #' @param n Number of nodes.
 #'
@@ -226,30 +287,17 @@ log_add_exp <- function(a, b) {
 #' @return A \code{psis_loo} object from \code{\link[loo]{loo}}, with one
 #' pointwise row per level and attributes \code{"group"} and \code{"levels"}.
 #'
-#' @importFrom brms prepare_predictions log_lik as_draws_matrix nchains ndraws
-#' rhat
+#' @importFrom brms prepare_predictions log_lik as_draws_matrix nchains ndraws rhat
 #' @importFrom loo loo relative_eff
 #'
 #' @noRd
 logo_criterion <- function(fit, group, level, chunk = 1000) {
+  if (length(logo_slot(fit, group)$slots) > 1L) chunk <- min(chunk, 250L)
   draws <- seq_len(ndraws(fit))
   blocks <- split(draws, ceiling(draws / chunk))
   ll <- do.call(rbind, lapply(blocks, function(ids) {
     prep <- prepare_predictions(fit, draw_ids = ids)
-    slot <- logo_slot(fit, group, prep)
-    if (is.null(slot$path)) {
-      # No deviation to integrate: a level's joint log-likelihood is the sum
-      # over its observations.
-      return(t(rowsum(t(log_lik(prep)), level, reorder = TRUE)))
-    }
-    sd <- as.vector(as_draws_matrix(fit, variable = slot$sd_name))[ids]
-    col_level <- tapply(as.integer(level), slot$col_of_obs, unique)
-    h <- function(z) {
-      prep[[slot$path[1]]][[slot$path[2]]]$re$r[[group]] <- z
-      t(rowsum(t(log_lik(prep)), slot$col_of_obs, reorder = TRUE))
-    }
-    out <- logo_integrate(h, slot$r, sd)
-    out[, order(col_level), drop = FALSE]
+    logo_integrate_slots(fit, prep, group, level, ids)
   }))
   colnames(ll) <- levels(level)
   # Shift each column by its maximum before exponentiating: a level's joint
@@ -285,7 +333,23 @@ logo_criterion <- function(fit, group, level, chunk = 1000) {
 #' @noRd
 weight_criteria <- function(object, x, leave_out = "group", refit = FALSE) {
   pointwise <- list(criteria = lapply(object, extract_loo), logo = NULL,
-                    leave_out = "observation")
+                    kfold = NULL, leave_out = "observation")
+  if (identical(leave_out, "kfold")) {
+    criterion <- lapply(object, function(o) o$fit$criteria$kfold)
+    if (!all(vapply(criterion, inherits, logical(1), "kfold"))) {
+      stop("Complete K-fold scores are required for every equation. Run",
+           " kfold_groups() and kfold_weights() first.", call. = FALSE)
+    }
+    groups <- vapply(criterion, function(c) attr(c, "group"), character(1))
+    folds <- lapply(criterion, function(c) attr(c, "folds"))
+    if (length(unique(groups)) != 1L ||
+        !all(vapply(folds, identical, logical(1), folds[[1]]))) {
+      stop("K-fold criteria have different groupings or assignments.",
+           call. = FALSE)
+    }
+    return(list(criteria = criterion, logo = NULL, kfold = criterion,
+                leave_out = "kfold"))
+  }
   if (!identical(leave_out, "group")) {
     return(pointwise)
   }
@@ -295,11 +359,18 @@ weight_criteria <- function(object, x, leave_out = "group", refit = FALSE) {
             " because ",
             by_group$reason, ". Leaving out each group whole is supported",
             " for one grouping whose levels are each observed at a single",
-            " concentration, with one normal intercept per level. See ?bnec,",
-            " argument loo_controls.", call. = FALSE)
+            " concentration, with up to two independent normal intercepts",
+            " per level.",
+            if (isTRUE(refit)) " loo_controls$refit = TRUE has no effect.",
+            " See ?bnec, argument loo_controls.", call. = FALSE)
   }
   group <- by_group$group
   if (is.null(group)) {
+    if (isTRUE(refit) && is.null(by_group$reason)) {
+      message("No grouping has its levels each observed at a single",
+              " concentration, so the models are scored by leaving out each",
+              " observation and loo_controls$refit = TRUE has no effect.")
+    }
     return(pointwise)
   }
   has_group <- vapply(object, function(o) group %in% o$fit$ranef$group,
@@ -316,7 +387,7 @@ weight_criteria <- function(object, x, leave_out = "group", refit = FALSE) {
   if (isTRUE(refit)) {
     logo <- Map(logo_reloo, object, logo, list(level), names(object))
   }
-  list(criteria = logo, logo = logo, leave_out = group)
+  list(criteria = logo, logo = logo, kfold = NULL, leave_out = group)
 }
 
 #' Replace the approximate scores of a criterion by refits
@@ -349,9 +420,15 @@ logo_reloo <- function(o, logo, level, model) {
   elpd <- stats::setNames(rep(NA_real_, length(todo)), todo)
   rhat_max <- elpd
   base <- o$fit
+  first_error <- NULL
   for (g in todo) {
     out <- tryCatch(logo_refit_level(base, o, group, level, g),
-                    error = function(e) NULL)
+                    error = function(e) {
+                      if (is.null(first_error)) {
+                        first_error <<- trimws(conditionMessage(e))
+                      }
+                      NULL
+                    })
     if (is.null(out)) {
       next
     }
@@ -381,7 +458,10 @@ logo_reloo <- function(o, logo, level, model) {
             if (sum(!ok) > 1) "s", " of ", group, " (",
             paste0(todo[!ok], collapse = ", "), "), so ",
             if (sum(!ok) > 1) "their scores remain" else "its score remains",
-            " approximate.", call. = FALSE)
+            " approximate.",
+            if (!is.null(first_error)) {
+              paste0(" The first error was: ", first_error)
+            }, call. = FALSE)
   }
   slow <- todo[ok][rhat_max[ok] > 1.01]
   if (length(slow) > 0) {
@@ -410,10 +490,10 @@ logo_reloo <- function(o, logo, level, model) {
 #' integrated out as in \code{logo_criterion()}, starting from the fit's draws
 #' of it.
 #'
-#' @return \code{NULL} where the refit failed, and otherwise a
-#' \code{\link[base]{list}} of \code{elpd}, the level's log predictive
-#' density, \code{rhat}, the refit's largest Rhat, and \code{fit}, the
-#' refit.
+#' @return A \code{\link[base]{list}} of \code{elpd}, the level's log
+#' predictive density, \code{rhat}, the refit's largest Rhat, and \code{fit},
+#' the refit. A refit that fails, or returns no draws, is an error, which
+#' \code{logo_reloo()} reports.
 #'
 #' @importFrom stats update
 #'
@@ -428,26 +508,24 @@ logo_refit_level <- function(base, o, group, level, g) {
   if (!is.null(o$call_args$seed)) {
     args$seed <- o$call_args$seed
   }
-  refit <- try(suppressWarnings(suppressMessages(do.call(update, args))),
-               silent = TRUE)
-  if (inherits(refit, "try-error") || ndraws(refit) == 0) {
-    return(NULL)
+  refit <- suppressWarnings(suppressMessages(do.call(update, args)))
+  if (ndraws(refit) == 0) {
+    stop("the refit returned no draws.", call. = FALSE)
   }
   prep <- prepare_predictions(refit, newdata = test, allow_new_levels = TRUE,
                               sample_new_levels = "gaussian")
-  slot <- logo_slot(refit, group, prep)
-  if (is.null(slot$path)) {
-    ll <- rowSums(log_lik(prep))
-  } else {
-    sd <- as.vector(as_draws_matrix(refit, variable = slot$sd_name))
-    r_full <- logo_slot(f, group, prepare_predictions(f, newdata = test))$r
-    r0 <- matrix(rep_len(as.vector(r_full), nrow(slot$r)), ncol = 1)
-    h <- function(z) {
-      prep[[slot$path[1]]][[slot$path[2]]]$re$r[[group]] <- z
-      matrix(rowSums(log_lik(prep)), ncol = 1)
-    }
-    ll <- logo_integrate(h, r0, sd)[, 1]
+  refit_slot <- logo_slot(refit, group, prep)
+  starts <- NULL
+  if (!is.null(refit_slot$path)) {
+    full_slot <- logo_slot(f, group, prepare_predictions(f, newdata = test))
+    starts <- Map(function(full, current) {
+      matrix(rep_len(as.vector(full$r), nrow(current$r)),
+             nrow = nrow(current$r), ncol = ncol(current$r))
+    }, full_slot$slots, refit_slot$slots)
   }
+  ll <- logo_integrate_slots(refit, prep, group,
+                              factor(rep(g, nrow(test))),
+                              starts = starts)[, 1]
   m <- max(ll)
   list(elpd = m + log(mean(exp(ll - m))),
        rhat = max(rhat(refit), na.rm = TRUE), fit = refit)
@@ -461,12 +539,13 @@ logo_refit_level <- function(base, o, group, level, g) {
 #' @param train The data of the refit.
 #'
 #' @return \code{init} with each \code{z_k} replaced by zeros at the number of
-#' levels in \code{train}, or \code{"random"} where \code{init} is not a list.
+#' levels in \code{train}. A number or keyword is returned unchanged, because
+#' it applies at any number of levels; anything else becomes \code{"random"}.
 #'
 #' @noRd
 refit_inits <- function(init, fit, train) {
   if (!is.list(init)) {
-    return("random")
+    return(if (is.numeric(init) || is.character(init)) init else "random")
   }
   re <- fit$ranef
   dims <- lapply(split(re, re$id), function(r) {
@@ -595,6 +674,8 @@ weights_leave_out <- function(x) {
 leave_out_label <- function(leave_out) {
   if (is.null(leave_out) || identical(leave_out, "observation")) {
     "; each observation left out"
+  } else if (identical(leave_out, "kfold")) {
+    "; exact K-fold over grouping levels"
   } else {
     paste0("; each level of ", leave_out, " left out")
   }

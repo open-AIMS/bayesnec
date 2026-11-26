@@ -18,23 +18,14 @@
 #' \emph{Nothing failed} --- returns the object unchanged, and says so.
 #' \code{\link{amend}} is not called at all.
 #'
-#' \emph{Some failed} --- the failures are intersected against the models the
-#' object actually holds before \code{\link{amend}} is called. That guard lives
-#' here rather than in \code{\link{amend}}, which is deliberately not modified:
-#' \code{amend(drop = )} already handles a mix of present and absent names
-#' correctly, and silently returns the object unchanged only when \emph{every}
-#' named model is absent.
+#' \emph{Some failed} --- the failed models the object holds are dropped with
+#' \code{\link{amend}}.
 #'
-#' \emph{Everything failed} --- decided here, from the table, before
-#' \code{\link{amend}} is called at all, and reported as a result rather than
-#' a usage error, with the same per-model reasons the drop message carries: a
-#' fit where no candidate sampled properly is an outcome the analysis has to
-#' state, and stating it without saying what failed is not enough to write up. Deciding it up front rather than catching an error out
-#' of \code{\link{amend}} matters, because \code{\link{amend}} raises
-#' unrelated errors that would otherwise be reported as convergence results ---
-#' a \code{\link{bayesnecfit}} raises "Cannot drop models from a bayesnecfit",
-#' and refitting the model weights can fail for reasons of its own. Everything
-#' except the all-failed case now propagates as itself.
+#' \emph{Everything failed} --- an error, raised before \code{\link{amend}}
+#' is called, that gives the reason each model failed. A fit where no candidate
+#' sampled properly is an outcome the analysis has to state, with what failed.
+#' An error raised by \code{\link{amend}} in the other cases is passed on
+#' unchanged.
 #'
 #' @section Hurdle fits:
 #'
@@ -57,9 +48,18 @@
 #' sampler diagnostics. Existing differences caused by equations that failed
 #' to fit cannot be restored by screening.
 #'
+#' @section Joint refits:
+#'
+#' A \code{\link{bayesnecjointfit}} is screened one level at a time, on the
+#' table \code{\link{check_sampling}} returns. Each level has one equation in
+#' one posterior, so no level can be dropped. The refit is returned unchanged
+#' where every level passes, and the call stops, naming each level that
+#' failed, where any does, as it stops for a \code{\link{bayesnecfit}} that
+#' fails.
+#'
 #' @param x An object of class \code{\link{bayesnecfit}},
-#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}} or
-#' \code{\link{bayesnecgroupfit}}.
+#' \code{\link{bayesmanecfit}}, \code{\link{bayesnechurdlefit}},
+#' \code{\link{bayesnecgroupfit}} or \code{\link{bayesnecjointfit}}.
 #' @inheritParams check_sampling
 #' @param group_action For a \code{\link{bayesnecgroupfit}}, either
 #' \code{"per_level"} to screen each independently fitted level separately, or
@@ -74,7 +74,8 @@
 #' \code{\link{bayesnecfit}}, as \code{\link{amend}} already does. A
 #' \code{\link{bayesnechurdlefit}} comes back as one, with each component
 #' screened. A \code{\link{bayesnecgroupfit}} comes back as one, with each
-#' element of \code{fits} replaced by its screened fit.
+#' element of \code{fits} replaced by its screened fit. A
+#' \code{\link{bayesnecjointfit}} that passes comes back unchanged.
 #'
 #' @seealso \code{\link{check_sampling}}, \code{\link{check_fit}},
 #' \code{\link{amend}}, \code{\link{pull_best}}
@@ -87,9 +88,10 @@
 #'
 #' @export
 screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
-                          divergence_cutoff = 10, quiet = FALSE,
+                          divergence_cutoff = 0.00125, quiet = FALSE,
                           group_action = c("per_level", "common")) {
   chk_lgl(quiet)
+  check_divergence_cutoff(divergence_cutoff)
   if (is_bayesnechurdlefit(x)) {
     screen_part <- function(part) {
       screen_models(part, rhat_cutoff = rhat_cutoff, ess_cutoff = ess_cutoff,
@@ -105,6 +107,10 @@ screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
       group_action = group_action
     ))
   }
+  if (is_bayesnecjointfit(x)) {
+    return(screen_joint_levels(x, rhat_cutoff, ess_cutoff, divergence_cutoff,
+                               quiet))
+  }
   tab <- check_sampling(x, rhat_cutoff = rhat_cutoff,
                         ess_cutoff = ess_cutoff,
                         divergence_cutoff = divergence_cutoff)
@@ -113,7 +119,7 @@ screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
     if (!quiet) {
       message("All ", nrow(tab), " candidate models passed the sampler",
               " screen (Rhat <= ", rhat_cutoff, ", ESS >= ", ess_cutoff,
-              ", divergences <= ", divergence_cutoff, ").")
+              ", ", divergence_rule_label(divergence_cutoff), ").")
     }
     return(x)
   }
@@ -144,6 +150,37 @@ screen_models <- function(x, rhat_cutoff = 1.01, ess_cutoff = 400,
                    collapse = "\n"))
   }
   amend(x, drop = to_drop)
+}
+
+#' Screen the levels of a joint refit, which pass or fail together
+#'
+#' @param x A \code{\link{bayesnecjointfit}}.
+#' @inheritParams screen_models
+#'
+#' @return \code{x} unchanged, or an error naming each level that failed.
+#'
+#' @noRd
+screen_joint_levels <- function(x, rhat_cutoff, ess_cutoff, divergence_cutoff,
+                                quiet) {
+  tab <- check_sampling(x, rhat_cutoff = rhat_cutoff, ess_cutoff = ess_cutoff,
+                        divergence_cutoff = divergence_cutoff)
+  if (!any(tab$failed)) {
+    if (!quiet) {
+      message("All ", nrow(tab), " levels of the joint refit passed the",
+              " sampler screen (Rhat <= ", rhat_cutoff, ", ESS >= ",
+              ess_cutoff, ", ", divergence_rule_label(divergence_cutoff), ").")
+    }
+    return(x)
+  }
+  failed <- tab[tab$failed, , drop = FALSE]
+  failed$model <- paste0(failed$level, " (", failed$model, ")")
+  stop("A level of the joint refit failed the sampler screen. Each level has",
+       " one equation in one posterior, so no level can be dropped. Refit",
+       " with more iterations through update(), or inspect",
+       " check_sampling(x).\n",
+       paste0(screen_reasons(failed, rhat_cutoff, ess_cutoff,
+                             divergence_cutoff), collapse = "\n"),
+       call. = FALSE)
 }
 
 #' Screen the independently fitted levels of a bayesnecgroupfit
@@ -186,8 +223,8 @@ screen_group_models <- function(x, rhat_cutoff, ess_cutoff,
     if (!quiet) {
       message("All ", nrow(tab), " candidate fits across ", length(x$levels),
               " levels passed the sampler screen (Rhat <= ", rhat_cutoff,
-              ", ESS >= ", ess_cutoff, ", divergences <= ",
-              divergence_cutoff, ").")
+              ", ESS >= ", ess_cutoff, ", ",
+              divergence_rule_label(divergence_cutoff), ").")
     }
     return(x)
   }
@@ -263,8 +300,13 @@ screen_reasons <- function(tab, rhat_cutoff, ess_cutoff, divergence_cutoff) {
     if (isTRUE(r$min_ess < ess_cutoff)) {
       why <- c(why, paste0("ESS ", round(r$min_ess, 1)))
     }
-    if (isTRUE(r$n_divergent > divergence_cutoff)) {
-      why <- c(why, paste0(r$n_divergent, " divergent transitions"))
+    if (divergence_failed(r$divergent_ratio, divergence_cutoff)) {
+      # A failing row has a positive count and ratio, so their quotient
+      # recovers the number of draws.
+      n_draws <- round(r$n_divergent / r$divergent_ratio)
+      why <- c(why, paste0(r$n_divergent, " divergent transitions (",
+                           format_percent(r$divergent_ratio), " of ",
+                           n_draws, " draws)"))
     }
     paste0("  -  ", r$model, ": ", paste0(why, collapse = ", "))
   }, character(1))

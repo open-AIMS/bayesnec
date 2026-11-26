@@ -51,7 +51,8 @@ grid points and their spacing are retained.
 \code{TRUE} is refused here, because every NSEC is read off a fitted curve.
 See the \emph{Extrapolation} section of \code{\link{nsec}}.}
 
-\item{...}{Further arguments to pass to class specific methods.}
+\item{...}{Further arguments to pass to class specific methods. A method
+refuses any argument it does not use.}
 
 \item{posterior}{Should the full posterior be returned instead of a summary?}
 
@@ -78,7 +79,9 @@ recorded at fitting. Level controls are recorded in the result's
 \code{x_control} attribute.}
 }
 \value{
-A vector containing the estimated NSEC value and credible bounds.
+The NSEC estimate and credible bounds, or one value per draw
+with \code{posterior = TRUE}. Censored draws are \code{Inf} above the
+search range and \code{-Inf} below it.
 }
 \description{
 Extracts the predicted NSEC value from a \code{\link{bayesnechurdlefit}}

@@ -223,7 +223,7 @@ factorised_count_epred <- function(fit, formula, dpar = NULL, nlpar = NULL,
 joint_hurdle_epred <- function(object, newdata, dpar = NULL,
                                re_formula = NA, draw_ids = NULL) {
   if (is.null(dpar)) {
-    return(posterior_epred(object, newdata = newdata,
+    return(estimator_epred(object, newdata = newdata,
                            re_formula = re_formula, draw_ids = draw_ids))
   }
   family <- object$fit$family
@@ -232,7 +232,7 @@ joint_hurdle_epred <- function(object, newdata, dpar = NULL,
          call. = FALSE)
   }
   dpar <- match.arg(dpar, c("mu", hurdle_dpar(family)))
-  out <- posterior_epred(
+  out <- estimator_epred(
     object, newdata = newdata, re_formula = re_formula, dpar = dpar,
     draw_ids = draw_ids
   )
@@ -240,7 +240,7 @@ joint_hurdle_epred <- function(object, newdata, dpar = NULL,
     return(1 - out)
   }
   if (family$family == "hurdle_negbinomial") {
-    shape <- posterior_epred(
+    shape <- estimator_epred(
       object, newdata = newdata, re_formula = re_formula, dpar = "shape",
       draw_ids = draw_ids
     )
@@ -280,18 +280,6 @@ block_epred <- function(fit, formula, newdata, re_formula = NA, dpar = NULL,
   }
   if (!is.null(ord)) out[ord, ] <- out
   out
-}
-
-#' Non-linear parameter names of the second block for a given model
-#'
-#' @param model A \code{\link[base]{character}} string naming a bayesnec model.
-#' @param dpar The second block's name, "hu" or "zi".
-#'
-#' @return A \code{\link[base]{character}} vector.
-#'
-#' @noRd
-hu_pars <- function(model, dpar) {
-  paste0(dpar, names(get(paste0("bf_", model))$pforms))
 }
 
 #' Build the zero-probability sub-model for a bayesnec equation

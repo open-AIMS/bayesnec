@@ -541,8 +541,9 @@ extends_range <- function(lims, bounds) {
 #' The resolution a re-evaluated curve is read on
 #'
 #' The number of points in the grid the fit stored, rather than
-#' \code{\link{nsec}}'s default of 200. The stored range is evaluated at this
-#' resolution, and an extension appends points at the same spacing.
+#' \code{\link{nsec}}'s default, or 200 where the fit stores no grid. The
+#' stored range is evaluated at this resolution, and an extension appends
+#' points at the same spacing.
 #'
 #' @noRd
 stored_resolution <- function(object) {
@@ -798,9 +799,12 @@ necfit_ne_type <- function(object) {
 #' @return \code{TRUE}, invisibly.
 #' @noRd
 check_releasable <- function(values, what) {
-  if (anyNA(values)) {
+  # A stored draw with no value is Inf or -Inf, or NA in an older saved
+  # object. A sampled draw is always finite.
+  missing <- !is.finite(values)
+  if (any(missing)) {
     stop("The no-effect estimate of ", what, " has no value for ",
-         sum(is.na(values)), " of ", length(values), " draws, so those draws ",
+         sum(missing), " of ", length(values), " draws, so those draws ",
          "cannot be released to a wider bound by comparison. This is a ",
          "two-block fit whose second block holds a smooth equation: read it ",
          "with nsec(), which re-evaluates the curve.", call. = FALSE)

@@ -1128,7 +1128,7 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   } else {
     attr(out, "sig_val") <- sig
   }
-  if (isTRUE(dots$posterior)) return(out)
+  if (isTRUE(dots$posterior)) return(censored_infinite(out))
   probs <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else
     dots$prob_vals
   summary <- summarise_censored(out, probs)
@@ -1189,7 +1189,7 @@ model_set_level_estimates <- function(object, what, fun, posterior, prob_vals) {
     draws
   })
   names(out) <- levels
-  if (posterior) return(out)
+  if (posterior) return(lapply(out, censored_infinite))
   summaries <- lapply(out, function(draws) {
     ans <- summarise_censored(draws, prob_vals)
     names(ans) <- clean_names(ans)

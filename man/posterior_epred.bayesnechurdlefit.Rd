@@ -10,6 +10,7 @@
   resolution = 1000,
   x_range = NA,
   newdata = NULL,
+  re_formula = NULL,
   ...
 )
 }
@@ -26,7 +27,10 @@
 \item{newdata}{An optional \code{\link[base]{data.frame}} of predictor
 values. When supplied, \code{resolution} and \code{x_range} are ignored.}
 
-\item{...}{Unused.}
+\item{re_formula}{Optional group-effects setting passed to both components.}
+
+\item{...}{Passed to each component posterior method, including
+\code{ndraws} and \code{draw_ids}.}
 }
 \value{
 A \code{\link[base]{matrix}} with draws as rows and predictor

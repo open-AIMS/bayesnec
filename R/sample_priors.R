@@ -58,6 +58,7 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot",
   }
   priors <- as.data.frame(priors) |>
     filter(class == "b")
+  priors <- blank_bounds_to_na(priors)
   priors <- priors[priors$prior != "", ]
   par_names <- character(length = nrow(priors))
   for (j in seq_along(par_names)) {
@@ -81,21 +82,12 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot",
       fct_i <- prior_sampler(bits[1])
       v1 <- as.numeric(bits[2])
       v2 <- as.numeric(bits[3])
-      out[[j]] <- fct_i(n_samples, v1, v2)
-      if (any(!is.na(as.numeric(priors[j, c("lb", "ub")])))) {
-        n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
-        if (n_bounds == 2) {
-          bounds <- as.numeric(priors[j, c("lb", "ub")])
-          out[[j]] <- sample(out[[j]][which(out[[j]] >= min(bounds) &
-                                            out[[j]] <= max(bounds))],
-                             n_samples, replace = TRUE)
-        } else if (n_bounds == 1) {
-          direction <- c("lb", "ub")[!is.na(priors[j, c("lb", "ub")])]
-          bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
-          bounds <- as.numeric(priors[j, direction])
-          out[[j]] <- sample(out[[j]][!bound_fct(out[[j]], bounds)],
-                             n_samples, replace = TRUE)
-        }
+      bounds <- as.numeric(priors[j, c("lb", "ub")])
+      if (all(is.na(bounds))) {
+        out[[j]] <- fct_i(n_samples, v1, v2)
+      } else {
+        out[[j]] <- draw_truncated(bits[1], n_samples, v1, v2, bounds,
+                                   priors[j, ])
       }
     }
   })
@@ -121,4 +113,52 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot",
         facet_wrap(~.data$param, scales = "free_x") +
         theme_bw()
   }
+}
+
+#' Draw from a prior truncated to its bounds
+#'
+#' Inverts the distribution function over the part of the prior that lies
+#' inside the bounds, so every draw is new and inside them.
+#'
+#' @param dist A \code{\link[base]{character}} string naming the distribution.
+#' @param n_samples The number of draws to return.
+#' @param v1,v2 The two parameters of the distribution, in the order the
+#' matching generator in \code{prior_samplers()} takes them.
+#' @param bounds A \code{\link[base]{numeric}} vector of length 2, the lower
+#' and upper bound, \code{NA} where absent.
+#' @param prior_row The one-row \code{\link[base]{data.frame}} of the prior,
+#' read for the message.
+#'
+#' @details The prior is refused when its distribution function takes the same
+#' value at both bounds, as when the bounds lie more than about eight standard
+#' deviations into a tail. Every distribution \code{prior_samplers()} offers has
+#' a distribution and a quantile function, so no rejection step is needed.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length \code{n_samples}.
+#'
+#' @importFrom stats pbeta pgamma plnorm punif qbeta qlnorm qunif
+#' @noRd
+draw_truncated <- function(dist, n_samples, v1, v2, bounds, prior_row) {
+  prior_sampler(dist)
+  dist <- trimws(dist)
+  p_fun <- switch(dist, gamma = pgamma, normal = pnorm, beta = pbeta,
+                  uniform = punif, lognormal = plnorm)
+  q_fun <- switch(dist, gamma = qgamma, normal = qnorm, beta = qbeta,
+                  uniform = qunif, lognormal = qlnorm)
+  lower <- if (is.na(bounds[1])) -Inf else min(bounds, na.rm = TRUE)
+  upper <- if (is.na(bounds[2])) Inf else max(bounds, na.rm = TRUE)
+  p_lower <- p_fun(lower, v1, v2)
+  p_upper <- p_fun(upper, v1, v2)
+  if (!(p_upper > p_lower)) {
+    bound <- function(b) if (is.na(b)) "none" else b
+    stop("No draw from the prior on ", prior_row$nlpar, ", ",
+         prior_row$prior, ", fell inside its bounds",
+         " (lb = ", bound(prior_row$lb), ", ub = ", bound(prior_row$ub),
+         "). The bounds hold none of the prior's probability; check them",
+         " against the prior.", call. = FALSE)
+  }
+  draws <- q_fun(runif(n_samples, p_lower, p_upper), v1, v2)
+  # Rounding in the quantile function can place a draw on the wrong side of a
+  # bound by one unit in the last place.
+  pmin(pmax(draws, lower), upper)
 }

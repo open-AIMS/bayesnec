@@ -7,6 +7,12 @@
 \format{
 An object of class \code{data.frame} with 171 rows and 8 columns.
 }
+\source{
+The experiment of Flores et al. (2021), \doi{10.1016/j.marpolbul.2021.112582}.
+The colour scores have no public data record, unlike the photosynthetic
+yield data of \code{\link{coral_pam}}. Where the source files and the
+paper differ, the paper is followed.
+}
 \description{
 Colour score of the reef-building coral \emph{Acropora millepora} after a
 14-day exposure to the photosystem II herbicide diuron, crossed with three
@@ -23,8 +29,12 @@ under 2050 and 5 under 2100. \code{\link{coral_pam}} has a sixth concentration, 
 \eqn{\mu}g/L, at which the corals died before they could be photographed.
 A chamber sits at one concentration, so it spans no part of the
 concentration-response curve and admits only a displacement --- the
-within-concentration structure \code{vignette("example8")} demonstrates.
-\code{vignette("example4")} fits it with \code{ogl(chamber)}. The model weights of a set fitted with that term leave
+within-concentration structure that the article
+\emph{Grouping and factor covariates}
+(\url{https://open-aims.github.io/bayesnec/articles/example8.html}) demonstrates. The article
+\emph{Comparisons and exceedance probabilities}
+(\url{https://open-aims.github.io/bayesnec/articles/example4.html}) fits it
+with \code{ogl(chamber)}. The model weights of a set fitted with that term leave
 out each chamber whole; see the \code{loo_controls} argument of
 \code{\link{bnec}}.
 
@@ -40,13 +50,18 @@ reported here as \code{t0_pixel} and \code{t14_pixel}. \code{intensity} is
 values in the two pixel columns together, and \code{proportion} is exactly
 its complement. The fragment that sets the largest value therefore has an
 \code{intensity} of 1 and a \code{proportion} of 0, a boundary a
-\code{Beta} likelihood cannot represent. See
-\code{vignette("example6")} for what to do with a value on a boundary.
+\code{Beta} likelihood cannot represent. See the article
+\emph{Hurdle and zero-inflated concentration-response models}
+(\url{https://open-aims.github.io/bayesnec/articles/example6.html}) for what to
+do with a value on a boundary.
 
 The control concentration is reported as \code{0}. The source file also
 holds a column substituting \code{0.1} for it so that a log predictor can be
 taken; that substitution is not shipped, because substituting at a boundary
-is the practice \code{vignette("example6")} argues against and a user who
+is the practice that the article
+\emph{Hurdle and zero-inflated concentration-response models}
+(\url{https://open-aims.github.io/bayesnec/articles/example6.html}) argues
+against, and a user who
 wants it can make it and say so.
 
 The columns are as follows:
@@ -66,7 +81,9 @@ numbers of the nine 29 \eqn{\mu}g/L chambers are absent.}
 \item{intensity}{Derived colour intensity on the unit interval (dbl).
 Exactly one observation is 1.}
 \item{proportion}{\code{1 - intensity} (dbl), the response used in
-\code{vignette("example4")}. Exactly one observation is 0.}
+the article \emph{Comparisons and exceedance probabilities}
+(\url{https://open-aims.github.io/bayesnec/articles/example4.html}).
+Exactly one observation is 0.}
 }
 }
 \examples{

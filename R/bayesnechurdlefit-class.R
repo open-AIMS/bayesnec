@@ -44,6 +44,8 @@ is_bayesnechurdlefit <- function(x) {
 #' the grid to, or \code{NULL}.
 #' @param x_values A grid to predict at, used as given. It overrides
 #' \code{resolution}, \code{x_range} and \code{grid_limits}.
+#' @param re_formula Optional group-effects setting for both components.
+#' @param ... Passed to each component posterior method.
 #' @details Draws are paired by row, which is valid because the two posteriors
 #' are independent. Where the fits hold different numbers of draws, both are
 #' truncated to the smaller.
@@ -64,7 +66,8 @@ is_bayesnechurdlefit <- function(x) {
 #' @noRd
 hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
                                    x_control = "own", levels = TRUE,
-                                   grid_limits = NULL, x_values = NULL) {
+                                   grid_limits = NULL, x_values = NULL,
+                                   re_formula = NULL, ...) {
   if (!is.null(x_values)) x_range <- range(x_values)
   spec <- if (levels && is.null(object$observed_group)) {
     observed_level_spec(object)
@@ -78,7 +81,8 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
       hurdle_component_preds(observed_level_fit(object, spec, i),
                              resolution = resolution, x_range = x_range,
                              x_control = x_control, grid_limits = grid_limits,
-                             x_values = x_values)
+                             x_values = x_values,
+                             re_formula = re_formula, ...)
     })
     n <- min(vapply(levels, function(x) nrow(x$combined), integer(1)))
     owner <- observed_assignment(spec, n)
@@ -146,16 +150,18 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
       nd_s$newdata[[v]] <- object$observed_group[[v]]
     }
   }
-  re_formula <- if (is.null(object$re_formula)) NA else object$re_formula
+  re_formula <- if (is.null(re_formula)) {
+    if (is.null(object$re_formula)) NA else object$re_formula
+  } else re_formula
   g <- posterior_epred(object$growth, newdata = nd_g$newdata,
-                       re_formula = re_formula)
+                       re_formula = re_formula, ...)
   s <- posterior_epred(object$survival, newdata = nd_s$newdata,
-                       re_formula = re_formula)
+                       re_formula = re_formula, ...)
   x_at <- if (is.numeric(x_control)) control_reading$value else
     control_x(object)
   epred_part <- function(part) {
     function(nd) posterior_epred(part, newdata = nd,
-                                re_formula = re_formula)
+                                re_formula = re_formula, ...)
   }
   c_g <- control_posterior(object$growth, nd_g$newdata, epred_part(object$growth),
                            x_at = x_at)
@@ -242,7 +248,9 @@ hurdle_check_which <- function(which) {
 #' value.
 #'
 #' @return A vector containing the estimated no-effect value, including upper
-#' and lower credible interval bounds.
+#' and lower credible interval bounds, or one value per draw with
+#' \code{posterior = TRUE}. Censored draws are \code{Inf} above the
+#' search range and \code{-Inf} below it.
 #'
 #' @importFrom stats quantile
 #' @importFrom chk chk_logical
@@ -257,9 +265,16 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
   check_component_arg(list(...), object)
   check_removed_args(list(...))
   check_no_effect_arg(list(...), object)
-  chk_logical(posterior)
+  check_unused_dots(list(...), "nec", nec_curve_args)
+  chk_flag(posterior)
   which <- hurdle_check_which(which)
   check_xform(xform)
+  if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
+      prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
+    stop("prob_vals must include central, lower and upper quantiles,",
+         " in that order.")
+  }
+  if (!is.null(pool)) validate_pool(pool, "nec")
   if (is.null(object$observed_group)) {
     spec <- observed_level_spec(object)
     if (!is.null(spec)) {
@@ -341,7 +356,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
   attr(estimate, "toxicity_estimate") <- label
   attr(out, "toxicity_estimate") <- label
   attr(estimate, "component") <- which
-  if (!posterior) estimate else out
+  if (!posterior) estimate else censored_infinite(out)
 }
 
 #' The no-effect draws one hurdle component contributes
@@ -403,7 +418,9 @@ hurdle_component_ne <- function(part, extrapolate, ...) {
 #' \code{\link{posterior_epred.bayesnechurdlefit}} use the same range.
 #'
 #' @return A vector containing the estimated ECx value, including upper and
-#' lower credible interval bounds.
+#' lower credible interval bounds, or one value per draw with
+#' \code{posterior = TRUE}. Censored draws are \code{Inf} above the
+#' search range and \code{-Inf} below it.
 #'
 #' @importFrom stats quantile
 #' @importFrom chk chk_logical chk_numeric
@@ -419,11 +436,14 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
                                   x_control = "own", extrapolate = FALSE) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
-  chk_numeric(ecx_val)
-  chk_numeric(resolution)
-  chk_logical(posterior)
+  check_unused_dots(list(...), "ecx")
+  chk_number(ecx_val)
+  check_resolution(resolution)
+  chk_flag(posterior)
+  if (!is.null(pool)) validate_pool(pool, "ecx")
   which <- hurdle_check_which(which)
-  type <- validate_ecx_type(type, match.call())
+  # "relative" is refused below, so it is not warned about.
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
   if (identical(type, "relative")) {
     # The combined endpoint, mu * (1 - hu), has no single bot parameter for
     # "relative" to measure towards.
@@ -501,7 +521,7 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
   attr(estimate, "component") <- which
   attr(out, "ecx_val") <- ecx_val
   attr(out, "toxicity_estimate") <- "ecx"
-  if (!posterior) estimate else out
+  if (!posterior) estimate else censored_infinite(out)
 }
 
 #' Crossed model weights for a \code{\link{bayesnechurdlefit}}
@@ -525,6 +545,16 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
 #'
 #' @return A \code{\link[base]{matrix}} of weights, growth models in rows and
 #' survival models in columns.
+#'
+#' @examples
+#' \dontrun{
+#' library(bayesnec)
+#' data(nec_data)
+#' # code a few individuals as having died
+#' nec_data$y[nec_data$x > 2.5] <- 0
+#' fit <- bnec_hurdle(y ~ crf(x, c("nec3param", "ecx4param")), data = nec_data)
+#' crossed_weights(fit)
+#' }
 #'
 #' @export
 crossed_weights <- function(object) {
@@ -577,7 +607,8 @@ print.bayesnechurdlefit <- function(x, ...) {
 #' Takes the minimum of the component no-effect draws, which must be on the
 #' fitted scale, not the recorded one. Censoring flags and
 #' upper limits decide whether an outside-range minimum is identified;
-#' plain \code{pmin()} would propagate \code{NA} for a censored component draw.
+#' plain \code{pmin()} would misread a censored component draw, which has no
+#' value.
 #'
 #' @param g,s The two component posteriors, each carrying its \code{"censored"}
 #' record where it has one.
@@ -616,7 +647,6 @@ combine_censored_min <- function(g, s, n) {
   out[unresolved] <- Inf
   above <- is.infinite(out) & out > 0
   below <- is.infinite(out) & out < 0
-  out[above | below] <- NA_real_
   # The record holds one bound per posterior: the smallest upper limit and the
   # largest lower one, as in concat_censoring(). Both are true of every
   # censored draw. The test above keeps every identified value at or below the

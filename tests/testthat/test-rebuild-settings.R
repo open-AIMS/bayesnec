@@ -9,7 +9,7 @@ test_that("amend honours prediction settings without a model or LOO change", {
   q <- function(expr) suppressWarnings(suppressMessages(expr))
   record <- expand_record()
   reference <- expanded_ecx4param(record)
-  for (fit in list(ecx4param, manec_example)) {
+  for (fit in list(ecx4param, legacy_fit(manec_example))) {
     for (loo in list(NULL, list(weights = list(method = "pseudobma")))) {
       args <- c(list(fit, x_range = record$x_range,
                      resolution = record$resolution, sig_val = record$sig_val),
@@ -17,7 +17,7 @@ test_that("amend honours prediction settings without a model or LOO change", {
       out <- q(do.call(amend, args))
       expected <- record
       expected$loo_controls$fitting <- list()
-      # manec_example records no leave_out, so it was scored by observation.
+      # A set that records no leave_out was scored by observation.
       if (inherits(fit, "bayesmanecfit")) {
         expected$loo_controls$leave_out <- "observation"
       }
@@ -159,14 +159,14 @@ test_that("pull_out keeps positional and abbreviated prediction arguments", {
   set.seed(525)
   q <- function(expr) suppressWarnings(suppressMessages(expr))
   reference <- expanded_ecx4param(expand_record(fitting = list()))
-  positional <- q(pull_out(manec_example, "ecx4param", ,
-                            c(0.03, 4), 200, 0.05))
-  abbreviated <- q(pull_out(manec_example, "ecx4param", x_r = c(0.03, 4),
-                             res = 200, sig = 0.05))
+  legacy <- legacy_fit(manec_example)
+  positional <- q(pull_out(legacy, "ecx4param", , c(0.03, 4), 200, 0.05))
+  abbreviated <- q(pull_out(legacy, "ecx4param", x_r = c(0.03, 4),
+                            res = 200, sig = 0.05))
   for (out in list(positional, abbreviated)) {
     expect_equal(out$pred_vals, reference$pred_vals)
     expect_equal(out$ne_posterior, reference$ne_posterior)
-    # manec_example records no leave_out, so it was scored by observation.
+    # A set that records no leave_out was scored by observation.
     expect_identical(attr(out, "bnec_expand_args"),
                      expand_record(fitting = list(), leave_out = "observation"))
   }

@@ -144,10 +144,12 @@ test_that("logo_grouping finds a grouping observed at one concentration per leve
 test_that("logo_grouping gives a reason where the deviations are not one per level", {
   d <- lum_like()
   # pgl() on the grouping: a deviation on every parameter.
-  set <- fake_set(rbind(ranef_row("cell", "top"), ranef_row("cell", "ec50")), d)
+  set <- fake_set(rbind(ranef_row("cell", "top"),
+                        ranef_row("cell", "ec50"),
+                        ranef_row("cell", "beta")), d)
   out <- bayesnec:::logo_grouping(set, d$conc)
   expect_null(out$group)
-  expect_match(out$reason, "more than one parameter in ecx4param")
+  expect_match(out$reason, "more than two deviations in ecx4param")
   set <- fake_set(ranef_row("cell", dist = "student"), d)
   expect_match(bayesnec:::logo_grouping(set, d$conc)$reason,
                "other than a normal intercept")
@@ -177,11 +179,31 @@ test_that("weight_criteria leaves out observations where asked or unsupported", 
   local_mocked_bindings(logo_criterion = function(...) stop("recomputed"))
   out <- bayesnec:::weight_criteria(set, d$conc, "observation")
   expect_identical(out$leave_out, "observation")
+  expect_identical(bayesnec:::define_loo_controls(
+    list(leave_out = "kfold"), "gaussian")$leave_out, "kfold")
   expect_null(out$logo)
-  set <- fake_set(rbind(ranef_row("cell", "top"), ranef_row("cell", "ec50")), d)
+  set <- fake_set(rbind(ranef_row("cell", "top"),
+                        ranef_row("cell", "ec50"),
+                        ranef_row("cell", "beta")), d)
   expect_warning(out <- bayesnec:::weight_criteria(set, d$conc),
                  "leaving out each observation, because the grouping cell")
   expect_identical(out$leave_out, "observation")
+})
+
+test_that("refit = TRUE with no grouping to leave out says it has no effect", {
+  d <- lum_like()
+  # A grouping that spans the concentrations is not left out.
+  set <- fake_set(ranef_row("plate"), d)
+  expect_message(out <- bayesnec:::weight_criteria(set, d$conc, refit = TRUE),
+                 "loo_controls\\$refit = TRUE has no effect")
+  expect_identical(out$leave_out, "observation")
+  expect_no_message(bayesnec:::weight_criteria(set, d$conc))
+  # Where a grouping qualifies but cannot be left out, the warning says so.
+  set <- fake_set(rbind(ranef_row("cell", "top"),
+                        ranef_row("cell", "ec50"),
+                        ranef_row("cell", "beta")), d)
+  expect_warning(bayesnec:::weight_criteria(set, d$conc, refit = TRUE),
+                 "loo_controls\\$refit = TRUE has no effect")
 })
 
 test_that("selected criteria report high k in contributing equations", {
@@ -267,10 +289,10 @@ test_that("loo_controls takes leave_out", {
   expect_identical(out$leave_out, "observation")
   expect_error(bayesnec:::validate_loo_controls(list(leave_out = "plate"),
                                                 "gaussian"),
-               "should be \"group\" or \"observation\"")
+               "should be \"group\", \"observation\" or \"kfold\"")
   expect_error(bayesnec:::validate_loo_controls(list(leave_out = TRUE),
                                                 "gaussian"),
-               "should be \"group\" or \"observation\"")
+               "should be \"group\", \"observation\" or \"kfold\"")
 })
 
 test_that("a model set that records no leave_out was scored by observation", {
@@ -466,6 +488,13 @@ test_that("logo_reloo keeps the approximate score when scoring a refit fails", {
     )),
     "failed without 1 level of cell \\(b\\)"
   )
+  # The warning names the cause.
+  expect_warning(
+    suppressMessages(bayesnec:::logo_reloo(
+      list(fit = NULL), logo, level, "ecxlin"
+    )),
+    "The first error was: failed to prepare held-out data", fixed = TRUE
+  )
   expect_identical(out$pointwise, logo$pointwise)
   expect_identical(attr(out, "refit_failed"), "b")
 })
@@ -504,6 +533,11 @@ test_that("refit_inits sizes the deviations to the refit's levels", {
   expect_identical(dim(out[[1]]$z_2), c(1L, 6L))
   expect_identical(out[[1]]$b_top, 1)
   expect_identical(bayesnec:::refit_inits("random", fit, train), "random")
+  # A number applies at any number of levels, so the refit keeps it.
+  expect_identical(bayesnec:::refit_inits(0, fit, train), 0)
+  expect_identical(bayesnec:::refit_inits(NULL, fit, train), "random")
+  expect_identical(bayesnec:::refit_inits(function() list(), fit, train),
+                   "random")
 })
 
 # Five groups at each of six concentrations, three observations each. The

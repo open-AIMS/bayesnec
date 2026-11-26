@@ -32,7 +32,7 @@
 #
 # `sgr` is left exactly as supplied, including those substituted zeros, and
 # `sgr_source` marks them. Correcting them here would push a data-preparation
-# decision into the shipped data, which is the practice vignette("example6")
+# decision into the shipped data, which is the practice the example6 article
 # argues against; the point is to have the problem available to demonstrate.
 
 library(dplyr)

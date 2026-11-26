@@ -102,19 +102,8 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   legend_pos <- check_position_legend(position_legend)
   family <- x$fit$family$family
   mod_dat <- model.frame(x$bayesnecformula, data = x$fit$data)
-  y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
-  rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
-  if (family == "binomial" | family == "beta_binomial") {
-    trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
-    y_dat <- x$fit$data[[y_var]] / x$fit$data[[trials_var]]
-  } else if (!is.na(rate_var)) {
-    # Draw the observations on the rate scale, the scale of the fitted curve,
-    # since the grid pins the denominator at 1.
-    y_dat <- x$fit$data[[y_var]] / x$fit$data[[rate_var]]
-  } else {
-    y_dat <- x$fit$data[[y_var]]
-  }
+  y_dat <- plotted_response(x$fit$data, attr(mod_dat, "bnec_pop"), family)
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
   # On the recorded axis with no xform, draw what the estimators return.
   recorded <- plot_reads_recorded(bdat, xform)
@@ -155,69 +144,16 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                           axis_xform)
   }
 
-  if (jitter_x) {
-    x_dat <- jitter(x_dat)
-  }
-  if (jitter_y) {
-    y_dat <- jitter(y_dat)
-  }
-  if (length(xticks) == 1) {
-    x_ticks <- seq(min(x_dat), max(x_dat), length = 7)
-  } else {
-    x_ticks <- xticks
-  }
-  plot(x_dat, y_dat, ylab = ylab, xlab = xlab,
-       pch = 16, xaxt = "n", cex = 1.5,
-       col = adjustcolor(1, alpha.f = 0.25), ...)
   nec_tag <- summary(x, ecx = FALSE, xform = identity) |>
     (`[[`)("nec_vals") |>
     rownames() |>
     suppressWarnings() |>
     suppressMessages()
-  # lxform was checked to be a function at the head of the method. With the
-  # default lxform = identity these are the recorded values.
-  x_labs <- signif(lxform(x_ticks), 2)
-  axis(side = 1, at = x_ticks, labels = x_labs)
-  # The bound markers keep the legend in agreement with summary(). A
-  # decreasing lxform reverses the interval and its marks, so the labels take
-  # the remapping to_axis_scale() applies. Index by position, because an
-  # lxform that is not arithmetic may drop the names.
-  nec_lab <- remap_summary(nec, lxform, x_vec)
-  ec10_lab <- remap_summary(ec10, lxform, x_vec)
-  legend_nec <- paste(nec_tag, ": ", bound_prefix(nec_lab, 1),
-                      signif(nec_lab[[1]], 2),
-                      " (", bound_prefix(nec_lab, 2),
-                      signif(nec_lab[[2]], 2), "-",
-                      bound_prefix(nec_lab, 3),
-                      signif(nec_lab[[3]], 2), ")", sep = "")
-  legend_ec10 <- paste("EC10: ", bound_prefix(ec10_lab, 1),
-                       signif(ec10_lab[[1]], 2),
-                       " (", bound_prefix(ec10_lab, 2),
-                       signif(ec10_lab[[2]], 2), "-",
-                       bound_prefix(ec10_lab, 3),
-                       signif(ec10_lab[[3]], 2), ")", sep = "")
-  if (CI) {
-    lines(x_vec, x$pred_vals$data$Q97.5, lty = 2)
-    lines(x_vec, x$pred_vals$data$Q2.5, lty = 2)
-  }
-  lines(x_vec, x$pred_vals$data$Estimate)
-  if (add_nec & !add_ec10) {
-    abline(v = nec, col = "red", lty = c(1, 3, 3))
-    legend(legend_pos$x, legend_pos$y, bty = "n",
-           legend = legend_nec, lty = 1, col = "red")
-  }
-  if (add_ec10 & !add_nec) {
-    abline(v = ec10, col = "red", lty = c(1, 3, 3))
-    legend(legend_pos$x, legend_pos$y, bty = "n",
-           legend = legend_ec10, lty = 1, col = "red")
-  }
-  if (add_ec10 & add_nec) {
-    abline(v = nec, col = "red", lty = c(1, 3, 3))
-    abline(v = ec10, col = "orange", lty = c(1, 3, 3))
-    legend(legend_pos$x, legend_pos$y, bty = "n",
-           legend = c(legend_nec, legend_ec10),
-           lty = 1, col = c("red", "orange"))
-  }
+  draw_fit_panel(x_dat, y_dat, x_vec, x$pred_vals$data, nec, ec10, nec_tag,
+                 ..., CI = CI, add_nec = add_nec, legend_pos = legend_pos,
+                 add_ec10 = add_ec10, lxform = lxform, jitter_x = jitter_x,
+                 jitter_y = jitter_y, ylab = ylab, xlab = xlab,
+                 xticks = xticks)
 }
 
 #' @rdname plot
@@ -310,6 +246,30 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   }
 }
 
+#' The observed response on the scale of the fitted curve
+#'
+#' @param data The data the fit was made from.
+#' @param bnec_pop The \code{"bnec_pop"} attribute of its model frame.
+#' @param family The name of the fit's family.
+#'
+#' @return A \code{\link[base]{numeric}} vector: the response as a
+#' proportion of its trials for a binomial or beta-binomial fit, divided by the
+#' \code{rate()} denominator where there is one, and as recorded otherwise.
+#'
+#' @noRd
+plotted_response <- function(data, bnec_pop, family) {
+  y <- data[[bnec_pop[["y_var"]]]]
+  rate_var <- unname(bnec_pop["rate_var"])
+  if (family %in% c("binomial", "beta_binomial")) {
+    y / data[[bnec_pop[["trials_var"]]]]
+  } else if (!is.na(rate_var)) {
+    # The prediction grid sets the denominator to 1, so the curve is a rate.
+    y / data[[rate_var]]
+  } else {
+    y
+  }
+}
+
 #' Draw the model-averaged predictions of a model set on the current device
 #'
 #' The body of the model-average plot, separated from
@@ -330,15 +290,9 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
   universal <- x$mod_fits[[1]]
   mod_dat <- universal$fit$data
   bdat <- model.frame(x$mod_fits[[1]]$bayesnecformula, data = mod_dat)
-  y_var <- attr(bdat, "bnec_pop")[["y_var"]]
   x_var <- attr(bdat, "bnec_pop")[["x_var"]]
   family <- universal$fit$family$family
-  if (family == "binomial" | family == "beta_binomial") {
-    trials_var <- attr(bdat, "bnec_pop")[["trials_var"]]
-    y_dat <- mod_dat[[y_var]] / mod_dat[[trials_var]]
-  } else {
-    y_dat <- mod_dat[[y_var]]
-  }
+  y_dat <- plotted_response(mod_dat, attr(bdat, "bnec_pop"), family)
   # As in plot.bayesnecfit().
   recorded <- plot_reads_recorded(bdat, xform)
   est_xform <- if (recorded) NULL else identity
@@ -371,6 +325,46 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
   if (add_ec10 && !recorded) {
     ec10 <- to_axis_scale(ec10, bdat, manec_formula, x_grid_raw, axis_xform)
   }
+  nec_tag <- summary(x, ecx = FALSE, xform = identity) |>
+    (`[[`)("nec_vals") |>
+    rownames() |>
+    suppressWarnings() |>
+    suppressMessages()
+  draw_fit_panel(x_dat, y_dat, x_vec, x$w_pred_vals$data, nec, ec10, nec_tag,
+                 ..., CI = CI, add_nec = add_nec, legend_pos = legend_pos,
+                 add_ec10 = add_ec10, lxform = lxform, jitter_x = jitter_x,
+                 jitter_y = jitter_y, ylab = ylab, xlab = xlab,
+                 xticks = xticks)
+}
+
+#' Draw one fitted curve, its data and its annotations on the current device
+#'
+#' The drawing shared by \code{plot.bayesnecfit()}, \code{plot_manec_average()}
+#' and each panel of \code{plot.bayesnecjointfit()}. Every value arrives on the
+#' axis scale; \code{lxform} applies to the tick labels and the legend only.
+#'
+#' @param x_dat,y_dat The observations.
+#' @param x_vec The predictor values of the curve.
+#' @param curve A \code{\link[base]{data.frame}} with columns
+#' \code{Estimate}, \code{Q2.5} and \code{Q97.5}, one row per entry of
+#' \code{x_vec}.
+#' @param nec,ec10 The annotated estimates, each a vector of three, with a
+#' \code{"censored_summary"} attribute where an entry is a bound.
+#' @param nec_tag The label of the no-effect estimate, such as \code{"NEC"}.
+#' @param ... Passed to \code{\link[graphics]{plot}}.
+#' @param CI,add_nec,legend_pos,add_ec10,lxform,jitter_x,jitter_y,ylab,xlab,xticks
+#' As validated by the calling method; \code{legend_pos} is the value
+#' \code{check_position_legend()} returns.
+#'
+#' @return No return value; draws on the current device.
+#'
+#' @importFrom graphics plot axis lines abline legend
+#' @importFrom grDevices adjustcolor
+#'
+#' @noRd
+draw_fit_panel <- function(x_dat, y_dat, x_vec, curve, nec, ec10, nec_tag,
+                           ..., CI, add_nec, legend_pos, add_ec10, lxform,
+                           jitter_x, jitter_y, ylab, xlab, xticks) {
   if (jitter_x) {
     x_dat <- jitter(x_dat)
   }
@@ -385,15 +379,13 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
   plot(x_dat, y_dat, ylab = ylab, xlab = xlab,
        pch = 16, xaxt = "n", cex = 1.5,
        col = adjustcolor(1, alpha.f = 0.25), ...)
-  nec_tag <- summary(x, ecx = FALSE, xform = identity) |>
-    (`[[`)("nec_vals") |>
-    rownames() |>
-    suppressWarnings() |>
-    suppressMessages()
-  # No lxform branch, for the reason given at the bayesnecfit site above.
+  # The calling method checked that lxform is a function. With the default
+  # lxform = identity these are the values on the axis.
   x_labs <- signif(lxform(x_ticks), 2)
   axis(side = 1, at = x_ticks, labels = x_labs)
-  # Remapped through lxform, for the reason given at the bayesnecfit site.
+  # A decreasing lxform reverses the interval and its bound marks, so remap
+  # the labels as to_axis_scale() does. Index by position: an lxform that is
+  # not arithmetic may drop the names.
   nec_lab <- remap_summary(nec, lxform, x_vec)
   ec10_lab <- remap_summary(ec10, lxform, x_vec)
   legend_nec <- paste(nec_tag, ": ", bound_prefix(nec_lab, 1),
@@ -409,10 +401,10 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
                        bound_prefix(ec10_lab, 3),
                        signif(ec10_lab[[3]], 2), ")", sep = "")
   if (CI) {
-    lines(x_vec, x$w_pred_vals$data$Q97.5, lty = 2)
-    lines(x_vec, x$w_pred_vals$data$Q2.5, lty = 2)
+    lines(x_vec, curve$Q97.5, lty = 2)
+    lines(x_vec, curve$Q2.5, lty = 2)
   }
-  lines(x_vec, x$w_pred_vals$data$Estimate)
+  lines(x_vec, curve$Estimate)
   if (add_nec & !add_ec10) {
     abline(v = nec, col = "red", lty = c(1, 3, 3))
     legend(legend_pos$x, legend_pos$y, bty = "n",

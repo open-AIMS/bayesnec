@@ -54,8 +54,13 @@ should the user decide to calculate them (see the non-exported
 giving the number of divergent transitions after warmup, \code{NA} for a
 model not sampled by NUTS.}
 
-\item{\code{divergence_cutoff}}{The number of divergent transitions above which the
-printed summary warns.}
+\item{\code{divergence_draws}}{A named \code{\link[base]{numeric}} vector of
+length 1 giving the number of retained draws the divergent transitions were
+counted over. Absent from a summary made before it was recorded, in which
+case \code{divergence_cutoff} is a count.}
+
+\item{\code{divergence_cutoff}}{The proportion of retained draws above which the
+divergent transitions of the model are reported in a printed warning.}
 
 \item{\code{failed_models}}{Any models from the original set that could not be
 fitted, with the priors and initial values used. See
@@ -71,7 +76,7 @@ Concentration-Response Modeling and Estimation of Toxicity Metrics
 doi:10.18637/jss.v110.i05.
 
 Fisher R, Fox DR (2023). Introducing the no significant effect concentration
-(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028.
 doi: 10.1002/etc.5610.
 
 Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -80,7 +85,7 @@ Environmental Assessment and Management. doi:10.1002/ieam.4809.
 
 Fox DR (2010). A Bayesian Approach for Determining the No Effect
 Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 }
 \seealso{
 \code{\link{bayesnec}},

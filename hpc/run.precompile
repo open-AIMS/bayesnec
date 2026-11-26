@@ -88,6 +88,17 @@ CACHE="${BAYESNEC_STAN_CACHE:-/export/scratch/$USER/bayesnec-stan-cache/$TOOLCHA
 OUT="out/$VIG"
 rm -rf "$OUT"
 
+# A vignette's source is in vignettes/ and a pkgdown article's in
+# vignettes/articles/. Output is staged under the same path, so that --fetch
+# copies it back to where it belongs.
+if [ -f "vignettes/$VIG.Rmd.orig" ]; then
+  VDIR=vignettes
+elif [ -f "vignettes/articles/$VIG.Rmd.orig" ]; then
+  VDIR=vignettes/articles
+else
+  echo "no $VIG.Rmd.orig in vignettes/ or vignettes/articles/" >&2; exit 1
+fi
+
 module load slurm || true
 module load singularity || true
 command -v singularity > /dev/null || {
@@ -165,7 +176,7 @@ singularity exec -B "$JOB":"$JOB" --pwd "$JOB" "${RENV[@]}" "$SIF" \
 # library() and require() are read, not `pkg::`, because drc:: and remotes::
 # appear in chunks that are never evaluated.
 singularity exec -B "$JOB":"$JOB" --pwd "$JOB" "${RENV[@]}" \
-  --env BAYESNEC_JOB_LIB="$LIB" --env BAYESNEC_VIGNETTES="$VIG" \
+  --env BAYESNEC_JOB_LIB="$LIB" --env BAYESNEC_VIGNETTE_SRC="$VDIR/$VIG.Rmd.orig" \
   "$SIF" Rscript -e '
     lib <- normalizePath(Sys.getenv("BAYESNEC_JOB_LIB"))
     p <- find.package("bayesnec")
@@ -179,8 +190,7 @@ singularity exec -B "$JOB":"$JOB" --pwd "$JOB" "${RENV[@]}" \
       setdiff(x[nzchar(x)], c("R", "bayesnec"))
     }
     absent <- function(x) x[!vapply(x, requireNamespace, logical(1), quietly = TRUE)]
-    src <- readLines(file.path("vignettes", paste0(Sys.getenv("BAYESNEC_VIGNETTES"),
-                                                   ".Rmd.orig")), warn = FALSE)
+    src <- readLines(Sys.getenv("BAYESNEC_VIGNETTE_SRC"), warn = FALSE)
     attached <- regmatches(src, regexpr("(library|require)\\([\"\047]?[A-Za-z][A-Za-z0-9._]*",
                                         src))
     attached <- sub(".*\\([\"\047]?", "", attached)
@@ -230,6 +240,7 @@ singularity exec -B "$JOB":"$JOB" -B "$CACHE":"$CACHE" "${STORE_BIND[@]}" \
   --env BAYESNEC_FIT_STORE="${BAYESNEC_FIT_STORE:-}" \
   --env SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-4}" \
   --env BAYESNEC_VIGNETTE_WORKERS="${BAYESNEC_VIGNETTE_WORKERS:-}" \
+  --env BAYESNEC_QUANTISE_FIGURES="${BAYESNEC_QUANTISE_FIGURES:-}" \
   "$SIF" Rscript vignettes/precompile.R
 
 # Only reached when precompile.R exited zero, which it does not do when a chunk
@@ -237,13 +248,13 @@ singularity exec -B "$JOB":"$JOB" -B "$CACHE":"$CACHE" "${STORE_BIND[@]}" \
 # script is what stands between a failed run and a plausible-looking .Rmd.
 # `set -e` above turns that exit status into a failed job, and the outputs are
 # staged only here, so nothing is available to copy back from a failed run.
-mkdir -p "$OUT/vignettes"
-cp "vignettes/$VIG.Rmd" "$OUT/vignettes/"
-# The figures this run wrote. precompile.R copies into vignettes/ only the
+mkdir -p "$OUT/$VDIR"
+cp "$VDIR/$VIG.Rmd" "$OUT/$VDIR/"
+# The figures this run wrote. precompile.R copies into $VDIR only the
 # figures whose files it changed, so mtime identifies them without needing the
 # git tree, which is not deployed.
-find vignettes -name 'vignette-fig-*.png' -newer "$STARTED" \
-  -exec cp {} "$OUT/vignettes/" \;
+find "$VDIR" -maxdepth 1 -name 'vignette-fig-*.png' -newer "$STARTED" \
+  -exec cp {} "$OUT/$VDIR/" \;
 # Which job staged this, and from which source. --fetch compares the stamp with
 # what it is about to collect into, so output left by an earlier deployment
 # cannot be returned as though it belonged to this one.
@@ -255,4 +266,4 @@ find vignettes -name 'vignette-fig-*.png' -newer "$STARTED" \
   # after the sampling has been paid for and the output is already staged.
   { grep -E '^(deploy_id|commit): ' PROVENANCE 2>/dev/null; } || true
 } > "$OUT/STAMP"
-echo "=== $(date -Is) $VIG done; staged $(ls "$OUT/vignettes" | wc -l) file(s) in $OUT"
+echo "=== $(date -Is) $VIG done; staged $(ls "$OUT/$VDIR" | wc -l) file(s) in $OUT/$VDIR"

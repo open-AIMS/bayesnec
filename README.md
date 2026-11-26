@@ -25,11 +25,15 @@ Love](https://badges.frapsoft.com/os/v2/open-source.svg?v=103)
 Overview
 --------
 
-`bayesnec` is a toxicity estimate and No-Effect-Concentration estimation
-package that uses [`brms`](https://github.com/paul-buerkner/brms) to fit
-concentration(dose)-response data using Bayesian methods for the purpose
-of estimating both ECX values, but more particularly NEC. Please see
-`?bnec` for a more detailed help file.
+`bayesnec` fits concentration-response (dose-response) models by Bayesian
+methods through [`brms`](https://github.com/paul-buerkner/brms), and estimates
+effect concentrations (ECx), the no-effect concentration (NEC, see
+[Fox 2010](https://doi.org/10.1016/j.ecoenv.2009.09.012)), the
+no-significant-effect concentration (NSEC, see
+[Fisher and Fox 2023](https://doi.org/10.1002/etc.5610)) and their
+model-averaged combination (N(S)EC, see
+[Fisher et al. 2023](https://doi.org/10.1002/ieam.4809)). Please see `?bnec`
+for a more detailed help file.
 
 Installation
 ------------
@@ -55,7 +59,7 @@ further instructions on how to get the compilers running.
 
 The [Installation and
 setup](https://open-aims.github.io/bayesnec/articles/example5.html)
-vignette works through this in detail: the two `brms` back ends, the
+article works through this in detail: the two `brms` back ends, the
 `cmdstanr` installation the vignettes are built with, and the failures
 most often met on Windows.
 
@@ -64,8 +68,8 @@ Usage
 
 Usage and further information about `bayesnec` can be seen on the
 [project page](https://open-aims.github.io/bayesnec/) and the
-[vignettes](https://open-aims.github.io/bayesnec/articles/). Help files
-for the individual functions can be found on the [reference
+[vignettes and articles](https://open-aims.github.io/bayesnec/articles/).
+Help files for the individual functions can be found on the [reference
 page](https://open-aims.github.io/bayesnec/reference/).
 
 Further Information

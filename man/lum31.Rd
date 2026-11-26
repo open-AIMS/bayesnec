@@ -7,6 +7,20 @@
 \format{
 An object of class \code{data.frame} with 2904 rows and 10 columns.
 }
+\source{
+Australian Institute of Marine Science (2025) A bioluminescent
+bacterial toxicity assay for tropical marine environments. AIMS data record,
+\url{https://apps.aims.gov.au/metadata/view/6aae0b3b-fe15-47cc-9a11-9fb669479f61}.
+The data are licensed under Creative Commons Attribution 3.0 Australia
+(CC BY 3.0 AU, \url{https://creativecommons.org/licenses/by/3.0/au/}) and
+remain under that licence in this package. They were changed as follows. The
+acute copper and zinc workbooks were combined; the 5 minute reads were
+omitted; the 15 and 30 minute reads were reshaped to one row per well and
+exposure time; the \code{batch}, \code{plate}, \code{well} and
+\code{conc_group} identifiers were constructed; and \code{censoring} and
+\code{rlu_cens} were added. The readings in \code{rlu} and the
+concentrations in \code{conc} are unchanged.
+}
 \description{
 Raw luminescence of the marine bacterium Lum-31 exposed to dissolved copper
 or zinc, from the acute toxicity tests of Luter et al. (2025). The assay
@@ -16,8 +30,10 @@ separate endpoint is scored. The analysis code accompanying the paper is at
 \url{https://github.com/open-AIMS/Lum31-tox-assays}.
 }
 \details{
-This dataset exists to demonstrate group-level terms (see
-\code{vignette("example8")}). Its design supplies replication at three
+This dataset exists to demonstrate group-level terms (see the article
+\emph{Grouping and factor covariates}
+at \url{https://open-aims.github.io/bayesnec/articles/example8.html}).
+Its design supplies replication at three
 nested scales --- four wells within a concentration (\code{conc_group}), 33
 plates each spanning a whole dilution series (\code{plate}), and two
 toxicants read at two exposure times --- so the same data support a
@@ -66,7 +82,9 @@ plates read on the same day, and the October batch sits 4.6-fold below the
 March batches. The published analysis removes this by dividing each plate by
 the median of its four control wells; a group-level term on the control
 parameter estimates the same per-plate factor and propagates its
-uncertainty, which is what \code{vignette("example8")} compares.
+uncertainty, which is what the article
+\emph{Grouping and factor covariates}
+(\url{https://open-aims.github.io/bayesnec/articles/example8.html}) compares.
 
 The columns are as follows:
 

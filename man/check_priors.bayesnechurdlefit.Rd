@@ -4,7 +4,7 @@
 \alias{check_priors.bayesnechurdlefit}
 \title{Prior checks for both components of a \code{\link{bayesnechurdlefit}}}
 \usage{
-\method{check_priors}{bayesnechurdlefit}(object, filename = NA, ask = TRUE)
+\method{check_priors}{bayesnechurdlefit}(object, filename = NA, ask = TRUE, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
@@ -12,6 +12,8 @@
 \item{filename}{Optional filename to save plots to.}
 
 \item{ask}{Should the user be prompted between plots?}
+
+\item{...}{Unused; other arguments are refused.}
 }
 \value{
 A named \code{\link[base]{list}}.

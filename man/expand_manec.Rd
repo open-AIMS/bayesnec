@@ -39,15 +39,22 @@ interpolated NOEC value from smooth ECx curves.}
 \item{loo_controls}{A named \code{\link[base]{list}} of up to five
 elements. "fitting" and "weights" are each a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
-(via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If no \code{method} is named in "weights", \pkg{bayesnec} sets the
-\code{method} argument of \code{\link[loo]{loo_model_weights}} to
-"pseudobma", whichever function assembles the model set. "leave_out" is
-"group" (the default) or "observation", and sets what is left out when the
+(via "fitting") or to the weighting function (via "weights"). "weights"
+names a \code{method}, "pseudobma" or "stacking", and the arguments of
+\code{\link[loo]{pseudobma_weights}} (\code{BB}, \code{BB_n} and
+\code{alpha}) or of \code{\link[loo]{stacking_weights}}
+(\code{optim_method} and \code{optim_control}); any other argument is
+refused. If no \code{method} is named, \pkg{bayesnec} uses "pseudobma",
+whichever function assembles the model set. "leave_out" is "group" (the
+default), "observation" or "kfold", and sets what is left out when the
 score behind the weights is computed. Under "group", where each level of a
 group-level term is observed at a single concentration, each level is left
 out whole; otherwise, and always under "observation", each observation is
-left out. "refit" is \code{FALSE} (the default) or \code{TRUE}, and applies
+left out. "kfold" selects the exact K-fold scores that
+\code{\link{kfold_weights}} stores with each equation. \code{bnec()} refuses
+it, as do \code{update()} and an \code{amend()} that adds an equation,
+because a new fit has no such score. "refit" is \code{FALSE} (the default)
+or \code{TRUE}, and applies
 under "group" only: where \code{TRUE}, each equation is refitted without
 each level whose Pareto k is at or above 0.7. The "fitting" arguments
 apply to the score computed by leaving out each observation.
@@ -63,17 +70,16 @@ retained in
 \code{fit$mod_fits[[model]]$fit$criteria$loo}; where groups were left out,
 the selected criterion, including its Pareto k values, is in
 \code{fit$mod_fits[[model]]$fit$criteria$logo}, even for equations with less
-than 0.01 weight.
+than 0.01 weight. Exact K-fold scores are stored in \code{criteria$kfold}.
 See Details, under model averaging.
 \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
 existing set. They keep the "fitting" arguments it was built with unless
 the caller names "fitting", and the method it was weighted by unless the
-caller names another. \code{\link{pull_out}} takes no weighting method at
-all: it reports and ignores one given in "weights" and always keeps the
-set's own.
+caller names another. \code{\link{pull_out}} keeps the set's scores and
+weights: it reports and ignores "weights", "leave_out" and "refit".
 \code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
 see \code{\link{c.bnecfit}} for how they decide the method. See
-?\code{\link[loo]{loo_model_weights}} for further info.}
+?\code{\link[loo]{pseudobma_weights}} for further info.}
 }
 \value{
 A \code{\link[base]{list}} of model statistical output derived from
@@ -89,4 +95,15 @@ When recovered input objects contain \code{retained_data}, the
 returned model set stores that data frame once if every available copy is
 identical. Different retained frames are reported and omitted because one
 frame cannot align observations for the whole set.
+}
+\examples{
+\donttest{
+library(bayesnec)
+data(manec_example)
+fits <- manec_example$mod_fits
+formulas <- lapply(fits, function(f) f$bayesnecformula)
+set_fit <- expand_manec(fits, formulas, resolution = 50)
+set_fit$mod_stats
+}
+
 }

@@ -68,6 +68,71 @@ group_lapply <- function(object, fun, ...) {
   out
 }
 
+#' Label the messages and warnings raised on one level with that level
+#'
+#' @param level The level, a \code{\link[base]{character}} string.
+#' @param expr An expression evaluated on the fit of that level.
+#'
+#' @details A prior-bound note carries its own label, and the stale no-effect
+#' warning is raised once for the whole object, so both pass unchanged.
+#'
+#' @return The value of \code{expr}.
+#'
+#' @noRd
+with_level_label <- function(level, expr) {
+  skip <- c("bayesnec_level_labelled", "bayesnec_prior_bound_note",
+            "bayesnec_stale_ne")
+  label <- function(cond) {
+    cond$message <- paste0("Level ", level, ": ", conditionMessage(cond))
+    class(cond) <- c("bayesnec_level_labelled", class(cond))
+    cond
+  }
+  withCallingHandlers(
+    expr,
+    message = function(m) {
+      if (inherits(m, skip)) return()
+      message(label(m))
+      invokeRestart("muffleMessage")
+    },
+    warning = function(w) {
+      if (inherits(w, skip)) return()
+      warning(label(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+}
+
+#' Prefix an error raised on one level with that level
+#'
+#' @param level The level, a \code{\link[base]{character}} string.
+#' @param expr An expression evaluated on the fit of that level.
+#'
+#' @return The value of \code{expr}.
+#'
+#' @noRd
+with_level_error <- function(level, expr) {
+  tryCatch(expr, error = function(e) {
+    stop("Level ", level, ": ", conditionMessage(e), call. = FALSE)
+  })
+}
+
+#' Apply a per-fit function to each level, labelling what each level raises
+#'
+#' @inheritParams group_lapply
+#'
+#' @return A named \code{\link[base]{list}}.
+#'
+#' @noRd
+group_lapply_labelled <- function(object, fun, ...) {
+  out <- lapply(seq_along(object$fits), function(i) {
+    with_level_error(object$levels[i],
+                     with_level_label(object$levels[i],
+                                      fun(object$fits[[i]], ...)))
+  })
+  names(out) <- object$levels
+  out
+}
+
 #' Per-level toxicity estimates from a bayesnecgroupfit
 #'
 #' @param object An object of class \code{\link{bayesnecgroupfit}}.
@@ -99,8 +164,12 @@ group_estimate_table <- function(object, what, fun, ..., pool = "none",
   }
   if (identical(pool, "none")) {
     est <- lapply(seq_along(object$fits), function(i) {
-      with_prior_bound_label(paste("Level", object$levels[i]),
-                             do.call(fun, c(list(object$fits[[i]]), dots)))
+      with_level_error(object$levels[i], with_level_label(
+        object$levels[i], with_prior_bound_label(
+          paste("Level", object$levels[i]),
+          do.call(fun, c(list(object$fits[[i]]), dots))
+        )
+      ))
     })
     names(est) <- object$levels
     if (posterior) return(finish(est))
@@ -112,7 +181,11 @@ group_estimate_table <- function(object, what, fun, ..., pool = "none",
     return(finish(out))
   }
   dots$posterior <- TRUE
-  draws <- lapply(object$fits, function(f) do.call(fun, c(list(f), dots)))
+  draws <- lapply(seq_along(object$fits), function(i) {
+    with_level_error(object$levels[i], with_level_label(
+      object$levels[i], do.call(fun, c(list(object$fits[[i]]), dots))
+    ))
+  })
   names(draws) <- object$levels
   pooled <- pool_estimate_draws(draws, object$n, pool,
                                 seed = if (is.null(object$level_seeds)) 216 else
@@ -204,7 +277,7 @@ pool_estimate_draws <- function(draws, weights, pool, seed = 216,
                                                    effects, indices),
                                              use.names = FALSE)[by_draw]
     }
-    return(out)
+    return(censored_infinite(out))
   }
   if (identical(pool, "mean_curve")) {
     stop("`mean_curve` requires the level curves.", call. = FALSE)
@@ -234,7 +307,8 @@ pool_estimate_draws <- function(draws, weights, pool, seed = 216,
       stop("A draw is censored at opposite ends in different levels; its",
            " weighted mean has no known bound.", call. = FALSE)
     }
-    out[above | below] <- NA_real_
+    out[above] <- Inf
+    out[below] <- -Inf
     attr(out, "censored") <- censoring_record(
       upper, lower, above, below
     )
@@ -328,6 +402,8 @@ estimate_marks <- function(est, nms, levels, what) {
   out
 }
 
+#' @return The \code{bayesnecgroupfit}, invisibly, after printing its
+#' level labels and equation names.
 #' @noRd
 #' @method print bayesnecgroupfit
 #' @export
@@ -336,17 +412,9 @@ print.bayesnecgroupfit <- function(x, ...) {
   cat("  grouping variable :", x$group_var, "\n")
   cat("  family            :", x$family$family,
       paste0("(link = ", x$family$link, ")"), "\n\n")
-  mods <- function(f) {
-    if (inherits(f, "bayesmanecfit")) {
-      paste0(length(f$mod_fits), " models: ",
-             paste0(names(f$mod_fits), collapse = ", "))
-    } else {
-      f$model
-    }
-  }
   for (i in seq_along(x$levels)) {
     cat(sprintf("  %-14s (n = %3d) : %s\n", x$levels[i], x$n[i],
-                mods(x$fits[[i]])))
+                group_model_label(x$fits[[i]])))
   }
   cat("\nEach level is a complete fit in its own right; use nec(), ecx() for\n",
       "per-level estimates and crossed_group_weights() for the model weights\n",
@@ -354,15 +422,139 @@ print.bayesnecgroupfit <- function(x, ...) {
   invisible(x)
 }
 
+#' Label the equations fitted at one grouped level
+#'
+#' @param fit An ordinary fit or model set.
+#' @return A character label for the printed group summary.
+#' @noRd
+group_model_label <- function(fit) UseMethod("group_model_label")
+
+#' @return The fitted equation name for a single fit.
+#' @noRd
+#' @export
+group_model_label.bayesnecfit <- function(fit) fit$model
+
+#' @return The number and names of a model set's equations.
+#' @noRd
+#' @export
+group_model_label.bayesmanecfit <- function(fit) {
+  paste0(length(fit$mod_fits), " models: ",
+         paste(names(fit$mod_fits), collapse = ", "))
+}
+
+#' Whether a level's fit is a single equation with no nec parameter
+#'
+#' A model set or a hurdle fit always returns a no-effect estimate from
+#' \code{\link{nec}}, so only a \code{\link{bayesnecfit}} can lack one.
+#'
+#' @param fit The fit of one level.
+#'
+#' @return A \code{\link[base]{logical}} of length 1.
+#' @noRd
+level_lacks_nec <- function(fit) {
+  inherits(fit, "bayesnecfit") && !inherits(fit, "bayesnechurdlefit") &&
+    !has_nec_parameter(fit$model, fit$fit)
+}
+
+#' Refuse quantile probabilities that are not central, lower, upper
+#'
+#' @param prob_vals A numeric vector, or \code{NULL} for the default.
+#' @noRd
+check_prob_vals <- function(prob_vals) {
+  if (is.null(prob_vals)) return(invisible(TRUE))
+  if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
+      prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
+    stop("prob_vals must include central, lower and upper quantiles,",
+         " in that order.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+#' The message that levels with no nec parameter return NA
+#'
+#' @param levels,models The affected levels and the equation fitted at each.
+#' @param no_effect Whether \code{nec(x, no_effect = TRUE)} is a remedy for the
+#' class.
+#' @noRd
+message_levels_lack_nec <- function(levels, models, no_effect = FALSE) {
+  message("No NEC is defined at ",
+          paste0("\"", levels, "\" (", models, ")", collapse = ", "),
+          ", where the equation fitted has no nec parameter, so those ",
+          "estimates are NA. ",
+          if (no_effect) {
+            paste0("nec(x, no_effect = TRUE) returns the no-effect estimate ",
+                   "each level's equation supports -- a sampled NEC for a ",
+                   "monotone threshold equation, or the NSEC of a hormesis ",
+                   "threshold or smooth curve -- labelled by type.")
+          } else {
+            "nsec() returns the no-effect estimate read off the fitted curve."
+          })
+}
+
+#' The refusal of nec() where no level has a nec parameter
+#'
+#' @param levels,models The levels and the equation fitted at each.
+#' @param no_effect Whether \code{nec(x, no_effect = TRUE)} is a remedy for the
+#' class.
+#'
+#' @noRd
+refuse_every_level_lacks_nec <- function(levels, models, no_effect = FALSE) {
+  stop("nec() is not defined at any level: the equation fitted at ",
+       paste0("\"", levels, "\" (", models, ")", collapse = ", "),
+       " has no nec parameter. Use nsec() for the no-effect estimate, read ",
+       "off the fitted curve",
+       if (no_effect) ", or nec(x, no_effect = TRUE) to label it by type",
+       ".", call. = FALSE)
+}
+
+#' The no-effect table of a bayesnecgroupfit
+#'
+#' A level whose single equation has no \code{nec} parameter returns \code{NA}
+#' and one message names those levels, as for a
+#' \code{\link{bayesnecjointfit}}. Pooling refuses such a level, and so does a
+#' fit in which every level lacks one.
+#'
 #' @noRd
 #' @method nec bayesnecgroupfit
+#' @importFrom brms ndraws
 #' @export
 nec.bayesnecgroupfit <- function(object, ...) {
   # Check here, so that the error names this class rather than a level's.
   check_no_effect_arg(list(...), object)
+  lacking <- vapply(object$fits, level_lacks_nec, logical(1))
+  models <- vapply(object$fits, group_model_label, character(1))
+  if (all(lacking)) {
+    refuse_every_level_lacks_nec(object$levels, models)
+  }
+  dots <- list(...)
+  if (any(lacking)) {
+    if (!is.null(dots$pool) && !identical(dots$pool, "none")) {
+      stop("Pooling NEC values needs a nec parameter at every level, and ",
+           paste0("\"", object$levels[lacking], "\" (", models[lacking], ")",
+                  collapse = ", "),
+           " has none. Use nsec() to pool the NSEC.", call. = FALSE)
+    }
+    check_prob_vals(dots$prob_vals)
+    message_levels_lack_nec(object$levels[lacking], models[lacking])
+  }
+  prob_vals <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else
+    dots$prob_vals
+  per_level <- function(f, ...) {
+    if (!level_lacks_nec(f)) {
+      return(nec(f, ...))
+    }
+    # NA per draw, not NULL or zeros: zeros would read as an estimate at the
+    # origin.
+    if (isTRUE(list(...)$posterior)) {
+      return(rep(NA_real_, ndraws(f$fit)))
+    }
+    na_row <- stats::quantile(NA_real_, probs = prob_vals, na.rm = TRUE)
+    names(na_row) <- clean_names(na_row)
+    na_row
+  }
   once_stale_ne_warning(
     object,
-    group_estimate_table(object, "nec", function(f, ...) nec(f, ...), ...)
+    group_estimate_table(object, "nec", per_level, ...)
   )
 }
 
@@ -377,6 +569,7 @@ ecx.bayesnecgroupfit <- function(object, ...) {
 #' @method nsec bayesnecgroupfit
 #' @export
 nsec.bayesnecgroupfit <- function(object, ...) {
+  check_nsec_no_type(list(...))
   group_estimate_table(object, "nsec", function(f, ...) nsec(f, ...), ...)
 }
 
@@ -395,7 +588,7 @@ ecnsec.bayesnecgroupfit <- function(object, nsec, ...) {
 #' @method summary bayesnecgroupfit
 #' @export
 summary.bayesnecgroupfit <- function(object, ...) {
-  once_stale_ne_warning(object, group_lapply(object, summary, ...))
+  once_stale_ne_warning(object, group_lapply_labelled(object, summary, ...))
 }
 
 #' @noRd
@@ -427,7 +620,8 @@ plot.bayesnecgroupfit <- function(x, ...) {
 #' Amends the fit of every level of a bayesnecgroupfit
 #'
 #' Each level is a complete fit, so \code{\link{amend}} is applied to each in
-#' turn with the same arguments. An error names the level that raised it.
+#' turn with the same arguments. An error, and each message and warning, names
+#' the level that raised it.
 #'
 #' @inheritParams amend
 #' @param object An object of class \code{\link{bayesnecgroupfit}}.
@@ -452,7 +646,8 @@ amend.bayesnecgroupfit <- function(object, drop, add, loo_controls,
   if (!missing(priors)) args$priors <- priors
   for (i in seq_along(object$fits)) {
     object$fits[[i]] <- tryCatch(
-      do.call(amend, c(list(object$fits[[i]]), args)),
+      with_level_label(object$levels[i],
+                       do.call(amend, c(list(object$fits[[i]]), args))),
       error = function(e) {
         stop("Could not amend level ", object$levels[i], ": ",
              conditionMessage(e), call. = FALSE)

@@ -43,10 +43,14 @@
 #' extrapolates its curve, and gives a warning unless it is the control
 #' recorded at fitting. Level controls are recorded in the result's
 #' \code{x_control} attribute.
-#' @param ... Further arguments to pass to class specific methods.
+#' @param ... Further arguments to pass to class specific methods. A method
+#' refuses any argument it does not use.
+#' @param posterior A \code{\link[base]{logical}} value indicating if the full
+#' posterior sample of calculated ECNSEC values should be returned instead of
+#' just the median and 95 credible intervals.
 #'
 #' @details NSEC is no-effect toxicity metric that estimates the concentration
-#' at which the modeled mean response is statistically indistinguishable from
+#' at which the modelled mean response is statistically indistinguishable from
 #' the mean control response. See the detailed derivation in
 #' Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated
 #' effect size. This function estimates the effect of a given NSEC estimate.
@@ -89,9 +93,6 @@
 #' example, every draw returns 0 at an \code{nsec} below the \code{nec} of
 #' every draw, where every draw of the curve still equals its control.
 #'
-#' The \code{hormesis_def} argument has been removed; the control is now
-#' always the reference. See \code{\link{ecx}}.
-#'
 #' \code{nsec} is read on the recorded predictor scale once \code{xform} has
 #' been applied to it. \code{\link{nsec}} returns its estimate on that scale
 #' by default, so \code{ecnsec(fit, nsec = nsec(fit)[1])} reads the curve at
@@ -113,7 +114,9 @@
 #' @seealso \code{\link{bnec}}
 #'
 #' @return A vector containing the estimated ECNSEC value, including upper and
-#' lower 95% credible interval bounds.
+#' lower 95% credible interval bounds, or with \code{posterior = TRUE} the
+#' value for each posterior draw. This percentage is read at the supplied
+#' concentration; no draw is censored by a search for a crossing.
 #'
 #' @examples
 #' \donttest{
@@ -127,7 +130,8 @@
 ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
                    type = "absolute", xform = NULL,
                    prob_vals = c(0.5, 0.025, 0.975), ...,
-                   pool = NULL, x_control = "own", extrapolate = FALSE) {
+                   posterior = FALSE, pool = NULL, x_control = "own",
+                   extrapolate = FALSE) {
   UseMethod("ecnsec")
 }
 
@@ -143,7 +147,7 @@ ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
 #'
 #' @importFrom stats quantile
 #' @importFrom brms as_draws_df posterior_epred
-#' @importFrom chk chk_logical chk_number
+#' @importFrom chk chk_flag chk_number
 #'
 #' @noRd
 #'
@@ -155,10 +159,13 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
                              x_control = "own", extrapolate = FALSE) {
   # One value: the curve is read at one point.
   chk_number(nsec)
-  chk_logical(posterior)
+  chk_flag(posterior)
   check_removed_args(list(...))
+  check_unused_dots(list(...), "ecnsec")
+  check_resolution(resolution)
+  if (!is.null(pool)) validate_pool(pool, "ecnsec")
 
-  type <- validate_ecx_type(type, match.call())
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
   if (identical(type, "direct")) {
     stop("type = \"direct\" names a response value rather than a ",
          "percentage, so there is no percent effect for ecnsec to report. ",
@@ -173,6 +180,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
     }
     check_combined_relative(fit_family, "ecnsec")
   }
+  warn_relative_rename(type, match.call())
   check_xform(xform)
   if (is.null(xform)) {
     xform <- identity
@@ -246,7 +254,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
   check_ecnsec_range(object, nsec, nsec_use, range(newdata_list$x_vec),
                      x_range, xform)
 
-  p_samples <- posterior_epred(object,
+  p_samples <- estimator_epred(object,
                                newdata = newdata_list$newdata,
                                re_formula = if (is.null(object$re_formula)) NA
                                  else object$re_formula)
@@ -254,7 +262,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
     object, resolution = 2, x_range = c(nsec_use, nsec_use)
   )
 
-  pred_val_nsec <- posterior_epred(object,
+  pred_val_nsec <- estimator_epred(object,
                                    newdata = newdat_nsec$newdata,
                                    re_formula = if (is.null(object$re_formula)) NA
                                      else object$re_formula)
@@ -265,7 +273,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
   # pairs row i across calls only because each call thins by the stored index.
   control_draws <- control_posterior(
     object, newdata_list$newdata,
-    function(nd) posterior_epred(
+    function(nd) estimator_epred(
       object, newdata = nd,
       re_formula = if (is.null(object$re_formula)) NA else object$re_formula
     ), x_at = control_reading$value

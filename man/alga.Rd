@@ -7,6 +7,9 @@
 \format{
 An object of class \code{data.frame} with 310 rows and 9 columns.
 }
+\source{
+Unpublished data from the Australian Institute of Marine Science.
+}
 \description{
 Final cell density and average specific growth rate for two marine
 microalgae exposed to each of two contaminants, consolidated from four
@@ -36,7 +39,10 @@ the middle of the observed range --- above every genuinely negative value in
 the same test --- so a culture that was lost entirely is recorded as
 \emph{less} affected than one that was merely declining. Correcting it in
 the shipped data would remove the example, and substitution at a boundary is
-the practice \code{vignette("example6")} argues against.
+the practice that the article
+\emph{Hurdle and zero-inflated concentration-response models}
+(\url{https://open-aims.github.io/bayesnec/articles/example6.html}) argues
+against.
 
 \bold{The two species grow on very different scales,} which is why they were
 run over different exposure durations --- seven days for

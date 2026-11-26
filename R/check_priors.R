@@ -9,10 +9,15 @@
 #' @param ask Should the user be asked to hit enter for next page? Defaults to
 #' \code{TRUE}. Only relevant if \code{object} is of class
 #' \code{\link{bayesmanecfit}}.
+#' @param ... Class-specific arguments, including \code{level} for a
+#' \code{bayesnecgroupfit}.
 #'
 #' @seealso \code{\link{bnec}}
 #'
-#' @return A plot of the prior and posterior parameter probability densities.
+#' @return For a \code{\link{bayesnecfit}}, a \code{\link[ggplot2]{ggplot}} of
+#' the prior and posterior probability densities of each parameter. For a
+#' \code{\link{bayesmanecfit}}, a named list of plots by equation is returned
+#' invisibly after the plots are printed or written to \code{filename}.
 #'
 #' @examples
 #' \dontrun{
@@ -22,7 +27,7 @@
 #' }
 #'
 #' @export
-check_priors <- function(object, filename = NA, ask = TRUE) {
+check_priors <- function(object, filename = NA, ask = TRUE, ...) {
   UseMethod("check_priors")
 }
 
@@ -43,12 +48,28 @@ check_priors <- function(object, filename = NA, ask = TRUE) {
 #' @noRd
 #'
 #' @export
-check_priors.bayesnecfit <- function(object, filename = NA, ask = TRUE) {
+check_priors.bayesnecfit <- function(object, filename = NA, ask = TRUE, ...) {
+  check_unused_dots(list(...), "check_priors")
   if (!is.na(filename)) {
     chk_character(filename)
   }
-  brms_fit <- object$fit
-  all_pars <- rownames(brms::fixef(brms_fit))
+  prior_posterior_plot(object$fit, rownames(brms::fixef(object$fit)))
+}
+
+#' Plot the prior and posterior densities of some parameters of a brmsfit
+#'
+#' @param brms_fit A \code{\link[brms]{brmsfit}}.
+#' @param all_pars Population-level parameter names, as the row names of
+#' \code{\link[brms]{fixef}} give them.
+#'
+#' @return A \code{\link[ggplot2]{ggplot}}.
+#'
+#' @importFrom ggplot2 ggplot geom_density facet_wrap scale_fill_manual theme_bw labs
+#' @importFrom brms hypothesis
+#' @importFrom rlang .data
+#'
+#' @noRd
+prior_posterior_plot <- function(brms_fit, all_pars) {
   all_data <- vector(mode = "list", length = length(all_pars))
   for (i in seq_along(all_pars)) {
     hyp <- hypothesis(brms_fit, paste0(all_pars[i], " = 0"))
@@ -82,7 +103,9 @@ check_priors.bayesnecfit <- function(object, filename = NA, ask = TRUE) {
 #' @noRd
 #'
 #' @export
-check_priors.bayesmanecfit <- function(object, filename = NA, ask = TRUE) {
+check_priors.bayesmanecfit <- function(object, filename = NA, ask = TRUE,
+                                      ...) {
+  check_unused_dots(list(...), "check_priors")
   if (!is.na(filename)) {
     chk_character(filename)
   }
@@ -98,14 +121,17 @@ check_priors.bayesmanecfit <- function(object, filename = NA, ask = TRUE) {
     on.exit(devAskNewPage(default_ask), add = TRUE)
     devAskNewPage(ask = ask)
   }
-  for (m in seq_len(length(object$mod_fits))) {
-    out_plot <- check_priors(object = pull_out(object, model = names(object$mod_fits)[m])) +
-      ggtitle(names(object$mod_fits)[m])
+  plots <- lapply(names(object$mod_fits), function(model) {
+    fit <- object$mod_fits[[model]]$fit
+    out_plot <- prior_posterior_plot(fit, rownames(brms::fixef(fit))) +
+      ggtitle(model)
     print(out_plot)
-  }
+    out_plot
+  })
+  names(plots) <- names(object$mod_fits)
   if (!is.na(filename)) {
     dev.off(pdf_dev)
     message("Probability density plots saved to file ", filename, ".pdf")
   }
-  invisible(NULL)
+  invisible(plots)
 }

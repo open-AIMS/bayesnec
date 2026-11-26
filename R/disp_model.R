@@ -100,11 +100,18 @@ parse_disp_term <- function(formula) {
     silent = TRUE
   )
   if (inherits(arg, "try-error")) {
-    stop("Could not parse the disp() term \"", disp_str, "\". A sub-model",
-         " combining a function call with another term, as in",
-         " disp(~s(x) + group), cannot currently be written inline. Compute",
-         " the term in your data first and pass it as a plain variable.",
-         call. = FALSE)
+    # Quote the term as written, not the fragment the split left.
+    full <- deparse1(rhs(formula))
+    start <- regexpr("disp(", full, fixed = TRUE)
+    chars <- strsplit(substring(full, start), "")[[1]]
+    depth <- cumsum((chars == "(") - (chars == ")"))
+    close <- which(depth == 0 & cumsum(chars == "(") > 0)[1]
+    written <- substring(full, start, start + close - 1)
+    stop("Could not parse the disp() term \"", written, "\". Inside disp() a",
+         " function call followed by another term, as in disp(~s(x) + group),",
+         " cannot currently be written inline. Write the call last, as in",
+         " disp(~group + s(x)), or compute the term in your data first and",
+         " pass it as a plain variable.", call. = FALSE)
   }
   if (inherits(arg, "formula") || identical(as.character(arg)[1], "~")) {
     # A one-sided formula, e.g. disp(~x): route (A). Kept as text and rebuilt

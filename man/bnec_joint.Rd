@@ -51,7 +51,8 @@ levels.}
 
 \item{model_survival}{An optional \code{\link[base]{character}} string naming
 the equation for the survival block. Defaults to the highest-weighted
-survival model in \code{object}. Hurdle fits only.}
+survival model in \code{object}. Hurdle fits only; refused for a grouped
+fit.}
 
 \item{formula}{An optional \code{\link{bayesnecformula}} to fit instead of
 the one held in \code{object}. Supply this to add structure the factorised
@@ -69,7 +70,7 @@ Defaults to the value recorded by the factorised fit.}
 
 \item{disp_by_level}{A \code{\link[base]{logical}}. Should the family's
 dispersion parameter also take a separate value per level? Defaults to
-\code{TRUE}. Grouped fits only.}
+\code{TRUE}. Grouped fits only; refused for a hurdle fit.}
 }
 \value{
 For a \code{\link{bayesnechurdlefit}}, an object of class
@@ -181,14 +182,21 @@ assay rather than of the level.
 \code{\link{ecx}}, \code{\link{nsec}}, \code{\link{nec}},
 \code{\link{ecnsec}} and \code{\link{exceedance}} on the returned object
 give one row per level, and \code{\link{autoplot}} draws one panel per
-level. \code{\link{ecx}}, \code{\link{nsec}} and \code{\link{exceedance}}
-return the \code{\link[base]{data.frame}} a \code{\link{bayesnecgroupfit}}
-returns, and \code{\link{nec}} adds columns naming each level's equation
-and the type of its estimate. A \code{\link{bayesnecgroupfit}} has no
-\code{\link{ecnsec}} method; \code{\link{bayesnecjointfit}} describes the
-table \code{\link{ecnsec}} returns here. Each level is estimated on its own
-prediction grid, so the estimate for a level is read off that level's curve
-alone.
+level. \code{\link{ecx}}, \code{\link{nsec}}, \code{\link{ecnsec}} and
+\code{\link{exceedance}} return the \code{\link[base]{data.frame}} a
+\code{\link{bayesnecgroupfit}} returns, and \code{\link{nec}} adds columns
+naming each level's equation and the type of its estimate. Each level is
+estimated on its own prediction grid, so the estimate for a level is read
+off that level's curve alone.
+
+The returned \code{\link{bayesnecjointfit}} has the other methods of a
+\code{\link{bayesnecfit}} as well, such as \code{summary()},
+\code{plot()}, \code{\link{check_fit}}, \code{\link{rhat}} and
+\code{update()}, each returning one result per level where it returns one
+per fit; \code{\link{bayesnecjointfit}} lists them. \code{\link{amend}},
+\code{\link{pull_out}}, \code{c()} and \code{+} stop on it with a message
+naming what to use instead, because each of its levels has one equation
+and it is not a model set.
 }
 \examples{
 \dontrun{

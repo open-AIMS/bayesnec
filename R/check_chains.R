@@ -38,11 +38,29 @@ check_chains <- function(x, ...) {
 #'
 #' @export
 check_chains.bayesnecfit <- function(x, ...) {
+  plot_chains(x$fit, rownames(fixef(x$fit)), x$model)
+}
+
+#' Draw the autocorrelation and the chains of some parameters of a brmsfit
+#'
+#' @param fit A \code{\link[brms]{brmsfit}}.
+#' @param pars Population-level parameter names, as the row names of
+#' \code{\link[brms]{fixef}} give them.
+#' @param title The title written above the page.
+#'
+#' @return No return value; draws on the current device.
+#'
+#' @importFrom brms as_draws_array
+#' @importFrom stats acf
+#' @importFrom graphics axis lines mtext par plot
+#'
+#' @noRd
+plot_chains <- function(fit, pars, title) {
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
-  params <- gsub("_Intercept", "", rownames(fixef(x$fit)))
-  a_params <- paste0("b_", rownames(fixef(x$fit)))
-  sims_array <- as_draws_array(x$fit, variable = a_params)
+  params <- gsub("_Intercept", "", pars)
+  a_params <- paste0("b_", pars)
+  sims_array <- as_draws_array(fit, variable = a_params)
   num_chains <- ncol(sims_array[, , 1])
   par(mfrow = c(length(params), 2), mar = c(0, 5, 0.5, 0.5),
       oma = c(4, 2, 2, 0))
@@ -78,7 +96,7 @@ check_chains.bayesnecfit <- function(x, ...) {
     
   }
   mtext("correlation", side = 2, outer = TRUE, line = -2)   
-  mtext(x$model, side = 3, outer = TRUE)
+  mtext(title, side = 3, outer = TRUE)
 }
 
 #' @rdname check_chains
@@ -91,6 +109,8 @@ check_chains.bayesnecfit <- function(x, ...) {
 #' @method check_chains bayesmanecfit
 #'
 #' @inherit check_chains description return examples
+#' @return No value; draws one chain page per stored equation, or writes
+#' those pages to \code{filename}.
 #'
 #' @importFrom grDevices pdf dev.off
 #' @importFrom chk chk_character
@@ -102,12 +122,16 @@ check_chains.bayesmanecfit <- function(x, filename = NA, ...) {
   }
   if (!is.na(filename)) {
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE)
+    pdf_dev <- grDevices::dev.cur()
+    on.exit(if (pdf_dev %in% grDevices::dev.list())
+      grDevices::dev.off(pdf_dev), add = TRUE)
   }
   for (m in seq_len(length(x$mod_fits))) {
-    check_chains(x = pull_out(x, model = names(x$mod_fits)[m]))
+    fit <- x$mod_fits[[m]]$fit
+    plot_chains(fit, rownames(brms::fixef(fit)), names(x$mod_fits)[m])
   }
   if (!is.na(filename)) {
-    dev.off()
+    grDevices::dev.off(pdf_dev)
     message("Chain plots saved to file ", filename, ".pdf")
   }
 }

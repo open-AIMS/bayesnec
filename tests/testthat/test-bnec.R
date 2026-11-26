@@ -317,7 +317,7 @@ expect_ecx_all_above <- function(fit, types) {
   for (type in types) {
     e <- suppressWarnings(ecx(fit, posterior = TRUE, type = type))
     cens <- attr(e, "censored")
-    expect_true(all(is.na(e)), info = type)
+    expect_true(all(e == Inf), info = type)
     expect_true(all(cens$above), info = type)
     expect_false(any(cens$below), info = type)
     est <- suppressWarnings(ecx(fit, type = type))
@@ -333,7 +333,7 @@ expect_nsec_above_but_control <- function(fit, sig_val = 0.01) {
   ns <- suppressWarnings(nsec(fit, posterior = TRUE, sig_val = sig_val))
   cens <- attr(ns, "censored")
   top <- brms::as_draws_df(fit$fit)$b_top_Intercept
-  at_control <- !is.na(ns)
+  at_control <- !cens$above & !cens$below & !is.na(ns)
   expect_identical(sum(at_control),
                    sum(top <= stats::quantile(top, sig_val)))
   expect_true(all(ns[at_control] == min(fit$fit$data$x)))
@@ -387,7 +387,8 @@ test_that("the NSEC of ecxflat is censored above but for the control share (#419
   # The stored no-effect estimate is that NSEC, read on the fit's own grid, and
   # at the default sig_val every entry of its summary is the bound.
   cens <- attr(fit$ne_posterior, "censored")
-  expect_identical(sum(cens$above) + sum(!is.na(fit$ne_posterior)),
+  expect_true(all(fit$ne_posterior[cens$above] == Inf))
+  expect_identical(sum(cens$above) + sum(is.finite(fit$ne_posterior)),
                    length(fit$ne_posterior))
   expect_identical(attr(fit$ne, "censored_summary")$bound, rep(">=", 3))
   effect <- suppressMessages(
@@ -399,7 +400,7 @@ test_that("the NSEC of ecxflat is censored above but for the control share (#419
 test_that("nec() refuses a single ecxflat fit, and summary() labels an NSEC (#419)", {
   skip_on_cran()
   fit <- flat_fixtures("at_bound")$fit
-  expect_error(nec(fit), "nec is not a parameter in ecx model types")
+  expect_error(nec(fit), "has no nec parameter")
   s <- summary(fit)
   expect_true(s$is_ecx)
   expect_identical(rownames(s$nec_vals), "NSEC")
@@ -419,7 +420,8 @@ test_that("a set holding ecxflat mixes its NSEC draws into the N(S)EC (#419)", {
   vals <- as.numeric(fit$w_ne_posterior)[seg]
   above <- attr(fit$w_ne_posterior, "censored")$above[seg]
   control <- min(fit$mod_fits$ecxflat$fit$data$x)
-  expect_true(all(above | (!is.na(vals) & vals == control)))
+  expect_true(all(vals[above] == Inf))
+  expect_true(all(above | vals == control))
   expect_gt(sum(above), 0)
   msgs <- character(0)
   withCallingHandlers(
@@ -488,7 +490,7 @@ test_that("ecxflat estimates take the recorded scale and exceedance() (#419)", {
   expect_equal(ns$prob_upper, ns$n_above / ns$n_draws)
   # The default estimate is the NEC, which nec() refuses for a single fit
   # without a nec parameter.
-  expect_error(exceedance(fit, 3), "nec is not a parameter")
+  expect_error(exceedance(fit, 3), "has no nec parameter")
 })
 
 test_that("ecxflat is fitted on a grid reaching -Inf under crf(log(x)) (#419)", {
@@ -520,7 +522,7 @@ test_that("a misspelt equation at a bound is refused, not set aside (#419)", {
   expect_error(
     suppressMessages(bnec(alive ~ crf(x, c("nec4param", "bogus")),
                           data = cs$data, family = cs$family)),
-    "bogus; is not a valid model entry", fixed = TRUE
+    "\"bogus\" is not an equation that bayesnec fits", fixed = TRUE
   )
 })
 
@@ -727,4 +729,186 @@ test_that("terms every equation keeps exclude nothing (#470)", {
   ), silent = TRUE)
   expect_identical(fitted, c("nec3param", "ecxll3"))
   expect_false(any(grepl("Dropping the model(s)", msgs, fixed = TRUE)))
+})
+
+test_that("a sig_val outside (0, 1) is refused once, before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  for (bad in list(-1, 0, 1, 2, c(0.01, 0.02), NA_real_)) {
+    msg <- tryCatch(suppressMessages(
+      bnec(y ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
+           sig_val = bad)
+    ), error = conditionMessage)
+    expect_match(msg, "`sig_val` must be one number strictly between 0 and 1",
+                 fixed = TRUE)
+  }
+  expect_identical(calls, 0L)
+})
+
+test_that("a weights argument the method does not read is refused before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  msg <- tryCatch(suppressMessages(
+    bnec(y ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
+         loo_controls = list(weights = list(method = "stacking", BB = FALSE)))
+  ), error = conditionMessage)
+  expect_match(msg, "BB apply to pseudobma weights", fixed = TRUE)
+  expect_identical(calls, 0L)
+})
+
+test_that("degenerate data are refused once, before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  set <- c("nec3param", "nec4param")
+  run <- function(d, f = y ~ crf(x, c("nec3param", "nec4param")), ...) {
+    msg <- tryCatch(suppressWarnings(suppressMessages(bnec(f, data = d, ...))),
+                    error = conditionMessage)
+    expect_no_match(msg, "None of the models")
+    msg
+  }
+  d <- nec_data
+  inf_x <- d
+  inf_x$x[3] <- Inf
+  expect_match(run(inf_x),
+               "predictor column contains values that are not finite, in x at row(s) 3",
+               fixed = TRUE)
+  inf_y <- d
+  inf_y$y[c(3, 5)] <- c(Inf, -Inf)
+  expect_match(run(inf_y),
+               "response column contains values that are not finite, in y at row(s) 3, 5",
+               fixed = TRUE)
+  zero <- d
+  zero$x[1:2] <- 0
+  expect_match(run(zero, y ~ crf(log(x), c("nec3param", "nec4param"))),
+               "such as a zero under log(), is the usual cause", fixed = TRUE)
+  expect_match(run(d[0, ]), "Your data have no rows", fixed = TRUE)
+  expect_match(run(d[1, ]), "takes the single value", fixed = TRUE)
+  const <- d
+  const$x <- 1
+  expect_match(run(const),
+               "takes the single value 1 in 100 observations. A concentration-response curve needs observations at two or more",
+               fixed = TRUE)
+  low <- d
+  low$trials[2] <- low$count[2] - 1L
+  low$trials[4] <- 0L
+  for (fam in c("binomial", "beta_binomial")) {
+    msg <- run(low, count | trials(trials) ~ crf(x, c("nec3param",
+                                                      "nec4param")),
+               family = fam)
+    expect_match(msg,
+                 "The trials column \"trials\" must hold a positive whole number, and does not at row(s) 4",
+                 fixed = TRUE, info = fam)
+    expect_match(msg,
+                 "The response \"count\" exceeds the trials column \"trials\" at row(s) 2",
+                 fixed = TRUE, info = fam)
+  }
+  expect_identical(calls, 0L)
+})
+
+test_that("a rate() denominator of zero or less is refused once, before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  d <- data.frame(x = rep(c(0.1, 1, 10, 100), each = 5),
+                  y = as.integer(rep(c(20, 15, 8, 2), each = 5)),
+                  n = rep(2, 20))
+  d$n[c(3, 7)] <- c(0, -1)
+  msg <- tryCatch(
+    suppressWarnings(suppressMessages(
+      bnec(y | rate(n) ~ crf(x, c("nec3param", "nec4param")), data = d,
+           family = poisson(link = "identity"))
+    )),
+    error = conditionMessage
+  )
+  expect_match(msg, "rate() denominator n is zero or negative at row(s) 3, 7",
+               fixed = TRUE)
+  expect_no_match(msg, "None of the models")
+  expect_identical(calls, 0L)
+})
+
+test_that("an x_range that is not NA or an increasing pair is refused before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  for (bad in list(c(0.1, NA), c(NA, 2), c(2, 0.1), c(0.1, 1, 2), c(0, Inf),
+                   "a")) {
+    msg <- tryCatch(suppressMessages(
+      bnec(y ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
+           x_range = bad)
+    ), error = conditionMessage)
+    expect_match(msg, "`x_range` must be NA, or two finite numbers in",
+                 fixed = TRUE, info = deparse1(bad))
+  }
+  expect_identical(calls, 0L)
+})
+
+test_that("a timeout without R.utils is refused once, before any model", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    has_r_utils = function() FALSE,
+    .package = "bayesnec"
+  )
+  msg <- tryCatch(suppressMessages(
+    bnec(y ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
+         timeout = 60)
+  ), error = conditionMessage)
+  expect_match(msg, "Package \"R.utils\" is required to use the `timeout`",
+               fixed = TRUE)
+  expect_identical(calls, 0L)
+  # amend() refuses it before fitting an added model.
+  expect_error(amend(manec_example, add = "ecxlin", timeout = 60),
+               "R.utils", fixed = TRUE)
+  expect_identical(calls, 0L)
+})
+
+test_that("the arguments removed in version 2.0 are refused, not ignored", {
+  calls <- 0L
+  local_mocked_bindings(
+    fit_bayesnec = function(...) {
+      calls <<- calls + 1L
+      stop("the model loop should not start")
+    },
+    .package = "bayesnec"
+  )
+  expect_error(
+    bnec(y ~ crf(x, "nec3param"), data = nec_data, model = "nec4param"),
+    "Argument(s) `model` of bnec() were removed in version 2.0", fixed = TRUE
+  )
+  expect_error(
+    bnec(y ~ crf(x, "nec3param"), data = nec_data, x_var = "x", y_var = "y"),
+    "`x_var`, `y_var`", fixed = TRUE
+  )
+  expect_identical(calls, 0L)
 })

@@ -81,9 +81,11 @@ For a \code{\link{bayesnecjointfit}} each level is compared in turn as
 well, on the draws the estimator returns for that level of the joint refit.
 Under \code{"nec"} a level whose equation has no \code{nec} parameter has
 only \code{NA} draws, as \code{\link{nec}} reports for it, so its
-probabilities are \code{NA} and its \code{n_draws} is 0. Passing
-\code{no_effect = TRUE} compares the NSEC of that level's fitted curve
-instead, as \code{nec(x, no_effect = TRUE)} reports it.
+probabilities are \code{NA} and its \code{n_draws} is 0. Where every level
+lacks a \code{nec} parameter, \code{exceedance} stops. For a
+\code{\link{bayesnecjointfit}}, passing \code{no_effect = TRUE} compares
+the NSEC of that level's fitted curve instead, as
+\code{nec(x, no_effect = TRUE)} reports it.
 
 \code{threshold} and the estimate are compared on one scale, the scale the
 estimator returns the estimate on. Without \code{xform} that is the scale

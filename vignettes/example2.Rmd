@@ -11,10 +11,10 @@ bibliography: bayesnec.bib
 
 
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2]: https://open-aims.github.io/bayesnec/articles/example2.html
-[e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
-[e3]: https://open-aims.github.io/bayesnec/articles/example3.html
+[e1]: example1.html
+[e2]: example2.html
+[e2b]: example2b.html
+[e3]: example3.html
 [e4]: https://open-aims.github.io/bayesnec/articles/example4.html
 [e5]: https://open-aims.github.io/bayesnec/articles/example5.html
 
@@ -125,7 +125,7 @@ summary(exp_5)
 #>  Family: gaussian  
 #>   Links: mu = identity  
 #> 
-#> Number of posterior draws per model:  1600
+#> Number of draws in model average:  1600
 #> 
 #> Model weights (Method: pseudobma_bb_weights; each observation left out):
 #>             waic    elpd   wi
@@ -191,15 +191,15 @@ summary(exp_5)
 #> 1 model(s) failed to fit: ecxll5
 #> See ?failed_models for the priors and initial values used.
 #> 
-#> Fitted by bayesnec 2.1.3.44, installed from a local source, which records no commit, under R 4.6.1.
+#> Fitted by bayesnec 3.0.0, installed from a local source, which records no commit, under R 4.6.1.
 ```
 
 The `bayesmanecfit` object also contains all of the individual `brms` model fits, which can be extracted using the `pull_out` function. For example, we can pull out and plot the model **ecx4param**.
 
 
 ``` r
-exp_5_nec4param <- pull_out(exp_5, model = "ecx4param")
-autoplot(exp_5_nec4param)
+exp_5_ecx4param <- pull_out(exp_5, model = "ecx4param")
+autoplot(exp_5_ecx4param)
 ```
 
 <div class="figure" style="text-align: center">
@@ -207,7 +207,7 @@ autoplot(exp_5_nec4param)
 <p class="caption">plot of chunk exmp2-ecx4param</p>
 </div>
 
-This would extract the **nec4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This would be identical to fitting the **ecx4param** as a single model using `bnec`. Several models in the `bayesmanecfit` can be plotted together by naming them in the argument `model` (here we plot all of the models that fitted successfully), and setting `average = FALSE` omits the panel of model averaged predictions.
+This extracts the **ecx4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This is identical to fitting **ecx4param** as a single model using `bnec`. Several models in the `bayesmanecfit` can be plotted together by naming them in the argument `model` (here we plot all of the models that fitted successfully), and setting `average = FALSE` omits the panel of model averaged predictions.
 
 
 ``` r
@@ -335,7 +335,7 @@ exp_5_nec <- pull_out(exp_5, model = "nec")
 
 In this case, because we have already fitted `"decline"` models, we can ignore the message regarding the missing *NEC* models---these are all models that are not appropriate for the family and link `bnec` selected for these data, or allow hormesis, which we did not consider in this example.
 
-Now we have two model sets, an *NEC* set, and a mixed *NEC* and *ECx* set. Of course, before we use this model set for any inference, we would need to check the chain mixing and `acf` plot for each of the input models. For the "all" set, the model with the highest weight is **nec4param**. 
+Now we have two model sets, an *NEC* set, and a mixed *NEC* and *ECx* set. Of course, before we use this model set for any inference, we would need to check the chain mixing and `acf` plot for each of the input models. For the `"decline"` set, the equation with the highest weight is **nec4param**. 
 
 Now we can use the `ecx` function to get *EC~10~* and *EC~50~* values. We can do this using our all model set, because it is valid to use *NEC* models for estimating *ECx* (see more information in the [Model details][e2b] vignette).
 
@@ -345,7 +345,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.624993 2.760964 4.167579 
+#> 3.624949 2.761094 4.167410 
 #> attr(,"resolution")
 #> [1] 500
 #> attr(,"ecx_val")
@@ -354,7 +354,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.082466 4.816782 5.348731 
+#> 5.082671 4.816799 5.348708 
 #> attr(,"resolution")
 #> [1] 500
 #> attr(,"ecx_val")
@@ -373,11 +373,11 @@ NECvals
 #> 3.527155 3.130124 4.108291
 ```
 
-Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Comparing posterior predictions][e4] vignette.
+Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Comparisons and exceedance probabilities][e4] article.
 
 ### Putting it all together
 
-Now we can make a combined plot of our output, showing the model averaged *NEC* model and the "all averaged model", along with the relevant thresholds.
+Now we can make a combined plot of our output, showing the model averaged *NEC* model and the model average of the full `"decline"` set, along with the relevant thresholds.
 
 
 ``` r
@@ -438,7 +438,7 @@ The socket layer that `multisession` depends on is outside the control of R, and
 
 ### The Stan backend
 
-Under a forked plan, we recommend the `cmdstanr` backend. The default backend, `rstan`, compiles each model in the temporary directory of the session, which a forked worker shares with the process it was forked from. When thirteen models were compiled at once in eight forked workers, all thirteen failed with `cannot open the connection` from `stanc`. In contrast, a `multisession` worker is a separate R session with its own temporary directory, so compilation under `rstan` does not collide there. `cmdstanr` names each compiled program after a hash of its Stan code and keeps it in a cache directory, so that concurrent compiles of different models do not collide, and a repeated run reuses the programs already built. To select it, set `options(brms.backend = "cmdstanr")`, which is the setting used to build the vignettes of this package. Note that `cmdstanr` is not on CRAN and is not a dependency of `bayesnec` (see the [Installation and setup][e5] vignette, or [its own installation instructions](https://mc-stan.org/cmdstanr/), if you do not already have it installed).
+Under a forked plan, we recommend the `cmdstanr` backend. The default backend, `rstan`, compiles each model in the temporary directory of the session, which a forked worker shares with the process it was forked from. When thirteen models were compiled at once in eight forked workers, all thirteen failed with `cannot open the connection` from `stanc`. In contrast, a `multisession` worker is a separate R session with its own temporary directory, so compilation under `rstan` does not collide there. `cmdstanr` names each compiled program after a hash of its Stan code and keeps it in a cache directory, so that concurrent compiles of different models do not collide, and a repeated run reuses the programs already built. To select it, set `options(brms.backend = "cmdstanr")`, which is the setting used to build the vignettes of this package. Note that `cmdstanr` is not on CRAN and is not a dependency of `bayesnec` (see the [Installation and setup][e5] article, or [its own installation instructions](https://mc-stan.org/cmdstanr/), if you do not already have it installed).
 
 Two models in two forked workers did not collide, whereas thirteen models in eight forked workers did, so a small trial does not reveal this problem, and the two-model check described under *Choosing a plan* does not test for it. The shared temporary directory is consistent with this failure but was not isolated as its cause (eight compilers running at once also use eight times the memory), and the failure was seen on only one machine.
 

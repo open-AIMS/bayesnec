@@ -24,15 +24,15 @@ knitr::opts_chunk$set(
   # rendered by the browser's pdf plugin, complete with its own toolbar and
   # scrollbars, instead of as an image.
   dev = "png",
-  dpi = 150,
+  dpi = 100,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2]: https://open-aims.github.io/bayesnec/articles/example2.html
-[e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
-[e3]: https://open-aims.github.io/bayesnec/articles/example3.html
+[e1]: example1.html
+[e2]: example2.html
+[e2b]: example2b.html
+[e3]: example3.html
 [e4]: https://open-aims.github.io/bayesnec/articles/example4.html
 [e5]: https://open-aims.github.io/bayesnec/articles/example5.html
 
@@ -94,7 +94,7 @@ exp_5$mod_stats
 
 We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged no-effect estimate is reported, in this case as an N(S)EC. For this example the **nec4param** and **ecxwb2** models have the highest weights.
 
-All these model fits are satisfactory despite the relatively low number of iterations set in our example. The summary also gives the number of divergent transitions after warmup for each model, and would include a warning for any model with more than 10 (the cutoff used by `check_sampling()`).
+All these model fits are satisfactory despite the relatively low number of iterations set in our example. The summary also gives the number of divergent transitions after warmup for each model, and would include a warning for any model with divergent transitions in more than 0.125% of its retained draws (the cutoff used by `check_sampling()`), which here is 2 of the 1,600 draws.
 
 ```{r}
 summary(exp_5)
@@ -103,11 +103,11 @@ summary(exp_5)
 The `bayesmanecfit` object also contains all of the individual `brms` model fits, which can be extracted using the `pull_out` function. For example, we can pull out and plot the model **ecx4param**.
 
 ```{r exmp2-ecx4param, fig.width = 5}
-exp_5_nec4param <- pull_out(exp_5, model = "ecx4param")
-autoplot(exp_5_nec4param)
+exp_5_ecx4param <- pull_out(exp_5, model = "ecx4param")
+autoplot(exp_5_ecx4param)
 ```
 
-This would extract the **nec4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This would be identical to fitting the **ecx4param** as a single model using `bnec`. Several models in the `bayesmanecfit` can be plotted together by naming them in the argument `model` (here we plot all of the models that fitted successfully), and setting `average = FALSE` omits the panel of model averaged predictions.
+This extracts the **ecx4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This is identical to fitting **ecx4param** as a single model using `bnec`. Several models in the `bayesmanecfit` can be plotted together by naming them in the argument `model` (here we plot all of the models that fitted successfully), and setting `average = FALSE` omits the panel of model averaged predictions.
 
 ```{r exmp2-allmods, fig.width = 7, fig.asp = 1.2}
 autoplot(exp_5, model = exp_5$success_models, average = FALSE)
@@ -153,7 +153,7 @@ rhat(exp_5, rhat_cutoff = 1.05) |>
   sapply("[[", "failed")
 ```
 
-The `rhat()` function returns only Rhat, whereas `check_sampling()` returns all three sampler diagnostics (Rhat, effective sample size and the number of divergent transitions) for each candidate model:
+The `rhat()` function returns only Rhat, whereas `check_sampling()` returns all three sampler diagnostics (Rhat, effective sample size, and the number of divergent transitions with their proportion of the retained draws) for each candidate model:
 
 ```{r}
 check_sampling(exp_5)
@@ -204,7 +204,7 @@ exp_5_nec <- pull_out(exp_5, model = "nec")
 
 In this case, because we have already fitted `"decline"` models, we can ignore the message regarding the missing *NEC* models---these are all models that are not appropriate for the family and link `bnec` selected for these data, or allow hormesis, which we did not consider in this example.
 
-Now we have two model sets, an *NEC* set, and a mixed *NEC* and *ECx* set. Of course, before we use this model set for any inference, we would need to check the chain mixing and `acf` plot for each of the input models. For the "all" set, the model with the highest weight is **nec4param**. 
+Now we have two model sets, an *NEC* set, and a mixed *NEC* and *ECx* set. Of course, before we use this model set for any inference, we would need to check the chain mixing and `acf` plot for each of the input models. For the `"decline"` set, the equation with the highest weight is **nec4param**. 
 
 Now we can use the `ecx` function to get *EC~10~* and *EC~50~* values. We can do this using our all model set, because it is valid to use *NEC* models for estimating *ECx* (see more information in the [Model details][e2b] vignette).
 
@@ -222,11 +222,11 @@ NECvals <- exp_5_nec$w_ne
 NECvals
 ```
 
-Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Comparing posterior predictions][e4] vignette.
+Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Comparisons and exceedance probabilities][e4] article.
 
 ### Putting it all together
 
-Now we can make a combined plot of our output, showing the model averaged *NEC* model and the "all averaged model", along with the relevant thresholds.
+Now we can make a combined plot of our output, showing the model averaged *NEC* model and the model average of the full `"decline"` set, along with the relevant thresholds.
 
 ```{r exmp2-pretty, fig.width = 5}
 preds <- exp_5_nec$w_pred_vals$data
@@ -280,7 +280,7 @@ The socket layer that `multisession` depends on is outside the control of R, and
 
 ### The Stan backend
 
-Under a forked plan, we recommend the `cmdstanr` backend. The default backend, `rstan`, compiles each model in the temporary directory of the session, which a forked worker shares with the process it was forked from. When thirteen models were compiled at once in eight forked workers, all thirteen failed with `cannot open the connection` from `stanc`. In contrast, a `multisession` worker is a separate R session with its own temporary directory, so compilation under `rstan` does not collide there. `cmdstanr` names each compiled program after a hash of its Stan code and keeps it in a cache directory, so that concurrent compiles of different models do not collide, and a repeated run reuses the programs already built. To select it, set `options(brms.backend = "cmdstanr")`, which is the setting used to build the vignettes of this package. Note that `cmdstanr` is not on CRAN and is not a dependency of `bayesnec` (see the [Installation and setup][e5] vignette, or [its own installation instructions](https://mc-stan.org/cmdstanr/), if you do not already have it installed).
+Under a forked plan, we recommend the `cmdstanr` backend. The default backend, `rstan`, compiles each model in the temporary directory of the session, which a forked worker shares with the process it was forked from. When thirteen models were compiled at once in eight forked workers, all thirteen failed with `cannot open the connection` from `stanc`. In contrast, a `multisession` worker is a separate R session with its own temporary directory, so compilation under `rstan` does not collide there. `cmdstanr` names each compiled program after a hash of its Stan code and keeps it in a cache directory, so that concurrent compiles of different models do not collide, and a repeated run reuses the programs already built. To select it, set `options(brms.backend = "cmdstanr")`, which is the setting used to build the vignettes of this package. Note that `cmdstanr` is not on CRAN and is not a dependency of `bayesnec` (see the [Installation and setup][e5] article, or [its own installation instructions](https://mc-stan.org/cmdstanr/), if you do not already have it installed).
 
 Two models in two forked workers did not collide, whereas thirteen models in eight forked workers did, so a small trial does not reveal this problem, and the two-model check described under *Choosing a plan* does not test for it. The shared temporary directory is consistent with this failure but was not isolated as its cause (eight compilers running at once also use eight times the memory), and the failure was seen on only one machine.
 

@@ -48,3 +48,13 @@ test_that("a negative integer response reaches get_priors (#272)", {
     "brmsprior"
   )
 })
+
+test_that("the messages name the response and predictor, not retired arguments", {
+  expect_error(set_distribution(c(0.5, 1.5), trials = c(2L, 2L)),
+               "The formula has a trials() term", fixed = TRUE)
+  expect_message(set_distribution(c(2, 3, 4)),
+                 "The response is made up of whole numbers only")
+  err <- expect_error(set_distribution(1:3, silence_x_msgs = FALSE),
+                      "does not currently support integer concentration")
+  expect_no_match(conditionMessage(err), "x_var")
+})

@@ -24,13 +24,12 @@ with the level varying slowest.
 \code{\link{ecnsec}} therefore return a
 \code{\link[base]{data.frame}} with one row per level, named in a
 \code{level} column, rather than the named vector of three they return for a
-\code{\link{bayesnecfit}}. For \code{\link{ecx}} and \code{\link{nsec}}
-that is the same table a \code{\link{bayesnecgroupfit}} returns, so the two
-routes can be read against each other. \code{\link{ecnsec}} has no
-\code{\link{bayesnecgroupfit}} method. On a joint refit it returns, at each
-level, the percent effect at the \code{nsec} supplied, which is one value
-for every level, read off that level's own curve as \code{\link{ecnsec}}
-reads it off a single fit.
+\code{\link{bayesnecfit}}. For \code{\link{ecx}}, \code{\link{nsec}} and
+\code{\link{ecnsec}} that is the same table a \code{\link{bayesnecgroupfit}}
+returns, so the two routes can be read against each other.
+\code{\link{ecnsec}} returns, at each level, the percent effect at the
+\code{nsec} supplied, which is one value for every level, read off that
+level's own curve as \code{\link{ecnsec}} reads it off a single fit.
 Its columns are named as those of the \code{\link{ecx}} table ---
 \code{Q50}, \code{Q2.5} and \code{Q97.5} under the default
 \code{prob_vals} --- where \code{\link{ecnsec}} on a single fit keeps the
@@ -71,9 +70,6 @@ non-linear parameters in their own right and the
 name is \code{b_<parameter><level tag>_Intercept}, the tag being the level
 name reduced to letters and digits followed by \code{Lv} and its rank in the
 sorted level set. \code{print()} reports the tags.
-
-See \code{methods(class = "bayesnecjointfit")} for an overview of available
-methods.
 }
 \section{Slots}{
 
@@ -119,6 +115,87 @@ level was fitted its own equation, because no equation was imposed on the
 set for such a share to describe, and \code{NA} where \code{model} named an
 equation no level fitted.}
 }}
+
+\section{Methods}{
+
+
+A joint refit has the methods of a \code{\link{bayesnecfit}}. A method
+that returns one result per fit returns one per level here, and a method
+that describes the sampler or the data describes the one
+\code{\link[brms]{brmsfit}} fitted to every level.
+
+\itemize{
+\item \code{summary()} gives the equations, the \pkg{brms} summary and
+the divergent transitions of the fit. It then gives one row per level for
+the no-effect estimate, labelled NEC or NSEC as
+\code{nec(x, no_effect = TRUE)} labels it, for each ECx asked for with
+\code{ecx = TRUE}, and for the Bayesian R-squared of that level's rows.
+The estimate rows are the tables \code{\link{nec}} and \code{\link{ecx}}
+return. \code{print()} on the summary warns where a level fails
+\code{rhat_cutoff}, or where the divergent transitions of the fit are a
+larger proportion of its retained draws than \code{divergence_cutoff},
+0.00125 (0.125\%) by default as in \code{\link{check_sampling}}.
+\item \code{plot()} draws one base-graphics panel per level, as it draws
+a \code{\link{bayesnecfit}}.
+\item \code{fitted()}, \code{predict()}, \code{posterior_epred()} and
+\code{posterior_predict()} predict the fitted rows of every level, as
+they do for a \code{\link{bayesnecfit}}. A \code{newdata} must name the
+level of each row in the grouping column, as the grid
+\code{\link{bnec_newdata}} returns does. Where the levels were fitted
+different equations, the indicator columns the model reads are added
+from that column.
+\item \code{pp_check()} returns a named list of one check per level,
+each made against that level's own rows.
+\item \code{\link{rhat}} returns one element per level, with the Rhat
+of that level's coefficients and of the parameters the levels share,
+such as \code{lp__}, with the verdict against \code{rhat_cutoff}.
+\item \code{\link{check_chains}} and \code{\link{check_priors}} draw one
+page per level, and a last page for any population-level parameter the
+levels share. \code{\link{check_priors}} also returns the plots
+invisibly, as a named list.
+\item \code{\link{check_sampling}} returns one row per level, and
+\code{\link{screen_models}} returns the refit unchanged where every level
+passes and stops where any fails, since no level can be dropped.
+\code{\link{dispersion}} returns one statistic per level, and
+\code{\link{group_level_sd}} the group-level standard deviations of the
+fit.
+\item \code{\link{check_fit}} returns the \code{checkfit_group} object a
+\code{\link{bayesnecgroupfit}} returns, with one table per level, all
+read from one simulation. An explicit \code{group} has one value per
+fitted row.
+\item \code{\link{curve_params}} returns one table with a leading
+\code{level} column, as for a \code{\link{bayesnecgroupfit}}, or with
+\code{summary = FALSE} a named list of draws per level. \code{wi} is 1,
+because each level is fitted a single equation.
+\item \code{formula()} returns a named list of one
+\code{\link{bayesnecformula}} per level, naming the equation fitted
+there, and \code{model.frame()} a named list of each level's fitted rows.
+The \pkg{brms} formula and data of the whole fit are those of the
+\code{\link[brms]{brmsfit}} that \code{\link{pull_brmsfit}} returns.
+\item \code{\link{get_priors}} returns the priors the fit used.
+\item \code{\link{pull_best}} returns the fit unchanged, since each
+level already has one equation. \code{\link{failed_models}} returns an
+empty record, since a joint refit that fails stops with an error.
+\item \code{update()} refits the same model with other \pkg{brms}
+arguments, such as \code{iter} or \code{control}, or to
+\code{newdata}, which must hold rows at every level. The family, the
+formula and the arguments that build the default priors are kept; to
+change them, refit with \code{\link{bnec_joint}}.
+\item \code{\link{ecx}}, \code{\link{nsec}}, \code{\link{nec}},
+\code{\link{ecnsec}}, \code{\link{exceedance}},
+\code{\link{compare_posterior}}, \code{\link{bnec_newdata}},
+\code{\link{ggbnec_data}} and \code{autoplot()} are described under
+Details.
+}
+
+\code{\link{amend}}, \code{\link{pull_out}}, \code{c()} and \code{+}
+stop with a message. Each level of a joint refit has one equation, and the
+refit is not a model set, so it has no equation to add or drop, no level
+can be taken out of it without refitting, and it cannot join a set of fits
+to the same data. To change the equations, amend the
+\code{\link{bnec_group}} fit and refit it, or fit one equation at every
+level with the \code{model} argument of \code{\link{bnec_joint}}.
+}
 
 \seealso{
 \code{\link{bnec_joint}}, \code{\link{bnec_group}},

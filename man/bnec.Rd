@@ -56,15 +56,22 @@ interpolated NOEC value from smooth ECx curves.}
 \item{loo_controls}{A named \code{\link[base]{list}} of up to five
 elements. "fitting" and "weights" are each a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
-(via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If no \code{method} is named in "weights", \pkg{bayesnec} sets the
-\code{method} argument of \code{\link[loo]{loo_model_weights}} to
-"pseudobma", whichever function assembles the model set. "leave_out" is
-"group" (the default) or "observation", and sets what is left out when the
+(via "fitting") or to the weighting function (via "weights"). "weights"
+names a \code{method}, "pseudobma" or "stacking", and the arguments of
+\code{\link[loo]{pseudobma_weights}} (\code{BB}, \code{BB_n} and
+\code{alpha}) or of \code{\link[loo]{stacking_weights}}
+(\code{optim_method} and \code{optim_control}); any other argument is
+refused. If no \code{method} is named, \pkg{bayesnec} uses "pseudobma",
+whichever function assembles the model set. "leave_out" is "group" (the
+default), "observation" or "kfold", and sets what is left out when the
 score behind the weights is computed. Under "group", where each level of a
 group-level term is observed at a single concentration, each level is left
 out whole; otherwise, and always under "observation", each observation is
-left out. "refit" is \code{FALSE} (the default) or \code{TRUE}, and applies
+left out. "kfold" selects the exact K-fold scores that
+\code{\link{kfold_weights}} stores with each equation. \code{bnec()} refuses
+it, as do \code{update()} and an \code{amend()} that adds an equation,
+because a new fit has no such score. "refit" is \code{FALSE} (the default)
+or \code{TRUE}, and applies
 under "group" only: where \code{TRUE}, each equation is refitted without
 each level whose Pareto k is at or above 0.7. The "fitting" arguments
 apply to the score computed by leaving out each observation.
@@ -80,17 +87,16 @@ retained in
 \code{fit$mod_fits[[model]]$fit$criteria$loo}; where groups were left out,
 the selected criterion, including its Pareto k values, is in
 \code{fit$mod_fits[[model]]$fit$criteria$logo}, even for equations with less
-than 0.01 weight.
+than 0.01 weight. Exact K-fold scores are stored in \code{criteria$kfold}.
 See Details, under model averaging.
 \code{\link{amend}}, \code{update} and \code{\link{pull_out}} operate on an
 existing set. They keep the "fitting" arguments it was built with unless
 the caller names "fitting", and the method it was weighted by unless the
-caller names another. \code{\link{pull_out}} takes no weighting method at
-all: it reports and ignores one given in "weights" and always keeps the
-set's own.
+caller names another. \code{\link{pull_out}} keeps the set's scores and
+weights: it reports and ignores "weights", "leave_out" and "refit".
 \code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
 see \code{\link{c.bnecfit}} for how they decide the method. See
-?\code{\link[loo]{loo_model_weights}} for further info.}
+?\code{\link[loo]{pseudobma_weights}} for further info.}
 
 \item{x_var}{Removed in version 2.0. Use formula instead. Used to be a
 \code{\link[base]{character}} indicating the column heading
@@ -319,8 +325,9 @@ cannot be negative, after any \code{crf()} transformation, where the
 predictor is treated as a concentration (see \code{predictor_scale}). If
 \code{x_range} is supplied, its lower end must equal the control.
 A control below the observed range extrapolates the curve. With
-\code{prior_type = "regularizing"}, an unobserved control requires a
-supplied \code{top} prior.}
+\code{prior_type = "regularizing"}, the mean for the \code{top} prior is
+taken over the lowest concentrations tested from the control upwards, and
+an unobserved control requires a supplied \code{top} prior.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}}.}
 }
@@ -401,21 +408,19 @@ specific model use the function \code{\link{show_params}}.
 \bold{No-effect toxicity estimates}
 
 Regardless of the model(s) fitted, the resulting object will contain a
-no-effect toxicity estimate. Where the fitted model(s) are NEC models (threshold
-models, containing a step function - all models with "nec" as a
-prefix) the no-effect estimate is a true
-no-effect-concentration (NEC, see Fox 2010). Where the fitted model(s) are
-smooth ECx models with no step function (all models with "ecx" as a
-prefix), the no-effect estimate is a no-significant-effect-concentration
-(NSEC, see Fisher and Fox 2023).
-In the case of a \code{\link{bayesmanecfit}} that contains a mixture of both
-NEC and ECx models, the no-effect estimate is a model averaged combination of
-the NEC and NSEC estimates, and is reported as the N(S)EC
-(see Fisher et al. 2023).
-The constant equation "ecxflat" has no step and no "nec" parameter, so its
-no-effect estimate is an NSEC. Whether an estimate is a NEC or an NSEC is
-decided by whether the fitted equation has a "nec" parameter, and not by the
-prefix of its name.
+no-effect toxicity estimate. For the four monotone threshold equations,
+\code{nec3param}, \code{nec4param}, \code{neclin} and \code{necsigm}, it
+is the sampled \code{nec} parameter, a no-effect concentration (NEC, see
+Fox 2010). For the smooth equations, which have no \code{nec} parameter,
+and for the six hormesis threshold equations, whose \code{nec} parameter
+marks where the decline term starts and can lie on a rising limb, it is the
+no-significant-effect concentration read off the fitted curve (NSEC, see
+Fisher and Fox 2023). The constant equation "ecxflat" has no "nec"
+parameter, so its no-effect estimate is an NSEC. In the case of a
+\code{\link{bayesmanecfit}} that combines equations of both kinds, the
+no-effect estimate is a model averaged combination of the NEC and NSEC
+estimates, and is reported as the N(S)EC (see Fisher et al. 2023). See
+\code{\link{nec}}.
 
 \bold{A response that does not vary}
 
@@ -457,7 +462,7 @@ input data. Guesses include: "bernoulli" / bernoulli / bernoulli(), "Beta" /
 Beta / Beta(), "binomial" / binomial / binomial(), "beta_binomial" /
 "beta_binomial", "Gamma" / Gamma / Gamma(), "gaussian" / gaussian /
 gaussian(), "negbinomial" / negbinomial / negbinomial(), or "poisson" /
-poisson / poisson(). Note, however, that "negbinomial" and "betabinomimal2"
+poisson / poisson(). Note, however, that "negbinomial" and "beta_binomial"
 require knowledge on whether the data is over-dispersed. As
 explained below in the Return section, the user can extract the dispersion
 parameter from a \code{\link{bnec}} call, and if they so wish, can refit the
@@ -563,8 +568,9 @@ block as \code{1 - <equation>} puts the declining curve on \emph{survival},
 so the equation set, its priors and the \code{\link{ecx}}/\code{\link{nsec}}
 definition of "decline from control" all carry over unchanged. The practical
 consequence is that \code{hutop} and \code{hunec} describe surviving rather
-than dying; \code{hunec} is the same concentration either way. See
-\code{vignette("example6")}.
+than dying; \code{hunec} is the same concentration either way. See the
+article \emph{Hurdle and zero-inflated concentration-response models}
+(\url{https://open-aims.github.io/bayesnec/articles/example6.html}).
 
 None of the joint families is selected automatically: a response
 containing zeros is still treated as Gamma, with a message, so that existing
@@ -730,8 +736,8 @@ is instead left out whole. For each posterior draw, the level's deviation is int
 out of the joint likelihood of its observations by Gauss--Legendre
 quadrature on each side of its mode, with the other group-level deviations
 held at their drawn values, so that the curve has to predict the level. This
-is supported for one such grouping, whose deviation appears in each equation
-as a single normal intercept per level, as in an \code{ogl()} term or one
+is supported for one such grouping with up to two independent normal
+intercepts per level, as in an \code{ogl()} term together with one
 \code{(par | group)} term. For any other structure, such as \code{pgl()} on
 the grouping, each observation is left out, with a warning. The score of a
 level whose Pareto k is at or above 0.7 is approximate, and a message lists the
@@ -755,6 +761,14 @@ of \code{leave_out}, so it is taken to have been scored by leaving out each
 observation, and is scored that way again when rebuilt;
 \code{amend(x, loo_controls = list(leave_out = "group"))} recomputes its
 weights.
+
+\code{\link{kfold_groups}} computes exact scores instead, for a single
+equation or a set. It refits each equation once without each of K folds of
+the levels, and scores each held-out level from that refit with all its
+deviations integrated out. Its \code{fold} argument computes one fold in
+each R process, and \code{\link{kfold_combine}} joins the folds.
+\code{\link{kfold_weights}} weights a set by these scores, which replace
+the score of every level, not only of those whose Pareto k is high.
 
 \bold{Reproducing a fit}
 
@@ -864,12 +878,9 @@ predictor or the response. The error for a missing value reports how many
 rows held one and which they were, by row name; the error for a non-finite
 value names the column.
 
-\code{\link[stats]{model.frame}} drops incomplete cases before
-\pkg{bayesnec} is given the data, so until version 2.2.0 an \code{NA} left
-the fit running on fewer rows than were supplied with nothing said, while an
-\code{Inf} was refused. Both are now refused, so that the sample the
-estimates are derived from is the user's decision and is visible in the
-script.
+Both are refused, rather than dropped as \code{\link[stats]{model.frame}}
+drops incomplete cases, so that the sample the estimates are derived from
+is the user's decision and is visible in the script.
 
 Apply \code{\link[stats]{na.omit}} to the data frame before calling
 \code{bnec} where those rows are to be discarded. The frame that results is
@@ -936,14 +947,10 @@ link is refused with an error naming the family. Note that \code{log} and
 zero cannot produce the negative values those link scales require --- see
 \code{\link{models}}.
 
-\strong{This changed in version 2.1.3.25.} Before it, the link depended on
-how the family was written and the difference was silent:
-\code{family = "Beta"} gave identity, while \code{family = Beta} and
-\code{family = Beta()} gave \strong{logit} and \code{family = Gamma()} gave
-\strong{inverse}. In those cases the curve was fitted to a transform of the
-mean while \code{top}, \code{bot} and \code{nec} were reported as though
-they were on the response scale. If you have code passing a constructed
-family and relying on its default link, add the link explicitly.
+Code written for versions before 3.0.0 that passes a constructed family
+such as \code{Beta()} or \code{Gamma()} and relies on that family's own
+default link (logit and inverse) now fits the identity link. Name the link
+explicitly to keep the earlier model.
 }
 
 \examples{
@@ -965,7 +972,7 @@ Concentration-Response Modeling and Estimation of Toxicity Metrics
 doi:10.18637/jss.v110.i05.
 
 Fisher R, Fox DR (2023). Introducing the no significant effect concentration
-(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019--2028.
 doi: 10.1002/etc.5610.
 
 Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
@@ -979,7 +986,7 @@ doi:10.1007/s10651-025-00698-y.
 
 Fox DR (2010). A Bayesian Approach for Determining the No Effect
 Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+and Environmental Safety, 73(2), 123--131. doi: 10.1016/j.ecoenv.2009.09.012.
 }
 \seealso{
 \code{\link{bayesnecformula}},

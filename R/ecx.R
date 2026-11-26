@@ -1,7 +1,9 @@
 #' Extracts the predicted ECx value
 #' 
 #' Extracts the predicted ECx value as desired from an object of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+#' \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}},
+#' \code{\link{bayesnechurdlefit}}, \code{\link{bayesnecgroupfit}} or
+#' \code{\link{bayesnecjointfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
@@ -74,7 +76,8 @@
 #' equation has none. The combined curve, \code{dpar = NULL}, is refused under
 #' \code{type = "relative"}, because its asymptote is the product of the two
 #' blocks' asymptotes rather than a fitted parameter.
-#' @param ... Additional arguments passed to methods.
+#' @param ... Additional arguments passed to methods. A method refuses any
+#' argument it does not use.
 #'
 #' @details \bold{Every ECx is measured from the control.} The control is the
 #' predicted mean at the control concentration, taken per posterior draw: the
@@ -98,18 +101,10 @@
 #'     a percentage, and the x value at which the curve reaches it is returned.
 #' }
 #'
-#' \code{"range"} is what \code{"relative"} computed in versions up to
-#' 2.1.3, except that the span was taken from the maximum of the predicted
-#' curve rather than from the control. The two differ only for a curve whose
-#' maximum is not at the control concentration, which in practice means a
-#' hormetic one.
-#'
 #' Measuring from the control rather than from the maximum of the predicted
 #' curve is what makes an ECx well defined for a hormesis equation: the target
 #' response lies below the control, the rising limb lies above it, so the
-#' curve crosses the target exactly once. The \code{hormesis_def} argument
-#' selected between those two references and has been removed; the control is
-#' now always the reference.
+#' curve crosses the target exactly once.
 #'
 #' \code{"absolute"} measures towards 0 even for a family whose support is
 #' unbounded below. This follows OECD TG 201, whose percent inhibition
@@ -117,8 +112,8 @@
 #' cent rather than truncating it, so \code{ecx_val} is not capped at 100.
 #'
 #' Where the curve does not reach the target anywhere in the predictor range
-#' the ECx is not identified and \code{NA} is returned, with a warning
-#' reporting how many draws were affected.
+#' the ECx is not identified. With \code{posterior = TRUE} the draw is
+#' \code{Inf}, and a warning reports how many draws were affected.
 #'
 #' The curve is searched on a grid of recorded concentrations. Where
 #' \code{crf()} transforms the predictor inline, as in
@@ -172,8 +167,10 @@
 #'
 #' @seealso \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{nsec}}
 #'
-#' @return A vector containing the estimated ECx value, including upper and
-#' lower 95% credible interval bounds.
+#' @return The ECx estimate and credible bounds, or with
+#' \code{posterior = TRUE} one value per draw. A draw censored above the
+#' search range is \code{Inf}; one censored below it is \code{-Inf}. The
+#' \code{"censored"} attribute records the bounds and affected draws.
 #'
 #' @section Capping and dropping:
 #' A draw whose curve does not reach the target anywhere in the prediction
@@ -183,41 +180,33 @@
 #' summary is then censored: the draw keeps its rank and is given no value, so
 #' a reported quantile that falls among such draws is the end of the prediction
 #' range rather than a quantile of the draws that did reach the target.
+#' With \code{posterior = TRUE}, censored draws are returned as \code{Inf}
+#' or \code{-Inf}, so \code{sort()} and \code{quantile()} retain their
+#' positions. Attribute \code{"censored"} records their bounds and ends.
 #' Attribute \code{"censored_summary"} marks which entries those are, and
 #' states how many draws lie beyond each end and where the ends are. A draw
 #' whose curve had already passed the target where the range begins is recorded
 #' at the other end and reported the same way.
 #'
 #' Which quantile estimator is used depends on whether anything is censored.
-#' A posterior with no beyond-range draw is summarised exactly as it was up to
-#' version 2.1.3, with \code{\link[stats]{quantile}}'s default type 7, which
-#' interpolates between two adjacent order statistics. Once any draw is
-#' censored every reported entry becomes an order statistic instead, because a
-#' value interpolated across a draw that has no value would be one the
-#' posterior does not support.
-#' Every entry therefore changes a little when the first draw is censored,
-#' including entries at the other end of the interval. Keeping the uncensored
-#' summary bit-identical to the release was preferred to making the two agree
-#' at the boundary, because every archived analysis is compared against it.
+#' A posterior with no beyond-range draw is summarised with
+#' \code{\link[stats]{quantile}}'s default type 7, which interpolates between
+#' two adjacent order statistics. Once any draw is censored every reported
+#' entry becomes an order statistic instead, because a value interpolated
+#' across a draw that has no value would be one the posterior does not
+#' support. Every entry therefore changes a little when the first draw is
+#' censored, including entries at the other end of the interval. See
+#' \code{\link{nec}} for the same treatment of a threshold parameter, where
+#' the draw does have a value and the operation is right-censoring in the
+#' ordinary sense.
 #'
-#' Up to version 2.1.3 such a draw was deleted and the remaining draws were
-#' summarised as though nothing had been removed, which reported an estimate
-#' lower than the quantity it was labelled as, with an interval narrower than
-#' the posterior supports. See \code{\link{nec}} for the same treatment of a
-#' threshold parameter, where the draw does have a value and the operation is
-#' right-censoring in the ordinary sense.
-#'
-#' One case is reported less precisely than it was before that change. A draw
-#' whose curve declines away from the target everywhere --- \code{type =
+#' A draw whose curve declines away from the target everywhere --- \code{type =
 #' "direct"} with a response value the curve never attains, and an absolute
 #' target above a control that is itself negative --- has no such concentration
 #' at any value of the predictor, not merely none within the range. It is
-#' reported here as at or beyond the top of the range, which is the treatment
-#' specification 4.5 gives to every draw the search did not identify; up to
-#' version 2.1.3 it returned \code{NA}, which said only that the estimate was
-#' not identified. The censored fraction beside the estimate is what
-#' distinguishes the two: where it is the whole posterior, no draw reached the
-#' target.
+#' reported as at or beyond the top of the range, as is every draw the search
+#' did not identify. The censored fraction beside the estimate distinguishes
+#' the two: where it is the whole posterior, no draw reached the target.
 #'
 #' @examples
 #' \donttest{
@@ -249,7 +238,7 @@ ecx <- function(object, ecx_val = 10, resolution = 500,
 #' 
 #' @importFrom stats quantile
 #' @importFrom brms posterior_epred
-#' @importFrom chk chk_logical chk_numeric
+#' @importFrom chk chk_flag chk_number
 #'
 #' @noRd
 #'
@@ -262,19 +251,22 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
                             x_control = "own", extrapolate = FALSE) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
-  chk_numeric(ecx_val)
-  if (length(ecx_val)>1) {
-    stop("You may only pass one ecx_val")  
+  check_unused_dots(list(...), "ecx")
+  chk_number(ecx_val)
+  check_resolution(resolution)
+  chk_flag(posterior)
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
+  if (identical(type, "relative") && is.null(dpar)) {
+    check_combined_relative(object$fit$family, "ecx")
   }
-  chk_numeric(resolution)  
-  chk_logical(posterior)
-  type <- validate_ecx_type(type, match.call())
+  warn_relative_rename(type, match.call())
   check_xform(xform)
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
+  if (!is.null(pool)) validate_pool(pool, "ecx")
   if (is.null(object$observed_group)) {
     level_spec <- observed_level_spec(object)
     if (!is.null(level_spec)) {
@@ -300,9 +292,6 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   if (type != "direct" && ecx_val <= 0) {
     stop("Supplied ecx_val is not in the required range. ",
          "Please supply a percentage value greater than 0.", call. = FALSE)
-  }
-  if (identical(type, "relative") && is.null(dpar)) {
-    check_combined_relative(object$fit$family, "ecx")
   }
   # Do not refuse an absolute ECx for a gaussian response without a bot
   # parameter. Absolute measures towards 0 by design, and a gaussian mean that
@@ -408,7 +397,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   if (!posterior) {
     ecx_estimate
   } else {
-    ecx_out
+    censored_infinite(ecx_out)
   }
 }
 
@@ -420,7 +409,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
 #' @inherit ecx details return seealso examples
 #'
 #' @importFrom stats quantile
-#' @importFrom chk chk_logical chk_numeric
+#' @importFrom chk chk_flag chk_number
 #'
 #' @noRd
 #'
@@ -433,19 +422,22 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
                               x_control = "own", extrapolate = FALSE) {
   check_component_arg(list(...), object)
   check_removed_args(list(...))
-  chk_numeric(ecx_val)
-  chk_numeric(resolution)  
-  chk_logical(posterior)
-  if (length(ecx_val)>1) {
-    stop("You may only pass one ecx_val")  
+  check_unused_dots(list(...), "ecx")
+  chk_number(ecx_val)
+  check_resolution(resolution)
+  chk_flag(posterior)
+  type <- validate_ecx_type(type, match.call(), warn = FALSE)
+  if (identical(type, "relative") && is.null(dpar)) {
+    check_combined_relative(object$mod_fits[[1]]$fit$family, "ecx")
   }
-  type <- validate_ecx_type(type, match.call())
+  warn_relative_rename(type, match.call())
   check_xform(xform)
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
+  if (!is.null(pool)) validate_pool(pool, "ecx")
   x_control <- model_set_control(object, x_control)
   first <- object$mod_fits[[1]]
   finish <- model_set_control_recorder(first, x_control)
@@ -510,35 +502,52 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
   if (!posterior) {
     finish(ecx_estimate)
   } else {
-    finish(ecx_out)
+    finish(censored_infinite(ecx_out))
   }
 }
 
 #' Validate the type argument, and warn on the relative rename
 #'
-#' \code{"relative"} meant the control-to-minimum span up to 2.1.3 and means
-#' the control-to-asymptote span from 2.2.0. A caller who writes it explicitly
-#' is warned once, and told to write \code{"range"} for the old behaviour. It
-#' warns rather than stops, because the new meaning is a valid request, and
-#' uses a plain warning to avoid a dependency on \pkg{lifecycle}.
+#' \code{"relative"} measures the control-to-asymptote span, where versions
+#' before 3.0.0 measured the control-to-minimum span. A caller who writes it
+#' explicitly is warned once in each call, and told to write \code{"range"}
+#' for the earlier behaviour.
 #'
 #' @noRd
-validate_ecx_type <- function(type, mc) {
+validate_ecx_type <- function(type, mc, warn = TRUE) {
   valid <- c("absolute", "relative", "range", "direct")
   if (length(type) != 1 || !is.character(type) || !(type %in% valid)) {
     stop("type must be one of 'absolute' (the default), 'relative', 'range' ",
          "or 'direct'. Please see ?ecx for more details.", call. = FALSE)
   }
+  if (warn) {
+    warn_relative_rename(type, mc)
+  }
+  type
+}
+
+#' Warn that type = "relative" names a different quantity than in 2.1.3.1
+#'
+#' Call it after any refusal of \code{"relative"}, so that a refused request
+#' is not warned about first.
+#'
+#' @param type The validated \code{type}.
+#' @param mc The caller's \code{match.call()}.
+#'
+#' @return \code{NULL}, invisibly.
+#' @noRd
+warn_relative_rename <- function(type, mc) {
   if (identical(type, "relative") && "type" %in% names(mc) &&
-      !isTRUE(getOption("bayesnec.relative_warned"))) {
+      !isTRUE(getOption("bayesnec.relative_warned")) &&
+      first_in_call("relative_rename")) {
     warning("type = \"relative\" now measures from the control to the ",
             "equation's theoretical asymptote (the bot parameter, or 0 where ",
-            "the equation has none). Up to bayesnec 2.1.3 it measured from ",
+            "the equation has none). Before bayesnec 3.0.0 it measured from ",
             "the maximum of the predicted curve to its minimum, which is now ",
             "type = \"range\". The two differ for a hormetic curve and ",
             "wherever the equation has a bot parameter.", call. = FALSE)
   }
-  type
+  invisible(NULL)
 }
 
 #' The theoretical asymptote each draw's curve declines towards
@@ -546,7 +555,9 @@ validate_ecx_type <- function(type, mc) {
 #' Used by \code{type = "relative"} only, and \code{NA} for every other type.
 #' An equation with a \code{bot} parameter declines towards it, and one
 #' without declines towards 0. An equation without \code{bot} is refused under
-#' a family not bounded below, because 0 is then no bound.
+#' a family not bounded below, because 0 is then no bound. The asymptote is
+#' returned on the response scale, the scale of the predictions it is compared
+#' with, so \code{bot} is passed through the inverse of the mean's link.
 #'
 #' A \code{\link{bayesmanecfit}} has no single \code{fit}, and its curve is the
 #' model-averaged one, so \code{manec_asymptote()} assembles the model-averaged
@@ -581,18 +592,18 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
         re_formula = object$re_formula, transform = TRUE
       )[, 1])
       floor <- read_par(bot_par)
-      if ("ogl" %in% pforms) {
-        offset <- read_par("ogl")
-        kind <- ogl_transform_kind(object$model, object$fit$family)
-        floor <- switch(kind,
-                        log = floor * exp(offset),
-                        logit = floor * exp(offset) /
-                          (1 - floor + floor * exp(offset)),
-                        none = floor + offset)
-        if (identical(kind, "none") &&
-            !identical(object$fit$family$link, "identity")) {
-          floor <- object$fit$family$linkinv(floor)
-        }
+      if (!"ogl" %in% pforms) {
+        return(mean_scale(object, floor))
+      }
+      offset <- read_par("ogl")
+      kind <- ogl_transform_kind(object$model, object$fit$family)
+      floor <- switch(kind,
+                      log = floor * exp(offset),
+                      logit = floor * exp(offset) /
+                        (1 - floor + floor * exp(offset)),
+                      none = floor + offset)
+      if (identical(kind, "none")) {
+        floor <- mean_scale(object, floor)
       }
       return(floor)
     }
@@ -603,12 +614,12 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
   if (inherits(object, "bayesnecjointlevel")) {
     bot_draws <- joint_level_draws(object, "bot")
     if (!is.null(bot_draws)) {
-      return(bot_draws)
+      return(mean_scale(object, bot_draws))
     }
   } else {
     bot_draws <- as_draws_df(object$fit)[["b_bot_Intercept"]]
     if (!is.null(bot_draws)) {
-      return(as.numeric(bot_draws))
+      return(mean_scale(object, as.numeric(bot_draws)))
     }
   }
   if (!family_has_lower_bound(object$fit$family)) {
@@ -620,7 +631,33 @@ ecx_asymptote <- function(object, type, dpar = NULL) {
          "type = \"range\" to measure towards the lowest predicted response.",
          call. = FALSE)
   }
+  # Under a log or logit link only the linear equations have no bot, and
+  # their mean tends to 0; under the identity link 0 is the asymptote itself.
   0
+}
+
+#' Put draws of the bot parameter on the scale of the fitted mean
+#'
+#' The curve, \code{bot} included, is on the scale of the mean's link, and the
+#' predictions an ECx is read from are on the response scale.
+#'
+#' @param object A fit, or one level of a joint refit.
+#' @param draws Draws of \code{bot} on the link scale.
+#'
+#' @return \code{draws} with the inverse of the mean's link applied.
+#' @noRd
+mean_scale <- function(object, draws) {
+  family <- object$fit$family
+  link <- family$link
+  if (is.null(link) || identical(link, "identity")) {
+    return(draws)
+  }
+  linkinv <- if (is.function(family$linkinv)) {
+    family$linkinv
+  } else {
+    stats::make.link(link)$linkinv
+  }
+  linkinv(draws)
 }
 
 #' The asymptote of a two-block fit's zero block
@@ -739,9 +776,9 @@ count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
   if (!factorised && !joint) {
     return(asymptote)
   }
-  # The asymptote is on the link scale and the predictions on the response
-  # scale, so apply linkinv() before converting to E[Y | Y > 0].
-  mean_asymptote <- object$fit$family$linkinv(asymptote)
+  # ecx_asymptote() returns the response scale already; do not apply
+  # linkinv() again.
+  mean_asymptote <- asymptote
   shape <- NULL
   if (family %in% c("negbinomial", "hurdle_negbinomial")) {
     spec <- parse_disp_term(object$bayesnecformula)
@@ -751,7 +788,7 @@ count_positive_asymptote <- function(object, dpar, asymptote, newdata) {
     if (!constant) {
       return(disp_positive_asymptote(object, spec, mean_asymptote))
     }
-    shape <- posterior_epred(
+    shape <- estimator_epred(
       object, newdata = newdata[1, , drop = FALSE], re_formula = NA,
       dpar = "shape"
     )

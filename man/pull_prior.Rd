@@ -2,16 +2,49 @@
 % Please edit documentation in R/pull_prior.R
 \name{pull_prior}
 \alias{pull_prior}
+\alias{pull_prior.bayesnecfit}
+\alias{pull_prior.bayesmanecfit}
+\alias{pull_prior.bayesnechurdlefit}
+\alias{pull_prior.bayesnecgroupfit}
+\alias{pull_prior.bayesnecjointfit}
+\alias{pull_prior.default}
 \title{pull_prior}
 \usage{
 pull_prior(object)
+
+\method{pull_prior}{bayesnecfit}(object)
+
+\method{pull_prior}{bayesmanecfit}(object)
+
+\method{pull_prior}{bayesnechurdlefit}(object)
+
+\method{pull_prior}{bayesnecgroupfit}(object)
+
+\method{pull_prior}{bayesnecjointfit}(object)
+
+\method{pull_prior}{default}(object)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnecfit}}
-or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
+\item{object}{A fitted \code{bayesnec} object.}
 }
 \value{
-A \code{\link[base]{list}} containing the priors.
+A one-element list of full \code{brmsprior} objects for a
+\code{bayesnecfit} or \code{bayesnecjointfit}; a named list by equation
+for a \code{bayesmanecfit}; or a named list by component or level for
+a \code{bayesnechurdlefit} or \code{bayesnecgroupfit}.
+
+A one-element list containing this fit's full prior object.
+
+A named list of full prior objects by equation.
+
+A named list with the growth and survival components' full
+prior lists.
+
+A named list of full prior lists by level.
+
+A one-element list containing the joint fit's full prior object.
+
+An error naming the supplied unsupported class.
 }
 \description{
 Extracts the priors from an object of class
@@ -19,7 +52,7 @@ Extracts the priors from an object of class
 }
 \details{
 Returns the whole \code{\link[brms]{brmsprior}} each fit carries,
-\pkg{brms} defaults and duplicated vectorized rows included, which is what to
+\pkg{brms} defaults and duplicated vectorised rows included, which is what to
 use for looking at a fit. It is not accepted by \code{bnec(prior = )} --
 \code{\link{get_priors}} is the function for feeding priors back in.
 

@@ -130,12 +130,14 @@ prior_sampler <- function(dist) {
 #' @param priors an object of class \code{\link[brms]{brmsprior}} from package
 #' \pkg{brms}.
 #' @param chains Number of chains to be passed to \pkg{brms} model.
+#' @param max_redraws The number of redraws of one bounded value allowed
+#' before the search stops with an error.
 #'
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 #'
 #' @noRd
-make_inits <- function(model, fct_args, priors, chains) {
+make_inits <- function(model, fct_args, priors, chains, max_redraws = 1e6) {
   priors <- blank_bounds_to_na(as.data.frame(priors))
   priors <- priors[priors$prior != "", ]
   # Search only the curve's own coefficients, class "b". A parameter of any
@@ -182,10 +184,13 @@ make_inits <- function(model, fct_args, priors, chains) {
         out[[i]][[j]] <- fct_i(1, v1, v2)
         if (any(!is.na(priors[j, c("lb", "ub")]))) {
           n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
+          n_redraws <- 0
           if (n_bounds == 2) {
             bounds <- as.numeric(priors[j, c("lb", "ub")])
             while (out[[i]][[j]] <= min(bounds) |
                      out[[i]][[j]] >= max(bounds)) {
+              n_redraws <- count_redraw(n_redraws, max_redraws, model,
+                                        priors[j, ])
               out[[i]][[j]] <- fct_i(1, v1, v2)
             }
           } else if (n_bounds == 1) {
@@ -193,6 +198,8 @@ make_inits <- function(model, fct_args, priors, chains) {
             bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
             bounds <- as.numeric(priors[j, direction])
             while (bound_fct(out[[i]][[j]], bounds)) {
+              n_redraws <- count_redraw(n_redraws, max_redraws, model,
+                                        priors[j, ])
               out[[i]][[j]] <- fct_i(1, v1, v2)
             }
           }
@@ -204,6 +211,107 @@ make_inits <- function(model, fct_args, priors, chains) {
     }
   }
   out
+}
+
+#' Count one redraw of a bounded initial value, stopping at the cap
+#'
+#' @param n_redraws The number of redraws made so far.
+#' @param max_redraws The cap passed to \code{make_inits()}.
+#' @param model The equation name, for the message.
+#' @param prior_row The one-row \code{\link[base]{data.frame}} of the prior,
+#' read for the message.
+#'
+#' @return \code{n_redraws + 1}.
+#'
+#' @noRd
+count_redraw <- function(n_redraws, max_redraws, model, prior_row) {
+  if (n_redraws >= max_redraws) {
+    bound <- function(b) if (is.na(b)) "none" else b
+    stop("In model ", model, ", no initial value for ", prior_row$nlpar,
+         " fell inside its bounds (lb = ", bound(prior_row$lb), ", ub = ",
+         bound(prior_row$ub), ") in ",
+         format(max_redraws, big.mark = ",", scientific = FALSE),
+         " draws from its prior, ", prior_row$prior, ". Supply a prior with",
+         " more of its mass inside the bounds, or supply `init` to bnec().",
+         call. = FALSE)
+  }
+  n_redraws + 1
+}
+
+#' A test of whether a draw lies outside the bounds of one prior
+#'
+#' @param prior_row The one-row \code{\link[base]{data.frame}} of the prior.
+#'
+#' @details The bounds are exclusive, as in \code{make_inits()}. A blank or
+#' missing bound is absent. The bounds are read once, when the test is built.
+#'
+#' @return A function of one \code{\link[base]{numeric}} value that returns
+#' \code{TRUE} where the value lies outside the bounds.
+#'
+#' @noRd
+prior_bounds_test <- function(prior_row) {
+  lb <- suppressWarnings(as.numeric(prior_row$lb))
+  ub <- suppressWarnings(as.numeric(prior_row$ub))
+  has_lb <- length(lb) == 1 && !is.na(lb)
+  has_ub <- length(ub) == 1 && !is.na(ub)
+  function(value) {
+    (has_lb && value <= lb) || (has_ub && value >= ub)
+  }
+}
+
+#' The largest argument an exp() in an initial curve may receive
+#'
+#' \code{exp()} overflows a double above \code{log(.Machine$double.xmax)},
+#' about 709.8, and Stan then cannot evaluate the gradient. The margin below
+#' that keeps a product with \code{exp()} finite as well.
+#' @noRd
+max_exp_argument <- 700
+
+#' A prediction function that records the largest exp() argument
+#'
+#' The prediction functions are written as the Stan formulas are, so the
+#' arguments their \code{exp()} calls receive are those Stan evaluates at the
+#' initial values. Build the tracer once per search: it is slower than the
+#' plain function, so evaluate it only for a draw that passed every other
+#' check.
+#'
+#' @param pred_fct The prediction function of the equation.
+#'
+#' @return A function of \code{(init, x, fct_args)} that returns a
+#' \code{\link[base]{list}} with \code{preds}, the curve, and \code{largest},
+#' the largest argument any \code{exp()} call received, or \code{-Inf} where
+#' there was none.
+#' @noRd
+exp_tracer <- function(pred_fct) {
+  largest <- -Inf
+  traced <- pred_fct
+  environment(traced) <- list2env(
+    list(exp = function(z) {
+      # Force z first: it holds the inner exp() calls, which update largest.
+      force(z)
+      largest <<- max(c(largest, z), na.rm = TRUE)
+      base::exp(z)
+    }),
+    parent = environment(pred_fct)
+  )
+  function(init, x, fct_args) {
+    largest <<- -Inf
+    preds <- get_init_predictions(init, x, traced, fct_args)
+    list(preds = preds, largest = largest)
+  }
+}
+
+#' Evaluate one initial curve with exp_tracer()
+#'
+#' @param init One chain's initial values.
+#' @param x The sorted predictor.
+#' @param pred_fct The prediction function of the equation.
+#' @param fct_args Its argument names, other than \code{x}.
+#'
+#' @return As the function \code{exp_tracer()} returns.
+#' @noRd
+exp_traced_predictions <- function(init, x, pred_fct, fct_args) {
+  exp_tracer(pred_fct)(init, x, fct_args)
 }
 
 #' refine_inits
@@ -248,9 +356,14 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
     fct_i <- prior_sampler(bits[1])
     v1 <- as.numeric(bits[2])
     v2 <- as.numeric(bits[3])
+    # Read the bounds once: indexing the data frame for every candidate is
+    # most of the search's time.
+    outside <- prior_bounds_test(priors[pr_row, ])
     for (k in seq_len(n_sub)) {
       candidate <- init
       new_val <- fct_i(1, v1, v2)
+      # Stan refuses an initial value outside the prior's bounds.
+      if (outside(new_val)) next
       if (priors$class[pr_row] == "b") {
         dim(new_val) <- 1
       }
@@ -673,15 +786,20 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
   # support is a level the likelihood can evaluate.
   constant <- model %in% constant_equations()
   support <- init_support(family)
+  trace_exp <- exp_tracer(pred_fct)
   passes <- function(inits) {
     vapply(inits, function(init) {
       preds <- get_init_predictions(init, x_sorted, pred_fct, fct_args)
-      if (constant) {
+      ok <- if (constant) {
         all(is.finite(preds)) && min(preds) > support[1] &&
           max(preds) < support[2]
       } else {
         check_init_predictions(preds, limits)
       }
+      # Stan cannot start where an exp() in the curve overflows: R returns a
+      # finite curve, but the gradient is Inf / Inf. Neither check draws a
+      # random number, so their order does not change the draws accepted.
+      ok && trace_exp(init, x_sorted, fct_args)$largest < max_exp_argument
     }, logical(1))
   }
   # Seed only where a seed was supplied; see Details. NA is brms's "no seed",
@@ -866,8 +984,8 @@ group_inits <- function(brms_bf, data, family, priors, group_spec = NULL) {
     # Warn rather than return quietly: without these values the fit may not
     # start, and the cause would be hard to trace.
     warning("Could not determine the group-level dimensions, so no initial ",
-            "values were generated for them. The fit may fail to initialise. ",
-            "See #245.", call. = FALSE)
+            "values were generated for them. The fit may fail to initialise.",
+            call. = FALSE)
     return(list())
   }
   m_names <- grep("^M_[0-9]+$", names(sdata), value = TRUE)

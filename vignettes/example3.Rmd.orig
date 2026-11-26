@@ -25,13 +25,13 @@ knitr::opts_chunk$set(
   # rendered by the browser's pdf plugin, complete with its own toolbar and
   # scrollbars, instead of as an image.
   dev = "png",
-  dpi = 150,
+  dpi = 100,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
 
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
+[e1]: example1.html
+[e2b]: example2b.html
 [e7]: https://open-aims.github.io/bayesnec/articles/example7.html
 [e8]: https://open-aims.github.io/bayesnec/articles/example8.html
 [e9]: https://open-aims.github.io/bayesnec/articles/example9.html
@@ -109,7 +109,7 @@ Before fitting anything, `bnec()` gives a message where the response is still de
 
 On the logged route, the `"uninformative"` standard deviation is a fixed multiple of the spread of the predictor values, not a width set to cover the series, and it is typically several times wider than the tested range. Under the default the bound confines it to that range, but once the upper bound is removed most of its mass is typically above the highest concentration (see [Priors for predictor-scaled parameters](#priors-for-predictor-scaled-parameters)). Where the design does not reach the asymptote and the predictor is supplied logged, we therefore recommend supplying a prior through the `prior` argument, instead of relying on the `"uninformative"` set.
 
-For the parameters **beta**, **slope**, **d** and **f**, each equation is written so that theoretical values of `-Inf` to `+Inf` are allowable. The `"uninformative"` set gives all four a `normal(0, 5)` prior, and the `"regularizing"` set narrows **d** and **f** to `normal(0, 1)` (see [Spread of the shape parameters](#spread-of-the-shape-parameters)). For example, in the **nec3param** model, **beta** is an exponential decay parameter, and the decay rate must by definition be bounded to `0` and `+Inf`. Calling `exp(beta)` in the model formula ensures the rate meets these requirements, while **beta** itself can take any value. Note also that a mean of `0` and standard deviation of `5` represents a relatively broad prior on the exponential scaling. See the [Model details][e2b] vignette or `?model("all")` for more information on all the models available in `bayesnec` and their specific formulation.
+For the parameters **beta**, **slope**, **d** and **f**, each equation is written so that theoretical values of `-Inf` to `+Inf` are allowable. The `"uninformative"` set gives all four a `normal(0, 5)` prior, and the `"regularizing"` set narrows **d** and **f** to `normal(0, 1)` (see [Spread of the shape parameters](#spread-of-the-shape-parameters)). For example, in the **nec3param** model, **beta** is an exponential decay parameter, and the decay rate must by definition be bounded to `0` and `+Inf`. Calling `exp(beta)` in the model formula ensures the rate meets these requirements, while **beta** itself can take any value. Note also that a mean of `0` and standard deviation of `5` represents a relatively broad prior on the exponential scaling. See the [Model details][e2b] vignette or `?models` for more information on all the models available in `bayesnec` and their specific formulation.
 
 ## Choosing a prior set
 
@@ -301,7 +301,7 @@ This check is only possible while `top` is free. Here the credible interval for 
 rbind(fixed = nec(exmp_f), free = nec(exmp_g))
 ```
 
-The median *NEC* is `1.13` with `top` fixed, against `1.17` with `top` free (the true value is `1.1`). The second thing lost is uncertainty. A constant asserts that the value is known without error, so none of the uncertainty in `top` propagates into ECx or the *NEC*, and the credible intervals narrow (the 95% interval on the *NEC* is `1.03` to `1.33` with `top` fixed, against `1.03` to `1.39` with it free). On these simulated data the narrower interval, and the median closer to the true value, are justified, because 0.5 is the value from which the data were generated. In a real assay, however, 0.5 is a null expectation, and the same narrowing would leave the uncertainty in `top` out of the interval on the *NEC*.
+The median *NEC* is `1.13` with `top` fixed, against `1.17` with `top` free (the true value is `1.1`). The second thing lost is uncertainty. A constant asserts that the value is known without error, so none of the uncertainty in `top` propagates into ECx or the *NEC*, and the credible intervals narrow (the 95% interval on the *NEC* is `1.03` to `1.33` with `top` fixed, against `1.04` to `1.38` with it free). On these simulated data the narrower interval, and the median closer to the true value, are justified, because 0.5 is the value from which the data were generated. In a real assay, however, 0.5 is a null expectation, and the same narrowing would leave the uncertainty in `top` out of the interval on the *NEC*.
 
 We therefore recommend a tight informative prior over a constant in most cases, because it expresses what is known while still allowing the data to update the parameter, and the uncertainty in the parameter is still propagated to the toxicity estimates. For example, `beta(50, 50)` has a mean of 0.5 and a standard deviation of 0.05, which concentrates `top` around the design expectation without asserting it, and is still about three times as wide as the posterior for `top` from the free fit (standard deviation `0.016`).
 
@@ -311,7 +311,7 @@ fixed_prior$prior[fixed_prior$nlpar == "top"] <- "beta(50, 50)"
 
 ### Fixing an asymptote on control-normalised data
 
-A response divided by its control mean has a maximum of 1 by construction, and it is common to fix `top` at 1 for such data. We recommend against this, for a reason in addition to the two given above. Normalising to an *estimated* control mean already discards the sampling variability of the divisor. Fixing the asymptote afterwards then hides that loss, because the intervals it narrows are the ones that were already too narrow. `bnec` gives a message when it detects a normalised response. The alternative is to model the raw response and read the decline relative to the fitted control (see the "Preparing the response" section of the [Single model usage][e1] vignette, and `?bnec`). The [Modelling growth data and other potentially negative response values][e7] vignette applies the same reasoning to growth rates.
+A response divided by its control mean has a maximum of 1 by construction, and it is common to fix `top` at 1 for such data. We recommend against this, for a reason in addition to the two given above. Normalising to an *estimated* control mean already discards the sampling variability of the divisor. Fixing the asymptote afterwards then hides that loss, because the intervals it narrows are the ones that were already too narrow. `bnec` gives a message when it detects a normalised response. The alternative is to model the raw response and read the decline relative to the fitted control (see the "Preparing the response" section of the [Single model usage][e1] vignette, and `?bnec`). The [Modelling growth data and other potentially negative response values][e7] article applies the same reasoning to growth rates.
 
 ## Priors in grouped models
 
@@ -321,7 +321,7 @@ A group-level deviation cannot be bounded in the way the default priors bound th
 
 This has one consequence for a user supplying their own priors. Where a group-level term on **top** or **bot** would be transformed, a prior on that parameter that does not bound it to the range on which the mean is defined is refused, because the multiplicative form is only defined inside that range.
 
-When a group-level term is included, `bnec()` sets `control = list(adapt_delta = 0.99)` for **neclin**, **ecxlin** and the eight hormesis equations (including **neclinhorme**), on any family that restricts the range of the mean on the scale of its link (e.g. every family except `gaussian` on the `"identity"` link). For these equations a group-level term can still take the mean outside its support. The setting generally reduces the rate of divergent transitions substantially without removing them, and **such a fit should always be checked for divergent transitions**. An `adapt_delta` supplied by the user is left unchanged. See the [Grouping and factor covariates][e8] vignette for fitting models with group-level terms.
+When a group-level term is included, `bnec()` sets `control = list(adapt_delta = 0.99)` for **neclin**, **ecxlin** and the eight hormesis equations (including **neclinhorme**), on any family that restricts the range of the mean on the scale of its link (e.g. every family except `gaussian` on the `"identity"` link). For these equations a group-level term can still take the mean outside its support. The setting generally reduces the rate of divergent transitions substantially without removing them, and **such a fit should always be checked for divergent transitions**. An `adapt_delta` supplied by the user is left unchanged. See the [Grouping and factor covariates][e8] article for fitting models with group-level terms.
 
 ## Technical detail
 

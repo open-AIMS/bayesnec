@@ -39,6 +39,28 @@ test_that("the plots of a factorised fit refuse dpar and name which", {
   expect_error(ggbnec_data(o, dpar = "hu"), "not `dpar`", fixed = TRUE)
 })
 
+test_that("the hurdle plots refuse what they would otherwise ignore", {
+  # Checked before the fit is read, so the mock reaches each refusal.
+  o <- mock_hurdle()
+  expect_error(ggbnec_data(o, add_nec = TRUE),
+               "returns the curves and the observations only", fixed = TRUE)
+  expect_error(ggbnec_data(o, add_ecx = TRUE),
+               "autoplot(x, nec = TRUE, ecx = TRUE)", fixed = TRUE)
+  expect_error(ggbnec_data(o, add_nec = NA))
+  expect_error(ggbnec_data(o, ecx_val = 50),
+               "ggbnec_data() on a bayesnechurdlefit does not use `ecx_val`",
+               fixed = TRUE)
+  expect_error(autoplot(o, group = "tank", foo = 1),
+               "autoplot() on a bayesnechurdlefit does not use `group`, `foo`",
+               fixed = TRUE)
+  # An unnamed argument would otherwise land in `...` rather than `which`.
+  expect_error(autoplot(o, "all"), "takes every argument after the fit by name",
+               fixed = TRUE)
+  # dpar keeps its own refusal, which names the remedy.
+  expect_error(autoplot(o, dpar = "mu", group = "tank"),
+               "`which = \"growth\"`", fixed = TRUE)
+})
+
 test_that("hurdle_raw_data recovers the response and a transformed predictor", {
   o <- mock_hurdle()
   d <- bayesnec:::hurdle_raw_data(o)
@@ -743,8 +765,8 @@ test_that("every audited method has a bayesnechurdlefit method or a branch", {
   s3 <- c("summary", "print", "plot", "autoplot", "ggbnec_data", "predict",
           "fitted", "posterior_epred", "posterior_predict", "nsec", "nec",
           "ecx", "ecnsec", "rhat", "check_chains", "check_priors",
-          "model.frame", "pull_brmsfit", "bnec_newdata",
-          "update", "amend", "c")
+          "check_fit", "curve_params", "model.frame", "pull_brmsfit",
+          "bnec_newdata", "update", "amend", "c")
   for (g in s3) {
     expect_true(!is.null(getS3method(g, "bayesnechurdlefit", optional = TRUE)),
                 label = paste0(g, ".bayesnechurdlefit"))
@@ -790,10 +812,12 @@ test_that("ecx reads the control from preds$control, not the grid start", {
     hurdle_component_preds = hurdle_preds_stub(control_at = 8,
                                                curve_at_grid_start = 2)
   )
-  out <- ecx(obj, ecx_val = 50, posterior = TRUE)
+  expect_warning(out <- ecx(obj, ecx_val = 50, posterior = TRUE),
+                 "not identified")
   # The target is 4, which the curve (2 down to 0.1) never reaches, so every
-  # draw is NA rather than an estimate read from the wrong reference.
-  expect_true(all(is.na(out)))
+  # draw is censored below rather than read from the wrong reference.
+  expect_true(all(out == -Inf))
+  expect_true(all(attr(out, "censored")$below))
 })
 
 test_that("the estimator methods survive a censored draw", {
@@ -1189,6 +1213,39 @@ hurdle_pair <- function(growth = nec4param, survival = nec4param) {
             class = c("bayesnechurdlefit", "bnecfit"))
 }
 
+test_that("the hurdle estimators refuse arguments they cannot use", {
+  h <- hurdle_pair()
+  expect_error(nec(h, foo = 1), "nec() does not use `foo`", fixed = TRUE)
+  expect_error(nec(h, prob_vals = c(0.5, 0.9)), "prob_vals must include")
+  expect_error(nec(h, posterior = "yes"), "posterior")
+  expect_error(nec(h, pool = "bogus"), "`pool` must be one of")
+  expect_error(nsec(h, sig_val = 5), "strictly between 0 and 1")
+  expect_error(nsec(h, resolution = 1), "at least 2")
+  expect_error(nsec(h, foo = 1), "nsec() does not use `foo`", fixed = TRUE)
+  expect_error(nsec(h, type = "relative"), "no `type` argument")
+  expect_error(ecx(h, ecx_val = NA_real_), "ecx_val")
+  expect_error(ecx(h, resolution = 10.5), "whole number")
+  expect_error(ecx(h, foo = 1), "ecx() does not use `foo`", fixed = TRUE)
+  expect_error(ecnsec(h, nsec = 1, foo = 1), "ecnsec() does not use `foo`",
+               fixed = TRUE)
+  expect_error(ecnsec(h, nsec = 1, resolution = 0), "at least 2")
+})
+
+test_that("a refused relative request on a hurdle fit is not warned about", {
+  h <- hurdle_pair()
+  warned <- FALSE
+  withCallingHandlers(
+    expect_error(ecx(h, type = "relative"), "not defined for a hurdle fit"),
+    warning = function(w) warned <<- TRUE
+  )
+  withCallingHandlers(
+    expect_error(ecnsec(h, nsec = 1, type = "relative"),
+                 "not defined for a hurdle fit"),
+    warning = function(w) warned <<- TRUE
+  )
+  expect_false(warned)
+})
+
 # ECNSEC outside the range, between grid points and under transformations.
 
 test_that("ecnsec refuses an nsec beyond the range on every hurdle curve", {
@@ -1277,19 +1334,16 @@ test_that("ecnsec on a fit agrees with the growth curve of a pair built from it"
   }
 })
 
-test_that("ecnsec applies xform to nsec on a hurdle fit, with a warning", {
+test_that("ecnsec applies xform to nsec on a hurdle fit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  # Apply xform to nsec before reading the effect, and retain the transition
-  # warning for callers accustomed to transforming the returned percentage.
+  # Apply xform to nsec before reading the effect; the percentage returned is
+  # not transformed.
   obj <- hurdle_pair()
   plain <- ecnsec(obj, nsec = 1.5)
-  expect_warning(via <- ecnsec(obj, nsec = log(1.5), xform = exp),
-                 class = "bayesnec_ecnsec_xform_changed")
+  expect_no_warning(via <- ecnsec(obj, nsec = log(1.5), xform = exp))
   expect_equal(via, plain)
-  expect_warning(ecnsec(obj, nsec = log(1.5), xform = exp),
-                 "now applied to nsec before the curve is read")
   expect_no_warning(ecnsec(obj, nsec = 1.5))
   expect_no_warning(ecnsec(obj, nsec = 1.5, xform = identity))
   expect_error(ecnsec(obj, nsec = 1.5, xform = "log"),
@@ -1401,8 +1455,9 @@ test_that("nec() keeps the censoring direction of a crf(I(-x)) pair", {
   h <- hurdle_pair(relabelled_component(g), relabelled_component(s))
   expect_warning(
     combined <- nec(h, posterior = TRUE),
-    paste0("not identified for 10 of 100 draws, which lie at or above ",
-           signif(max(x), 3), ", the upper bound"),
+    paste0("not identified for 10 of ", length(g),
+           " draws, which lie at or above ", signif(max(x), 3),
+           ", the upper bound"),
     fixed = TRUE
   )
   cens <- attr(combined, "censored")
@@ -1460,13 +1515,13 @@ test_that("the hurdle legend reads low to high under a decreasing xform", {
   expect_lt(ne[[2]], ne[[3]])
   drawn <- hurdle_legend(obj, xform = negate)
   expect_identical(drawn$legend,
-                   paste0("N(S)EC: ", signif(ne[[1]], 2), " (",
+                   paste0("NEC: ", signif(ne[[1]], 2), " (",
                           signif(ne[[2]], 2), "-", signif(ne[[3]], 2), ")"))
   expect_equal(as.numeric(drawn$v[[1]]), as.numeric(ne))
   # An identity xform draws what nec() returns.
   plain <- nec(obj)
   expect_identical(hurdle_legend(obj)$legend,
-                   paste0("N(S)EC: ", signif(plain[[1]], 2), " (",
+                   paste0("NEC: ", signif(plain[[1]], 2), " (",
                           signif(plain[[2]], 2), "-", signif(plain[[3]], 2),
                           ")"))
 })
@@ -1487,7 +1542,7 @@ test_that("the hurdle legend marks a censored no-effect estimate", {
   expect_no_match(negated, ">=", fixed = TRUE)
   ne <- suppressWarnings(nec(obj, which = "survival", xform = function(z) -z))
   expect_identical(negated, paste0(
-    "N(S)EC: ", bayesnec:::bound_prefix(ne, 1), signif(ne[[1]], 2), " (",
+    "NEC: ", bayesnec:::bound_prefix(ne, 1), signif(ne[[1]], 2), " (",
     bayesnec:::bound_prefix(ne, 2), signif(ne[[2]], 2), "-",
     bayesnec:::bound_prefix(ne, 3), signif(ne[[3]], 2), ")"
   ))
@@ -1591,7 +1646,7 @@ test_that("amend(add = ) reaches both components of a Gamma hurdle (#436)", {
 test_that("nec() and summary() read a component fitted to one smooth equation (#487)", {
   # nec() refuses ecx4param fitted on its own. As a hurdle component it
   # contributes the NSEC draws stored with it.
-  expect_error(nec(ecx4param), "nec is not a parameter in ecx model types.")
+  expect_error(nec(ecx4param), "has no nec parameter")
   stored <- as.numeric(ecx4param$ne_posterior)
   pairs <- list(both = hurdle_pair(ecx4param, ecx4param),
                 growth = hurdle_pair(growth = ecx4param),
@@ -1618,15 +1673,23 @@ test_that("plot() draws a component fitted to one smooth equation (#487)", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  for (h in list(hurdle_pair(ecx4param, ecx4param),
-                 hurdle_pair(growth = ecx4param),
-                 hurdle_pair(survival = ecx4param))) {
+  # Each panel's legend names the type of the estimate drawn there, in the
+  # panel order combined, growth, survival.
+  tags <- list(both = c("NSEC", "NSEC", "NSEC"),
+               growth = c("N(S)EC", "NSEC", "NEC"),
+               survival = c("N(S)EC", "NEC", "NSEC"))
+  pairs <- list(both = hurdle_pair(ecx4param, ecx4param),
+                growth = hurdle_pair(growth = ecx4param),
+                survival = hurdle_pair(survival = ecx4param))
+  for (nm in names(pairs)) {
+    h <- pairs[[nm]]
     drawn <- suppressMessages(hurdle_legend(h, which = "all",
                                             resolution = 50))
     expect_length(drawn$legend, 3)
     expect_length(drawn$v, 3)
     expect_equal(as.numeric(drawn$v[[2]]),
                  as.numeric(nec(h, which = "growth")))
+    expect_identical(sub(":.*$", "", drawn$legend), tags[[nm]], label = nm)
   }
 })
 
@@ -1706,6 +1769,9 @@ test_that("the hurdle plot data put points and curve on one scale (#487)", {
   d_plain_log <- ggbnec_data(plain, xform = log, resolution = 50)
   expect_equal(d_plain_log$raw$x, log(d_plain$raw$x))
   expect_equal(d_plain_log$curve$x, log(d_plain$curve$x))
+  # The estimates are never part of the data, so FALSE changes nothing.
+  expect_equal(ggbnec_data(plain, add_nec = FALSE, add_ecx = FALSE,
+                           resolution = 50), d_plain)
 })
 
 test_that("autoplot draws hurdle observations at the opacity point_alpha sets", {
@@ -1772,7 +1838,7 @@ test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)
   expect_true(all(line > min(x) & line < max(x)))
   expect_false(isTRUE(all.equal(line, on_fitted)))
   expect_identical(drawn$legend,
-                   paste0("N(S)EC: ", signif(line[1], 2), " (",
+                   paste0("NEC: ", signif(line[1], 2), " (",
                           signif(line[2], 2), "-", signif(line[3], 2), ")"))
 })
 
@@ -1887,7 +1953,7 @@ test_that("the hurdle plot maps estimates over the stored prediction range", {
       actual <- as.numeric(drawn$v[[1]])
       expect_equal(actual, expected, tolerance = 1e-5)
       expect_identical(drawn$legend,
-                       paste0("N(S)EC: ", signif(expected[1], 2), " (",
+                       paste0("NEC: ", signif(expected[1], 2), " (",
                               signif(expected[2], 2), "-",
                               signif(expected[3], 2), ")"))
     }
@@ -2089,4 +2155,27 @@ test_that("a hurdle update matches positional settings with or without new data"
       expect_equal(nrow(seen[[2]]$newdata), nrow(nd))
     }
   }
+})
+
+test_that("the hurdle diagnostics and accessors return one element per component", {
+  h <- hurdle_pair()
+  parts <- c("growth", "survival")
+  r <- rhat(h)
+  expect_named(r, parts)
+  expect_equal(r$growth, rhat(nec4param))
+  expect_equal(r$survival, rhat(nec4param))
+  mf <- model.frame(h)
+  expect_named(mf, parts)
+  expect_equal(mf$survival, model.frame(nec4param))
+  fits <- pull_brmsfit(h)
+  expect_named(fits, parts)
+  expect_identical(fits$growth, nec4param$fit)
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  # The plotting diagnostics say that the combined curve has no analogue.
+  expect_message(chains <- check_chains(h), "check_chains describes a single")
+  expect_named(chains, parts)
+  expect_message(priors <- check_priors(h), "check_priors describes a single")
+  expect_named(priors, parts)
+  expect_s3_class(priors$growth, "ggplot")
 })

@@ -8,7 +8,7 @@ test_that("expand_nec defaults work for nec model", {
   nec_fit <- expand_nec(fit1, fit1$bayesnecformula, model = "nec4param") |>
     suppressWarnings()
   expect_equal(names(nec_fit), c("fit", "model", "init", "bayesnecformula",
-                                 "pred_vals", "top",
+                                 "call_args", "pred_vals", "top",
                                  "beta", "ne", "f", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
                                  "residuals", "ne_posterior", "ne_type"))
@@ -29,7 +29,7 @@ test_that("expand_nec arguments work for nec model", {
                         x_range = c(0.01, 4), resolution = 20) |>
     suppressWarnings()
   expect_equal(names(nec_fit), c("fit", "model", "init", "bayesnecformula",
-                                 "pred_vals", "top",
+                                 "call_args", "pred_vals", "top",
                                  "beta", "ne", "f", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
                                  "residuals", "ne_posterior", "ne_type"))
@@ -47,7 +47,7 @@ test_that("expand_ecx defaults work for ecx model", {
   ecx_fit <- expand_nec(fit2, fit2$bayesnecformula, model = "ecx4param") |>
     suppressWarnings()
   expect_equal(names(ecx_fit), c("fit", "model", "init", "bayesnecformula",
-                                 "pred_vals", "top",
+                                 "call_args", "pred_vals", "top",
                                  "beta", "ne", "f", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
                                  "residuals", "ne_posterior", "ne_type"))
@@ -66,7 +66,7 @@ test_that("expand_ecx arguments work for ecx model", {
                         x_range = c(0.01, 4), resolution = 20) |>
     suppressWarnings()
   expect_equal(names(ecx_fit), c("fit", "model", "init", "bayesnecformula",
-                                 "pred_vals", "top",
+                                 "call_args", "pred_vals", "top",
                                  "beta", "ne", "f", "bot", "d", "slope",
                                  "ec50", "dispersion", "predicted_y",
                                  "residuals", "ne_posterior", "ne_type"))
@@ -105,6 +105,8 @@ test_that("a stored smooth NSEC reads its control where nsec() does", {
     direct <- suppressWarnings(nsec(stored, x_range = rng, resolution = 200,
                                     posterior = TRUE, xform = identity))
     expect_equal(as.numeric(stored$ne_posterior), as.numeric(direct))
+    expect_identical(attr(stored$ne_posterior, "censored")[c("above", "below")],
+                     attr(direct, "censored")[c("above", "below")])
   }
 })
 
@@ -371,6 +373,10 @@ test_that("a bayesmanecfit saved with the old weighted cache still works", {
 
 # Keep every `by`-th saved iteration of each chain, warmup and sampling
 # separately, as Stan does when it thins. The draws are read, never refitted.
+# manec_example holds 1200 post-warmup draws in each of 2 chains. `by = 7`
+# keeps 172 of each, 344 in all, where ceiling(1200 / 7 * 2) is 343. A `by`
+# that divides 1200 gives the same count both ways and tests nothing.
+thin_by <- 7
 thin_prebayesnecfit <- function(x, by) {
   sim <- x$fit$fit@sim
   n_warm <- sim$warmup2[1]
@@ -401,32 +407,33 @@ test_that("model sets use every available draw when counts differ", {
     skip_on_cran()
   }
   set.seed(583)
-  short <- thin_prebayesnecfit(manec_example$mod_fits$ecx4param, by = 4)
+  short <- thin_prebayesnecfit(manec_example$mod_fits$ecx4param, by = thin_by)
   long <- manec_example$mod_fits$nec4param
-  expect_equal(brms::ndraws(short$fit), 26)
-  expect_equal(brms::ndraws(long$fit), 100)
+  n_long <- brms::ndraws(long$fit)
+  n_short <- 2 * length(seq(1, n_long / 2, by = thin_by))
+  expect_equal(brms::ndraws(short$fit), n_short)
   fits <- list(nec4param = long, ecx4param = short)
   formulas <- lapply(fits, `[[`, "bayesnecformula")
   controls <- list(weights = list(method = "pseudobma", BB = FALSE))
   set <- suppressMessages(suppressWarnings(
     expand_manec(fits, formulas, loo_controls = controls)))
-  expect_equal(set$sample_size, 26)
+  expect_equal(set$sample_size, n_short)
   pointwise <- lapply(set$mod_fits, function(x) {
     x$fit$criteria$loo$pointwise[, "elpd_loo"]
   })
   expected <- loo::pseudobma_weights(do.call(cbind, pointwise), BB = FALSE)
   expect_equal(as.numeric(set$mod_stats$wi), as.numeric(expected))
-  expect_true(any(set$w_draw_index$nec4param > 26))
-  expect_true(all(set$w_draw_index$ecx4param <= 26))
+  expect_true(any(set$w_draw_index$nec4param > n_short))
+  expect_true(all(set$w_draw_index$ecx4param <= n_short))
 
   long_single <- pull_out(manec_example, "nec4param")
   short_single <- thin_prebayesnecfit(
-    pull_out(manec_example, "ecx4param"), by = 4
+    pull_out(manec_example, "ecx4param"), by = thin_by
   )
   combined <- suppressMessages(suppressWarnings(c(long_single, short_single)))
   expect_s3_class(combined, "bayesmanecfit")
-  expect_equal(combined$sample_size, 26)
-  expect_true(any(combined$w_draw_index$nec4param > 26))
+  expect_equal(combined$sample_size, n_short)
+  expect_true(any(combined$w_draw_index$nec4param > n_short))
   predictions <- brms::posterior_epred(combined)
   expect_equal(nrow(predictions), combined$sample_size)
   expect_equal(predictions, do.call(rbind, lapply(names(combined$mod_fits),
@@ -484,15 +491,12 @@ test_that("model weighting rejects misspelled controls", {
     "Unknown loo_controls\\$weights argument: BB_n_typo", fixed = FALSE)
 })
 
-# manec_example holds 50 post-warmup draws in each of 2 chains. `by = 4` keeps
-# 13 of each, 26 in all, where ceiling(50 / 4 * 2) is 25. A `by` that divides
-# 50, or 3, gives the same count both ways and tests nothing.
 thinned_set <- local({
   cached <- NULL
   function() {
     if (is.null(cached)) {
       set.seed(477)
-      fits <- lapply(manec_example$mod_fits, thin_prebayesnecfit, by = 4)
+      fits <- lapply(manec_example$mod_fits, thin_prebayesnecfit, by = thin_by)
       out <- expand_manec(fits, lapply(fits, `[[`, "bayesnecformula")) |>
         suppressMessages() |>
         suppressWarnings()
@@ -642,4 +646,29 @@ test_that("an undercounted set without an index rebuilds consistently", {
                                                 saved$mod_stats, seed))
     expect_true(all(unlist(small) <= 10))
   }
+})
+
+test_that("a weights argument the method does not read is refused", {
+  define <- function(weights) {
+    bayesnec:::define_loo_controls(list(weights = weights), "gaussian")
+  }
+  # loo::pseudobma_weights() and loo::stacking_weights() read neither.
+  expect_error(define(list(cores = 2)),
+               "Unknown loo_controls\\$weights argument: cores")
+  expect_error(define(list(method = "stacking", r_eff_list = 1)),
+               "Unknown loo_controls\\$weights argument: r_eff_list")
+  expect_error(define(list(optim_method = "BFGS")),
+               "optim_method apply to stacking weights and are not read under method = \"pseudobma\"",
+               fixed = TRUE)
+  expect_error(define(list(method = "stacking", BB = FALSE, alpha = 2)),
+               "BB, alpha apply to pseudobma weights", fixed = TRUE)
+  expect_error(define(list(method = "pseudo")),
+               "should be \"pseudobma\" or \"stacking\"", fixed = TRUE)
+  # The arguments each method reads pass.
+  expect_identical(define(list(BB = FALSE, BB_n = 10, alpha = 2))$weights,
+                   list(BB = FALSE, BB_n = 10, alpha = 2,
+                        method = "pseudobma"))
+  expect_identical(define(list(method = "stacking",
+                               optim_method = "BFGS"))$weights,
+                   list(method = "stacking", optim_method = "BFGS"))
 })

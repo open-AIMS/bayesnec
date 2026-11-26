@@ -55,7 +55,8 @@ Details.}
 return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
 
-\item{...}{Additional arguments passed to methods.}
+\item{...}{Additional arguments passed to methods. A method refuses any
+argument it does not use.}
 
 \item{dpar}{For a joint two-block fit only (\code{family = "hurdle_gamma"},
 \code{"zero_inflated_beta"}, \code{"hurdle_poisson"} or
@@ -107,12 +108,16 @@ taken over the prediction range before it is extended, so a limit beyond
 the data does not change the estimate.}
 }
 \value{
-A vector containing the estimated ECx value, including upper and
-lower 95\% credible interval bounds.
+The ECx estimate and credible bounds, or with
+\code{posterior = TRUE} one value per draw. A draw censored above the
+search range is \code{Inf}; one censored below it is \code{-Inf}. The
+\code{"censored"} attribute records the bounds and affected draws.
 }
 \description{
 Extracts the predicted ECx value as desired from an object of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+\code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}},
+\code{\link{bayesnechurdlefit}}, \code{\link{bayesnecgroupfit}} or
+\code{\link{bayesnecjointfit}}.
 }
 \details{
 \bold{Every ECx is measured from the control.} The control is the
@@ -137,18 +142,10 @@ predicts over the predictor range.
 a percentage, and the x value at which the curve reaches it is returned.
 }
 
-\code{"range"} is what \code{"relative"} computed in versions up to
-2.1.3, except that the span was taken from the maximum of the predicted
-curve rather than from the control. The two differ only for a curve whose
-maximum is not at the control concentration, which in practice means a
-hormetic one.
-
 Measuring from the control rather than from the maximum of the predicted
 curve is what makes an ECx well defined for a hormesis equation: the target
 response lies below the control, the rising limb lies above it, so the
-curve crosses the target exactly once. The \code{hormesis_def} argument
-selected between those two references and has been removed; the control is
-now always the reference.
+curve crosses the target exactly once.
 
 \code{"absolute"} measures towards 0 even for a family whose support is
 unbounded below. This follows OECD TG 201, whose percent inhibition
@@ -156,8 +153,8 @@ rearranges to the same reference and which permits a value above 100 per
 cent rather than truncating it, so \code{ecx_val} is not capped at 100.
 
 Where the curve does not reach the target anywhere in the predictor range
-the ECx is not identified and \code{NA} is returned, with a warning
-reporting how many draws were affected.
+the ECx is not identified. With \code{posterior = TRUE} the draw is
+\code{Inf}, and a warning reports how many draws were affected.
 
 The curve is searched on a grid of recorded concentrations. Where
 \code{crf()} transforms the predictor inline, as in
@@ -218,41 +215,33 @@ that its estimate equals that value; it is recorded as lying beyond it. The
 summary is then censored: the draw keeps its rank and is given no value, so
 a reported quantile that falls among such draws is the end of the prediction
 range rather than a quantile of the draws that did reach the target.
+With \code{posterior = TRUE}, censored draws are returned as \code{Inf}
+or \code{-Inf}, so \code{sort()} and \code{quantile()} retain their
+positions. Attribute \code{"censored"} records their bounds and ends.
 Attribute \code{"censored_summary"} marks which entries those are, and
 states how many draws lie beyond each end and where the ends are. A draw
 whose curve had already passed the target where the range begins is recorded
 at the other end and reported the same way.
 
 Which quantile estimator is used depends on whether anything is censored.
-A posterior with no beyond-range draw is summarised exactly as it was up to
-version 2.1.3, with \code{\link[stats]{quantile}}'s default type 7, which
-interpolates between two adjacent order statistics. Once any draw is
-censored every reported entry becomes an order statistic instead, because a
-value interpolated across a draw that has no value would be one the
-posterior does not support.
-Every entry therefore changes a little when the first draw is censored,
-including entries at the other end of the interval. Keeping the uncensored
-summary bit-identical to the release was preferred to making the two agree
-at the boundary, because every archived analysis is compared against it.
+A posterior with no beyond-range draw is summarised with
+\code{\link[stats]{quantile}}'s default type 7, which interpolates between
+two adjacent order statistics. Once any draw is censored every reported
+entry becomes an order statistic instead, because a value interpolated
+across a draw that has no value would be one the posterior does not
+support. Every entry therefore changes a little when the first draw is
+censored, including entries at the other end of the interval. See
+\code{\link{nec}} for the same treatment of a threshold parameter, where
+the draw does have a value and the operation is right-censoring in the
+ordinary sense.
 
-Up to version 2.1.3 such a draw was deleted and the remaining draws were
-summarised as though nothing had been removed, which reported an estimate
-lower than the quantity it was labelled as, with an interval narrower than
-the posterior supports. See \code{\link{nec}} for the same treatment of a
-threshold parameter, where the draw does have a value and the operation is
-right-censoring in the ordinary sense.
-
-One case is reported less precisely than it was before that change. A draw
-whose curve declines away from the target everywhere --- \code{type =
+A draw whose curve declines away from the target everywhere --- \code{type =
 "direct"} with a response value the curve never attains, and an absolute
 target above a control that is itself negative --- has no such concentration
 at any value of the predictor, not merely none within the range. It is
-reported here as at or beyond the top of the range, which is the treatment
-specification 4.5 gives to every draw the search did not identify; up to
-version 2.1.3 it returned \code{NA}, which said only that the estimate was
-not identified. The censored fraction beside the estimate is what
-distinguishes the two: where it is the whole posterior, no draw reached the
-target.
+reported as at or beyond the top of the range, as is every draw the search
+did not identify. The censored fraction beside the estimate distinguishes
+the two: where it is the whole posterior, no draw reached the target.
 }
 
 \examples{

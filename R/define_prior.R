@@ -129,7 +129,7 @@ gamma_from_mode_sd <- function(mode, spread) {
 #' No beta with an interior mode is wider than the uniform, so a spread at or
 #' above \code{1 / sqrt(12)} returns the uniform.
 #'
-#' @param mode The intended maximum density, in [0, 1].
+#' @param mode The intended maximum density, in the interval 0 to 1.
 #' @param spread The intended standard deviation, strictly positive.
 #'
 #' @return A named \code{\link[base]{numeric}} vector of length 2.

@@ -285,6 +285,20 @@ test_that("a prior naming a parameter the curve does not have still errors", {
   )
 })
 
+# A bounded draw must stop when its prior has almost no mass inside the bounds.
+
+test_that("make_inits stops at the redraw cap and names the prior", {
+  pr <- disp_prior_df()
+  pr <- pr[pr$class == "b", ]
+  pr$prior[pr$nlpar == "nec"] <- "normal(0, 1)"
+  pr$lb[pr$nlpar == "nec"] <- "50"
+  expect_error(
+    bayesnec:::make_inits("nec4param", c("b_top", "b_beta", "b_bot", "b_nec"),
+                          priors = pr, chains = 1, max_redraws = 100),
+    "no initial value for nec fell inside its bounds \\(lb = 50, ub = none\\)"
+  )
+})
+
 # A constant prior supplies its fixed value without a distribution draw.
 
 const_prior_df <- function(prior_bot = "constant(0)", lb = "", ub = "") {
@@ -355,6 +369,23 @@ test_that("refine_inits skips a parameter that is fixed", {
                                    n_sub = 5)
   )
   expect_equal(as.numeric(out$b_beta), -0.5)
+})
+
+test_that("refine_inits keeps a redrawn value inside its prior's bounds", {
+  # Stan refuses an initial value outside the bounds of its prior.
+  x <- as.numeric(rep(1:10, each = 5))
+  priors <- const_prior_df(prior_bot = "normal(0.5, 1)")
+  priors$lb[priors$nlpar == "beta"] <- "4"
+  priors$ub[priors$nlpar == "beta"] <- "5"
+  fct_args <- c("b_top", "b_beta", "b_bot", "b_nec")
+  init <- list(b_top = as.array(1), b_beta = as.array(6),
+               b_bot = as.array(0), b_nec = as.array(5))
+  set.seed(1)
+  out <- bayesnec:::refine_inits(init, sort(x), bayesnec:::pred_nec4param,
+                                 fct_args, limits = c(0, 3), priors = priors,
+                                 n_sub = 200)
+  expect_gt(as.numeric(out$b_beta), 4)
+  expect_lt(as.numeric(out$b_beta), 5)
 })
 
 test_that("a constant prior that fixes no readable value errors", {
@@ -486,14 +517,14 @@ test_that("a fixed parameter does not break rhat on a multi-model fit", {
   expect_false("top" %in% names(r[[1]]$rhat_vals))
 
   tab <- check_sampling(fit, rhat_cutoff = 99, ess_cutoff = 0,
-                        divergence_cutoff = 1e6)
+                        divergence_cutoff = Inf)
   expect_false(anyNA(tab$failed))
   expect_false(anyNA(tab$max_rhat))
   expect_false(any(tab$failed))
   # Check that a reported no-op leaves the model set unchanged.
   expect_message(
     out <- screen_models(fit, rhat_cutoff = 99, ess_cutoff = 0,
-                         divergence_cutoff = 1e6),
+                         divergence_cutoff = Inf),
     "candidate models passed"
   )
   expect_equal(length(out$mod_fits), length(fit$mod_fits))
@@ -1758,5 +1789,53 @@ test_that("add_brm_defaults passes the declaration to the search (#394)", {
       family = fam, predictor = d$x, response = d$y, skip_check = TRUE,
       custom_name = NULL, asymptote_observed = declared)))
     expect_identical(seen$declared, declared)
+  }
+})
+
+# An exp() that overflows leaves the curve finite in R but the gradient
+# infinite in Stan, so the chain cannot start.
+
+test_that("the largest exp() argument of an initial curve is recorded", {
+  # Chain 4 of the seed-17 search on nec_data, which Stan could not start.
+  x <- sort(nec_data$x)
+  init <- list(b_beta = 6.723, b_top = 0.7253, b_bot = 0.4850,
+               b_ec50 = 1.1451)
+  for (m in c("ecx4param", "ecxwb1")) {
+    out <- bayesnec:::exp_traced_predictions(
+      init, x, get(paste0("pred_", m), asNamespace("bayesnec")), names(init)
+    )
+    expect_true(all(is.finite(out$preds)))
+    expect_gt(out$largest, 700)
+  }
+  out <- bayesnec:::exp_traced_predictions(
+    list(b_top = 1, b_bot = 0, b_beta = 0, b_nec = 1), x,
+    bayesnec:::pred_nec4param, c("b_top", "b_bot", "b_beta", "b_nec")
+  )
+  expect_lt(out$largest, 1)
+})
+
+test_that("the seed-17 search on nec_data gives initial values Stan can start", {
+  skip_on_cran()
+  inits <- list()
+  local_mocked_bindings(brm = function(...) {
+    inits[[length(inits) + 1]] <<- list(...)$init
+    stop("no sampling in this test")
+  })
+  try(suppressWarnings(suppressMessages(bnec(
+    y ~ crf(x, model = c("ecx4param", "ecxwb1")), data = nec_data,
+    seed = 17, chains = 4
+  ))), silent = TRUE)
+  expect_length(inits, 2)
+  x <- sort(nec_data$x)
+  for (k in seq_along(inits)) {
+    f <- get(paste0("pred_", c("ecx4param", "ecxwb1")[k]),
+             asNamespace("bayesnec"))
+    expect_length(inits[[k]], 4)
+    for (init in inits[[k]]) {
+      out <- bayesnec:::exp_traced_predictions(
+        init, x, f, setdiff(names(formals(f)), "x")
+      )
+      expect_lt(out$largest, 700)
+    }
   }
 })

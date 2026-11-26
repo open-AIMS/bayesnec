@@ -51,7 +51,7 @@ test_that("a bayesmanecfit yields its best-weighted model as a bayesnecfit", {
   expect_s3_class(best, "bayesnecfit")
   expect_equal(best$model, "nec4param")
   # Identical to naming the model by hand, which is the block this replaces.
-  expect_equal(best, nec4param)
+  expect_equal(best, suppressMessages(pull_out(manec_example, "nec4param")))
 })
 
 test_that("a bayesnecfit is returned unchanged, naming the model it holds", {
@@ -60,7 +60,7 @@ test_that("a bayesnecfit is returned unchanged, naming the model it holds", {
     expect_message("holds the single model nec4param")
 })
 
-test_that("arguments other than the object are refused before anything else", {
+test_that("arguments other than the object are refused before selection", {
   # Refused rather than ignored: honoured on the bayesmanecfit branch and
   # ignored on the bayesnecfit branch, they would make the returned object
   # depend on the class the caller was told not to test for.
@@ -73,7 +73,7 @@ test_that("arguments other than the object are refused before anything else", {
   expect_error(pull_best(manec_example, model = "ecx4param"),
                "`model` cannot be passed here")
   expect_error(pull_best(manec_example, 50), "takes the object and nothing")
-  # Before dispatch, so an unusable object is not what gets reported first.
+  # The default method refuses unused arguments before checking the class.
   expect_error(pull_best(list(a = 1), resolution = 50),
                "takes the object and nothing")
   # And before the selection is reported.
@@ -81,9 +81,9 @@ test_that("arguments other than the object are refused before anything else", {
                         silent = TRUE))
 })
 
-test_that("classes other than the three fitted ones are refused", {
-  expect_error(pull_best(list(a = 1)), "applies to an object of class")
-  expect_error(pull_best(manec_example$mod_stats), "applies to an object")
+test_that("objects outside the supported fit classes are refused", {
+  expect_error(pull_best(list(a = 1)), "applies to a fit of class")
+  expect_error(pull_best(manec_example$mod_stats), "applies to a fit of class")
 })
 
 test_that("a hurdle fit selects within each component", {

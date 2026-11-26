@@ -4,7 +4,25 @@ test_that("nec returns expected object types", {
 })
 
 test_that("doesn't work for ecx models", {
-  expect_error(nec(ecx4param), "nec is not a parameter in ecx model types.")
+  expect_error(nec(ecx4param),
+               "not defined for ecx4param, which has no nec parameter")
+  expect_error(nec(ecx4param), "Use nsec()", fixed = TRUE)
+})
+
+test_that("nec refuses arguments it cannot use", {
+  expect_error(nec(manec_example, foo = 1), "nec() does not use `foo`",
+               fixed = TRUE)
+  expect_error(nec(nec4param, hormesis_def = "max"),
+               "hormesis_def has been removed")
+  expect_error(nec(manec_example, posterior = "yes"), "posterior")
+  expect_error(nec(nec4param, pool = "bogus"), "`pool` must be one of")
+})
+
+test_that("nec says which curve arguments it did not use", {
+  expect_message(nec(nec4param, sig_val = 0.2), "did not use `sig_val`")
+  expect_message(suppressWarnings(nec(manec_example, x_range = c(0, 3))),
+                 "did not use `x_range`")
+  expect_no_message(nec(nec4param))
 })
   
 test_that("the class is read off the parameters, not the name (#419)", {
@@ -12,8 +30,7 @@ test_that("the class is read off the parameters, not the name (#419)", {
   # substring, which can misclassify renamed smooth or threshold equations.
   renamed_smooth <- ecx4param
   renamed_smooth$model <- "flat"
-  expect_error(nec(renamed_smooth),
-               "nec is not a parameter in ecx model types.")
+  expect_error(nec(renamed_smooth), "has no nec parameter")
   renamed_threshold <- nec4param
   renamed_threshold$model <- "ecxthreshold"
   expect_identical(nec(renamed_threshold), nec(nec4param))
@@ -62,7 +79,7 @@ test_that("xform passes correctly", {
 
 test_that("posterior passes correctly", {
   nec3 <- nec(nec4param, posterior = TRUE)
-  expect_equal(length(nec3), 100)
+  expect_equal(length(nec3), brms::ndraws(nec4param$fit))
 })
 
 test_that("prob_vals passes correctly", {
@@ -96,11 +113,18 @@ test_that("nec says how many draws are censored, on either class", {
   censored$ne_posterior[c(3, 17)] <- NA_real_
   # An unexplained NA is a computation failure, not evidence beyond a
   # bound. Report it separately and exclude it from censoring fractions.
-  expect_warning(nec(censored), "could not be computed for 2 of 100 draws")
+  expect_warning(
+    nec(censored),
+    paste0("could not be computed for 2 of ", length(censored$ne_posterior),
+           " draws")
+  )
   censored_manec <- manec_example
   censored_manec$w_ne_posterior[1] <- NA_real_
-  expect_warning(suppressMessages(nec(censored_manec)),
-                 "not identified for 1 of 100 draws")
+  expect_warning(
+    suppressMessages(nec(censored_manec)),
+    paste0("not identified for 1 of ", length(censored_manec$w_ne_posterior),
+           " draws")
+  )
 })
 
 test_that("an uncensored posterior is silent", {

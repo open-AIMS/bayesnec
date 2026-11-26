@@ -36,12 +36,48 @@ nec_data$trials <- as.integer(20)
 nec_data$log_x <- log(nec_data$x)
 
 utils::data(manec_example)
+# A copy of a fit without the records bnec() writes (the call, the installation
+# and the model-set record). The tests of what is done to a fit made before
+# those records existed start from this.
+legacy_fit <- function(x) {
+  for (a in c("bnec_record", "bnec_version", "bnec_expand_args")) {
+    attr(x, a) <- NULL
+  }
+  if (is.null(x$mod_fits)) {
+    x$call_args <- NULL
+  } else {
+    for (m in names(x$mod_fits)) x$mod_fits[[m]]$call_args <- NULL
+  }
+  x
+}
+
 nec4param <- pull_out(manec_example, model = "nec4param") |>
   suppressMessages() |>
-  suppressWarnings()
+  suppressWarnings() |>
+  legacy_fit()
 ecx4param <- pull_out(manec_example, model = "ecx4param") |>
   suppressMessages() |>
-  suppressWarnings()
+  suppressWarnings() |>
+  legacy_fit()
+
+# A copy of manec_example whose second chain is shifted by a fraction of the
+# first chain's standard deviation, so that both equations fail the R-hat and
+# ESS screens. manec_example itself passes them. The default shifts give
+# nec4param an R-hat near 1.21 and ecx4param one near 1.08.
+unconverged_manec <- function(x = manec_example,
+                              shift = c(nec4param = 0.16, ecx4param = 0.075)) {
+  for (m in names(x$mod_fits)) {
+    sf <- x$mod_fits[[m]]$fit$fit
+    first <- sf@sim$samples[[1]]
+    shifted <- sf@sim$samples[[2]]
+    for (i in seq_along(shifted)) {
+      shifted[[i]] <- shifted[[i]] + shift[[m]] * stats::sd(first[[i]])
+    }
+    sf@sim$samples[[2]] <- shifted
+    x$mod_fits[[m]]$fit$fit <- sf
+  }
+  x
+}
 
 # Change only formula metadata on a stored fit to exercise response-transform
 # handling in plotting. Use exp(y): this fixture includes negative responses,
@@ -208,13 +244,17 @@ near_bound_fit <- function(n_near, side = "upper", fit = nec4param,
   fit
 }
 
-# Set the upper bound of a parameter's stored prior just above its largest
-# draw, so that its highest draws lie within the outer 5% of the range.
-tighten_upper_bound <- function(fit, par) {
+# Set the bounds of a parameter's stored prior so that every draw lies below
+# the upper bound and a fraction `share` of the draws lies within the outer 5%
+# of the range below it. The lower bound is moved to give that fraction.
+tighten_upper_bound <- function(fit, par, share = 0.2) {
   prior <- fit$prior
   rows <- prior$nlpar == par & prior$class == "b" & nzchar(prior$ub)
   draws <- brms::as_draws_df(fit)[[paste0("b_", par, "_Intercept")]]
-  prior$ub[rows] <- as.character(max(draws) + 0.001)
+  ub <- max(draws) + 0.001
+  edge <- stats::quantile(draws, 1 - share, names = FALSE)
+  prior$ub[rows] <- as.character(ub)
+  prior$lb[rows] <- as.character(ub - (ub - edge) / 0.05)
   fit$prior <- prior
   fit
 }
