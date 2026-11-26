@@ -26,7 +26,9 @@ ecnsec(
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is
 the lowest response the curve predicts over the grid. The default of 500
-matches \code{\link{ecx}} and \code{\link{nsec}}.}
+matches \code{\link{ecx}} and \code{\link{nsec}}. With an inline predictor
+transformation, their search grid is even on the fitted scale and each
+NSEC is returned through the inverse before its effect is reported.}
 
 \item{x_range}{A range of x values over which to predict the curve.}
 

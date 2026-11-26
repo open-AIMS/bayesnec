@@ -34,7 +34,8 @@ Details.}
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
 The default is 500 grid values, matching \pkg{toxval}. A finer grid can
-change an interpolated crossing and increases prediction time.}
+change an interpolated crossing and increases prediction time. With an
+inline predictor transformation the grid is even on the fitted scale.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
 posterior sample of calculated ECx values should be returned instead of

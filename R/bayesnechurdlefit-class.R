@@ -67,7 +67,8 @@ is_bayesnechurdlefit <- function(x) {
 hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
                                    x_control = "own", levels = TRUE,
                                    grid_limits = NULL, x_values = NULL,
-                                   re_formula = NULL, ...) {
+                                   re_formula = NULL, fitted_grid = FALSE,
+                                   ...) {
   if (!is.null(x_values)) x_range <- range(x_values)
   spec <- if (levels && is.null(object$observed_group)) {
     observed_level_spec(object)
@@ -82,7 +83,8 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
                              resolution = resolution, x_range = x_range,
                              x_control = x_control, grid_limits = grid_limits,
                              x_values = x_values,
-                             re_formula = re_formula, ...)
+                             re_formula = re_formula,
+                             fitted_grid = fitted_grid, ...)
     })
     n <- min(vapply(levels, function(x) nrow(x$combined), integer(1)))
     owner <- observed_assignment(spec, n)
@@ -133,6 +135,10 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
     nd_s <- newdata_eval(object$survival, length(x_values),
                          range(x_values), x_values = x_values)
     base_x <- x_values
+  } else if (fitted_grid && !is.null(inline_x_transform(object))) {
+    x_values <- fitted_curve_grid(object$survival, nd_s, grid_limits)
+    nd_s <- newdata_eval(object$survival, length(x_values),
+                         range(x_values), x_values = x_values)
   } else if (!is.null(grid_limits)) {
     x_values <- extend_grid_values(nd_s$x_vec, grid_limits)
     if (!identical(x_values, nd_s$x_vec)) {
@@ -480,29 +486,38 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
                                    "ECx")
   preds <- if (is.null(lims)) {
     hurdle_component_preds(object, resolution = resolution,
-                           x_range = x_range, x_control = x_control)
+                           x_range = x_range, x_control = x_control,
+                           fitted_grid = TRUE)
   } else {
     start <- curve_search_start(object, x_control)
     report_curve_read_lower_limit(extrapolate, lims, start,
                                   curve_start_label(object, x_control))
     hurdle_component_preds(object, resolution = resolution,
                            x_range = x_range, x_control = x_control,
-                           grid_limits = ecx_grid_limits(lims, start))
+                           grid_limits = ecx_grid_limits(lims, start),
+                           fitted_grid = TRUE)
   }
   p_samples <- preds[[which]]
+  axis <- if (!is.null(inline_x_transform(object))) {
+    inline_curve_axis(object, preds$x, xform)
+  }
+  x_vec <- if (is.null(axis)) preds$x else axis$x
   # Take the control from hurdle_component_preds(), at the control
   # concentration. p_samples[, 1] would make every estimate depend on x_range.
   control <- preds$control[[which]]
-  out <- ecx_from_posterior(p_samples, preds$x, ecx_val, type, control,
+  out <- ecx_from_posterior(p_samples, x_vec, ecx_val, type, control,
                             NA_real_, preds$original)
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
   attr(out, "below_range") <- NULL
   # As in ecx.bayesnecfit(). Build the record on the recorded grid, then remap
   # it: a decreasing crf() swaps its two ends.
-  x_kept <- preds$x[is.finite(preds$x)]
+  x_kept <- x_vec[is.finite(x_vec)]
   cens <- censoring_record(max(x_kept), min(x_kept), above, below)
-  if (!returns_recorded(object, xform)) {
+  if (!is.null(axis)) {
+    out <- map_draws(out, axis$map, cens, "ECx")
+    cens <- xform_censoring(cens, axis$map)
+  } else if (!returns_recorded(object, xform)) {
     to_fitted <- function(value) sub_x_transformation(value, object$formula)
     out <- to_fitted(out)
     cens <- xform_censoring(cens, to_fitted)

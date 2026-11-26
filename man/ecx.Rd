@@ -35,7 +35,8 @@ Details.}
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
 The default is 500 grid values, matching \pkg{toxval}. A finer grid can
-change an interpolated crossing and increases prediction time.}
+change an interpolated crossing and increases prediction time. With an
+inline predictor transformation the grid is even on the fitted scale.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
 posterior sample of calculated ECx values should be returned instead of
@@ -161,15 +162,13 @@ Where the curve does not reach the target anywhere in the predictor range
 the ECx is not identified. With \code{posterior = TRUE} the draw is
 \code{Inf}, and a warning reports how many draws were affected.
 
-The curve is searched on a grid of recorded concentrations. Where
-\code{crf()} transforms the predictor inline, as in
-\code{crf(log(concentration))}, the ECx is therefore returned on the
-recorded scale without \code{xform}, and no inverse is involved. A supplied
-\code{xform} is applied to the ECx on the transformed scale, so
-\code{xform = identity} leaves the estimate on the recorded scale.
-\code{x_scale = "fitted"} returns the fitted scale, while
+Where \code{crf()} transforms the predictor inline, as in
+\code{crf(log(concentration))}, the curve is searched on a grid even on
+the fitted scale. The crossing is interpolated there and returned on the
+recorded scale through the inverse. \code{x_scale = "fitted"} returns the
+fitted-scale crossing. A supplied \code{xform} is applied on that scale;
 \code{xform = exp} on \code{crf(log(concentration))} returns the recorded
-scale again.
+concentration.
 
 With a fitted group term whose levels span concentrations, the control and
 curve are predicted for each observed level with its group deviations.

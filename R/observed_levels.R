@@ -948,6 +948,7 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   }
   resolution <- if (is.null(dots$resolution)) 500L else dots$resolution
   x_vec <- seq(low, high, length.out = resolution)
+  original_range <- c(low, high)
   extrapolate <- if (is.null(dots$extrapolate)) FALSE else dots$extrapolate
   lims <- extrapolate_limits(extrapolate,
                              list(lower = low, upper = high),
@@ -986,6 +987,18 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     high <- max(x_vec)
   } else {
     original <- rep(TRUE, length(x_vec))
+  }
+  first <- fits[[1]]
+  if (inherits(first, "bayesmanecfit")) first <- grid_equation(first)
+  if (!is.null(inline_x_transform(first))) {
+    x_vec <- fitted_curve_grid(
+      first, list(x_vec = seq(original_range[1], original_range[2],
+                              length.out = resolution)),
+      if (is.null(lims)) NULL else grid_lims
+    )
+    original <- original_columns(x_vec, original_range)
+    low <- min(x_vec)
+    high <- max(x_vec)
   }
   type <- if (is.null(dots$type)) "absolute" else dots$type
   if (identical(what, "ecnsec") && identical(type, "direct")) {
@@ -1037,6 +1050,11 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
         rep_len(part$asymptote, n)[seq_len(n)] * weights[i]
     }
   }
+  xform <- dots$xform
+  axis <- if (!is.null(inline_x_transform(first))) {
+    inline_curve_axis(first, x_vec, xform)
+  }
+  x_search <- if (is.null(axis)) x_vec else axis$x
   if (identical(what, "ecnsec")) {
     floor <- switch(type, absolute = 0, relative = asymptote,
                     range = apply(curve[, original, drop = FALSE], 1, min,
@@ -1047,7 +1065,9 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     out[!is.na(control) & control <= reference] <- 0
     if (identical(type, "range")) {
       start <- if (own) min(controls) else as.numeric(x_control)
-      crossing <- nsec_from_posterior(curve, reference, x_vec, start, control)
+      start_axis <- if (is.null(axis)) start else axis$at(start)
+      crossing <- nsec_from_posterior(curve, reference, x_search,
+                                      start_axis, control)
       above <- (is.na(crossing) | out > 100) & control > reference
       return(ecnsec_range_result(out, above, isTRUE(dots$posterior),
                                  if (is.null(dots$prob_vals)) {
@@ -1063,17 +1083,20 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   }
   if (identical(what, "ecx")) {
     effect <- if (is.null(dots$ecx_val)) 10 else dots$ecx_val
-    out <- ecx_from_posterior(curve, x_vec, effect, type, control,
+    out <- ecx_from_posterior(curve, x_search, effect, type, control,
                               asymptote, original)
   } else {
     sig <- if (is.null(dots$sig_val)) 0.01 else dots$sig_val
     reference <- stats::quantile(control, sig)
     start <- if (own) min(controls) else as.numeric(x_control)
-    out <- nsec_from_posterior(curve, reference, x_vec, start, control)
+    start_axis <- if (is.null(axis)) start else axis$at(start)
+    out <- nsec_from_posterior(curve, reference, x_search, start_axis,
+                               control)
     if (own && low > start) {
       # Averaged own controls have no single concentration. Put a draw already
       # below its reference at the first concentration shared by all levels.
-      out[!is.na(out) & out == start] <- low
+      out[!is.na(out) & out == start_axis] <-
+        if (is.null(axis)) low else axis$at(low)
     }
     effect <- as.numeric(pmax(control - reference, 0) / control * 100)
     effect[!is.na(control) & control <= reference] <- 0
@@ -1084,14 +1107,21 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   searched_from <- if (identical(what, "nsec")) {
     attr(out, "x_searched_from")
   } else {
-    low
+    min(x_search)
   }
   effect_draws <- attr(out, "ecnsec_relativeP")
-  cens <- censoring_record(high, searched_from, above, below)
-  first <- fits[[1]]
-  if (inherits(first, "bayesmanecfit")) first <- grid_equation(first)
-  xform <- dots$xform
-  if (!returns_recorded(first, xform)) {
+  cens <- censoring_record(max(x_search), searched_from, above, below)
+  if (!is.null(axis)) {
+    at_control <- if (identical(what, "nsec")) {
+      control_return <- if (own && low > start) low else start
+      !is.na(out) & out == axis$at(control_return)
+    } else rep(FALSE, length(out))
+    out <- map_draws(out, axis$map, cens, toupper(what))
+    if (is.null(xform) && any(at_control)) {
+      out[at_control] <- control_return
+    }
+    cens <- xform_censoring(cens, axis$map)
+  } else if (!returns_recorded(first, xform)) {
     to_fitted <- if (is_bayesnechurdlefit(first)) {
       function(value) hurdle_xform_x(first, value)
     } else {

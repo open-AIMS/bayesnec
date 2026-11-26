@@ -32,7 +32,8 @@ significance of the predicted posterior values.}
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
 The default is 500 grid values, matching \pkg{toxval}. A finer grid can
-change an interpolated crossing and increases prediction time.}
+change an interpolated crossing and increases prediction time. With an
+inline predictor transformation the grid is even on the fitted scale.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
@@ -143,15 +144,13 @@ no-effect estimate. Its \code{nec} parameter, the concentration at which
 the decline term starts, remains available through
 \code{\link{curve_params}}.
 
-The curve is searched on a grid of recorded concentrations. Where
-\code{crf()} transforms the predictor inline, as in
-\code{crf(log(concentration))}, the NSEC is therefore returned on the
-recorded scale without \code{xform}, and no inverse is involved. A supplied
-\code{xform} is applied to the NSEC on the transformed scale, so
-\code{xform = identity} leaves the estimate on the recorded scale.
-\code{x_scale = "fitted"} returns the fitted scale, while
+Where \code{crf()} transforms the predictor inline, as in
+\code{crf(log(concentration))}, the curve is searched on a grid even on
+the fitted scale. The crossing is interpolated there and returned on the
+recorded scale through the inverse. \code{x_scale = "fitted"} returns the
+fitted-scale crossing. A supplied \code{xform} is applied on that scale;
 \code{xform = exp} on \code{crf(log(concentration))} returns the recorded
-scale again.
+concentration.
 
 The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:

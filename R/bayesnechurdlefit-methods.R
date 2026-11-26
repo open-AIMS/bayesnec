@@ -339,17 +339,23 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
                                 curve_start_label(object, x_control))
   preds <- if (is.null(lims)) {
     hurdle_component_preds(object, resolution = resolution,
-                           x_range = x_range, x_control = x_control)
+                           x_range = x_range, x_control = x_control,
+                           fitted_grid = TRUE)
   } else {
     hurdle_component_preds(object, resolution = resolution,
                            x_range = x_range, x_control = x_control,
-                           grid_limits = lims)
+                           grid_limits = lims, fitted_grid = TRUE)
   }
   p_samples <- preds[[which]]
+  axis <- if (!is.null(inline_x_transform(object))) {
+    inline_curve_axis(object, preds$x, xform)
+  }
+  x_vec <- if (is.null(axis)) preds$x else axis$x
+  at_axis <- if (is.null(axis)) at else axis$at(at)
   # The control is read at the control concentration, not the first grid
   # column, so x_range does not change the reference.
   reference <- quantile(preds$control[[which]], sig_val)
-  out <- nsec_from_posterior(p_samples, reference, preds$x, at,
+  out <- nsec_from_posterior(p_samples, reference, x_vec, at_axis,
                              preds$control[[which]])
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
@@ -360,9 +366,13 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
   # The lower bound is where the search started, not the foot of the grid,
   # which can reach below the control. Build the record on the recorded grid,
   # then remap it: a decreasing crf() swaps its two ends.
-  cens <- censoring_record(max(preds$x), searched_from, above, below)
-  # The default on an inline-transformed fit leaves both on the recorded scale.
-  if (!returns_recorded(object, xform)) {
+  cens <- censoring_record(max(x_vec), searched_from, above, below)
+  if (!is.null(axis)) {
+    at_control <- !is.na(out) & out == at_axis
+    out <- map_draws(out, axis$map, cens, "NSEC")
+    if (is.null(xform)) out[at_control] <- at
+    cens <- xform_censoring(cens, axis$map)
+  } else if (!returns_recorded(object, xform)) {
     out <- hurdle_xform_x(object, out)
     cens <- xform_censoring(cens, function(value) {
       hurdle_xform_x(object, value)
