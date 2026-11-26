@@ -95,7 +95,7 @@ recorded_xform <- function(object, xform, extrapolate = FALSE) {
 inline_curve_axis <- function(object, recorded, xform = NULL) {
   formula <- scale_source_fit(object)$bayesnecformula
   fitted <- as.numeric(sub_x_transformation(recorded, formula))
-  direction <- if (tail(fitted, 1) > fitted[1]) 1 else -1
+  direction <- if (fitted[length(fitted)] > fitted[1]) 1 else -1
   at <- function(raw) {
     direction * as.numeric(sub_x_transformation(raw, formula))
   }
@@ -108,8 +108,8 @@ inline_curve_axis <- function(object, recorded, xform = NULL) {
     out <- direct(direction * values)
     if (is.null(xform)) {
       out[!is.na(values) & values == direction * fitted[1]] <- recorded[1]
-      out[!is.na(values) & values == direction * tail(fitted, 1)] <-
-        tail(recorded, 1)
+      out[!is.na(values) & values == direction * fitted[length(fitted)]] <-
+        recorded[length(recorded)]
     }
     out
   }
