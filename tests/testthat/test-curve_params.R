@@ -287,9 +287,9 @@ test_that("nec and ec50 default to the recorded scale on a transformed fit", {
   # hand, and says nothing.
   expect_silent(by_default <- curve_params(tf))
   expect_equal(by_default, curve_params(tf, xform = function(x) x^2))
-  # xform = identity is the fitted scale, which is what the parameters were
+  # x_scale = "fitted" is the fitted scale, which is what the parameters were
   # sampled on and what an untransformed fit reports.
-  fitted <- curve_params(tf, xform = identity)
+  fitted <- curve_params(tf, x_scale = "fitted")
   expect_identical(fitted, curve_params(nec4param))
   on_x <- fitted$parameter %in% c("nec", "ec50")
   expect_true(any(on_x))
@@ -435,7 +435,7 @@ test_that("the record gives each bound on the scale of its row", {
   tf <- transformed_x_fit(nec4param, "nec4param")
   record <- attr(curve_params(tf), "prior_bound_summary")
   expect_equal(record$bound, record$fitted_bound^2)
-  fitted <- attr(curve_params(tf, xform = identity), "prior_bound_summary")
+  fitted <- attr(curve_params(tf, x_scale = "fitted"), "prior_bound_summary")
   expect_equal(fitted$bound, fitted$fitted_bound)
 })
 

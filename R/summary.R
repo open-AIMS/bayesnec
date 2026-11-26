@@ -11,8 +11,9 @@
 #' \code{\link{bayesmanecfit}}.
 #' @param ... With \code{ecx = TRUE}, passed to \code{\link{ecx}} for each
 #' ECx row, so that \code{x_range} and \code{resolution} in particular apply
-#' to the ECx rows only. An \code{xform} is also applied to the no-effect row,
-#' with or without \code{ecx = TRUE}. See Details.
+#' to the ECx rows only. \code{xform} and \code{x_scale} also determine
+#' the scale of the no-effect row, with or without \code{ecx = TRUE}.
+#' \code{xform = identity} is the same as the default; see Details.
 #'
 #' @return A summary of the fitted model. In the case of a
 #' \code{\link{bayesnecfit}} object, the summary contains most of the original
@@ -46,7 +47,8 @@
 #' the prediction grid stored with the fit, which is the grid the no-effect
 #' estimate is censored at. An \code{x_range} supplied in \code{...} replaces
 #' that grid. It and the other arguments in \code{...}, such as
-#' \code{resolution} and \code{xform}, reach \code{\link{ecx}} as given, so
+#' \code{resolution}, \code{xform} and \code{x_scale}, reach
+#' \code{\link{ecx}} as given, so
 #' an ECx row equals a bare \code{\link{ecx}} call given the same arguments.
 #' \code{x_range = NULL} is the exception: it is not passed on, and
 #' \code{\link{ecx}} builds its grid from the data, as it does when given no
@@ -58,9 +60,10 @@
 #' a range supplied now cannot change it. Where \code{crf()} transforms the
 #' predictor inline, that posterior is on the transformed scale, and the row is
 #' returned on the recorded scale as \code{\link{nec}} returns it. An
-#' \code{xform} supplied in \code{...} is applied to the stored draws and to
-#' the bound they are censored at instead, as \code{\link{nec}} applies it,
-#' so the no-effect row and the ECx rows are reported on one scale.
+#' \code{x_scale = "fitted"} returns that stored posterior on its fitted
+#' scale. A function other than \code{identity} supplied as \code{xform}
+#' is applied to the stored draws and their censoring bounds, as
+#' \code{\link{nec}} applies it. The no-effect and ECx rows use one scale.
 #' Where more than 7.5% of the draws of a sampled NEC lie within the outer 5%
 #' of its prior range, the no-effect row has the \code{"prior_bound_summary"}
 #' attribute \code{\link{nec}} describes, on the scale of the row, and the
@@ -130,6 +133,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
   # Resolve xform from the dots as ecx() matches them, so that the no-effect
   # row is on the scale of the ECx rows. See summary_ne_vals().
   ne_xform <- summary_ecx_xform(list(...))
+  ne_x_scale <- summary_ecx_x_scale(list(...))
   ecs <- NULL
   if (ecx) {
     message("ECx calculation takes a few seconds per model, calculating...\n")
@@ -153,7 +157,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     is_ecx = is_ecx,
     ne_type = x$ne_type,
     nec_vals = clean_nec_vals(x, x$model, ecx_mod,
-                              summary_ne_vals(x, ne_xform)),
+                              summary_ne_vals(x, ne_xform, ne_x_scale)),
     ecs = ecs,
     bayesr2 = bayes_R2(x$fit),
     divergences = summary_divergences(x),
@@ -211,6 +215,7 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
   # As in summary.bayesnecfit().
   check_summary_ecx_posterior(list(...))
   ne_xform <- summary_ecx_xform(list(...))
+  ne_x_scale <- summary_ecx_x_scale(list(...))
   ecs <- NULL
   if (ecx) {
     message("ECx calculation takes a few seconds per model, calculating...\n")
@@ -235,7 +240,7 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     mod_weights_leave_out = weights_leave_out(x),
     ecx_mods = ecx_mods,
     nec_vals = clean_nec_vals(x, x$success_models, ecx_mods,
-                              summary_ne_vals(x, ne_xform)),
+                              summary_ne_vals(x, ne_xform, ne_x_scale)),
     ecs = ecs,
     bayesr2 = x$mod_fits |>
       lapply(function(y)bayes_R2(y$fit)) |>
@@ -315,6 +320,12 @@ summary_ecx_rows <- function(..., .fit, .ecx_vals, .stored_range) {
 #' @noRd
 summary_ecx_xform <- function(dots) {
   dots_xform(ecx, summary_ecx_dots(dots))
+}
+
+#' Read x_scale from the dots passed to the ECx rows
+#' @noRd
+summary_ecx_x_scale <- function(dots) {
+  dots_x_scale(ecx, summary_ecx_dots(dots))
 }
 
 #' The dots of a summary method as ecx_row() passes them to ecx()
@@ -404,8 +415,8 @@ check_summary_ecx_posterior <- function(dots) {
 #' otherwise a summary of the same form, from \code{estimates_summary()}.
 #'
 #' @noRd
-summary_ne_vals <- function(x, xform) {
-  check_xform(xform)
+summary_ne_vals <- function(x, xform, x_scale = "recorded") {
+  xform <- resolve_estimator_xform(x, xform, x_scale)
   stored <- if (is_bayesnecfit(x)) x$ne else x$w_ne
   map <- recorded_xform(x, xform)
   prior_boundary <- flagged_prior_boundary(nec_prior_boundary(x, map))

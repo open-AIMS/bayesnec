@@ -259,6 +259,7 @@ hurdle_check_which <- function(which) {
 #'
 #' @export
 nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
+                                  x_scale = c("recorded", "fitted"),
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   extrapolate = FALSE,
                                   which = "combined", ..., pool = NULL) {
@@ -268,7 +269,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
   check_unused_dots(list(...), "nec", nec_curve_args)
   chk_flag(posterior)
   which <- hurdle_check_which(which)
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
@@ -281,7 +282,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
       result <- estimate_observed_levels(
         object, spec, "nec",
         function(level, control_value, range_override) {
-          nec(level, posterior = TRUE, xform = xform,
+          nec(level, posterior = TRUE, xform = xform, x_scale = x_scale,
               prob_vals = prob_vals, extrapolate = extrapolate,
               which = which, pool = "none", ...)
         }, pool, posterior, prob_vals
@@ -372,7 +373,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = NULL,
 #' @param ... Passed to \code{\link{nec}}.
 #'
 #' @return The posterior on the fitted scale, as
-#' \code{nec(part, posterior = TRUE, xform = identity)} returns it.
+#' \code{nec(part, posterior = TRUE, x_scale = "fitted")} returns it.
 #' @noRd
 hurdle_component_ne <- function(part, extrapolate, ...) {
   if (inherits(part, "bayesnecfit") &&
@@ -380,12 +381,12 @@ hurdle_component_ne <- function(part, extrapolate, ...) {
     if (!is.null(part$observed_group)) {
       sig <- recorded_expand_args(list(part))$sig_val
       return(nsec(part, sig_val = sig, posterior = TRUE,
-                  xform = identity, extrapolate = extrapolate, ...))
+                  x_scale = "fitted", extrapolate = extrapolate, ...))
     }
     return(necfit_ne(part, posterior = TRUE, xform = identity,
                      extrapolate = extrapolate, ...))
   }
-  nec(part, posterior = TRUE, xform = identity, extrapolate = extrapolate,
+  nec(part, posterior = TRUE, x_scale = "fitted", extrapolate = extrapolate,
       ...)
 }
 
@@ -431,6 +432,7 @@ hurdle_component_ne <- function(part, extrapolate, ...) {
 ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
                                   posterior = FALSE, type = "absolute",
                                   x_range = NA, xform = NULL,
+                                  x_scale = c("recorded", "fitted"),
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   which = "combined", ..., pool = NULL,
                                   x_control = "own", extrapolate = FALSE) {
@@ -451,7 +453,7 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
          "asymptote is not a single fitted parameter. Use ",
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   if (is.null(object$observed_group)) {
     spec <- observed_level_spec(object)
     if (!is.null(spec)) {
@@ -460,13 +462,13 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 500,
         function(level, control_value, range_override) {
           ecx(level, ecx_val = ecx_val, resolution = resolution,
               posterior = TRUE, type = type, x_range = range_override,
-              extrapolate = extrapolate, xform = xform,
+              extrapolate = extrapolate, xform = xform, x_scale = x_scale,
               prob_vals = prob_vals, which = which,
               pool = "none", x_control = control_value)
         }, pool, posterior, prob_vals, x_control, x_range,
         curve_args = list(ecx_val = ecx_val, resolution = resolution,
                           type = type, extrapolate = extrapolate,
-                          xform = xform, prob_vals = prob_vals,
+                          xform = xform, x_scale = x_scale, prob_vals = prob_vals,
                           which = which)
       )
       attr(result, "component") <- which

@@ -589,7 +589,7 @@ extrapolated_necfit_ne <- function(object, lims, bounds, sig_val, resolution) {
   # nsec() reports a lower limit below the control.
   out <- nsec(object, sig_val = sig_val, resolution = resolution,
               x_range = c(bounds$lower, bounds$upper),
-              extrapolate = c(lims$lower, lims$upper), xform = identity,
+              extrapolate = c(lims$lower, lims$upper), x_scale = "fitted",
               posterior = TRUE)
   # Keep the draws and the censoring record only. The other attributes nsec()
   # attaches describe an NSEC calculation, not the NEC returned here.
@@ -714,7 +714,7 @@ extrapolated_manec_ne <- function(object, lims, bounds, sig_val, resolution) {
     out <- nsec(component_fit(object, success[i]), sig_val = sig_val,
                 resolution = resolution,
                 x_range = c(bounds$lower, bounds$upper),
-                extrapolate = c(lims$lower, lims$upper), xform = identity,
+                extrapolate = c(lims$lower, lims$upper), x_scale = "fitted",
                 posterior = TRUE)
     part <- as.numeric(out)[idx]
     attr(part, "censored") <- subset_censoring(attr(out, "censored"), idx)

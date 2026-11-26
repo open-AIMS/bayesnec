@@ -23,14 +23,17 @@
 
 ### Changed defaults
 
-- `nec()`, `nsec()`, `ecx()`, `ggbnec_data()`, `plot()` and `autoplot()`
-  default to `xform = NULL`, and `summary()` reports on the same scale. Where
+- `nec()`, `nsec()`, `ecx()`, `ecnsec()`, `curve_params()`,
+  `exceedance()`, `ggbnec_data()`, `plot()` and `autoplot()` default to
+  `xform = NULL`, and `summary()` reports on the same scale. Where
   `crf()` transforms the predictor inline, as in `crf(log(concentration))`, an
   estimate is returned on the scale the predictor was recorded on, a
   concentration, where 2.1.3.1 returned it on the transformed scale.
   `compare_estimates()` and `compare_posterior()` compare on the same scale.
   Calls that pass `xform = exp` return estimates on the scale they did
-  before. Write `xform = identity` to keep the transformed scale. A fit whose
+  before. `xform = identity` is equivalent to the default for each
+  estimator. Write `x_scale = "fitted"` to return the transformed scale;
+  the estimators and plotting methods use the same argument. A fit whose
   predictor is an untransformed column is unaffected. See `?nec` (#299).
 
 - The default `resolution` of `ecx()` and `nsec()` is 500 instead of 1000,

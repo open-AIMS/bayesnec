@@ -31,8 +31,9 @@
 
 \item{...}{With \code{ecx = TRUE}, passed to \code{\link{ecx}} for each
 ECx row, so that \code{x_range} and \code{resolution} in particular apply
-to the ECx rows only. An \code{xform} is also applied to the no-effect row,
-with or without \code{ecx = TRUE}. See Details.}
+to the ECx rows only. \code{xform} and \code{x_scale} also determine
+the scale of the no-effect row, with or without \code{ecx = TRUE}.
+\code{xform = identity} is the same as the default; see Details.}
 
 \item{ecx}{Should summary ECx values be calculated? Defaults to FALSE.}
 
@@ -104,7 +105,8 @@ With \code{ecx = TRUE}, each ECx row is computed by \code{\link{ecx}} over
 the prediction grid stored with the fit, which is the grid the no-effect
 estimate is censored at. An \code{x_range} supplied in \code{...} replaces
 that grid. It and the other arguments in \code{...}, such as
-\code{resolution} and \code{xform}, reach \code{\link{ecx}} as given, so
+\code{resolution}, \code{xform} and \code{x_scale}, reach
+\code{\link{ecx}} as given, so
 an ECx row equals a bare \code{\link{ecx}} call given the same arguments.
 \code{x_range = NULL} is the exception: it is not passed on, and
 \code{\link{ecx}} builds its grid from the data, as it does when given no
@@ -116,9 +118,10 @@ fitted, and is censored at the bound of the prediction grid stored then, so
 a range supplied now cannot change it. Where \code{crf()} transforms the
 predictor inline, that posterior is on the transformed scale, and the row is
 returned on the recorded scale as \code{\link{nec}} returns it. An
-\code{xform} supplied in \code{...} is applied to the stored draws and to
-the bound they are censored at instead, as \code{\link{nec}} applies it,
-so the no-effect row and the ECx rows are reported on one scale.
+\code{x_scale = "fitted"} returns that stored posterior on its fitted
+scale. A function other than \code{identity} supplied as \code{xform}
+is applied to the stored draws and their censoring bounds, as
+\code{\link{nec}} applies it. The no-effect and ECx rows use one scale.
 Where more than 7.5\% of the draws of a sampled NEC lie within the outer 5\%
 of its prior range, the no-effect row has the \code{"prior_bound_summary"}
 attribute \code{\link{nec}} describes, on the scale of the row, and the

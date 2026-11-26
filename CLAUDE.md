@@ -248,19 +248,23 @@ Check the fitted links before interpreting a large difference in `elpd_diff`.
 
 Where the formula transforms the predictor inline, as in
 `crf(log(concentration), ...)`, every estimator returns the **recorded** scale
-by default (`xform = NULL`). This covers `nec()`, `nsec()`, `ecx()`, `ecnsec()`,
-`curve_params()`, `exceedance()` and the `summary()` rows, and matches
-`autoplot()` and `ggbnec_data()`. A supplied `xform` is applied to the estimate on
-the **fitted** scale. So `xform = identity` returns the transformed scale, and
-`xform = exp` on a `crf(log(x))` fit returns what the default returns.
+by default (`x_scale = "recorded"`). This covers `nec()`, `nsec()`,
+`ecx()`, `curve_params()`, `exceedance()` and the `summary()` rows, and matches
+`autoplot()` and `ggbnec_data()`. `xform = identity` is equivalent to the
+default for each estimator. For concentration-valued estimates,
+`x_scale = "fitted"` returns the **fitted** scale, while a different `xform`
+is applied there. Thus `xform = exp` on a `crf(log(x))` fit returns what the
+default returns. `ecnsec()` instead returns a percentage: it reads its supplied
+concentration as given with either `x_scale`, and `xform` can map that input
+from the fitted scale to the recorded scale.
 
 Applying the inverse to the default output transforms twice: `exp(nec(fit))` on
 a `crf(log(x))` fit exponentiates a concentration, with no warning. Before #299
 that was the correct idiom, so code written against an older `predev` or a
 released version needs checking. Code that compares with `toxval` or with a
-hand-written fit on the fitted scale passes `xform = identity`.
+hand-written fit on the fitted scale passes `x_scale = "fitted"`.
 
-Take estimates at their default, and pass `xform = identity` only to read the
+Take estimates at their default, and pass `x_scale = "fitted"` to read the
 fitted scale. Apply axis spacing with `scale_x_continuous(transform = "sqrt")`
 to the untransformed plot data, never by transforming the breaks.
 

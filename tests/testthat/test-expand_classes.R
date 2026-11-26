@@ -103,7 +103,7 @@ test_that("a stored smooth NSEC reads its control where nsec() does", {
       suppressMessages()
     stored <- bayesnec:::allot_class(stored, c("bayesnecfit", "bnecfit"))
     direct <- suppressWarnings(nsec(stored, x_range = rng, resolution = 200,
-                                    posterior = TRUE, xform = identity))
+                                    posterior = TRUE, x_scale = "fitted"))
     expect_equal(as.numeric(stored$ne_posterior), as.numeric(direct))
     expect_identical(attr(stored$ne_posterior, "censored")[c("above", "below")],
                      attr(direct, "censored")[c("above", "below")])

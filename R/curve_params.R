@@ -13,10 +13,13 @@
 #' \code{\link{bayesnecgroupfit}}.
 #' @param summary A \code{\link[base]{logical}} vector of length 1. Whether to
 #' return the summary table (the default) or the underlying posterior draws.
-#' @param xform \code{NULL}, the default, or a function, applied to
-#' \code{nec} and \code{ec50} and to no other parameter. \code{NULL} returns
-#' those two on the scale the predictor was recorded on. A function is applied
-#' to them on the scale the model was fitted on. See Details.
+#' @param xform \code{NULL} or \code{identity} leaves \code{nec} and
+#' \code{ec50} on \code{x_scale}. Any other function is applied to those
+#' parameters on the fitted scale and requires \code{x_scale = "recorded"}
+#' for an inline transformation. No other parameter is transformed; see Details.
+#' @param x_scale \code{"recorded"} (the default) returns \code{nec} and
+#' \code{ec50} on the recorded predictor scale. \code{"fitted"} returns
+#' them on the scale fitted by \code{crf()}.
 #' @param ... Passed to the per-component and per-level calls by the
 #' \code{\link{bayesnechurdlefit}} and \code{\link{bayesnecgroupfit}} methods,
 #' and unused by the other two.
@@ -74,8 +77,9 @@
 #' otherwise by interpolating on the prediction grid. A draw beyond that grid
 #' then has no value, so it is \code{NA}, the row summarising it is
 #' \code{NA}, and a message names the remedy. A supplied \code{xform} is
-#' applied to them on the transformed scale, so \code{xform = identity}
-#' returns that scale. Every other parameter is a response level or a shape
+#' applied to them on the transformed scale. \code{xform = identity}
+#' leaves them on the recorded scale; \code{x_scale = "fitted"} returns the
+#' fitted scale. Every other parameter is a response level or a shape
 #' parameter and is not on the predictor axis at all, so it is returned as
 #' sampled.
 #'
@@ -157,7 +161,8 @@
 #' curve_params(nec4param)
 #'
 #' @export
-curve_params <- function(object, summary = TRUE, xform = NULL, ...) {
+curve_params <- function(object, summary = TRUE, xform = NULL,
+                         x_scale = c("recorded", "fitted"), ...) {
   UseMethod("curve_params")
 }
 
@@ -172,9 +177,10 @@ curve_params <- function(object, summary = TRUE, xform = NULL, ...) {
 #'
 #' @export
 curve_params.bayesnecfit <- function(object, summary = TRUE, xform = NULL,
+                                     x_scale = c("recorded", "fitted"),
                                    ...) {
   chk_lgl(summary)
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   report_scales(object, paste(object$model, "fit"))
   # wi is 1, not NA: a fit holds one equation and is the whole of its set. A
   # fit from pull_out() does not keep the weight it had in its set.
@@ -199,9 +205,9 @@ curve_params.bayesnecfit <- function(object, summary = TRUE, xform = NULL,
 #'
 #' @export
 curve_params.bayesmanecfit <- function(object, summary = TRUE,
-                                     xform = NULL, ...) {
+                                     xform = NULL, x_scale = c("recorded", "fitted"), ...) {
   chk_lgl(summary)
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   mods <- object$success_models
   # Report once for the set, whose equations share a family and a formula. The
   # loop below calls one_fit_params(), not curve_params(), so it does not
@@ -242,11 +248,12 @@ curve_params.bayesmanecfit <- function(object, summary = TRUE,
 #'
 #' @export
 curve_params.bayesnechurdlefit <- function(object, summary = TRUE,
-                                         xform = NULL, ...) {
+                                         xform = NULL,
+                                         x_scale = c("recorded", "fitted"), ...) {
   # Check the arguments here as well, so that a bad one fails before the
   # message below is printed.
   chk_lgl(summary)
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   message(hurdle_no_combined("curve_params"))
   # Report each component's link here, named by component. The component
   # methods name the equation, which the two components often share.
@@ -258,11 +265,12 @@ curve_params.bayesnechurdlefit <- function(object, summary = TRUE,
   on.exit(options(quiet), add = TRUE)
   list(growth = with_prior_bound_label(
          "growth component",
-         curve_params(object$growth, summary = summary, xform = xform, ...)
+         curve_params(object$growth, summary = summary, xform = xform, x_scale = x_scale, ...)
        ),
        survival = with_prior_bound_label(
          "survival component",
-         curve_params(object$survival, summary = summary, xform = xform, ...)
+         curve_params(object$survival, summary = summary, xform = xform,
+           x_scale = x_scale, ...)
        ))
 }
 
@@ -273,9 +281,9 @@ curve_params.bayesnechurdlefit <- function(object, summary = TRUE,
 #'
 #' @export
 curve_params.bayesnecgroupfit <- function(object, summary = TRUE,
-                                        xform = NULL, ...) {
+                                        xform = NULL, x_scale = c("recorded", "fitted"), ...) {
   chk_lgl(summary)
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   # Every level shares one family, so report once for the group.
   report_scales(representative_fit(object$fits[[1]]), "fitted group")
   quiet <- options(bayesnec.link_reported = TRUE)
@@ -283,7 +291,7 @@ curve_params.bayesnecgroupfit <- function(object, summary = TRUE,
   out <- lapply(seq_along(object$fits), function(i) {
     with_prior_bound_label(
       paste("Level", object$levels[i]),
-      curve_params(object$fits[[i]], summary = summary, xform = xform, ...)
+      curve_params(object$fits[[i]], summary = summary, xform = xform, x_scale = x_scale, ...)
     )
   })
   names(out) <- object$levels

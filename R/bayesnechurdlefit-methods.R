@@ -297,7 +297,7 @@ hurdle_disp_placeholders <- function(newdata, object) {
 #' @export
 nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
                                    x_range = NA,
-                                   xform = NULL,
+                                   xform = NULL, x_scale = c("recorded", "fitted"),
                                    prob_vals = c(0.5, 0.025, 0.975),
                                    extrapolate = FALSE, ...,
                                    posterior = FALSE, which = "combined",
@@ -311,7 +311,7 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
   chk_flag(posterior)
   if (!is.null(pool)) validate_pool(pool, "nsec")
   which <- hurdle_check_which(which)
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   if (is.null(object$observed_group)) {
     spec <- observed_level_spec(object)
     if (!is.null(spec)) {
@@ -319,13 +319,13 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
         object, spec, "nsec",
         function(level, control_value, range_override) {
           nsec(level, sig_val = sig_val, resolution = resolution,
-               x_range = range_override, xform = xform,
+               x_range = range_override, xform = xform, x_scale = x_scale,
                prob_vals = prob_vals, extrapolate = extrapolate,
                posterior = TRUE, which = which, pool = "none",
                x_control = control_value)
         }, pool, posterior, prob_vals, x_control, x_range,
         curve_args = list(sig_val = sig_val, resolution = resolution,
-                          xform = xform, prob_vals = prob_vals,
+                          xform = xform, x_scale = x_scale, prob_vals = prob_vals,
                           extrapolate = extrapolate, which = which)
       )
       attr(result, "component") <- which
@@ -1373,11 +1373,12 @@ ggbnec_data.bayesnechurdlefit <- function(x, add_nec = FALSE,
 }
 
 hurdle_plot_estimate <- function(object, which, kind, xform, ecx_val) {
+  x_scale <- if (identical(xform, identity)) "fitted" else "recorded"
   if (kind == "nec") {
-    return(suppressMessages(nec(object, which = which, xform = xform)))
+    return(suppressMessages(nec(object, which = which, xform = xform, x_scale = x_scale)))
   }
   suppressMessages(ecx(object, which = which, ecx_val = ecx_val,
-                       xform = xform))
+                       xform = xform, x_scale = x_scale))
 }
 
 hurdle_estimate_data <- function(object, panels, kind, xform, ecx_val,
@@ -1562,6 +1563,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
                                      x_range = NA,
                                      type = "absolute", xform = NULL,
+                                     x_scale = c("recorded", "fitted"),
                                      prob_vals = c(0.5, 0.025, 0.975), ...,
                                      posterior = FALSE, which = "combined",
                                      pool = NULL, x_control = "own",
@@ -1587,7 +1589,7 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
          "asymptote is not a single fitted parameter. Use ",
          "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   if (is.null(xform)) {
     xform <- identity
   }
@@ -1599,13 +1601,13 @@ ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 500,
         function(level, control_value, range_override) {
           ecnsec(level, nsec = nsec, resolution = resolution,
                  x_range = range_override, extrapolate = extrapolate,
-                 type = type, xform = xform,
+                 type = type, xform = xform, x_scale = x_scale,
                  prob_vals = prob_vals, posterior = TRUE, which = which,
                  pool = "none", x_control = control_value)
         }, pool, posterior, prob_vals, x_control, x_range,
         curve_args = list(nsec = nsec, resolution = resolution,
                           extrapolate = extrapolate,
-                          type = type, xform = xform, prob_vals = prob_vals,
+                          type = type, xform = xform, x_scale = x_scale, prob_vals = prob_vals,
                           which = which)
       )
       attr(result, "component") <- which

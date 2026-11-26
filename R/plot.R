@@ -111,13 +111,15 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   axis_xform <- if (is.null(xform)) identity else xform
   ec10 <- c(NA, NA, NA)
   if (add_ec10 & family != "gaussian") {
-    ec10 <- ecx(x, xform = est_xform)
+    ec10 <- ecx(x, xform = est_xform,
+                x_scale = if (identical(est_xform, identity)) "fitted" else "recorded")
   }
   if (add_ec10 & family == "gaussian") {
     # "range", not "relative": a gaussian response can go negative, so the
     # annotation measures the span from the control to the minimum, not to
     # bot. "relative" would also fail for a bot-free equation.
-    ec10 <- ecx(x, type = "range", xform = est_xform)
+    ec10 <- ecx(x, type = "range", xform = est_xform,
+                x_scale = if (identical(est_xform, identity)) "fitted" else "recorded")
   }
 
   x_dat <- x$fit$data[[x_var]]
@@ -144,7 +146,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                           axis_xform)
   }
 
-  nec_tag <- summary(x, ecx = FALSE, xform = identity) |>
+  nec_tag <- summary(x, ecx = FALSE, x_scale = "fitted") |>
     (`[[`)("nec_vals") |>
     rownames() |>
     suppressWarnings() |>
@@ -299,12 +301,14 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
   axis_xform <- if (is.null(xform)) identity else xform
   ec10 <- c(NA, NA, NA)
   if (add_ec10 & family != "gaussian") {
-    ec10 <- ecx(x, xform = est_xform)
+    ec10 <- ecx(x, xform = est_xform,
+                x_scale = if (identical(est_xform, identity)) "fitted" else "recorded")
   }
   if (add_ec10 & family == "gaussian") {
     # "range" rather than "relative", for the reasons given in
     # plot.bayesnecfit above.
-    ec10 <- ecx(x, type = "range", xform = est_xform)
+    ec10 <- ecx(x, type = "range", xform = est_xform,
+                x_scale = if (identical(est_xform, identity)) "fitted" else "recorded")
   }
   x_dat <- mod_dat[[x_var]]
   x_vec <- x$w_pred_vals$data$x
@@ -325,7 +329,7 @@ plot_manec_average <- function(x, ..., CI, add_nec, legend_pos, add_ec10,
   if (add_ec10 && !recorded) {
     ec10 <- to_axis_scale(ec10, bdat, manec_formula, x_grid_raw, axis_xform)
   }
-  nec_tag <- summary(x, ecx = FALSE, xform = identity) |>
+  nec_tag <- summary(x, ecx = FALSE, x_scale = "fitted") |>
     (`[[`)("nec_vals") |>
     rownames() |>
     suppressWarnings() |>

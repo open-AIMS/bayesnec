@@ -283,12 +283,12 @@ test_that("stored smooth no-effect draws use the recorded significance", {
   smooth <- suppressMessages(pull_out(fit, model = "ecx4param"))
   direct <- suppressMessages(nsec(smooth, sig_val = 0.2,
                                   resolution = 40, posterior = TRUE,
-                                  xform = identity))
+                                  x_scale = "fitted"))
   expect_equal(as.numeric(smooth$ne_posterior), as.numeric(direct),
                tolerance = 1e-6)
   other <- suppressMessages(nsec(smooth, sig_val = 0.01,
                                  resolution = 40, posterior = TRUE,
-                                 xform = identity))
+                                 x_scale = "fitted"))
   expect_false(isTRUE(all.equal(as.numeric(direct), as.numeric(other))))
   expect_true(isTRUE(smooth$pred_vals$observed_levels))
   expect_identical(smooth$pred_vals$band, "population")
@@ -360,7 +360,7 @@ test_that("logged predictors store no-effect draws on the fitted scale", {
   skip_if_not_installed("rstan")
   fit <- logged_fit_cache()
   fitted <- suppressMessages(nsec(fit, sig_val = 0.2,
-                                   posterior = TRUE, xform = identity,
+                                   posterior = TRUE, x_scale = "fitted",
                                    resolution = 40))
   recorded <- suppressMessages(nsec(fit, sig_val = 0.2,
                                      posterior = TRUE, resolution = 40))
@@ -521,7 +521,7 @@ test_that("a joint refit reads its spanning group levels", {
   )))), 3L)
   # nec() reads the plates at the draws the stored summary was built from.
   direct <- suppressWarnings(suppressMessages(nec(fit, posterior = TRUE,
-                                                  xform = identity)))
+                                                  x_scale = "fitted")))
   expect_equal(as.numeric(direct), as.numeric(fit$ne_posterior))
   level <- bayesnec:::observed_level_fit(fit, spec, 1, with_ne = TRUE)
   nd <- bayesnec:::newdata_eval(level, 2, NA)$newdata[1, , drop = FALSE]

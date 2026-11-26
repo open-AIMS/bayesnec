@@ -8,6 +8,7 @@
   object,
   posterior = FALSE,
   xform = NULL,
+  x_scale = c("recorded", "fitted"),
   prob_vals = c(0.5, 0.025, 0.975),
   extrapolate = FALSE,
   which = "combined",
@@ -22,11 +23,15 @@
 posterior sample of calculated NEC values should be returned instead of
 just the median and 95\% credible intervals.}
 
-\item{xform}{\code{NULL}, the default, or a function. \code{NULL} returns
-the estimate on the scale the predictor was recorded on. A function is
-applied to the estimate on the scale the model was fitted on. The two
-differ only where \code{crf()} transforms the predictor inline; see
-Details.}
+\item{xform}{\code{NULL} or \code{identity} leaves the estimate on
+\code{x_scale}. Any other function is applied on the fitted scale and
+requires \code{x_scale = "recorded"} when the predictor is
+transformed inline; see Details.}
+
+\item{x_scale}{\code{"recorded"} (the default) returns the predictor on
+its recorded scale. \code{"fitted"} returns it on the scale fitted by
+\code{crf()}. The scales differ only where \code{crf()} transforms the
+predictor inline.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and

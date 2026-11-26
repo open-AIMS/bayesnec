@@ -22,11 +22,14 @@
 #' @param posterior A \code{\link[base]{logical}} value indicating if the full
 #' posterior sample of calculated ECx values should be returned instead of
 #' just the median and 95 credible intervals.
-#' @param xform \code{NULL}, the default, or a function. \code{NULL} returns
-#' the estimate on the scale the predictor was recorded on. A function is
-#' applied to the estimate on the scale the model was fitted on. The two
-#' differ only where \code{crf()} transforms the predictor inline; see
-#' Details.
+#' @param xform \code{NULL} or \code{identity} leaves the estimate on
+#' \code{x_scale}. Any other function is applied on the fitted scale and
+#' requires \code{x_scale = "recorded"} when the predictor is
+#' transformed inline; see Details.
+#' @param x_scale \code{"recorded"} (the default) returns the predictor on
+#' its recorded scale. \code{"fitted"} returns it on the scale fitted by
+#' \code{crf()}. The scales differ only where \code{crf()} transforms the
+#' predictor inline.
 #' @param x_range A range of x values over which to consider extracting ECx.
 #' @param extrapolate \code{FALSE}, the default, uses the prediction range.
 #' A finite upper limit or a pair of finite lower and upper limits extends the
@@ -120,8 +123,10 @@
 #' \code{crf(log(concentration))}, the ECx is therefore returned on the
 #' recorded scale without \code{xform}, and no inverse is involved. A supplied
 #' \code{xform} is applied to the ECx on the transformed scale, so
-#' \code{xform = identity} returns that scale and \code{xform = exp} on
-#' \code{crf(log(concentration))} returns the recorded scale again.
+#' \code{xform = identity} leaves the estimate on the recorded scale.
+#' \code{x_scale = "fitted"} returns the fitted scale, while
+#' \code{xform = exp} on \code{crf(log(concentration))} returns the recorded
+#' scale again.
 #' 
 #' With a fitted group term whose levels span concentrations, the control and
 #' curve are predicted for each observed level with its group deviations.
@@ -223,7 +228,8 @@
 # check warns about a documented argument missing from the usage.
 ecx <- function(object, ecx_val = 10, resolution = 500,
                 posterior = FALSE, type = "absolute", x_range = NA,
-                xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
+                xform = NULL,
+                x_scale = c("recorded", "fitted"), prob_vals = c(0.5, 0.025, 0.975), ...,
                 dpar = NULL, pool = NULL, x_control = "own",
                 extrapolate = FALSE) {
   UseMethod("ecx")
@@ -245,7 +251,7 @@ ecx <- function(object, ecx_val = 10, resolution = 500,
 #' @export
 ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
                             posterior = FALSE, type = "absolute",
-                            x_range = NA, xform = NULL,
+                            x_range = NA, xform = NULL, x_scale = c("recorded", "fitted"),
                             prob_vals = c(0.5, 0.025, 0.975), ...,
                             dpar = NULL, pool = NULL,
                             x_control = "own", extrapolate = FALSE) {
@@ -260,7 +266,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
     check_combined_relative(object$fit$family, "ecx")
   }
   warn_relative_rename(type, match.call())
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
@@ -275,13 +281,13 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
         function(level, control_value, range_override) {
           ecx(level, ecx_val = ecx_val, resolution = resolution,
               posterior = TRUE, type = type, x_range = range_override,
-              extrapolate = extrapolate, xform = xform,
+              extrapolate = extrapolate, xform = xform, x_scale = x_scale,
               prob_vals = prob_vals, dpar = dpar,
               pool = "none", x_control = control_value)
         },
         pool, posterior, prob_vals, x_control, x_range,
         curve_args = list(ecx_val = ecx_val, resolution = resolution,
-                          type = type, xform = xform, prob_vals = prob_vals,
+                          type = type, xform = xform, x_scale = x_scale, prob_vals = prob_vals,
                           dpar = dpar, extrapolate = extrapolate)
       ))
     }
@@ -416,7 +422,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
 #' @export
 ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
                               posterior = FALSE, type = "absolute",
-                              x_range = NA, xform = NULL,
+                              x_range = NA, xform = NULL, x_scale = c("recorded", "fitted"),
                               prob_vals = c(0.5, 0.025, 0.975), ...,
                               dpar = NULL, pool = NULL,
                               x_control = "own", extrapolate = FALSE) {
@@ -431,7 +437,7 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
     check_combined_relative(object$mod_fits[[1]]$fit$family, "ecx")
   }
   warn_relative_rename(type, match.call())
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
@@ -447,7 +453,7 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
       object, "ecx",
       function(f) ecx(f, ecx_val = ecx_val, resolution = resolution,
                       posterior = TRUE, type = type, x_range = x_range,
-                      extrapolate = extrapolate, xform = xform,
+                      extrapolate = extrapolate, xform = xform, x_scale = x_scale,
                       prob_vals = prob_vals, dpar = dpar,
                       pool = "none", x_control = x_control),
       posterior, prob_vals
@@ -474,7 +480,7 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 500,
     out <- ecx(target, ecx_val = ecx_val, resolution = resolution,
                posterior = TRUE, type = type,
                x_range = x_range, extrapolate = extrapolate,
-               xform = xform, prob_vals = prob_vals,
+               xform = xform, x_scale = x_scale, prob_vals = prob_vals,
                dpar = dpar, pool = pool, x_control = x_control)
     idx <- draw_index[[mod]]
     sample_out <- out[idx]
