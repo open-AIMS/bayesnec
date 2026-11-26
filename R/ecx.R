@@ -323,6 +323,10 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   )
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
+  axis <- if (!is.null(inline_x_transform(object))) {
+    inline_curve_axis(object, x_vec, xform)
+  }
+  if (!is.null(axis)) x_vec <- axis$x
   control <- control_posterior(object, newdata_list$newdata, epred_fun,
                                x_at = control_reading$value)
   asymptote <- ecx_asymptote(object, type, dpar)
@@ -338,8 +342,10 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 500,
   # remap it with the estimates; a decreasing crf() reverses the bounds.
   x_kept <- x_vec[is.finite(x_vec)]
   cens <- censoring_record(max(x_kept), min(x_kept), above, below)
-  # The default on an inline-transformed fit leaves both on the recorded scale.
-  if (!returns_recorded(object, xform)) {
+  if (!is.null(axis)) {
+    ecx_out <- map_draws(ecx_out, axis$map, cens, "ECx")
+    cens <- xform_censoring(cens, axis$map)
+  } else if (!returns_recorded(object, xform)) {
     to_fitted <- function(value) {
       sub_x_transformation(value, object$bayesnecformula)
     }

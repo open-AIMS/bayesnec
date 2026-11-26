@@ -343,6 +343,10 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   )
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
+  axis <- if (!is.null(inline_x_transform(object))) {
+    inline_curve_axis(object, x_vec, xform)
+  }
+  if (!is.null(axis)) x_vec <- axis$x
   # Read the control at the control concentration, not the first grid column,
   # so that x_range does not change the reference.
   control <- control_posterior(object, newdata_list$newdata, epred_fun,
@@ -354,8 +358,10 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   ecnsecP[!is.na(control) & control <= reference] <- 0
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
   # The control is the reference whether or not the curve shows hormesis.
+  control_axis <- if (is.null(axis)) control_reading$value else
+    axis$at(control_reading$value)
   nsec_out <- nsec_from_posterior(p_samples, reference, x_vec,
-                                  control_reading$value,
+                                  control_axis,
                                   control)
   # Draws above and below the range return NA for opposite reasons, so each
   # class has its own warning. Count them before the transformations below,
@@ -370,8 +376,12 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   # differ wherever the grid reaches below the control. It is built on the
   # recorded scale and remapped, which swaps the ends under a decreasing crf().
   cens <- censoring_record(max(x_vec), searched_from, above, below)
-  # The default on an inline-transformed fit leaves both on the recorded scale.
-  if (!returns_recorded(object, xform)) {
+  if (!is.null(axis)) {
+    at_control <- !is.na(nsec_out) & nsec_out == control_axis
+    nsec_out <- map_draws(nsec_out, axis$map, cens, "NSEC")
+    if (is.null(xform)) nsec_out[at_control] <- control_reading$value
+    cens <- xform_censoring(cens, axis$map)
+  } else if (!returns_recorded(object, xform)) {
     to_fitted <- function(value) {
       sub_x_transformation(value, object$bayesnecformula)
     }
