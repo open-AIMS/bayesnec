@@ -95,6 +95,7 @@ recorded_xform <- function(object, xform, extrapolate = FALSE) {
 inline_curve_axis <- function(object, recorded, xform = NULL) {
   formula <- scale_source_fit(object)$bayesnecformula
   fitted <- as.numeric(sub_x_transformation(recorded, formula))
+  if (any(!is.finite(fitted))) return(NULL)
   direction <- if (fitted[length(fitted)] > fitted[1]) 1 else -1
   at <- function(raw) {
     direction * as.numeric(sub_x_transformation(raw, formula))
@@ -131,8 +132,11 @@ fitted_curve_grid <- function(object, base, lims) {
   }
   ends <- range(base$x_vec)
   fitted_ends <- forward(ends)
-  if (any(!is.finite(fitted_ends)) || fitted_ends[1] == fitted_ends[2]) {
-    stop("The predictor range has no finite interval on the fitted scale.",
+  # log(0) is -Inf: no finite grid can be even over that interval. Keep the
+  # recorded grid used before this change for such a range.
+  if (any(!is.finite(fitted_ends))) return(NULL)
+  if (fitted_ends[1] == fitted_ends[2]) {
+    stop("The predictor range has no interval on the fitted scale.",
          call. = FALSE)
   }
   fitted <- sort(seq(fitted_ends[1], fitted_ends[2],
@@ -142,10 +146,7 @@ fitted_curve_grid <- function(object, base, lims) {
   if (!is.null(lims)) {
     anchors <- c(anchors, lims$lower, lims$upper)
     transformed <- forward(c(lims$lower, lims$upper))
-    if (any(!is.finite(transformed))) {
-      stop("The extrapolation limits are not finite on the fitted scale.",
-           call. = FALSE)
-    }
+    if (any(!is.finite(transformed))) return(NULL)
     fitted_lims <- list(lower = min(transformed), upper = max(transformed))
   }
   fitted <- extend_grid_values(fitted, fitted_lims)

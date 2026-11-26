@@ -137,8 +137,13 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA,
     base_x <- x_values
   } else if (fitted_grid && !is.null(inline_x_transform(object))) {
     x_values <- fitted_curve_grid(object$survival, nd_s, grid_limits)
-    nd_s <- newdata_eval(object$survival, length(x_values),
-                         range(x_values), x_values = x_values)
+    if (is.null(x_values)) {
+      x_values <- extend_grid_values(nd_s$x_vec, grid_limits)
+    }
+    if (!identical(x_values, nd_s$x_vec)) {
+      nd_s <- newdata_eval(object$survival, length(x_values),
+                           range(x_values), x_values = x_values)
+    }
   } else if (!is.null(grid_limits)) {
     x_values <- extend_grid_values(nd_s$x_vec, grid_limits)
     if (!identical(x_values, nd_s$x_vec)) {

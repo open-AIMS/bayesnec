@@ -168,7 +168,9 @@ the fitted scale. The crossing is interpolated there and returned on the
 recorded scale through the inverse. \code{x_scale = "fitted"} returns the
 fitted-scale crossing. A supplied \code{xform} is applied on that scale;
 \code{xform = exp} on \code{crf(log(concentration))} returns the recorded
-concentration.
+concentration. If a transformed range endpoint is infinite, as at
+\code{log(0)}, the search keeps the recorded grid because no finite grid
+spans the fitted interval.
 
 With a fitted group term whose levels span concentrations, the control and
 curve are predicted for each observed level with its group deviations.

@@ -991,14 +991,17 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   first <- fits[[1]]
   if (inherits(first, "bayesmanecfit")) first <- grid_equation(first)
   if (!is.null(inline_x_transform(first))) {
-    x_vec <- fitted_curve_grid(
+    fitted_x <- fitted_curve_grid(
       first, list(x_vec = seq(original_range[1], original_range[2],
                               length.out = resolution)),
       if (is.null(lims)) NULL else grid_lims
     )
-    original <- original_columns(x_vec, original_range)
-    low <- min(x_vec)
-    high <- max(x_vec)
+    if (!is.null(fitted_x)) {
+      x_vec <- fitted_x
+      original <- original_columns(x_vec, original_range)
+      low <- min(x_vec)
+      high <- max(x_vec)
+    }
   }
   type <- if (is.null(dots$type)) "absolute" else dots$type
   if (identical(what, "ecnsec") && identical(type, "direct")) {

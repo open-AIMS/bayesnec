@@ -241,9 +241,11 @@ extended_newdata_eval <- function(object, resolution, x_range, lims) {
   base <- newdata_eval(object, resolution, x_range)
   if (!is.null(inline_x_transform(object))) {
     x <- fitted_curve_grid(object, base, lims)
-    out <- newdata_eval(object, length(x), range(x), x_values = x)
-    out$original <- original_columns(out$x_vec, base$x_vec)
-    return(out)
+    if (!is.null(x)) {
+      out <- newdata_eval(object, length(x), range(x), x_values = x)
+      out$original <- original_columns(out$x_vec, base$x_vec)
+      return(out)
+    }
   }
   x <- extend_grid_values(base$x_vec, lims)
   out <- if (identical(x, base$x_vec)) base else
