@@ -250,6 +250,15 @@ test_that("an inline log NSEC stabilises as the grid is refined", {
   expect_lt(abs(as.numeric(coarse[1] / fine[1] - 1)), 0.01)
 })
 
+test_that("a log range beginning at zero keeps its recorded grid", {
+  skip_on_cran()
+  fit <- logged_x_fit(ecx4param, "ecx4param")
+  base <- bayesnec:::newdata_eval(fit, 20, c(0, 30))$x_vec
+  searched <- bayesnec:::extended_newdata_eval(fit, 20, c(0, 30), NULL)$x_vec
+  expect_identical(searched, base)
+  expect_no_error(q(ecx(fit, x_range = c(0, 30), resolution = 20)))
+})
+
 test_that("the diuron inline log fit agrees at ordinary and fine resolution", {
   skip_unless_full_suite()
   path <- Sys.getenv("BAYESNEC_DIURON_FIT")
