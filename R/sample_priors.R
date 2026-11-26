@@ -136,6 +136,7 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot",
 #'
 #' @return A \code{\link[base]{numeric}} vector of length \code{n_samples}.
 #'
+#' @importFrom stats pbeta pgamma plnorm punif qbeta qlnorm qunif
 #' @noRd
 draw_truncated <- function(dist, n_samples, v1, v2, bounds, prior_row) {
   prior_sampler(dist)
