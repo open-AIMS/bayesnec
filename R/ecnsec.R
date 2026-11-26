@@ -52,8 +52,9 @@
 #' \code{"relative"}, and the lowest predicted response over the original
 #' range for \code{"range"}. A draw whose control is at or below the
 #' reference has zero effect at the control concentration. With
-#' \code{type = "range"}, a draw whose NSEC lies above the prediction
-#' range is censored because its effect exceeds the response span read there.
+#' \code{type = "range"}, a draw whose NSEC lies above the prediction range
+#' or whose effect exceeds its original response span is censored at 100
+#' percent. Its posterior draw is \code{Inf}.
 #' The \code{"absolute"} values equal the \code{ecnsec_relativeP}
 #' attribute of \code{\link{nsec}} under matching options.
 #'
@@ -220,12 +221,14 @@ ecnsec.bnecfit <- function(object, resolution = 500, x_range = NA,
   reference <- stats::quantile(control_draws, sig_val)
   ecnsecP <- pmax(control_draws - reference, 0) /
     (control_draws - floor_draws) * 100
+  ecnsecP[!is.na(control_draws) & control_draws <= reference] <- 0
   if (identical(type, "range")) {
     crossing <- nsec(object, sig_val = sig_val, resolution = resolution,
                      x_range = x_range, extrapolate = extrapolate,
                      posterior = TRUE, pool = pool, x_control = x_control)
-    ecnsecP[is.infinite(crossing) & crossing > 0 &
-              control_draws > reference] <- Inf
+    above <- ((is.infinite(crossing) & crossing > 0) | ecnsecP > 100) &
+      control_draws > reference
+    return(ecnsec_range_result(ecnsecP, above, posterior, prob_vals))
   }
   if (posterior) ecnsecP else
     stats::quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
@@ -269,4 +272,18 @@ ecnsec_from_nsec <- function(result, posterior, prob_vals) {
   draws <- attr(result, "ecnsec_relativeP")
   if (posterior) return(draws)
   stats::quantile(draws, prob_vals, na.rm = TRUE)
+}
+
+#' Summarise an effect censored beyond the original response span
+#' @param effect The effect at each draw's NSEC.
+#' @param above Draws whose NSEC is above the searched range.
+#' @param posterior Whether to return draws.
+#' @param prob_vals Summary probabilities.
+#' @noRd
+ecnsec_range_result <- function(effect, above, posterior, prob_vals) {
+  cens <- censoring_record(100, 0, above, rep(FALSE, length(effect)))
+  effect[above] <- Inf
+  attr(effect, "censored") <- cens
+  if (posterior) return(censored_infinite(effect))
+  summarise_censored(effect, prob_vals, cens)
 }

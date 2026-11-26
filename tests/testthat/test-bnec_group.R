@@ -136,7 +136,29 @@ test_that("posterior = TRUE returns each level with its censoring record", {
   expect_equal(attr(ecx_draws, "x_control"),
                setNames(rep(bayesnec:::control_x(gf$fits$a), 2), gf$levels))
   expect_named(nsec(gf, posterior = TRUE), gf$levels)
-  expect_named(ecnsec(gf, nsec = 1.5, posterior = TRUE), gf$levels)
+  expect_named(ecnsec(gf, posterior = TRUE), gf$levels)
+})
+
+test_that("grouped absolute effects match the pooled NSEC draws", {
+  skip_on_cran()
+  gf <- fake_group_fit()
+  for (pool in c("none", "mixture", "mean_estimate", "mean_curve")) {
+    ns <- suppressWarnings(suppressMessages(nsec(
+      gf, posterior = TRUE, pool = pool, resolution = 30
+    )))
+    effect <- suppressWarnings(suppressMessages(ecnsec(
+      gf, posterior = TRUE, pool = pool, resolution = 30
+    )))
+    if (identical(pool, "none")) {
+      for (level in names(ns)) {
+        expect_identical(effect[[level]],
+                         attr(ns[[level]], "ecnsec_relativeP"))
+      }
+    } else {
+      expect_identical(as.numeric(effect),
+                       as.numeric(attr(ns, "ecnsec_relativeP")))
+    }
+  }
 })
 
 test_that("shared controls find the upper grid bound of model-set levels", {

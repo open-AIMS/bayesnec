@@ -90,8 +90,9 @@ The floor is zero for \code{"absolute"}, the fitted asymptote for
 \code{"relative"}, and the lowest predicted response over the original
 range for \code{"range"}. A draw whose control is at or below the
 reference has zero effect at the control concentration. With
-\code{type = "range"}, a draw whose NSEC lies above the prediction
-range is censored because its effect exceeds the response span read there.
+\code{type = "range"}, a draw whose NSEC lies above the prediction range
+or whose effect exceeds its original response span is censored at 100
+percent. Its posterior draw is \code{Inf}.
 The \code{"absolute"} values equal the \code{ecnsec_relativeP}
 attribute of \code{\link{nsec}} under matching options.
 

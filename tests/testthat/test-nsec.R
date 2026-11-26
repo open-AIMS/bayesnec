@@ -212,6 +212,14 @@ test_that("a draw at or below the reference at the control returns the control",
   expect_gt(quantile(out, 0.025), x_control)
 })
 
+test_that("a draw below the reference stays at the control after hormesis", {
+  x <- c(0, 1, 2, 3)
+  curve <- matrix(c(0.4, 0.8, 0.7, 0.2), nrow = 1)
+  result <- nsec_from_posterior(curve, reference = 0.5,
+                                x_vec = x, x_control = 0, control = 0.4)
+  expect_equal(as.numeric(result), 0)
+})
+
 test_that("an x_range above the control does not report the control", {
   # Draws whose control is at or below the reference keep the control even
   # when x_range starts higher. Other draws crossing before the requested
@@ -322,7 +330,7 @@ test_that("nsec_from_posterior puts the lower sig_val tail at the control", {
                                             control = post[, 1]))))
 })
 
-test_that("NSEC distinguishes a later effect from no effect after the control", {
+test_that("NSEC stays at the control when its draw starts below the reference", {
   x <- 0:3
   post <- rbind(
     away_no_effect = c(0.8, 0.9, 1, 1),
@@ -333,16 +341,16 @@ test_that("NSEC distinguishes a later effect from no effect after the control", 
   out <- nsec_from_posterior(post, 0.9, x, x_control = 0,
                              control = post[, 1])
 
-  expect_true(is.na(out[1]))
+  expect_equal(unname(out[1]), 0)
   expect_false(attr(out, "below_range")[1])
   expect_equal(unname(out[2]), 0)
-  expect_equal(unname(out[3]), 1 + 1 / 3)
+  expect_equal(unname(out[3]), 0)
   expect_equal(unname(out[4]), 0)
 
   restricted <- nsec_from_posterior(matrix(c(1, 0.95), nrow = 1), 0.9,
                                      x_vec = 2:3, x_control = 0,
                                      control = 0.8)
-  expect_true(is.na(restricted[1]))
+  expect_equal(unname(restricted[1]), 0)
   expect_false(attr(restricted, "below_range")[1])
 
   near_flat <- matrix(c(0.9 - 1e-10, 0.9 + 1e-10), nrow = 1)

@@ -383,6 +383,8 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
   attr(out, "toxicity_estimate") <- "nsec"
   effect <- as.numeric(pmax(preds$control[[which]] - reference, 0) /
                          preds$control[[which]] * 100)
+  effect[!is.na(preds$control[[which]]) &
+           preds$control[[which]] <= reference] <- 0
   attr(estimate, "ecnsec_relativeP") <-
     stats::quantile(effect, probs = prob_vals, na.rm = TRUE)
   attr(out, "ecnsec_relativeP") <- effect
@@ -1626,44 +1628,18 @@ ecnsec.bayesnechurdlefit <- function(object, resolution = 500,
   )
   reference <- stats::quantile(control, sig_val)
   out <- pmax(control - reference, 0) / (control - floor_draws) * 100
+  out[!is.na(control) & control <= reference] <- 0
   crossing <- nsec(object, sig_val = sig_val, resolution = resolution,
                    x_range = x_range, extrapolate = extrapolate,
                    posterior = TRUE, pool = pool, x_control = x_control,
                    which = which)
-  out[is.infinite(crossing) & crossing > 0 & control > reference] <- Inf
-  estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)
+  above <- ((is.infinite(crossing) & crossing > 0) | out > 100) &
+    control > reference
+  draws <- ecnsec_range_result(out, above, TRUE, prob_vals)
+  estimate <- summarise_censored(draws, prob_vals)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "component") <- which
-  if (!posterior) estimate else out
-}
-
-#' Each posterior draw of a curve read at one predictor value
-#'
-#' Interpolates between grid points rather than taking the nearest one.
-#' At a grid point, returns its column exactly; outside the grid, returns
-#' the nearer end.
-#'
-#' @param p_samples A \code{\link[base]{matrix}} with draws as rows and grid
-#' points as columns.
-#' @param x The increasing grid the columns are predicted at.
-#' @param at A single predictor value.
-#'
-#' @return A \code{\link[base]{numeric}} vector, one value per draw.
-#' @noRd
-curve_draws_at <- function(p_samples, x, at) {
-  n <- length(x)
-  if (at <= x[1]) {
-    return(p_samples[, 1])
-  }
-  if (at >= x[n]) {
-    return(p_samples[, n])
-  }
-  i <- findInterval(at, x)
-  if (x[i] == at) {
-    return(p_samples[, i])
-  }
-  w <- (at - x[i]) / (x[i + 1] - x[i])
-  (1 - w) * p_samples[, i] + w * p_samples[, i + 1]
+  if (!posterior) estimate else draws
 }
 
 #' The prediction grid a hurdle summary reads its ECx rows over

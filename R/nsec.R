@@ -351,6 +351,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   # ecnsec is the percent effect at the NSEC, defined as ecx() defines it: the
   # decline from the control towards zero, not across the fitted range.
   ecnsecP <- as.numeric(pmax(control - reference, 0) / control * 100)
+  ecnsecP[!is.na(control) & control <= reference] <- 0
   ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
   # The control is the reference whether or not the curve shows hormesis.
   nsec_out <- nsec_from_posterior(p_samples, reference, x_vec,

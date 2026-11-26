@@ -15,7 +15,7 @@ test_that("finite extensions retain every original prediction node", {
   expect_gt(length(extended$x_vec), length(base$x_vec))
 })
 
-test_that("existing positional arguments retain their ECx and ECNSEC meanings", {
+test_that("existing positional ECx arguments retain their meaning", {
   fit <- suppressMessages(suppressWarnings(
     pull_out(manec_example, model = "ecx4param")
   ))
@@ -28,31 +28,7 @@ test_that("existing positional arguments retain their ECx and ECNSEC meanings", 
   ))
   expect_equal(old_ecx, named_ecx)
 
-  old_ecnsec <- ecnsec(fit, 0.7, 30, c(0.5, 0.9), "absolute", identity)
-  named_ecnsec <- ecnsec(
-    fit, nsec = 0.7, resolution = 30, x_range = c(0.5, 0.9),
-    type = "absolute", xform = identity
-  )
-  expect_equal(old_ecnsec, named_ecnsec)
 
-  part <- nec4param
-  hurdle <- structure(list(
-    growth = part, survival = part, data = part$fit$data,
-    formula = part$bayesnecformula, y_var = "y"
-  ), class = c("bayesnechurdlefit", "bnecfit"))
-  old_hurdle_ecx <- suppressWarnings(ecx(
-    hurdle, 20, 30, FALSE, "absolute", c(0.5, 0.9), identity
-  ))
-  named_hurdle_ecx <- suppressWarnings(ecx(
-    hurdle, ecx_val = 20, resolution = 30, posterior = FALSE,
-    type = "absolute", x_range = c(0.5, 0.9), xform = identity
-  ))
-  expect_equal(old_hurdle_ecx, named_hurdle_ecx)
-  expect_equal(
-    ecnsec(hurdle, 0.7, 30, c(0.5, 0.9), "absolute", identity),
-    ecnsec(hurdle, nsec = 0.7, resolution = 30,
-           x_range = c(0.5, 0.9), type = "absolute", xform = identity)
-  )
 })
 
 test_that("ECx, NSEC and ECNSEC share a finite extended range", {
@@ -62,8 +38,9 @@ test_that("ECx, NSEC and ECNSEC share a finite extended range", {
   args <- list(resolution = 30, x_range = c(0.5, 0.9))
   expect_error(do.call(ecx, c(list(object = fit, extrapolate = TRUE), args)),
                "samples a NEC")
-  expect_error(do.call(ecnsec, c(list(object = fit, nsec = 1.5), args)),
-               "outside")
+  expect_length(suppressWarnings(do.call(ecnsec, c(
+    list(object = fit), args
+  ))), 3)
   expect_length(suppressWarnings(do.call(ecx, c(
     list(object = fit, extrapolate = 2), args
   ))), 3)
@@ -71,10 +48,10 @@ test_that("ECx, NSEC and ECNSEC share a finite extended range", {
     list(object = fit, extrapolate = 2), args
   ))), 3)
   expect_length(suppressWarnings(do.call(ecnsec, c(
-    list(object = fit, nsec = 1.5, extrapolate = 2), args
+    list(object = fit, extrapolate = 2), args
   ))), 3)
   expect_error(do.call(ecnsec, c(
-    list(object = fit, nsec = 1.5, extrapolate = 0.8), args
+    list(object = fit, extrapolate = 0.8), args
   )), "narrow it with x_range")
 })
 
@@ -127,7 +104,7 @@ test_that("model sets forward finite extension to their component curves", {
     list(object = manec_example), args
   )))), 3)
   expect_length(suppressMessages(suppressWarnings(do.call(ecnsec, c(
-    list(object = manec_example, nsec = 1.5), args
+    list(object = manec_example), args
   )))), 3)
 })
 
@@ -159,7 +136,7 @@ test_that("hurdle components use one retained grid after extension", {
     extrapolate = 2, which = "growth"
   )), 3)
   expect_length(suppressWarnings(ecnsec(
-    hurdle, nsec = 1.5, resolution = 20, x_range = c(0.5, 0.9),
+    hurdle, resolution = 20, x_range = c(0.5, 0.9),
     extrapolate = 2, which = "growth"
   )), 3)
 })
@@ -217,9 +194,9 @@ test_that("a type = \"range\" estimate inside the data ignores a far limit", {
     as.numeric(suppressWarnings(ecx(fit, type = "range", posterior = TRUE)))
   )
   expect_identical(
-    as.numeric(ecnsec(fit, nsec = 1, type = "range", posterior = TRUE,
+    as.numeric(ecnsec(fit, type = "range", posterior = TRUE,
                       extrapolate = 10)),
-    as.numeric(ecnsec(fit, nsec = 1, type = "range", posterior = TRUE))
+    as.numeric(ecnsec(fit, type = "range", posterior = TRUE))
   )
 })
 

@@ -770,7 +770,7 @@ test_that("each level of a joint refit reads its control at its own lowest x", {
   calls <- list(
     ecx = function() ecx(j, resolution = 50),
     nsec = function() nsec(j, resolution = 50),
-    ecnsec = function() ecnsec(j, nsec = 1.5, resolution = 50,
+    ecnsec = function() ecnsec(j, resolution = 50,
                                x_range = range(j$data$x))
   )
   for (what in names(calls)) {
@@ -820,8 +820,8 @@ test_that("a joint refit whose levels share their lowest x keeps its estimates",
                    quiet(est(nec4param, resolution = 50)),
                    ignore_attr = TRUE)
     }
-    expect_equal(quiet(ecnsec(lvl, nsec = 1.5, resolution = 50)),
-                 quiet(ecnsec(nec4param, nsec = 1.5, resolution = 50)),
+    expect_equal(quiet(ecnsec(lvl, resolution = 50)),
+                 quiet(ecnsec(nec4param, resolution = 50)),
                  ignore_attr = TRUE)
   }
   expect_length(seen$x, 12)

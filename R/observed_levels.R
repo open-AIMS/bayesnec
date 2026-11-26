@@ -1044,10 +1044,15 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     sig <- if (is.null(dots$sig_val)) 0.01 else dots$sig_val
     reference <- stats::quantile(control, sig)
     out <- pmax(control - reference, 0) / (control - floor) * 100
+    out[!is.na(control) & control <= reference] <- 0
     if (identical(type, "range")) {
       start <- if (own) min(controls) else as.numeric(x_control)
       crossing <- nsec_from_posterior(curve, reference, x_vec, start, control)
-      out[is.na(crossing) & control > reference] <- Inf
+      above <- (is.na(crossing) | out > 100) & control > reference
+      return(ecnsec_range_result(out, above, isTRUE(dots$posterior),
+                                 if (is.null(dots$prob_vals)) {
+                                   c(0.5, 0.025, 0.975)
+                                 } else dots$prob_vals))
     }
     if (isTRUE(dots$posterior)) return(out)
     probs <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else
@@ -1070,8 +1075,9 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
       # below its reference at the first concentration shared by all levels.
       out[!is.na(out) & out == start] <- low
     }
-    attr(out, "ecnsec_relativeP") <-
-      as.numeric(pmax(control - reference, 0) / control * 100)
+    effect <- as.numeric(pmax(control - reference, 0) / control * 100)
+    effect[!is.na(control) & control <= reference] <- 0
+    attr(out, "ecnsec_relativeP") <- effect
   }
   below <- attr(out, "below_range")
   above <- is.na(out) & !below

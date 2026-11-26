@@ -754,8 +754,8 @@ test_that("explicit ordinary methods retain parent result contracts", {
   expect_s3_class(failed_models(manec_example), "bnecfailures")
   expect_s3_class(failed_models(joint_split()), "bnecfailures")
   for (fit in list(nec4param, manec_example)) {
-    expect_identical(ecnsec(fit, nsec = 1.5),
-                     bayesnec:::ecnsec.bnecfit(fit, nsec = 1.5))
+    expect_identical(ecnsec(fit),
+                     bayesnec:::ecnsec.bnecfit(fit))
     expect_identical(exceedance(fit, threshold = 2),
                      bayesnec:::exceedance.bnecfit(fit, threshold = 2))
   }

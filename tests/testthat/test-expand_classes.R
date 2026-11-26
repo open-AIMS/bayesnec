@@ -529,7 +529,7 @@ expect_stored_index_only <- function(fit) {
   calls <- list(
     ecx = function() ecx(fit),
     nsec = function() nsec(fit),
-    ecnsec = function() ecnsec(fit, nsec = 1.5),
+    ecnsec = function() ecnsec(fit),
     posterior_epred = function() posterior_epred(fit),
     posterior_predict = function() posterior_predict(fit)
   )
