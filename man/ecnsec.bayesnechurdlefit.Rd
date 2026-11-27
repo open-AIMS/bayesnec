@@ -7,12 +7,12 @@
 \usage{
 \method{ecnsec}{bayesnechurdlefit}(
   object,
+  ...,
   resolution = 500,
   x_range = NA,
   type = "absolute",
   sig_val = 0.01,
   prob_vals = c(0.5, 0.025, 0.975),
-  ...,
   posterior = FALSE,
   which = "combined",
   pool = NULL,
@@ -22,6 +22,9 @@
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
+
+\item{...}{Further arguments to pass to class specific methods. A method
+refuses any argument it does not use.}
 
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is
@@ -39,9 +42,6 @@ The default is 0.01, as in \code{\link{nsec}}.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
-
-\item{...}{Further arguments to pass to class specific methods. A method
-refuses any argument it does not use.}
 
 \item{posterior}{Should the full posterior be returned instead of a summary?}
 

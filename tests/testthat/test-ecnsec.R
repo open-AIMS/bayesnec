@@ -7,8 +7,43 @@ test_that("absolute ecnsec agrees with nsec on single fits and model sets", {
     summary <- suppressWarnings(ecnsec(fit, resolution = 50))
     expect_identical(summary, stats::quantile(effect,
       c(0.5, 0.025, 0.975), na.rm = TRUE))
-    expect_true(all(effect >= 0))
   }
+})
+
+test_that("later hormetic crossings retain negative effects", {
+  skip_on_cran()
+  curves <- rbind(
+    c(0.8, 1.0, 0.7, 0.5),
+    c(0.9, 0.8, 0.7, 0.5),
+    c(1.0, 0.9, 0.7, 0.5),
+    c(1.1, 1.0, 0.8, 0.5)
+  )
+  mock_epred <- function(object, newdata, ...) {
+    vapply(newdata$x, function(x) {
+      vapply(seq_len(nrow(curves)), function(i) {
+        stats::approx(0:3, curves[i, ], xout = x, rule = 2)$y
+      }, numeric(1))
+    }, numeric(nrow(curves)))
+  }
+  testthat::with_mocked_bindings({
+    draws <- nsec(nec4param, sig_val = 0.5, x_range = c(0, 3),
+                  x_control = 0,
+                  resolution = 4, posterior = TRUE)
+    effect <- ecnsec(nec4param, sig_val = 0.5, x_range = c(0, 3),
+                     x_control = 0,
+                     resolution = 4, posterior = TRUE)
+    reference <- stats::median(curves[, 1])
+    expect_gt(draws[1], 1)
+    expect_lt(effect[1], 0)
+    expect_equal(effect[1], (curves[1, 1] - reference) / curves[1, 1] * 100)
+    expect_equal(as.numeric(draws[2]), 0)
+    expect_identical(effect[2], 0)
+    expect_identical(effect, attr(draws, "ecnsec_relativeP"))
+    expect_identical(ecnsec(nec4param, sig_val = 0.5, x_range = c(0, 3),
+                            x_control = 0,
+                            resolution = 4),
+                     stats::quantile(effect, c(0.5, 0.025, 0.975)))
+  }, estimator_epred = mock_epred, .package = "bayesnec")
 })
 
 test_that("controls at or below the reference have zero effect", {
@@ -57,6 +92,9 @@ test_that("range effects beyond the search grid are censored", {
 })
 
 test_that("ecnsec refuses removed and invalid arguments", {
+  expect_error(ecnsec(nec4param, 2),
+               "returns the effect at each draw's own NSEC and takes no concentration",
+               fixed = TRUE)
   for (arg in c("nsec", "xform", "x_scale")) {
     call <- c(list(nec4param), stats::setNames(list(1), arg))
     expect_error(do.call(ecnsec, call),

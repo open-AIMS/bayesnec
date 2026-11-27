@@ -7,12 +7,12 @@ object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 \usage{
 ecnsec(
   object,
+  ...,
   resolution = 500,
   x_range = NA,
   type = "absolute",
   sig_val = 0.01,
   prob_vals = c(0.5, 0.025, 0.975),
-  ...,
   posterior = FALSE,
   pool = NULL,
   x_control = "own",
@@ -22,6 +22,9 @@ ecnsec(
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
+
+\item{...}{Further arguments to pass to class specific methods. A method
+refuses any argument it does not use.}
 
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is
@@ -39,9 +42,6 @@ The default is 0.01, as in \code{\link{nsec}}.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
-
-\item{...}{Further arguments to pass to class specific methods. A method
-refuses any argument it does not use.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
 posterior sample of calculated ECNSEC values should be returned instead of
@@ -88,8 +88,9 @@ effect is the decline from that draw's control to the reference, divided
 by the distance from its control to the floor selected by \code{type}.
 The floor is zero for \code{"absolute"}, the fitted asymptote for
 \code{"relative"}, and the lowest predicted response over the original
-range for \code{"range"}. A draw whose control is at or below the
-reference has zero effect at the control concentration. With
+range for \code{"range"}. A draw whose NSEC is the control concentration
+has zero effect. A draw whose control is below the reference and whose NSEC
+is a later crossing has a negative effect. With
 \code{type = "range"}, a draw whose NSEC lies above the prediction range
 or whose effect exceeds its original response span is censored at 100
 percent. Its posterior draw is \code{Inf}.
