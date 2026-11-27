@@ -111,8 +111,10 @@
 
 - The `ecnsec_relativeP` attribute of `nsec()` is the percent effect at each
   draw's own NSEC measured from the control, and equals `ecnsec()` under
-  `type = "absolute"`. Draws whose controls are at or below the reference
-  have zero effect at the control concentration (#195, #605).
+  `type = "absolute"`. The effect is zero where the NSEC is the control
+  concentration. It is negative where a draw's control is below the reference
+  and its NSEC is a later crossing, because its response there exceeds its
+  own control (#195, #605).
 
 - `nec()`, `summary()` and the plots report the NSEC as the no-effect estimate
   of the six hormesis threshold equations, `nechorme`, `nechorme4`,

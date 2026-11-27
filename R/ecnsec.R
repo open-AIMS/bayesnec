@@ -52,8 +52,9 @@
 #' by the distance from its control to the floor selected by \code{type}.
 #' The floor is zero for \code{"absolute"}, the fitted asymptote for
 #' \code{"relative"}, and the lowest predicted response over the original
-#' range for \code{"range"}. A draw whose control is at or below the
-#' reference has zero effect at the control concentration. With
+#' range for \code{"range"}. A draw whose NSEC is the control concentration
+#' has zero effect. A draw whose control is below the reference and whose NSEC
+#' is a later crossing has a negative effect. With
 #' \code{type = "range"}, a draw whose NSEC lies above the prediction range
 #' or whose effect exceeds its original response span is censored at 100
 #' percent. Its posterior draw is \code{Inf}.
@@ -78,9 +79,9 @@
 #' }
 #'
 #' @export
-ecnsec <- function(object, resolution = 500, x_range = NA,
+ecnsec <- function(object, ..., resolution = 500, x_range = NA,
                    type = "absolute", sig_val = 0.01,
-                   prob_vals = c(0.5, 0.025, 0.975), ...,
+                   prob_vals = c(0.5, 0.025, 0.975),
                    posterior = FALSE, pool = NULL, x_control = "own",
                    extrapolate = FALSE) {
   UseMethod("ecnsec")
@@ -98,14 +99,14 @@ ecnsec <- function(object, resolution = 500, x_range = NA,
 #'
 #' @importFrom stats quantile
 #' @importFrom brms as_draws_df posterior_epred
-#' @importFrom chk chk_flag chk_number
+#' @importFrom chk chk_flag
 #'
 #' @noRd
 #'
 #' @export
-ecnsec.bnecfit <- function(object, resolution = 500, x_range = NA,
+ecnsec.bnecfit <- function(object, ..., resolution = 500, x_range = NA,
                              type = "absolute", sig_val = 0.01,
-                             prob_vals = c(0.5, 0.025, 0.975), ...,
+                             prob_vals = c(0.5, 0.025, 0.975),
                              posterior = FALSE, pool = NULL,
                              x_control = "own", extrapolate = FALSE) {
   chk_flag(posterior)
@@ -223,15 +224,21 @@ ecnsec.bnecfit <- function(object, resolution = 500, x_range = NA,
                   na.rm = TRUE)
   )
   reference <- stats::quantile(control_draws, sig_val)
-  ecnsecP <- pmax(control_draws - reference, 0) /
+  axis <- if (!is.null(inline_x_transform(object))) {
+    inline_curve_axis(object, newdata_list$x_vec, NULL)
+  }
+  x_vec <- if (is.null(axis)) newdata_list$x_vec else axis$x
+  control_axis <- if (is.null(axis)) control_reading$value else
+    axis$at(control_reading$value)
+  crossing <- nsec_from_posterior(
+    p_samples, reference, x_vec, control_axis,
+    control_draws
+  )
+  ecnsecP <- (control_draws - reference) /
     (control_draws - floor_draws) * 100
-  ecnsecP[!is.na(control_draws) & control_draws <= reference] <- 0
+  ecnsecP[attr(crossing, "at_control")] <- 0
   if (identical(type, "range")) {
-    crossing <- nsec(object, sig_val = sig_val, resolution = resolution,
-                     x_range = x_range, extrapolate = extrapolate,
-                     posterior = TRUE, pool = pool, x_control = x_control)
-    above <- ((is.infinite(crossing) & crossing > 0) | ecnsecP > 100) &
-      control_draws > reference
+    above <- (is.na(crossing) & !attr(crossing, "below_range")) | ecnsecP > 100
     return(ecnsec_range_result(ecnsecP, above, posterior, prob_vals))
   }
   if (posterior) ecnsecP else
@@ -245,6 +252,10 @@ ecnsec.bnecfit <- function(object, resolution = 500, x_range = NA,
 #' @param dots The arguments in `...`.
 #' @noRd
 check_ecnsec_dots <- function(dots, forwarded = FALSE) {
+  if (length(dots) && (is.null(names(dots)) || any(!nzchar(names(dots))))) {
+    stop("ecnsec() returns the effect at each draw's own NSEC and takes no ",
+         "concentration. Name all optional arguments.", call. = FALSE)
+  }
   for (arg in c("nsec", "xform", "x_scale")) {
     if (arg %in% names(dots)) {
       stop("ecnsec() returns the effect at each draw's own NSEC and has no `",

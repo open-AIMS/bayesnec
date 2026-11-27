@@ -357,18 +357,19 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
   reference <- quantile(preds$control[[which]], sig_val)
   out <- nsec_from_posterior(p_samples, reference, x_vec, at_axis,
                              preds$control[[which]])
+  at_control <- attr(out, "at_control")
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
   searched_from <- attr(out, "x_searched_from")
   attr(out, "n_below_range") <- NULL
   attr(out, "below_range") <- NULL
+  attr(out, "at_control") <- NULL
   attr(out, "x_searched_from") <- NULL
   # The lower bound is where the search started, not the foot of the grid,
   # which can reach below the control. Build the record on the recorded grid,
   # then remap it: a decreasing crf() swaps its two ends.
   cens <- censoring_record(max(x_vec), searched_from, above, below)
   if (!is.null(axis)) {
-    at_control <- !is.na(out) & out == at_axis
     out <- map_draws(out, axis$map, cens, "NSEC")
     if (is.null(xform)) out[at_control] <- at
     cens <- xform_censoring(cens, axis$map)
@@ -391,10 +392,9 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 500,
   attr(estimate, "toxicity_estimate") <- "nsec"
   attr(estimate, "component") <- which
   attr(out, "toxicity_estimate") <- "nsec"
-  effect <- as.numeric(pmax(preds$control[[which]] - reference, 0) /
+  effect <- as.numeric((preds$control[[which]] - reference) /
                          preds$control[[which]] * 100)
-  effect[!is.na(preds$control[[which]]) &
-           preds$control[[which]] <= reference] <- 0
+  effect[at_control] <- 0
   attr(estimate, "ecnsec_relativeP") <-
     stats::quantile(effect, probs = prob_vals, na.rm = TRUE)
   attr(out, "ecnsec_relativeP") <- effect
@@ -1562,10 +1562,10 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' @method ecnsec bayesnechurdlefit
 #'
 #' @export
-ecnsec.bayesnechurdlefit <- function(object, resolution = 500,
+ecnsec.bayesnechurdlefit <- function(object, ..., resolution = 500,
                                      x_range = NA,
                                      type = "absolute", sig_val = 0.01,
-                                     prob_vals = c(0.5, 0.025, 0.975), ...,
+                                     prob_vals = c(0.5, 0.025, 0.975),
                                      posterior = FALSE, which = "combined",
                                      pool = NULL, x_control = "own",
                                      extrapolate = FALSE) {
@@ -1637,14 +1637,28 @@ ecnsec.bayesnechurdlefit <- function(object, resolution = 500,
     range = apply(p_samples[, original, drop = FALSE], 1, min, na.rm = TRUE)
   )
   reference <- stats::quantile(control, sig_val)
-  out <- pmax(control - reference, 0) / (control - floor_draws) * 100
-  out[!is.na(control) & control <= reference] <- 0
-  crossing <- nsec(object, sig_val = sig_val, resolution = resolution,
-                   x_range = x_range, extrapolate = extrapolate,
-                   posterior = TRUE, pool = pool, x_control = x_control,
-                   which = which)
-  above <- ((is.infinite(crossing) & crossing > 0) | out > 100) &
-    control > reference
+  search_preds <- preds
+  axis <- NULL
+  if (!is.null(inline_x_transform(object))) {
+    search_preds <- if (is.null(lims)) {
+      hurdle_component_preds(object, resolution = resolution,
+                             x_range = x_range, x_control = x_control,
+                             fitted_grid = TRUE)
+    } else {
+      hurdle_component_preds(object, resolution = resolution,
+                             x_range = x_range, x_control = x_control,
+                             grid_limits = lims, fitted_grid = TRUE)
+    }
+    axis <- inline_curve_axis(object, search_preds$x, NULL)
+  }
+  x_search <- if (is.null(axis)) search_preds$x else axis$x
+  at <- curve_search_start(object, x_control)
+  at_search <- if (is.null(axis)) at else axis$at(at)
+  crossing <- nsec_from_posterior(search_preds[[which]], reference, x_search,
+                                  at_search, control)
+  out <- (control - reference) / (control - floor_draws) * 100
+  out[attr(crossing, "at_control")] <- 0
+  above <- (is.na(crossing) & !attr(crossing, "below_range")) | out > 100
   draws <- ecnsec_range_result(out, above, TRUE, prob_vals)
   estimate <- summarise_censored(draws, prob_vals)
   names(estimate) <- clean_names(estimate)

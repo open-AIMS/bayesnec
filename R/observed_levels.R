@@ -1103,14 +1103,14 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
                                   na.rm = TRUE))
     sig <- if (is.null(dots$sig_val)) 0.01 else dots$sig_val
     reference <- stats::quantile(control, sig)
-    out <- pmax(control - reference, 0) / (control - floor) * 100
-    out[!is.na(control) & control <= reference] <- 0
+    start <- if (own) min(controls) else as.numeric(x_control)
+    start_axis <- if (is.null(axis)) start else axis$at(start)
+    crossing <- nsec_from_posterior(curve, reference, x_search,
+                                    start_axis, control)
+    out <- (control - reference) / (control - floor) * 100
+    out[attr(crossing, "at_control")] <- 0
     if (identical(type, "range")) {
-      start <- if (own) min(controls) else as.numeric(x_control)
-      start_axis <- if (is.null(axis)) start else axis$at(start)
-      crossing <- nsec_from_posterior(curve, reference, x_search,
-                                      start_axis, control)
-      above <- (is.na(crossing) | out > 100) & control > reference
+      above <- (is.na(crossing) & !attr(crossing, "below_range")) | out > 100
       return(ecnsec_range_result(out, above, isTRUE(dots$posterior),
                                  if (is.null(dots$prob_vals)) {
                                    c(0.5, 0.025, 0.975)
@@ -1134,15 +1134,17 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     start_axis <- if (is.null(axis)) start else axis$at(start)
     out <- nsec_from_posterior(curve, reference, x_search, start_axis,
                                control)
+    at_control <- attr(out, "at_control")
     if (own && low > start) {
       # Averaged own controls have no single concentration. Put a draw already
       # below its reference at the first concentration shared by all levels.
-      out[!is.na(out) & out == start_axis] <-
+      out[at_control] <-
         if (is.null(axis)) low else axis$at(low)
     }
-    effect <- as.numeric(pmax(control - reference, 0) / control * 100)
-    effect[!is.na(control) & control <= reference] <- 0
+    effect <- as.numeric((control - reference) / control * 100)
+    effect[at_control] <- 0
     attr(out, "ecnsec_relativeP") <- effect
+    attr(out, "at_control") <- NULL
   }
   below <- attr(out, "below_range")
   above <- is.na(out) & !below
@@ -1154,10 +1156,11 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   effect_draws <- attr(out, "ecnsec_relativeP")
   cens <- censoring_record(max(x_search), searched_from, above, below)
   if (!is.null(axis)) {
-    at_control <- if (identical(what, "nsec")) {
+    if (identical(what, "nsec")) {
       control_return <- if (own && low > start) low else start
-      !is.na(out) & out == axis$at(control_return)
-    } else rep(FALSE, length(out))
+    } else {
+      at_control <- rep(FALSE, length(out))
+    }
     out <- map_draws(out, axis$map, cens, toupper(what))
     if (is.null(xform) && any(at_control)) {
       out[at_control] <- control_return

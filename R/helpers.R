@@ -2717,9 +2717,10 @@ lowest_observed_x <- function(grid_obj, x_var = NULL) {
 #' The concentration at which each draw's curve reaches the reference, sought
 #' from the control upward.
 #'
-#' A draw whose control is at or below the reference takes the control
-#' concentration, where its effect is zero. Other draws take the first
-#' decreasing crossing within the searched range.
+#' A draw whose control is at or below the reference takes a later decreasing
+#' crossing if it has one. With no crossing, it takes the control concentration
+#' unless its response first changes away from the effect and later rises above
+#' the reference. That draw shows no decreasing effect in the searched range.
 #'
 #' Only the grid above the control is searched, because the reference is
 #' defined there. Where the grid reaches the control, the control posterior
@@ -2739,6 +2740,8 @@ lowest_observed_x <- function(grid_obj, x_var = NULL) {
 #'
 #' @return A \code{\link[base]{numeric}} vector, one value per draw, \code{NA}
 #' where the curve does not reach the reference at any tested concentration.
+#' The \code{at_control} attribute flags draws assigned to the control by
+#' this rule.
 #' @noRd
 nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
   if (length(control) != nrow(post)) {
@@ -2766,14 +2769,20 @@ nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
     x_kept <- x_vec
   }
   below_range <- logical(nrow(post))
+  at_control <- logical(nrow(post))
   out <- vapply(seq_len(nrow(post)), function(i) {
     y <- post[i, ]
-    if (!is.na(control[i]) && control[i] <= reference) {
-      return(x_control)
-    }
     val <- nsec_decreasing_crossing(y, reference, x_kept)
     if (!is.na(val)) {
       return(val)
+    }
+    if (!is.na(control[i]) && control[i] <= reference) {
+      if (nsec_first_change_away(c(control[i], y)) &&
+          any(is.finite(y) & y > reference)) {
+        return(NA_real_)
+      }
+      at_control[i] <<- TRUE
+      return(x_control)
     }
     if (!is.na(post[i, 1]) && post[i, 1] <= reference) {
       below_range[i] <<- TRUE
@@ -2783,6 +2792,7 @@ nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
   attr(out, "n_below_range") <- sum(below_range)
   # A censoring record needs to know which draws, not only how many.
   attr(out, "below_range") <- below_range
+  attr(out, "at_control") <- at_control
   attr(out, "x_searched_from") <- x_kept[1]
   out
 }
@@ -2808,6 +2818,20 @@ nsec_decreasing_crossing <- function(y, reference, x_vec) {
   }
   j <- j[1L]
   x_vec[j] + d[j] / (d[j] - d[j + 1L]) * (x_vec[j + 1L] - x_vec[j])
+}
+
+#' Whether a curve first changes away from a decreasing effect
+#'
+#' @param y One predicted curve.
+#'
+#' @return A flag.
+#' @noRd
+nsec_first_change_away <- function(y) {
+  y <- y[is.finite(y)]
+  tolerance <- 1e-8 * max(0, abs(y))
+  step <- diff(y)
+  step <- step[abs(step) > tolerance]
+  length(step) > 0L && step[1L] > 0
 }
 
 #' Does the family have a lower bound on the response?
