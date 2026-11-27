@@ -112,11 +112,16 @@
 #' The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 #' defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
 #' the decline from the control towards zero. It is the same quantity returned
-#' by \code{\link{ecnsec}} for the same options.
+#' by \code{\link{ecnsec}} for the same options. It is zero where the NSEC is
+#' the control concentration, and negative where a draw's control is below
+#' the reference and its NSEC is a later crossing: the response there exceeds
+#' that draw's own control.
 #'
 #' The reference is a quantile of the control posterior, so some draws start
-#' at or below it. Such a draw takes the control concentration, where its
-#' effect is zero. Other draws take the first decreasing crossing.
+#' at or below it. A draw with a later decreasing crossing takes that crossing.
+#' Without one, it takes the control concentration unless its response first
+#' changes away from the effect and later rises above the reference. Such a
+#' draw shows no decreasing effect in the searched range and is censored there.
 #' The crossing is sought at or above the control, so extending \code{x_range}
 #' below the data does not place an estimate below any tested concentration.
 #'
@@ -353,17 +358,16 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   control <- control_posterior(object, newdata_list$newdata, epred_fun,
                                x_at = control_reading$value)
   reference <- quantile(control, sig_val)
-  # ecnsec is the percent effect at the NSEC, defined as ecx() defines it: the
-  # decline from the control towards zero, not across the fitted range.
-  ecnsecP <- as.numeric(pmax(control - reference, 0) / control * 100)
-  ecnsecP[!is.na(control) & control <= reference] <- 0
-  ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
   # The control is the reference whether or not the curve shows hormesis.
   control_axis <- if (is.null(axis)) control_reading$value else
     axis$at(control_reading$value)
   nsec_out <- nsec_from_posterior(p_samples, reference, x_vec,
                                   control_axis,
                                   control)
+  at_control <- attr(nsec_out, "at_control")
+  ecnsecP <- as.numeric((control - reference) / control * 100)
+  ecnsecP[at_control] <- 0
+  ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
   # Draws above and below the range return NA for opposite reasons, so each
   # class has its own warning. Count them before the transformations below,
   # which need not keep the attributes.
@@ -378,7 +382,6 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   # recorded scale and remapped, which swaps the ends under a decreasing crf().
   cens <- censoring_record(max(x_vec), searched_from, above, below)
   if (!is.null(axis)) {
-    at_control <- !is.na(nsec_out) & nsec_out == control_axis
     nsec_out <- map_draws(nsec_out, axis$map, cens, "NSEC")
     if (is.null(xform)) nsec_out[at_control] <- control_reading$value
     cens <- xform_censoring(cens, axis$map)
@@ -417,6 +420,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   # transformation keeps. The censoring record replaces them.
   attr(nsec_out, "n_below_range") <- NULL
   attr(nsec_out, "below_range") <- NULL
+  attr(nsec_out, "at_control") <- NULL
   attr(nsec_out, "x_searched_from") <- NULL
   attr(nsec_out, "censored") <- cens
   nsec_estimate <- summarise_censored(unlist(nsec_out), prob_vals, cens)
