@@ -145,30 +145,37 @@ ecnsec.bnecfit <- function(object, ..., resolution = 500, x_range = NA,
     x_control <- model_set_control(object, x_control)
     first <- object$mod_fits[[1]]
     finish <- model_set_control_recorder(first, x_control)
-    if (!is.null(observed_level_spec(first))) {
-      per_model <- function(f) ecnsec(
-        f, resolution = resolution, x_range = x_range,
-        extrapolate = extrapolate,
-        type = type, sig_val = sig_val, prob_vals = prob_vals,
-        posterior = TRUE, pool = pool, x_control = x_control
-      )
-      if (identical(pool, "none")) {
-        return(finish(model_set_level_estimates(
-          object, "ecnsec", per_model, posterior, prob_vals
-        )))
-      }
-      models <- names(object$mod_fits)
-      idx <- pull_draw_index(object, models, object$sample_size)
-      models <- models[lengths(idx[models]) > 0L]
-      parts <- once_level_note(lapply(models, function(m) {
-        per_model(pull_equation(object, m))[idx[[m]]]
-      }))
-      out <- unlist(parts, use.names = FALSE)
-      if (posterior) return(finish(out))
-      result <- stats::quantile(out, probs = prob_vals, na.rm = TRUE)
-      names(result) <- clean_names(result)
-      return(finish(result))
+    has_levels <- !is.null(observed_level_spec(first))
+    per_model <- function(f) ecnsec(
+      f, resolution = resolution, x_range = x_range,
+      extrapolate = extrapolate,
+      type = type, sig_val = sig_val, prob_vals = prob_vals,
+      posterior = TRUE, pool = pool, x_control = x_control
+    )
+    if (has_levels && identical(pool, "none")) {
+      return(finish(model_set_level_estimates(
+        object, "ecnsec", per_model, posterior, prob_vals
+      )))
     }
+    models <- names(object$mod_fits)
+    idx <- pull_draw_index(object, models, object$sample_size)
+    models <- models[lengths(idx[models]) > 0L]
+    parts <- once_level_note(lapply(models, function(m) {
+      part <- per_model(pull_equation(object, m))
+      list(draws = as.numeric(part)[idx[[m]]],
+           above = if (identical(type, "range")) {
+             attr(part, "censored")$above[idx[[m]]]
+           })
+    }))
+    out <- unlist(lapply(parts, `[[`, "draws"), use.names = FALSE)
+    if (identical(type, "range")) {
+      above <- unlist(lapply(parts, `[[`, "above"), use.names = FALSE)
+      return(finish(ecnsec_range_result(out, above, posterior, prob_vals)))
+    }
+    if (posterior) return(finish(out))
+    result <- stats::quantile(out, probs = prob_vals, na.rm = TRUE)
+    if (has_levels) names(result) <- clean_names(result)
+    return(finish(result))
   }
   if (!inherits(object, "bayesmanecfit") &&
       is.null(object$observed_group)) {
