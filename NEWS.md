@@ -750,6 +750,9 @@ the same call returns.
 
 ## Other new features
 
+- `epx()` returns the percent effect at a stated concentration, with the
+  control and floor choices used by `ecx()` (#608).
+
 - `predict()`, `plot()` and `autoplot()` on a model set gain `model`, which
   names equations to show alongside or instead of the model average, and
   `average`. `predict()` then returns a list. `all_models` is deprecated and
@@ -799,7 +802,8 @@ the same call returns.
 - `ecnsec()` returns the percent effect at each posterior draw's own NSEC.
   It takes `sig_val` to select the control reference and no longer takes
   `nsec`, `xform` or `x_scale`. For `type = "range"`, draws whose NSEC is
-  above the prediction range have a censored effect (#195, #605).
+  above the prediction range have a censored effect. The effect at a stated
+  concentration is returned by `epx()` (#195, #605, #608).
 
 - `amend()` has a method for `bayesnecfit`. Adding an equation returns a model
   set (#176).

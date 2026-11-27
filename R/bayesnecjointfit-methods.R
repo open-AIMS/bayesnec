@@ -533,6 +533,18 @@ ecx.bayesnecjointfit <- function(object, ...) {
 }
 
 #' @noRd
+#' @method epx bayesnecjointfit
+#' @export
+epx.bayesnecjointfit <- function(object, x, ...) {
+  tabulate <- !isTRUE(list(...)$posterior)
+  joint_estimate_table(object, "epx", function(f, ...) {
+    out <- epx(f, ...)
+    if (tabulate) names(out) <- clean_names(out)
+    out
+  }, x = x, ...)
+}
+
+#' @noRd
 #' @method nsec bayesnecjointfit
 #' @export
 nsec.bayesnecjointfit <- function(object, ...) {

@@ -167,7 +167,7 @@
 #' the \pkg{brms} distributional parameter. Supplying one where the other is
 #' expected is an error rather than silently ignored.
 #'
-#' @seealso \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{ecx}}
+#' @seealso \code{\link{epx}}, \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{ecx}}
 #'
 #' @return A vector containing the estimated NSEC value, including upper and
 #' lower 95% credible interval bounds, or with \code{posterior = TRUE} the

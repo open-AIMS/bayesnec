@@ -447,9 +447,9 @@ estimate_observed_levels <- function(object, spec, what, fun, pool,
   label <- what
   keep_metadata <- function(result) {
     attr(result, "toxicity_estimate") <- label
-    if (what %in% c("ecx", "nsec")) {
+    if (what %in% c("ecx", "nsec", "epx")) {
       attr(result, "resolution") <- curve_args$resolution
-      key <- if (identical(what, "ecx")) "ecx_val" else "sig_val"
+      key <- if (identical(what, "ecx")) "ecx_val" else if (identical(what, "epx")) "x" else "sig_val"
       attr(result, key) <- curve_args[[key]]
     }
     result
@@ -919,7 +919,7 @@ level_x_bounds <- function(object) {
 #' @return Draws or their summary, with censoring retained.
 #' @noRd
 mean_curve_estimate <- function(fits, weights, what, dots) {
-  if (!what %in% c("ecx", "nsec", "ecnsec")) {
+  if (!what %in% c("ecx", "nsec", "ecnsec", "epx")) {
     stop("`mean_curve` is unavailable for ", what, "().", call. = FALSE)
   }
   bounds <- t(vapply(fits, level_x_bounds, numeric(2)))
@@ -1004,13 +1004,13 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     }
   }
   type <- if (is.null(dots$type)) "absolute" else dots$type
-  if (identical(what, "ecnsec") && identical(type, "direct")) {
-    stop("`type = \"direct\"` has no percent effect for ecnsec().",
+  if (what %in% c("ecnsec", "epx") && identical(type, "direct")) {
+    stop("`type = \"direct\"` has no percent effect for ", what, "().",
          call. = FALSE)
   }
   dpar <- dots$dpar
   if (identical(type, "relative") && is.null(dpar) &&
-      what %in% c("ecx", "ecnsec")) {
+      what %in% c("ecx", "ecnsec", "epx")) {
     for (fit in fits) {
       if (is_bayesnechurdlefit(fit)) {
         stop("type = \"relative\" is not defined for a hurdle fit.",
@@ -1024,7 +1024,16 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
       check_combined_relative(family, what)
     }
   }
+  x_epx <- NULL
+  if (identical(what, "epx")) {
+    x_epx <- epx_recorded_x(first, dots$x,
+                             if (is.null(dots$x_scale)) "recorded" else dots$x_scale,
+                             extrapolate)
+    check_epx_range(first, dots$x, x_epx, c(low, high), requested,
+                    if (is.null(dots$x_scale)) "recorded" else dots$x_scale)
+  }
   weights <- weights / sum(weights)
+  at_epx <- NULL
   curve <- NULL
   control <- NULL
   asymptote <- NULL
@@ -1040,10 +1049,19 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     } else {
       part <- level_curve_draws(fits[[i]], x_vec, x_control, type, dpar)
     }
+    if (identical(what, "epx")) {
+      at_part <- if (is_bayesnechurdlefit(fits[[i]])) {
+        epx_curve_at(part$curve, x_vec, x_epx)
+      } else {
+        level_curve_draws(fits[[i]], rep(x_epx, 2), x_control,
+                          type, dpar)$curve[, 1]
+      }
+    }
     if (is.null(curve)) {
       curve <- part$curve * weights[i]
       control <- part$control * weights[i]
       asymptote <- rep_len(part$asymptote, length(control)) * weights[i]
+      if (identical(what, "epx")) at_epx <- at_part * weights[i]
     } else {
       n <- min(nrow(curve), nrow(part$curve))
       curve <- curve[seq_len(n), , drop = FALSE] +
@@ -1051,6 +1069,9 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
       control <- control[seq_len(n)] + part$control[seq_len(n)] * weights[i]
       asymptote <- asymptote[seq_len(n)] +
         rep_len(part$asymptote, n)[seq_len(n)] * weights[i]
+      if (identical(what, "epx")) {
+        at_epx <- at_epx[seq_len(n)] + at_part[seq_len(n)] * weights[i]
+      }
     }
   }
   xform <- dots$xform
@@ -1058,6 +1079,19 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
     inline_curve_axis(first, x_vec, xform)
   }
   x_search <- if (is.null(axis)) x_vec else axis$x
+  if (identical(what, "epx")) {
+    floor <- switch(type, absolute = 0, relative = asymptote,
+                    range = apply(curve[, original, drop = FALSE], 1, min,
+                                  na.rm = TRUE))
+    out <- (control - at_epx) / (control - floor) * 100
+    if (!is.null(x_epx) && all(controls == x_epx)) out[] <- 0
+    if (isTRUE(dots$posterior)) return(out)
+    probs <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else
+      dots$prob_vals
+    ans <- stats::quantile(out, probs = probs, na.rm = TRUE)
+    names(ans) <- clean_names(ans)
+    return(ans)
+  }
   if (identical(what, "ecnsec")) {
     floor <- switch(type, absolute = 0, relative = asymptote,
                     range = apply(curve[, original, drop = FALSE], 1, min,

@@ -585,6 +585,17 @@ ecnsec.bayesnecgroupfit <- function(object, ...) {
 }
 
 #' @noRd
+#' @method epx bayesnecgroupfit
+#' @export
+epx.bayesnecgroupfit <- function(object, x, ...) {
+  group_estimate_table(object, "epx", function(f, ...) {
+    out <- epx(f, ...)
+    if (!isTRUE(list(...)$posterior)) names(out) <- clean_names(out)
+    out
+  }, x = x, ...)
+}
+
+#' @noRd
 #' @method summary bayesnecgroupfit
 #' @export
 summary.bayesnecgroupfit <- function(object, ...) {

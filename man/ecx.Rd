@@ -263,5 +263,5 @@ ecx(manec_example)
 
 }
 \seealso{
-\code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{nsec}}
+\code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{nsec}}, \code{\link{epx}}
 }

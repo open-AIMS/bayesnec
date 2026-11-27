@@ -98,6 +98,8 @@ percent. Its posterior draw is \code{Inf}.
 The \code{"absolute"} values equal the \code{ecnsec_relativeP}
 attribute of \code{\link{nsec}} under matching options.
 
+Use \code{\link{epx}} for the effect at a stated concentration.
+
 The \code{pool}, \code{x_control} and \code{extrapolate} options use
 the same rules as \code{\link{nsec}}. \code{type = "relative"} is
 unavailable for a joint two-block hurdle curve.
@@ -111,5 +113,5 @@ ecnsec(manec_example)
 
 }
 \seealso{
-\code{\link{bnec}}
+\code{\link{bnec}}, \code{\link{epx}}
 }
