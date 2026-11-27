@@ -1050,7 +1050,10 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
       part <- level_curve_draws(fits[[i]], x_vec, x_control, type, dpar)
     }
     if (identical(what, "epx")) {
-      at_part <- if (is_bayesnechurdlefit(fits[[i]])) {
+      control_at <- if (own) controls[i] else as.numeric(x_control)
+      at_part <- if (isTRUE(x_epx == control_at)) {
+        part$control
+      } else if (is_bayesnechurdlefit(fits[[i]])) {
         epx_curve_at(part$curve, x_vec, x_epx)
       } else {
         level_curve_draws(fits[[i]], rep(x_epx, 2), x_control,

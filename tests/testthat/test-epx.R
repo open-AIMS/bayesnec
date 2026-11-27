@@ -1,7 +1,7 @@
 # Stored posterior fits keep these tests independent of Stan compilation.
-epx_logged <- function(fit, model = "nec4param") {
+epx_logged <- function(fit, model = "nec4param", tr = "log(x)") {
   fit$bayesnecformula <- bnf(stats::as.formula(
-    paste0('y ~ crf(log(x), model = "', model, '")')
+    paste0('y ~ crf(', tr, ', model = "', model, '")')
   ))
   fit
 }
@@ -183,8 +183,8 @@ test_that("joint two-block curves select dpar and refuse combined relative", {
       list(newdata = data.frame(x = x), x_vec = x,
            original = rep(TRUE, length(x)))
     },
-    newdata_eval = function(...) {
-      list(newdata = data.frame(x = c(1, 1)))
+    newdata_eval = function(object, resolution, x_range) {
+      list(newdata = data.frame(x = x_range))
     },
     resolve_x_control = function(...) list(value = 0, x_range = c(0, 3)),
     curve_extrapolate_limits = function(...) NULL,
