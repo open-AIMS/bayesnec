@@ -17,7 +17,8 @@ epx(
   pool = NULL,
   x_control = "own",
   extrapolate = FALSE,
-  dpar = NULL
+  dpar = NULL,
+  which = "combined"
 )
 }
 \arguments{
@@ -28,7 +29,8 @@ epx(
 default.}
 
 \item{resolution}{Number of grid points used to find the floor for
-\code{type = "range"}. The default is 500.}
+\code{type = "range"} and to interpolate the response of a hurdle pair
+at \code{x}. The default is 500.}
 
 \item{x_range}{Prediction range on the recorded scale; \code{NA} uses the fit's
 range.}

@@ -1028,7 +1028,7 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
   if (identical(what, "epx")) {
     x_epx <- epx_recorded_x(first, dots$x,
                              if (is.null(dots$x_scale)) "recorded" else dots$x_scale,
-                             extrapolate)
+                             extrapolate, requested)
     check_epx_range(first, dots$x, x_epx, c(low, high), requested,
                     if (is.null(dots$x_scale)) "recorded" else dots$x_scale)
   }
@@ -1084,7 +1084,9 @@ mean_curve_estimate <- function(fits, weights, what, dots) {
                     range = apply(curve[, original, drop = FALSE], 1, min,
                                   na.rm = TRUE))
     out <- (control - at_epx) / (control - floor) * 100
-    if (!is.null(x_epx) && all(controls == x_epx)) out[] <- 0
+    control_at <- if (own) controls else rep(as.numeric(x_control),
+                                            length(controls))
+    if (all(control_at == x_epx)) out[] <- 0
     if (isTRUE(dots$posterior)) return(out)
     probs <- if (is.null(dots$prob_vals)) c(0.5, 0.025, 0.975) else
       dots$prob_vals

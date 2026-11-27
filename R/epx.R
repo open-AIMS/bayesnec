@@ -9,7 +9,8 @@
 #' @param x One finite concentration. It is on the recorded predictor scale by
 #'   default.
 #' @param resolution Number of grid points used to find the floor for
-#'   `type = "range"`. The default is 500.
+#'   `type = "range"` and to interpolate the response of a hurdle pair
+#'   at `x`. The default is 500.
 #' @param x_range Prediction range on the recorded scale; `NA` uses the fit's
 #'   range.
 #' @param type `"absolute"` measures towards zero, `"relative"` towards the
@@ -57,7 +58,8 @@ epx <- function(object, x, resolution = 500, x_range = NA,
                 type = "absolute", x_scale = c("recorded", "fitted"),
                 prob_vals = c(0.5, 0.025, 0.975), ...,
                 posterior = FALSE, pool = NULL, x_control = "own",
-                extrapolate = FALSE, dpar = NULL) {
+                extrapolate = FALSE, dpar = NULL,
+                which = "combined") {
   UseMethod("epx")
 }
 
@@ -73,6 +75,7 @@ epx.bayesnecfit <- function(object, x, resolution = 500, x_range = NA,
   check_removed_args(list(...))
   check_unused_dots(list(...), "epx")
   chk::chk_number(x)
+  if (!is.finite(x)) stop("x must be finite.", call. = FALSE)
   check_resolution(resolution)
   chk::chk_flag(posterior)
   if (!is.null(pool)) validate_pool(pool, "epx")
@@ -96,7 +99,7 @@ epx.bayesnecfit <- function(object, x, resolution = 500, x_range = NA,
       ))
     }
   }
-  x_recorded <- epx_recorded_x(object, x, x_scale, extrapolate)
+  x_recorded <- epx_recorded_x(object, x, x_scale, extrapolate, x_range)
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "EPx")
   control_reading <- resolve_x_control(object, x_control, x_range)
@@ -122,7 +125,7 @@ epx.bayesnecfit <- function(object, x, resolution = 500, x_range = NA,
                   range = apply(curve[, grid$original, drop = FALSE], 1,
                                 min, na.rm = TRUE))
   out <- (control - at_x) / (control - floor) * 100
-  if (identical(x_recorded, control_reading$value)) out[] <- 0
+  if (isTRUE(x_recorded == control_reading$value)) out[] <- 0
   if (posterior) return(epx_result(out, x, resolution))
   result <- stats::quantile(out, probs = prob_vals, na.rm = TRUE)
   names(result) <- clean_names(result)
@@ -142,6 +145,7 @@ epx.bayesmanecfit <- function(object, x, resolution = 500,
   check_removed_args(list(...))
   check_unused_dots(list(...), "epx")
   chk::chk_number(x)
+  if (!is.finite(x)) stop("x must be finite.", call. = FALSE)
   check_resolution(resolution)
   chk::chk_flag(posterior)
   if (!is.null(pool)) validate_pool(pool, "epx")
@@ -186,12 +190,28 @@ epx.bayesnecjointlevel <- function(object, ...) epx.bayesnecfit(object, ...)
 #' @param x The stated concentration.
 #' @param x_scale Its scale.
 #' @param extrapolate The requested extension.
+#' @param x_range The requested prediction range.
 #' @return A recorded concentration.
 #' @noRd
-epx_recorded_x <- function(object, x, x_scale, extrapolate) {
+epx_recorded_x <- function(object, x, x_scale, extrapolate,
+                           x_range = NA) {
   x_scale <- match.arg(x_scale, c("recorded", "fitted"))
   if (identical(x_scale, "recorded")) return(x)
-  as.numeric(recorded_xform(object, NULL, extrapolate)(x))
+  tr <- inline_x_transform(object)
+  if (is.null(tr)) return(x)
+  grid <- recorded_grid(object)
+  limits <- x_range[is.finite(x_range)]
+  if (is.numeric(extrapolate)) {
+    limits <- c(limits, extrapolate[is.finite(extrapolate)])
+  }
+  if (length(limits) > 0L) {
+    bounds <- range(c(grid, limits))
+    grid <- sort(unique(c(grid, seq(bounds[1], bounds[2],
+                                    length.out = max(1000L, length(grid))))))
+  }
+  inverse <- recorded_x_map(scale_source_fit(object)$bayesnecformula,
+                            grid, tr)
+  as.numeric(inverse(x))
 }
 
 #' Validate the percentage reference
@@ -260,7 +280,8 @@ check_epx_range <- function(object, x, x_recorded, grid_range, x_range,
     value <- paste0(value, ", which maps to ", signif(x_recorded, 4),
                     " on the recorded scale,")
   }
-  supplied <- !(length(x_range) == 1 && is.na(x_range))
+  supplied <- !is.null(x_range) &&
+    !(length(x_range) == 1 && is.na(x_range))
   own_level <- !supplied && inherits(object, "bayesnecjointlevel") &&
     length(object$level_x) > 0
   where <- if (supplied) "the x_range supplied" else if (own_level) {
@@ -310,6 +331,7 @@ epx.bayesnechurdlefit <- function(object, x, resolution = 500,
   check_removed_args(list(...))
   check_unused_dots(list(...), "epx")
   chk::chk_number(x)
+  if (!is.finite(x)) stop("x must be finite.", call. = FALSE)
   check_resolution(resolution)
   chk::chk_flag(posterior)
   if (!is.null(pool)) validate_pool(pool, "epx")
@@ -345,7 +367,7 @@ epx.bayesnechurdlefit <- function(object, x, resolution = 500,
       return(result)
     }
   }
-  x_recorded <- epx_recorded_x(object, x, x_scale, extrapolate)
+  x_recorded <- epx_recorded_x(object, x, x_scale, extrapolate, x_range)
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "EPx")
   preds <- hurdle_component_preds(object, resolution = resolution,
@@ -361,7 +383,9 @@ epx.bayesnechurdlefit <- function(object, x, resolution = 500,
                                 min, na.rm = TRUE))
   at_x <- epx_curve_at(curve, preds$x, x_recorded)
   out <- (control - at_x) / (control - floor) * 100
-  if (identical(x_recorded, control_x(object))) out[] <- 0
+  control_at <- if (is.numeric(x_control)) as.numeric(x_control) else
+    control_x(object)
+  if (isTRUE(x_recorded == control_at)) out[] <- 0
   if (posterior) {
     result <- epx_result(out, x, resolution)
     attr(result, "component") <- which
@@ -372,4 +396,30 @@ epx.bayesnechurdlefit <- function(object, x, resolution = 500,
   estimate <- epx_result(estimate, x, resolution)
   attr(estimate, "component") <- which
   estimate
+}
+
+#' Name positional arguments and refuse unused arguments before pooling
+#' @param dots The arguments passed through `...`.
+#' @return Named estimator arguments, or an error.
+#' @noRd
+epx_wrapper_dots <- function(dots) {
+  allowed <- c("resolution", "x_range", "type", "x_scale", "prob_vals",
+               "posterior", "pool", "x_control", "extrapolate", "dpar",
+               "which")
+  positional <- allowed[1:5]
+  nms <- names(dots)
+  if (is.null(nms)) nms <- rep("", length(dots))
+  for (i in which(!nzchar(nms))) {
+    open <- setdiff(positional, nms[nzchar(nms)])
+    if (length(open) == 0L) {
+      stop("epx() has an unused positional argument.", call. = FALSE)
+    }
+    nms[i] <- open[1]
+  }
+  names(dots) <- nms
+  bad <- setdiff(nms, allowed)
+  if (length(bad) > 0L) {
+    stop("epx() does not use `", bad[1], "`.", call. = FALSE)
+  }
+  dots
 }
