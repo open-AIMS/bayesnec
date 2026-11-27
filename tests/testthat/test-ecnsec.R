@@ -26,12 +26,14 @@ test_that("later hormetic crossings retain negative effects", {
     }, numeric(nrow(curves)))
   }
   testthat::with_mocked_bindings({
-    draws <- nsec(nec4param, sig_val = 0.5, x_range = c(0, 3),
-                  x_control = 0,
-                  resolution = 4, posterior = TRUE)
-    effect <- ecnsec(nec4param, sig_val = 0.5, x_range = c(0, 3),
-                     x_control = 0,
-                     resolution = 4, posterior = TRUE)
+    draws <- suppressWarnings(nsec(
+      nec4param, sig_val = 0.5, x_range = c(0, 3), x_control = 0,
+      resolution = 4, posterior = TRUE
+    ))
+    effect <- suppressWarnings(ecnsec(
+      nec4param, sig_val = 0.5, x_range = c(0, 3), x_control = 0,
+      resolution = 4, posterior = TRUE
+    ))
     reference <- stats::median(curves[, 1])
     expect_gt(draws[1], 1)
     expect_lt(effect[1], 0)
@@ -39,10 +41,29 @@ test_that("later hormetic crossings retain negative effects", {
     expect_equal(as.numeric(draws[2]), 0)
     expect_identical(effect[2], 0)
     expect_identical(effect, attr(draws, "ecnsec_relativeP"))
-    expect_identical(ecnsec(nec4param, sig_val = 0.5, x_range = c(0, 3),
-                            x_control = 0,
-                            resolution = 4),
+    expect_identical(suppressWarnings(ecnsec(
+                       nec4param, sig_val = 0.5, x_range = c(0, 3),
+                       x_control = 0, resolution = 4)),
                      stats::quantile(effect, c(0.5, 0.025, 0.975)))
+  }, estimator_epred = mock_epred, .package = "bayesnec")
+
+  curves[1, ] <- c(0.8, 1.0, 1.1, 1.2)
+  testthat::with_mocked_bindings({
+    draws <- suppressWarnings(nsec(
+      nec4param, sig_val = 0.5, x_range = c(0, 3), x_control = 0,
+      resolution = 4, posterior = TRUE
+    ))
+    absolute <- suppressWarnings(ecnsec(
+      nec4param, sig_val = 0.5, x_range = c(0, 3), x_control = 0,
+      resolution = 4, posterior = TRUE
+    ))
+    ranged <- suppressWarnings(ecnsec(
+      nec4param, sig_val = 0.5, x_range = c(0, 3), x_control = 0,
+      resolution = 4, type = "range", posterior = TRUE
+    ))
+    expect_true(is.infinite(draws[1]) && draws[1] > 0)
+    expect_equal(absolute[1], (curves[1, 1] - 0.95) / curves[1, 1] * 100)
+    expect_true(is.infinite(ranged[1]) && ranged[1] > 0)
   }, estimator_epred = mock_epred, .package = "bayesnec")
 })
 
@@ -71,6 +92,32 @@ test_that("relative and range effects use their own denominator", {
   expect_true(all(ranged >= 0))
   expect_true(any(relative != absolute))
   expect_true(any(ranged != absolute))
+})
+
+test_that("model-set effects retain each equation's NSEC reference", {
+  skip_on_cran()
+  models <- names(manec_example$mod_fits)
+  index <- bayesnec:::pull_draw_index(
+    manec_example, models, manec_example$sample_size
+  )
+  for (type in c("relative", "range")) {
+    parts <- lapply(models, function(model) {
+      fit <- bayesnec:::pull_equation(manec_example, model)
+      suppressWarnings(ecnsec(fit, type = type, resolution = 50,
+                              posterior = TRUE))
+    })
+    expected <- unlist(Map(function(part, at) as.numeric(part)[at],
+                           parts, index[models]), use.names = FALSE)
+    actual <- suppressWarnings(ecnsec(manec_example, type = type,
+                                      resolution = 50, posterior = TRUE))
+    expect_identical(as.numeric(actual), expected)
+    if (identical(type, "range")) {
+      above <- unlist(Map(function(part, at) {
+        attr(part, "censored")$above[at]
+      }, parts, index[models]), use.names = FALSE)
+      expect_identical(attr(actual, "censored")$above, above)
+    }
+  }
 })
 
 test_that("range effects beyond the search grid are censored", {
