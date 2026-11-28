@@ -631,7 +631,7 @@ test_that("limits on a crf(log(x)) fit are checked on the recorded scale", {
   fit <- logged_fit_cache()
   spec <- bayesnec:::observed_level_spec(fit)
   level <- bayesnec:::observed_level_fit(fit, spec, 1)
-  base <- bayesnec:::newdata_eval(level, 21, NA)
+  base <- bayesnec:::extended_newdata_eval(level, 21, NA, NULL)
   lims <- bayesnec:::curve_extrapolate_limits(10, level, NA, "own", "ECx")
   extended <- bayesnec:::extended_newdata_eval(level, 21, NA, lims)
   at <- match(base$x_vec, extended$x_vec)

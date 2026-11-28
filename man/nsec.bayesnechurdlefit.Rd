@@ -30,7 +30,8 @@ significance of the predicted posterior values.}
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
 The default is 500 grid values, matching \pkg{toxval}. A finer grid can
-change an interpolated crossing and increases prediction time.}
+change an interpolated crossing and increases prediction time. With an
+inline predictor transformation the grid is even on the fitted scale.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 

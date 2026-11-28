@@ -39,8 +39,10 @@
 - The default `resolution` of `ecx()` and `nsec()` is 500 instead of 1000,
   and that of `compare_estimates()` 500 instead of 100. `ecx()` and `nsec()`
   interpolate between grid points to find the concentration at which the
-  curve crosses the target. The grid `bnec()` stores with a fit is unchanged
-  (#325, #527, #578).
+  curve crosses the target. For an inline transformation in `crf()`, these
+  estimators space the search grid evenly on the fitted scale, then invert
+  crossings to recorded concentrations. The grid `bnec()` stores with a fit
+  is unchanged (#325, #527, #578, #604).
 
 - `bnec()` fits on the identity link unless the call writes a link or passes
   a family object held in a variable, which keeps its links. A family

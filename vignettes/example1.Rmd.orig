@@ -120,7 +120,7 @@ ecx(exp_2, xform = function(x) exp(x) - 1)
 autoplot(exp_2)
 ```
 
-The inline form and a pre-computed column (as in the code below) are equivalent ways of writing the model, and give identical estimates on the transformed scale, whether the transformation is of a bare variable (e.g. `log(x)`) or its argument contains arithmetic (e.g. `log(x + 1)`).
+The inline form and a pre-computed column (as in the code below) are equivalent ways of writing the model, and give identical estimates on the transformed scale, whether the transformation is of a bare variable (e.g. `log(x)`) or its argument contains arithmetic (e.g. `log(x + 1)`). For `ecx()` and `nsec()`, both forms search a grid evenly spaced on that scale.
 
 The inline and column forms differ only in the scale on which estimates are returned by default. Because `bayesnec` cannot see the transformation used to create a column, estimates from the column form are on the scale of `log_x` and need `xform = function(x) exp(x) - 1` to return them to the recorded scale, whereas the inline form applies this inverse automatically:
 

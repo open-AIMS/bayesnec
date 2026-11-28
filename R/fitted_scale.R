@@ -82,6 +82,89 @@ recorded_xform <- function(object, xform, extrapolate = FALSE) {
   recorded_x_map(scale_source_fit(object)$bayesnecformula, grid, tr)
 }
 
+#' Search coordinates for a curve with an inline predictor transformation
+#'
+#' The coordinate grows with recorded concentration, including when the
+#' transformation itself decreases. A supplied xform receives the actual
+#' fitted coordinate; otherwise the inverse returns recorded concentration.
+#'
+#' @param object A fit with an inline predictor transformation.
+#' @param recorded Increasing recorded concentrations on the search grid.
+#' @param xform The caller's resolved xform.
+#' @noRd
+inline_curve_axis <- function(object, recorded, xform = NULL) {
+  formula <- scale_source_fit(object)$bayesnecformula
+  fitted <- as.numeric(sub_x_transformation(recorded, formula))
+  if (any(!is.finite(fitted))) return(NULL)
+  direction <- if (fitted[length(fitted)] > fitted[1]) 1 else -1
+  at <- function(raw) {
+    direction * as.numeric(sub_x_transformation(raw, formula))
+  }
+  direct <- if (is.null(xform)) {
+    recorded_x_map(formula,
+                   sort(unique(c(recorded_grid(object), recorded))),
+                   inline_x_transform(object))
+  } else xform
+  map <- function(values) {
+    out <- direct(direction * values)
+    if (is.null(xform)) {
+      out[!is.na(values) & values == direction * fitted[1]] <- recorded[1]
+      out[!is.na(values) & values == direction * fitted[length(fitted)]] <-
+        recorded[length(recorded)]
+    }
+    out
+  }
+  attr(map, "grid_inverse") <- attr(direct, "grid_inverse")
+  list(x = at(recorded), at = at, map = map)
+}
+
+#' Make an inline curve grid even on the fitted predictor scale
+#'
+#' @param object A fit with an inline predictor transformation.
+#' @param base The original grid from newdata_eval().
+#' @param lims Recorded extrapolation limits, or NULL.
+#' @noRd
+fitted_curve_grid <- function(object, base, lims) {
+  tr <- inline_x_transform(object)
+  formula <- scale_source_fit(object)$bayesnecformula
+  forward <- function(raw) {
+    as.numeric(sub_x_transformation(raw, formula))
+  }
+  ends <- range(base$x_vec)
+  fitted_ends <- forward(ends)
+  # log(0) is -Inf: no finite grid can be even over that interval. Keep the
+  # recorded grid used before this change for such a range.
+  if (any(!is.finite(fitted_ends))) return(NULL)
+  if (fitted_ends[1] == fitted_ends[2]) {
+    stop("The predictor range has no interval on the fitted scale.",
+         call. = FALSE)
+  }
+  fitted <- sort(seq(fitted_ends[1], fitted_ends[2],
+                     length.out = length(base$x_vec)))
+  anchors <- ends
+  fitted_lims <- NULL
+  if (!is.null(lims)) {
+    anchors <- c(anchors, lims$lower, lims$upper)
+    transformed <- forward(c(lims$lower, lims$upper))
+    if (any(!is.finite(transformed))) return(NULL)
+    fitted_lims <- list(lower = min(transformed), upper = max(transformed))
+  }
+  fitted <- extend_grid_values(fitted, fitted_lims)
+  inverse <- recorded_x_map(formula,
+                            sort(unique(c(recorded_grid(object), base$x_vec,
+                                          anchors))), tr)
+  raw <- as.numeric(inverse(fitted))
+  for (anchor in anchors) {
+    at <- which.min(abs(fitted - forward(anchor)))
+    raw[at] <- anchor
+  }
+  if (any(!is.finite(raw))) {
+    stop("The fitted-scale grid cannot be inverted to recorded concentrations.",
+         call. = FALSE)
+  }
+  sort(raw)
+}
+
 #' The prediction grid a fit's inverse is read off, on the recorded scale
 #'
 #' The grids stored with the fit, joined to 1000 points over the observed

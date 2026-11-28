@@ -254,9 +254,10 @@ by default (`x_scale = "recorded"`). This covers `nec()`, `nsec()`,
 default for each estimator. For concentration-valued estimates,
 `x_scale = "fitted"` returns the **fitted** scale, while a different `xform`
 is applied there. Thus `xform = exp` on a `crf(log(x))` fit returns what the
-default returns. `ecnsec()` instead returns a percentage: it reads its supplied
-concentration as given with either `x_scale`, and `xform` can map that input
-from the fitted scale to the recorded scale.
+default returns. For an inline transformation, `ecx()` and `nsec()` search a
+grid even on the fitted scale and invert the crossing to the recorded scale.
+`ecnsec()` returns the percent effect at each draw's own NSEC and has no
+`x_scale` or `xform` argument.
 
 Applying the inverse to the default output transforms twice: `exp(nec(fit))` on
 a `crf(log(x))` fit exponentiates a concentration, with no warning. Before #299

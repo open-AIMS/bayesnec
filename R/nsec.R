@@ -9,7 +9,8 @@
 #' The crossing is located by linear interpolation between the two grid values
 #' that bracket it, so precision saturates well below the grid spacing.
 #' The default is 500 grid values, matching \pkg{toxval}. A finer grid can
-#' change an interpolated crossing and increases prediction time.
+#' change an interpolated crossing and increases prediction time. With an
+#' inline predictor transformation the grid is even on the fitted scale.
 #' @param xform \code{NULL} or \code{identity} leaves the estimate on
 #' \code{x_scale}. Any other function is applied on the fitted scale and
 #' requires \code{x_scale = "recorded"} when the predictor is
@@ -98,15 +99,15 @@
 #' the decline term starts, remains available through
 #' \code{\link{curve_params}}.
 #'
-#' The curve is searched on a grid of recorded concentrations. Where
-#' \code{crf()} transforms the predictor inline, as in
-#' \code{crf(log(concentration))}, the NSEC is therefore returned on the
-#' recorded scale without \code{xform}, and no inverse is involved. A supplied
-#' \code{xform} is applied to the NSEC on the transformed scale, so
-#' \code{xform = identity} leaves the estimate on the recorded scale.
-#' \code{x_scale = "fitted"} returns the fitted scale, while
+#' Where \code{crf()} transforms the predictor inline, as in
+#' \code{crf(log(concentration))}, the curve is searched on a grid even on
+#' the fitted scale. The crossing is interpolated there and returned on the
+#' recorded scale through the inverse. \code{x_scale = "fitted"} returns the
+#' fitted-scale crossing. A supplied \code{xform} is applied on that scale;
 #' \code{xform = exp} on \code{crf(log(concentration))} returns the recorded
-#' scale again.
+#' concentration. If a transformed range endpoint is infinite, as at
+#' \code{log(0)}, the search keeps the recorded grid because no finite grid
+#' spans the fitted interval.
 #'
 #' The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 #' defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
@@ -348,14 +349,20 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   )
   p_samples <- epred_fun(newdata_list$newdata)
   x_vec <- newdata_list$x_vec
+  axis <- if (!is.null(inline_x_transform(object))) {
+    inline_curve_axis(object, x_vec, xform)
+  }
+  if (!is.null(axis)) x_vec <- axis$x
   # Read the control at the control concentration, not the first grid column,
   # so that x_range does not change the reference.
   control <- control_posterior(object, newdata_list$newdata, epred_fun,
                                x_at = control_reading$value)
   reference <- quantile(control, sig_val)
   # The control is the reference whether or not the curve shows hormesis.
+  control_axis <- if (is.null(axis)) control_reading$value else
+    axis$at(control_reading$value)
   nsec_out <- nsec_from_posterior(p_samples, reference, x_vec,
-                                  control_reading$value,
+                                  control_axis,
                                   control)
   at_control <- attr(nsec_out, "at_control")
   ecnsecP <- as.numeric((control - reference) / control * 100)
@@ -374,8 +381,11 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   # differ wherever the grid reaches below the control. It is built on the
   # recorded scale and remapped, which swaps the ends under a decreasing crf().
   cens <- censoring_record(max(x_vec), searched_from, above, below)
-  # The default on an inline-transformed fit leaves both on the recorded scale.
-  if (!returns_recorded(object, xform)) {
+  if (!is.null(axis)) {
+    nsec_out <- map_draws(nsec_out, axis$map, cens, "NSEC")
+    if (is.null(xform)) nsec_out[at_control] <- control_reading$value
+    cens <- xform_censoring(cens, axis$map)
+  } else if (!returns_recorded(object, xform)) {
     to_fitted <- function(value) {
       sub_x_transformation(value, object$bayesnecformula)
     }

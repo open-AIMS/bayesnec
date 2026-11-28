@@ -15,6 +15,8 @@ logged_x_set <- function(manec, tr = "log(x)") {
   manec
 }
 
+unknown <- function(x) log(x)
+
 fake_scale_group <- function(fits) {
   structure(list(fits = fits, group_var = "site", levels = names(fits),
                  formula = fits[[1]]$bayesnecformula,
@@ -126,24 +128,24 @@ test_that("a fit with no inline transformation takes NULL as identity", {
                                  xform = identity)))
 })
 
-test_that("ecx() and nsec() read the recorded grid without an inverse", {
+test_that("inline curve grids are even on the fitted scale", {
   skip_on_cran()
   for (case in list(list(tr = "log(x)", inv = exp),
                     list(tr = "sqrt(x)", inv = function(x) x^2))) {
     te <- logged_x_fit(ecx4param, "ecx4param", case$tr)
-    # The default skips the transformation; the explicit inverse applies it
-    # and then undoes it, so the two agree to rounding.
+    original <- bayesnec:::newdata_eval(te, 20, NA)$x_vec
+    grid <- bayesnec:::extended_newdata_eval(te, 20, NA, NULL)$x_vec
+    fitted <- bayesnec:::sub_x_transformation(grid, te$bayesnecformula)
+    expect_length(grid, 20)
+    expect_identical(grid[c(1, 20)], range(original))
+    expect_lt(max(abs(diff(fitted) - mean(diff(fitted)))), 1e-10)
     expect_equal(q(ecx(te, resolution = 20)),
                  q(ecx(te, resolution = 20, xform = case$inv)),
                  tolerance = 1e-12)
     expect_equal(q(nsec(te, resolution = 20)),
                  q(nsec(te, resolution = 20, xform = case$inv)),
                  tolerance = 1e-12)
-    # The curve is searched on the same recorded grid whatever the formula
-    # says, so the default is the untransformed fit's answer.
-    expect_identical(q(ecx(te, resolution = 20)),
-                     q(ecx(ecx4param, resolution = 20)))
-    # The fitted scale is read draw by draw.
+    # The fitted crossing maps once to the recorded scale.
     expect_equal(
       as.numeric(q(ecx(te, resolution = 20, x_scale = "fitted",
                        posterior = TRUE))),
@@ -153,12 +155,18 @@ test_that("ecx() and nsec() read the recorded grid without an inverse", {
       ),
       tolerance = 1e-12
     )
+    control <- min(original)
+    at_control <- q(nsec(te, sig_val = 0.2, resolution = 20,
+                         posterior = TRUE))
+    expect_true(any(as.numeric(at_control) == control))
+    expect_true(all(as.numeric(at_control)[as.numeric(at_control) == control] ==
+                    control))
   }
-  # The censoring record stays on the recorded scale: a draw the curve does
-  # not bring to the ECx90 target is censored at the top of the recorded grid.
+  # Censoring bounds retain the exact recorded ends.
   te <- logged_x_fit(ecx4param, "ecx4param")
   e90 <- q(ecx(te, ecx_val = 90, resolution = 20, posterior = TRUE))
   expect_equal(attr(e90, "censored")$upper, max(ecx4param$fit$data$x))
+  expect_equal(attr(e90, "censored")$lower, min(ecx4param$fit$data$x))
 })
 
 test_that("an inline sqrt() is inverted exactly by every estimator", {
@@ -198,10 +206,10 @@ test_that("a transformation with no closed form is inverted on the grid", {
   tm <- logged_x_set(manec_example, "asinh(x)")
   expect_equal(q(nec(tm)), q(nec(tm, xform = sinh)), tolerance = 1e-5)
   skip_on_cran()
-  # ecx() needs no inverse at all.
+  # ECx uses the same numeric inverse as NEC after interpolation.
   te <- logged_x_fit(ecx4param, "ecx4param", "asinh(x)")
   expect_equal(q(ecx(te, resolution = 20)),
-               q(ecx(te, resolution = 20, xform = sinh)), tolerance = 1e-12)
+               q(ecx(te, resolution = 20, xform = sinh)), tolerance = 1e-5)
 })
 
 test_that("the grid is refined where it is coarse on the fitted scale", {
@@ -220,6 +228,48 @@ test_that("the grid is refined where it is coarse on the fitted scale", {
   tr <- bayesnec:::inline_x_transform(list(bayesnecformula = folded))
   expect_error(bayesnec:::recorded_x_map(folded, grid, tr),
                "not strictly monotone")
+})
+
+test_that("an unknown transformation uses a numeric inverse for its grid", {
+  skip_on_cran()
+  te <- logged_x_fit(ecx4param, "ecx4param", "unknown(x)")
+  original <- bayesnec:::newdata_eval(te, 30, NA)$x_vec
+  grid <- bayesnec:::extended_newdata_eval(te, 30, NA, NULL)$x_vec
+  expect_length(grid, 30)
+  expect_identical(grid[c(1, 30)], range(original))
+  expect_lt(max(abs(diff(log(grid)) - mean(diff(log(grid))))), 1e-4)
+  expect_no_error(q(ecx(te, resolution = 30)))
+  expect_no_error(q(nsec(te, resolution = 30)))
+})
+
+test_that("an inline log NSEC stabilises as the grid is refined", {
+  skip_unless_full_suite()
+  fit <- logged_x_fit(nec4param, "nec4param")
+  coarse <- q(nsec(fit, resolution = 100))
+  fine <- q(nsec(fit, resolution = 5000))
+  expect_lt(abs(as.numeric(coarse[1] / fine[1] - 1)), 0.01)
+})
+
+test_that("a log range beginning at zero keeps its recorded grid", {
+  skip_on_cran()
+  fit <- logged_x_fit(ecx4param, "ecx4param")
+  base <- bayesnec:::newdata_eval(fit, 20, c(0, 30))$x_vec
+  searched <- bayesnec:::extended_newdata_eval(fit, 20, c(0, 30), NULL)$x_vec
+  expect_identical(searched, base)
+  expect_no_error(q(ecx(fit, x_range = c(0, 30), resolution = 20)))
+})
+
+test_that("the diuron inline log fit agrees at ordinary and fine resolution", {
+  skip_unless_full_suite()
+  path <- Sys.getenv("BAYESNEC_DIURON_FIT")
+  skip_if_not(nzchar(path) && file.exists(path),
+              "Set BAYESNEC_DIURON_FIT to the saved diuron fit")
+  fit <- readRDS(path)$fits$diuron
+  coarse <- q(nsec(fit, resolution = 100))
+  ordinary <- q(nsec(fit, resolution = 500))
+  fine <- q(nsec(fit, resolution = 5000))
+  expect_lt(abs(as.numeric(coarse[1] / fine[1] - 1)), 0.01)
+  expect_lt(abs(as.numeric(ordinary[1] / fine[1] - 1)), 0.002)
 })
 
 test_that("a draw beyond the grid of a numeric inverse is not given a value", {
@@ -379,9 +429,6 @@ test_that("crf((log(x))) is read as crf(log(x)) on every path (#479)", {
   paren <- logged_x_fit(ecx4param, "ecx4param", "(log(x))")
   expect_equal(q(ecx(paren, resolution = 20, x_scale = "fitted")),
                q(ecx(bare, resolution = 20, x_scale = "fitted")))
-  expect_equal(unname(q(ecx(paren, resolution = 20, x_scale = "fitted"))[1]),
-               log(unname(q(ecx(ecx4param, resolution = 20))[1])),
-               tolerance = 1e-3)
   expect_equal(q(nsec(paren, resolution = 20)),
                q(nsec(bare, resolution = 20)))
 })

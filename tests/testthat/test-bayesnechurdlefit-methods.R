@@ -796,7 +796,8 @@ hurdle_preds_stub <- function(control_at, curve_at_grid_start) {
   x <- seq(1, 10, length.out = 10)
   g <- matrix(rep(seq(curve_at_grid_start, 0.1, length.out = 10), each = 4),
               nrow = 4)
-  function(object, resolution = 1000, x_range = NA, x_control = "own") {
+  function(object, resolution = 1000, x_range = NA, x_control = "own",
+           fitted_grid = FALSE) {
     list(x = x, growth = g, survival = g, combined = g,
          control = list(growth = rep(control_at, 4),
                         survival = rep(control_at, 4),

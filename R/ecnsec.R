@@ -6,7 +6,9 @@
 #' @param resolution The number of unique x values over which the curve is
 #' predicted. It affects only \code{type = "range"}, where the denominator is
 #' the lowest response the curve predicts over the grid. The default of 500
-#' matches \code{\link{ecx}} and \code{\link{nsec}}.
+#' matches \code{\link{ecx}} and \code{\link{nsec}}. With an inline predictor
+#' transformation, their search grid is even on the fitted scale and each
+#' NSEC is returned through the inverse before its effect is reported.
 #' @param type A \code{\link[base]{character}} vector, taking values of
 #' "absolute" (the default), "relative" or "range". See Details.
 #' @param x_range A range of x values over which to predict the curve.
@@ -227,8 +229,14 @@ ecnsec.bnecfit <- function(object, ..., resolution = 500, x_range = NA,
                   na.rm = TRUE)
   )
   reference <- stats::quantile(control_draws, sig_val)
+  axis <- if (!is.null(inline_x_transform(object))) {
+    inline_curve_axis(object, newdata_list$x_vec, NULL)
+  }
+  x_vec <- if (is.null(axis)) newdata_list$x_vec else axis$x
+  control_axis <- if (is.null(axis)) control_reading$value else
+    axis$at(control_reading$value)
   crossing <- nsec_from_posterior(
-    p_samples, reference, newdata_list$x_vec, control_reading$value,
+    p_samples, reference, x_vec, control_axis,
     control_draws
   )
   ecnsecP <- (control_draws - reference) /
