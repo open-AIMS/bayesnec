@@ -10,11 +10,14 @@
 #' that bracket it, so precision saturates well below the grid spacing.
 #' The default is 500 grid values, matching \pkg{toxval}. A finer grid can
 #' change an interpolated crossing and increases prediction time.
-#' @param xform \code{NULL}, the default, or a function. \code{NULL} returns
-#' the estimate on the scale the predictor was recorded on. A function is
-#' applied to the estimate on the scale the model was fitted on. The two
-#' differ only where \code{crf()} transforms the predictor inline; see
-#' Details.
+#' @param xform \code{NULL} or \code{identity} leaves the estimate on
+#' \code{x_scale}. Any other function is applied on the fitted scale and
+#' requires \code{x_scale = "recorded"} when the predictor is
+#' transformed inline; see Details.
+#' @param x_scale \code{"recorded"} (the default) returns the predictor on
+#' its recorded scale. \code{"fitted"} returns it on the scale fitted by
+#' \code{crf()}. The scales differ only where \code{crf()} transforms the
+#' predictor inline.
 #' @param x_range A range of x values over which to consider extracting NSEC.
 #' @param pool How observed group levels are combined. `"none"` returns
 #' per-level estimates. `"mixture"` gives each posterior draw to one level, in
@@ -100,8 +103,10 @@
 #' \code{crf(log(concentration))}, the NSEC is therefore returned on the
 #' recorded scale without \code{xform}, and no inverse is involved. A supplied
 #' \code{xform} is applied to the NSEC on the transformed scale, so
-#' \code{xform = identity} returns that scale and \code{xform = exp} on
-#' \code{crf(log(concentration))} returns the recorded scale again.
+#' \code{xform = identity} leaves the estimate on the recorded scale.
+#' \code{x_scale = "fitted"} returns the fitted scale, while
+#' \code{xform = exp} on \code{crf(log(concentration))} returns the recorded
+#' scale again.
 #'
 #' The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 #' defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
@@ -254,7 +259,8 @@
 # posterior and dpar follow `...` to match the methods and appear in \usage.
 nsec <- function(object, sig_val = 0.01, resolution = 500,
                  x_range = NA,
-                 xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
+                 xform = NULL,
+                 x_scale = c("recorded", "fitted"), prob_vals = c(0.5, 0.025, 0.975),
                  extrapolate = FALSE, ...,
                  posterior = FALSE, dpar = NULL, pool = NULL,
                  x_control = "own") {
@@ -280,7 +286,9 @@ nsec <- function(object, sig_val = 0.01, resolution = 500,
 #' @export
 nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
                              x_range = NA,
-                             xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
+                             xform = NULL,
+                             x_scale = c("recorded", "fitted"),
+                             prob_vals = c(0.5, 0.025, 0.975),
                              extrapolate = FALSE, ...,
                              posterior = FALSE, dpar = NULL, pool = NULL,
                              x_control = "own") {
@@ -291,7 +299,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   check_sig_val(sig_val)
   check_resolution(resolution)
   chk_flag(posterior)
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
@@ -305,14 +313,14 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
         object, level_spec, "nsec",
         function(level, control_value, range_override) {
           nsec(level, sig_val = sig_val, resolution = resolution,
-               x_range = range_override, xform = xform,
+               x_range = range_override, xform = xform, x_scale = x_scale,
                prob_vals = prob_vals, extrapolate = extrapolate,
                posterior = TRUE, dpar = dpar, pool = "none",
                x_control = control_value)
         },
         pool, posterior, prob_vals, x_control, x_range,
         curve_args = list(sig_val = sig_val, resolution = resolution,
-                          xform = xform, prob_vals = prob_vals,
+                          xform = xform, x_scale = x_scale, prob_vals = prob_vals,
                           dpar = dpar, extrapolate = extrapolate)
       ))
     }
@@ -434,7 +442,9 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
 #' @export
 nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
                                x_range = NA,
-                               xform = NULL, prob_vals = c(0.5, 0.025, 0.975),
+                               xform = NULL,
+                               x_scale = c("recorded", "fitted"),
+                               prob_vals = c(0.5, 0.025, 0.975),
                                extrapolate = FALSE, ...,
                                posterior = FALSE, dpar = NULL, pool = NULL,
                                x_control = "own") {
@@ -445,7 +455,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
   check_sig_val(sig_val)
   check_resolution(resolution)
   chk_flag(posterior)
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   if (!is.null(pool)) validate_pool(pool, "nsec")
   x_control <- model_set_control(object, x_control)
   first <- object$mod_fits[[1]]
@@ -455,7 +465,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
     return(finish(model_set_level_estimates(
       object, "nsec",
       function(f) nsec(f, sig_val = sig_val, resolution = resolution,
-                       x_range = x_range, xform = xform,
+                       x_range = x_range, xform = xform, x_scale = x_scale,
                        prob_vals = prob_vals, extrapolate = extrapolate,
                        posterior = TRUE, dpar = dpar, pool = "none",
                        x_control = x_control),
@@ -476,7 +486,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 500,
     mod <- names(object$mod_fits)[x]
     target <- pull_equation(object, mod)
     out <- nsec(target, sig_val = sig_val, resolution = resolution,
-                x_range = x_range, xform = xform, prob_vals = prob_vals,
+                x_range = x_range, xform = xform, x_scale = x_scale, prob_vals = prob_vals,
                 extrapolate = extrapolate,
                 posterior = TRUE, dpar = dpar, pool = pool,
                 x_control = x_control)

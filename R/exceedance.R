@@ -16,9 +16,13 @@
 #' or \code{\link{ecx}} respectively.
 #' @param ecx_val The effect level of the ECx, as in \code{\link{ecx}}. Used
 #' only where \code{estimate = "ecx"}, and refused for the other two.
-#' @param xform \code{NULL}, the default, or a function, passed to the
-#' estimator as in \code{\link{nec}}. It sets the scale \code{threshold} is
-#' read on; see Details.
+#' @param xform \code{NULL} or \code{identity} leaves the estimate on
+#' \code{x_scale}. Any other function is applied on the fitted scale and
+#' requires \code{x_scale = "recorded"} for a predictor with an
+#' inline transformation; see \code{\link{nec}}.
+#' @param x_scale \code{"recorded"} (the default) reads \code{threshold} on
+#' the recorded predictor scale. \code{"fitted"} reads it on the scale
+#' fitted by \code{crf()}.
 #' @param ... Further arguments passed to \code{\link{nec}}, \code{\link{nsec}}
 #' or \code{\link{ecx}}, such as \code{x_range}, \code{resolution},
 #' \code{type}, \code{sig_val} or \code{extrapolate}, \code{which} for a
@@ -50,8 +54,8 @@
 #' \code{threshold} and the estimate are compared on one scale, the scale the
 #' estimator returns the estimate on. Without \code{xform} that is the scale
 #' the predictor was recorded on, so under \code{crf(log(concentration))} the
-#' threshold is a concentration. With \code{xform = identity} it is a log
-#' concentration, the scale the model was fitted on. A decreasing \code{xform}
+#' threshold is a concentration. With \code{x_scale = "fitted"} it is a
+#' log concentration, the scale the model was fitted on. A decreasing \code{xform}
 #' reverses the order of the scale. A draw then exceeds the threshold on the
 #' transformed scale where it lies below the corresponding value on the fitted
 #' scale, and the censoring record is remapped with the draws, so that a draw
@@ -138,7 +142,7 @@
 #'
 #' @export
 exceedance <- function(object, threshold, estimate = c("nec", "nsec", "ecx"),
-                       ecx_val = 10, xform = NULL, ...) {
+                       ecx_val = 10, xform = NULL, x_scale = c("recorded", "fitted"), ...) {
   UseMethod("exceedance")
 }
 
@@ -149,13 +153,15 @@ exceedance <- function(object, threshold, estimate = c("nec", "nsec", "ecx"),
 #' @export
 exceedance.bnecfit <- function(object, threshold,
                                estimate = c("nec", "nsec", "ecx"),
-                               ecx_val = 10, xform = NULL, ...) {
+                               ecx_val = 10, xform = NULL,
+                               x_scale = c("recorded", "fitted"), ...) {
   # Read each fitted class through the estimator generics, so exceedance()
   # compares the same draws that nec(), nsec() and ecx() report.
   estimate <- match.arg(estimate)
   check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
                         list(...))
-  exceedance_fit(object, threshold, estimate, ecx_val, xform, ...)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
+  exceedance_fit(object, threshold, estimate, ecx_val, xform, x_scale, ...)
 }
 
 #' @inheritParams exceedance
@@ -165,12 +171,14 @@ exceedance.bnecfit <- function(object, threshold,
 #' @export
 exceedance.bayesnecgroupfit <- function(object, threshold,
                                         estimate = c("nec", "nsec", "ecx"),
-                                        ecx_val = 10, xform = NULL, ...) {
+                                        ecx_val = 10, xform = NULL,
+                                        x_scale = c("recorded", "fitted"), ...) {
   estimate <- match.arg(estimate)
   # Validated once, before the first level, so that an argument error is
   # raised before any level's curve is evaluated.
   check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
                         list(...))
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   # Under "nec" a level with no nec parameter has no draws to compare, so its
   # row is NA, as nec() returns NA for it.
   lacking <- if (estimate == "nec") {
@@ -191,7 +199,7 @@ exceedance.bayesnecgroupfit <- function(object, threshold,
     }
     with_level_error(object$levels[i], exceedance_fit(
       object$fits[[i]], threshold = threshold, estimate = estimate,
-      ecx_val = ecx_val, xform = xform, ...
+      ecx_val = ecx_val, xform = xform, x_scale = x_scale, ...
     ))
   })
   out <- do.call(rbind, lapply(seq_along(rows), function(i) {
@@ -209,16 +217,18 @@ exceedance.bayesnecgroupfit <- function(object, threshold,
 #' @export
 exceedance.bayesnecjointfit <- function(object, threshold,
                                         estimate = c("nec", "nsec", "ecx"),
-                                        ecx_val = 10, xform = NULL, ...) {
+                                        ecx_val = 10, xform = NULL,
+                                        x_scale = c("recorded", "fitted"), ...) {
   estimate <- match.arg(estimate)
   # Validated once, before any level is read, as for a bayesnecgroupfit.
   check_exceedance_args(threshold, estimate, ecx_val, !missing(ecx_val),
                         list(...))
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   # A joint refit has no per-level fits to map over, but its estimators return
   # one element of draws per level, so read them once. Under estimate = "nec",
   # a level whose equation has no nec parameter returns NA draws, which
   # exceedance_from_draws() leaves out, so that level's row is NA.
-  post <- exceedance_posterior(object, estimate, ecx_val, xform, ...)
+  post <- exceedance_posterior(object, estimate, ecx_val, xform, x_scale, ...)
   out <- do.call(rbind, lapply(object$levels, function(lev) {
     cbind(data.frame(level = lev, stringsAsFactors = FALSE),
           exceedance_from_draws(post[[lev]], threshold))
@@ -278,9 +288,11 @@ check_exceedance_args <- function(threshold, estimate, ecx_val, ecx_val_given,
 #' @return A one-row \code{\link[base]{data.frame}}; see \code{exceedance()}.
 #'
 #' @noRd
-exceedance_fit <- function(object, threshold, estimate, ecx_val, xform, ...) {
+exceedance_fit <- function(object, threshold, estimate, ecx_val,
+                           xform, x_scale, ...) {
   exceedance_from_draws(
-    exceedance_posterior(object, estimate, ecx_val, xform, ...), threshold
+    exceedance_posterior(object, estimate, ecx_val, xform, x_scale, ...),
+    threshold
   )
 }
 
@@ -301,14 +313,15 @@ exceedance_fit <- function(object, threshold, estimate, ecx_val, xform, ...) {
 #' \code{\link[base]{list}} of them, one per level.
 #'
 #' @noRd
-exceedance_posterior <- function(object, estimate, ecx_val, xform, ...) {
+exceedance_posterior <- function(object, estimate, ecx_val,
+                                  xform, x_scale, ...) {
   read_posterior <- switch(
     estimate,
     nec = function(...) nec(object, posterior = TRUE, ...),
     nsec = function(...) nsec(object, posterior = TRUE, ...),
     ecx = function(...) ecx(object, ecx_val = ecx_val, posterior = TRUE, ...)
   )
-  tryCatch(read_posterior(xform = xform, ...),
+  tryCatch(read_posterior(xform = xform, x_scale = x_scale, ...),
            bayesnec_unused_args = function(e) {
              stop("exceedance() does not use ",
                   paste(e$args, collapse = ", "), ". See ?exceedance for ",

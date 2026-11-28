@@ -243,7 +243,7 @@ test_that("the bound is given on the scale of the returned estimate", {
   expect_match(out$notes, paste0("ends at ", signif(exp(ub) - 1, 3), " (",
                                  signif(ub, 3), " on the fitted scale)"),
                fixed = TRUE)
-  fitted <- attr(prior_bound_notes(nec(fit, xform = identity))$value,
+  fitted <- attr(prior_bound_notes(nec(fit, x_scale = "fitted"))$value,
                  "prior_bound_summary")
   expect_equal(fitted$bound, fitted$fitted_bound)
 })

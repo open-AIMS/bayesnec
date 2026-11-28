@@ -90,17 +90,17 @@ test_that("nec() defaults to the recorded scale and keeps a supplied xform", {
   # call are the same computation, and nothing is printed about the scale.
   expect_silent(by_default <- nec(tf))
   expect_identical(by_default, nec(tf, xform = exp))
-  # identity is the fitted scale, as an untransformed fit reports it.
-  expect_identical(nec(tf, xform = identity), nec(nec4param))
+  # The fitted scale matches an untransformed fit.
+  expect_identical(nec(tf, x_scale = "fitted"), nec(nec4param))
   # A supplied xform is applied to the estimate on the fitted scale.
   expect_equal(as.numeric(nec(tf, xform = function(z) 2 * z)),
-               2 * as.numeric(nec(tf, xform = identity)))
+               2 * as.numeric(nec(tf, x_scale = "fitted")))
   expect_equal(as.numeric(nec(tf, posterior = TRUE)),
                exp(as.numeric(nec(nec4param, posterior = TRUE))))
   # A model set inverts its mixture of NEC and NSEC draws in the same way.
   tm <- logged_x_set(manec_example)
   expect_identical(q(nec(tm)), q(nec(tm, xform = exp)))
-  expect_identical(q(nec(tm, xform = identity)), q(nec(manec_example)))
+  expect_identical(q(nec(tm, x_scale = "fitted")), q(nec(manec_example)))
 })
 
 test_that("a fit with no inline transformation takes NULL as identity", {
@@ -143,9 +143,9 @@ test_that("ecx() and nsec() read the recorded grid without an inverse", {
     # says, so the default is the untransformed fit's answer.
     expect_identical(q(ecx(te, resolution = 20)),
                      q(ecx(ecx4param, resolution = 20)))
-    # identity gives the fitted scale, draw by draw.
+    # The fitted scale is read draw by draw.
     expect_equal(
-      as.numeric(q(ecx(te, resolution = 20, xform = identity,
+      as.numeric(q(ecx(te, resolution = 20, x_scale = "fitted",
                        posterior = TRUE))),
       bayesnec:::sub_x_transformation(
         as.numeric(q(ecx(te, resolution = 20, posterior = TRUE))),
@@ -182,7 +182,7 @@ test_that("ecnsec() reads the default nsec() at the same concentration", {
     # One draw, so that a quantile taken on either scale does not differ in
     # the interpolation between two draws.
     by_default <- q(nsec(tf, resolution = 20, posterior = TRUE))[[1]]
-    fitted <- q(nsec(tf, resolution = 20, xform = identity,
+    fitted <- q(nsec(tf, resolution = 20, x_scale = "fitted",
                      posterior = TRUE))[[1]]
     expect_equal(case$inv(fitted), by_default, tolerance = 1e-12)
     # NULL reads nsec as given, on the recorded scale, which is the scale
@@ -251,7 +251,7 @@ test_that("a draw beyond the grid of a numeric inverse is not given a value", {
   expect_false(anyNA(cp[cp$parameter != "nec", "Estimate"]))
   # The remedies the messages name both work.
   expect_no_error(nec(tf, xform = function(z) 4 * sinh(z)))
-  expect_identical(nec(tf, xform = identity), nec(nec4param))
+  expect_identical(nec(tf, x_scale = "fitted"), nec(nec4param))
 })
 
 test_that("a decreasing transformation keeps the interval in order", {
@@ -294,7 +294,7 @@ test_that("a group, a hurdle pair and a joint refit follow the default", {
   expect_identical(q(nec(g)), q(nec(g, xform = exp)))
   h <- fake_scale_hurdle(tf, tf)
   expect_identical(q(nec(h)), q(nec(h, xform = exp)))
-  expect_identical(q(nec(h, which = "growth", xform = identity)),
+  expect_identical(q(nec(h, which = "growth", x_scale = "fitted")),
                    q(nec(fake_scale_hurdle(nec4param, nec4param),
                          which = "growth")))
   skip_on_cran()
@@ -318,8 +318,8 @@ test_that("summary() reports the no-effect row as nec() does", {
                as.numeric(bayesnec:::estimates_summary(exp(
                  nec4param$ne_posterior
                ))))
-  # identity is the stored row on the fitted scale.
-  expect_identical(q(summary(tf, xform = identity))$nec_vals,
+  # The fitted scale is the stored row.
+  expect_identical(q(summary(tf, x_scale = "fitted"))$nec_vals,
                    q(summary(nec4param))$nec_vals)
   tm <- logged_x_set(manec_example)
   expect_equal(q(summary(tm, check_fit = FALSE))$nec_vals,
@@ -346,10 +346,10 @@ test_that("compare_estimates() and exceedance() read the recorded scale", {
                                    list(tf, te)
                                  )))))
   # A threshold is read as a concentration by default, and as a log
-  # concentration with xform = identity.
+  # concentration with x_scale = "fitted".
   at <- unname(q(nec(tf))[[1]])
   expect_equal(q(exceedance(tf, threshold = at))$prob,
-               q(exceedance(tf, threshold = log(at), xform = identity))$prob)
+               q(exceedance(tf, threshold = log(at), x_scale = "fitted"))$prob)
 })
 
 test_that("the plots annotate the numbers the estimators return", {
@@ -392,9 +392,9 @@ test_that("crf((log(x))) is read as crf(log(x)) on every path (#479)", {
   skip_on_cran()
   bare <- logged_x_fit(ecx4param, "ecx4param")
   paren <- logged_x_fit(ecx4param, "ecx4param", "(log(x))")
-  expect_equal(q(ecx(paren, resolution = 20, xform = identity)),
-               q(ecx(bare, resolution = 20, xform = identity)))
-  expect_equal(unname(q(ecx(paren, resolution = 20, xform = identity))[1]),
+  expect_equal(q(ecx(paren, resolution = 20, x_scale = "fitted")),
+               q(ecx(bare, resolution = 20, x_scale = "fitted")))
+  expect_equal(unname(q(ecx(paren, resolution = 20, x_scale = "fitted"))[1]),
                log(unname(q(ecx(ecx4param, resolution = 20))[1])),
                tolerance = 1e-3)
   expect_equal(q(nsec(paren, resolution = 20)),
@@ -493,4 +493,99 @@ test_that("summary and comparisons invert a stored grid beginning at zero", {
                q(summary(tf, xform = inverse))$nec_vals, tolerance = 1e-5)
   expect_equal(as.numeric(bayesnec:::return_nec_post(tf)),
                inverse(as.numeric(tf$ne_posterior)), tolerance = 1e-5)
+})
+
+
+test_that("identity and the recorded scale agree across parameter estimates", {
+  tf <- logged_x_fit(nec4param, "nec4param")
+  tm <- logged_x_set(manec_example)
+  expect_identical(q(nec(tf, xform = identity)), q(nec(tf)))
+  expect_identical(q(nec(tm, xform = identity)), q(nec(tm)))
+  expect_identical(q(curve_params(tf, xform = identity)),
+                   q(curve_params(tf)))
+  expect_identical(q(curve_params(tm, xform = identity)),
+                   q(curve_params(tm)))
+  expect_identical(q(summary(tf, xform = identity))$nec_vals,
+                   q(summary(tf))$nec_vals)
+  expect_identical(q(summary(tm, xform = identity,
+                             check_fit = FALSE))$nec_vals,
+                   q(summary(tm, check_fit = FALSE))$nec_vals)
+  expect_identical(q(curve_params(tf, x_scale = "fitted")),
+                   q(curve_params(nec4param)))
+  expect_identical(q(nec(nec4param, x_scale = "fitted")), q(nec(nec4param)))
+  expect_equal(as.numeric(q(nec(nec4param, xform = function(x) x,
+                                x_scale = "fitted"))),
+               as.numeric(q(nec(nec4param))))
+  expect_error(nec(tf, x_scale = "unknown"), "'arg' should be")
+  expect_error(nec(tf, x_scale = "fitted", xform = exp),
+               'cannot be combined with a non-identity')
+  expect_error(nec(tf, x_scale = "fitted", xform = function(x) x),
+               'cannot be combined with a non-identity')
+})
+
+test_that("curve estimators and exceedance use the requested predictor scale", {
+  skip_on_cran()
+  tf <- logged_x_fit(nec4param, "nec4param")
+  te <- logged_x_fit(ecx4param, "ecx4param")
+  expect_identical(q(ecx(te, resolution = 20, xform = identity,
+                         posterior = TRUE)),
+                   q(ecx(te, resolution = 20, posterior = TRUE)))
+  expect_identical(q(nsec(te, resolution = 20, xform = identity,
+                          posterior = TRUE)),
+                   q(nsec(te, resolution = 20, posterior = TRUE)))
+  expect_equal(as.numeric(q(ecx(te, resolution = 20,
+                                x_scale = "fitted", posterior = TRUE))),
+               log(as.numeric(q(ecx(te, resolution = 20,
+                                    posterior = TRUE)))))
+  expect_equal(as.numeric(q(nsec(te, resolution = 20,
+                                 x_scale = "fitted", posterior = TRUE))),
+               log(as.numeric(q(nsec(te, resolution = 20,
+                                     posterior = TRUE)))))
+  at <- unname(q(nec(tf))[[1]])
+  expect_identical(q(exceedance(tf, at, xform = identity)),
+                   q(exceedance(tf, at)))
+  expect_equal(q(exceedance(tf, log(at), x_scale = "fitted"))$prob,
+               q(exceedance(tf, at))$prob)
+  expect_error(exceedance(tf, at, xform = exp, x_scale = "fitted"),
+               'cannot be combined with a non-identity')
+  expect_identical(q(ecnsec(tf, nsec = 1.5, resolution = 20,
+                            xform = identity)),
+                   q(ecnsec(tf, nsec = 1.5, resolution = 20)))
+  expect_identical(q(ecnsec(tf, nsec = 1.5, resolution = 20,
+                            x_scale = "fitted")),
+                   q(ecnsec(tf, nsec = 1.5, resolution = 20)))
+})
+
+test_that("group and hurdle estimates forward the selected scale", {
+  tf <- logged_x_fit(nec4param, "nec4param")
+  g <- fake_scale_group(list(a = tf, b = tf))
+  h <- fake_scale_hurdle(tf, tf)
+  expect_identical(q(nec(g, xform = identity)), q(nec(g)))
+  expect_identical(q(nec(h, xform = identity)), q(nec(h)))
+  expect_identical(q(nec(g, x_scale = "fitted"))$Estimate,
+                   q(nec(fake_scale_group(list(a = nec4param,
+                                               b = nec4param))))$Estimate)
+  expect_identical(q(nec(h, x_scale = "fitted")),
+                   q(nec(fake_scale_hurdle(nec4param, nec4param))))
+  skip_on_cran()
+  expect_identical(q(ecx(h, resolution = 20, xform = identity)),
+                   q(ecx(h, resolution = 20)))
+  expect_identical(q(nsec(h, resolution = 20, xform = identity)),
+                   q(nsec(h, resolution = 20)))
+  j <- joint_split()
+  j$bayesnecformula <- bnf(y ~ crf(log(x), model = "nec4param"))
+  expect_identical(q(ecx(j, resolution = 20, xform = identity)),
+                   q(ecx(j, resolution = 20)))
+  expect_identical(q(nsec(j, resolution = 20, xform = identity)),
+                   q(nsec(j, resolution = 20)))
+})
+
+test_that("fitted plot annotations agree with fitted estimator values", {
+  skip_on_cran()
+  tf <- logged_x_fit(nec4param, "nec4param")
+  g <- q(ggbnec_data(tf, add_ecx = TRUE, x_scale = "fitted"))
+  expect_equal(unique(g$nec_vals[!is.na(g$nec_vals)]),
+               as.numeric(q(nec(tf, x_scale = "fitted"))))
+  expect_equal(unique(g$ecx_vals[!is.na(g$ecx_vals)]),
+               as.numeric(q(ecx(tf, type = "range", x_scale = "fitted"))))
 })

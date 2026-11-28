@@ -12,6 +12,7 @@
   x_range = NA,
   type = "absolute",
   xform = NULL,
+  x_scale = c("recorded", "fitted"),
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
   posterior = FALSE,
@@ -39,9 +40,14 @@ matches \code{\link{ecx}} and \code{\link{nsec}}.}
 \item{type}{A \code{\link[base]{character}} vector, taking values of
 "absolute" (the default), "relative" or "range". See Details.}
 
-\item{xform}{\code{NULL}, the default, or a function applied to
-\code{nsec} before the curve is read there. \code{NULL} reads \code{nsec}
-as given, on the recorded scale. See Details.}
+\item{xform}{\code{NULL} or \code{identity} reads \code{nsec} as
+given. Any other function is applied to \code{nsec} before the curve is
+read there and requires \code{x_scale = "recorded"} for an
+predictor with an inline transformation. See Details.}
+
+\item{x_scale}{\code{"recorded"} (the default) or \code{"fitted"}.
+\code{"fitted"} gives the same result as the former
+\code{xform = identity}; \code{nsec} is read as given in either case.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and

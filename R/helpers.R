@@ -3369,5 +3369,6 @@ plot_ecx <- function(object, family, dots = list(), xform = identity) {
   if (!("type" %in% names(dots)) && identical(family, "gaussian")) {
     dots$type <- "range"
   }
-  do.call(ecx, c(list(object), dots, list(xform = xform)))
+  x_scale <- if (identical(xform, identity)) "fitted" else "recorded"
+  do.call(ecx, c(list(object), dots, list(xform = xform, x_scale = x_scale)))
 }

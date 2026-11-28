@@ -12,6 +12,30 @@ check_xform <- function(xform) {
   invisible(NULL)
 }
 
+#' Resolve the scale requested at a public estimator
+#'
+#' Internal estimators use NULL for the recorded scale and identity for the
+#' fitted scale. Keep that convention after validating the public arguments.
+#'
+#' @param object A fitted object.
+#' @param xform NULL or a function supplied by the caller.
+#' @param x_scale The requested predictor scale.
+#'
+#' @return NULL or a function for the internal estimator.
+#' @noRd
+resolve_estimator_xform <- function(object, xform, x_scale) {
+  check_xform(xform)
+  x_scale <- match.arg(x_scale, c("recorded", "fitted"))
+  if (x_scale == "fitted" && !is.null(inline_x_transform(object))) {
+    if (!is.null(xform) && !identical(xform, identity)) {
+      stop('`x_scale = "fitted"` cannot be combined with a non-identity `xform`.',
+           call. = FALSE)
+    }
+    return(identity)
+  }
+  if (identical(xform, identity)) NULL else xform
+}
+
 #' Whether an estimator returns its estimate on the recorded scale
 #'
 #' \code{xform = NULL} asks for the recorded scale. That differs from the
@@ -139,7 +163,7 @@ recorded_x_map <- function(formula, x_grid_raw, tr) {
   if (!isTRUE(all(steps > 0) || all(steps < 0))) {
     stop("The transformation ", tr$label, " is not strictly monotone over ",
          "the prediction grid, so it has no inverse to return the estimate ",
-         "to the scale of ", tr$variable, ". Pass xform, or xform = identity ",
+         "to the scale of ", tr$variable, ". Pass xform, or x_scale = \"fitted\" ",
          "for the fitted scale.", call. = FALSE)
   }
   finite <- is.finite(grid$fitted)
@@ -251,7 +275,7 @@ map_draws <- function(values, map, cens = NULL, what = "estimate",
       "the prediction grid, and ", sum(lost), " of ", length(values),
       " draws lie beyond that grid. ",
       if (refuse) "" else "Those draws are NA, and so is their summary. ",
-      "Pass the inverse of ", tr$label, " as xform, or xform = identity for ",
+      "Pass the inverse of ", tr$label, " as xform, or x_scale = \"fitted\" for ",
       "the fitted scale."
     )
     if (refuse) stop(text, call. = FALSE) else message(text)
@@ -280,6 +304,25 @@ dots_xform <- function(generic, dots) {
     error = function(e) NULL
   )
   if (is.null(matched)) NULL else matched[["xform"]]
+}
+
+#' The x_scale a method received through its dots
+#'
+#' @param generic The generic the dots are passed to.
+#' @param dots The caller's dots as a list.
+#'
+#' @return The requested scale, or "recorded" when none was supplied.
+#' @noRd
+dots_x_scale <- function(generic, dots) {
+  matched <- tryCatch(
+    match.call(generic, as.call(c(list(quote(f), quote(object)), dots))),
+    error = function(e) NULL
+  )
+  if (is.null(matched) || is.null(matched[["x_scale"]])) {
+    "recorded"
+  } else {
+    matched[["x_scale"]]
+  }
 }
 
 #' Whether a plot draws its estimates as the estimators return them by default

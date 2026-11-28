@@ -262,11 +262,11 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     } else if (!is.null(hurdle_parts) || identical(mod_class, "ecx")) {
       without_censored_warning(
         nsec(level_fit, posterior = TRUE, resolution = resolution,
-             x_range = x_range, sig_val = sig_val, xform = identity)
+             x_range = x_range, sig_val = sig_val, x_scale = "fitted")
       )
     } else {
       without_censored_warning(
-        nec(level_fit, posterior = TRUE, xform = identity)
+        nec(level_fit, posterior = TRUE, x_scale = "fitted")
       )
     }
     attr(ne_posterior, "level") <- NULL

@@ -113,11 +113,11 @@ For these concentrations, the coefficient of variation of the gaps is 1.72 on th
 
 Any simple transformation can be written directly inside `crf` (e.g. `crf(log(x), model = "nec4param")`), and this has two consequences. First, the transformation is evaluated before `bayesnec` checks the predictor, so a control concentration recorded as `0` is passed to the data check as `log(0)`, and `bnec` stops with an error that the predictor contains values that are not finite. `bayesnec` does not correct a zero on the predictor axis on either the recorded or the transformed scale, because a concentration of zero is an ordinary control and no response distribution constrains the values a predictor can take. Where a logarithm is used, an offset therefore needs to be chosen by the user and added to the data before fitting.
 
-Second, the model is fitted on the transformed scale. However, `nec`, `ecx`, `nsec` and the plotting methods return the toxicity estimates on the recorded scale. A function passed as `xform` is instead applied to an estimate on the transformed scale, so `xform = identity` returns the transformed scale and the inverse of the transformation returns the recorded scale, as in the following example:
+Second, the model is fitted on the transformed scale. The estimators and plots return concentrations on the recorded scale by default. For an estimator, `xform = identity` gives the same result as the default, and `x_scale = "fitted"` returns the transformed scale. A different `xform` is applied to the estimate on the fitted scale. For example, the following explicit inverse gives the same ECx as the default call; the plot uses the recorded scale without an inverse argument:
 
 ```{r, eval = FALSE}
 ecx(exp_2, xform = function(x) exp(x) - 1)
-autoplot(exp_2, xform = function(x) exp(x) - 1)
+autoplot(exp_2)
 ```
 
 The inline form and a pre-computed column (as in the code below) are equivalent ways of writing the model, and give identical estimates on the transformed scale, whether the transformation is of a bare variable (e.g. `log(x)`) or its argument contains arithmetic (e.g. `log(x + 1)`).
@@ -185,10 +185,10 @@ summary(exp_1)
 
 Note the Rhat values in this example are one, indicating convergence.
 
-The functions `plot` (extending `base` plot method) and `autoplot` (extending `ggplot2` plot method) can be used to plot the fitted model. You can also make your own plot from the data included in the returned object (class `bayesnecfit`) from the call to `bnec`. **Notice, however, that in this case we log-transformed the predictor `raw_x` in the input formula.** This causes `brms` to pass these transformations onto Stan's native code, so the parameters of the model (including `nec`) are estimated on the log scale, although the derived toxicity estimates and the plots are returned on the data scale. The additional argument `xform` is applied to an estimate on the fitted scale, so supplying the inverse of the transformation (`exp`, as in the call below) also returns the data scale. Because the concentrations from 6.25 to 400 are a two-fold dilution series, we also plot them on a log axis (`scale_x_continuous(transform = "log10")`), on which these steps are evenly spaced (the lowest concentration, 0.1, is about six steps below the next).
+The functions `plot` (extending `base` plot method) and `autoplot` (extending `ggplot2` plot method) can be used to plot the fitted model. You can also make your own plot from the data included in the returned object (class `bayesnecfit`) from the call to `bnec`. **Notice, however, that in this case we log-transformed the predictor `raw_x` in the input formula.** This causes `brms` to pass these transformations onto Stan's native code, so the parameters of the model (including `nec`) are estimated on the log scale, although the derived toxicity estimates and the plots are returned on the data scale. The `xform` argument of the estimators can apply the inverse of the transformation, but the plots already use the data scale. Because the concentrations from 6.25 to 400 are a two-fold dilution series, we also plot them on a log axis (`scale_x_continuous(transform = "log10")`), on which these steps are evenly spaced (the lowest concentration, 0.1, is about six steps below the next).
 
 ```{r exmp1-binom, fig.width = 5, message = FALSE}
-autoplot(exp_1, xform = exp) +
+autoplot(exp_1) +
   scale_x_continuous(transform = "log10")
 ```
 
@@ -210,11 +210,11 @@ exp_1b <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
                seed = 333)
 ```
 
-Fitting this data with the `beta_binomial` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b, xform = exp)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
+Fitting this data with the `beta_binomial` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
 
 
 ```{r exmp1-bbinom, fig.width = 5, message = FALSE}
-autoplot(exp_1b, xform = exp) +
+autoplot(exp_1b) +
   scale_x_continuous(transform = "log10")
 ```
 
@@ -252,7 +252,7 @@ round(c(linear = spacing_cv(conc),
         `log(x + 1)` = spacing_cv(log(conc + 1))), 2)
 ```
 
-With the offset, the coefficient of variation of the gaps is 0.44, against 0.58 for `log(raw_x)`. An offset of one is chosen for convenience and not on any principle, although it is reasonable here because the concentrations span several orders of magnitude and the value one is within their range. Because the offset is written inside `crf()`, it is part of the transformation that the estimators and the plots invert, and these therefore return concentrations. The `xform` passed below is this inverse written out explicitly, and gives an identical figure. The concentration axis is drawn with `scale_x_continuous(transform = "log1p")`, which is the scale on which the model was fitted.
+With the offset, the coefficient of variation of the gaps is 0.44, against 0.58 for `log(raw_x)`. An offset of one is chosen for convenience and not on any principle, although it is reasonable here because the concentrations span several orders of magnitude and the value one is within their range. Because the offset is written inside `crf()`, it is part of the transformation that the estimators and the plots invert, and these therefore return concentrations. The figure uses the recorded concentration scale without a separate inverse argument. The concentration axis is drawn with `scale_x_continuous(transform = "log1p")`, which is the scale on which the model was fitted.
 
 ```{r, results = "hide"}
 prop_data <- "https://pastebin.com/raw/123jq46d" |>
@@ -265,7 +265,7 @@ exp_2 <- bnec(resp ~ crf(log(raw_x + 1), model = "nec4param"),
 ```
 
 ```{r exmp1-beta, warning = FALSE, message = FALSE, fig.width = 5}
-autoplot(exp_2, xform = function(x)exp(x) - 1) +
+autoplot(exp_2) +
   scale_x_continuous(transform = "log1p", breaks = c(0, 1, 3, 10, 30, 100, 300))
 ```
 

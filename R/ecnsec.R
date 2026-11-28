@@ -12,9 +12,13 @@
 #' matches \code{\link{ecx}} and \code{\link{nsec}}.
 #' @param type A \code{\link[base]{character}} vector, taking values of
 #' "absolute" (the default), "relative" or "range". See Details.
-#' @param xform \code{NULL}, the default, or a function applied to
-#' \code{nsec} before the curve is read there. \code{NULL} reads \code{nsec}
-#' as given, on the recorded scale. See Details.
+#' @param xform \code{NULL} or \code{identity} reads \code{nsec} as
+#' given. Any other function is applied to \code{nsec} before the curve is
+#' read there and requires \code{x_scale = "recorded"} for an
+#' predictor with an inline transformation. See Details.
+#' @param x_scale \code{"recorded"} (the default) or \code{"fitted"}.
+#' \code{"fitted"} gives the same result as the former
+#' \code{xform = identity}; \code{nsec} is read as given in either case.
 #' @param x_range A range of x values over which to predict the curve. An
 #' \code{nsec} outside it is refused; see Details.
 #' @param extrapolate \code{FALSE}, the default, uses the prediction range.
@@ -98,8 +102,9 @@
 #' by default, so \code{ecnsec(fit, nsec = nsec(fit)[1])} reads the curve at
 #' the NSEC whether or not \code{crf()} transforms the predictor inline. Where
 #' it does, as in \code{crf(log(concentration))}, an NSEC taken with
-#' \code{xform = identity} is on the transformed scale, and needs the inverse,
-#' here \code{xform = exp}.
+#' \code{nsec(fit, x_scale = "fitted")} instead returns the transformed
+#' scale. That value needs the inverse, here \code{xform = exp}, before
+#' \code{ecnsec()} reads the curve at that concentration.
 #'
 #' The curve is read at \code{nsec} only inside the range it is predicted
 #' over: the observed range of the predictor, or \code{x_range} where one is
@@ -128,7 +133,7 @@
 #'
 #' @export
 ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
-                   type = "absolute", xform = NULL,
+                   type = "absolute", xform = NULL, x_scale = c("recorded", "fitted"),
                    prob_vals = c(0.5, 0.025, 0.975), ...,
                    posterior = FALSE, pool = NULL, x_control = "own",
                    extrapolate = FALSE) {
@@ -154,7 +159,9 @@ ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
 #' @export
 ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
                              type = "absolute",
-                             xform = NULL, prob_vals = c(0.5, 0.025, 0.975), ...,
+                             xform = NULL,
+                             x_scale = c("recorded", "fitted"),
+                             prob_vals = c(0.5, 0.025, 0.975), ...,
                              posterior = FALSE, pool = NULL,
                              x_control = "own", extrapolate = FALSE) {
   # One value: the curve is read at one point.
@@ -181,7 +188,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
     check_combined_relative(fit_family, "ecnsec")
   }
   warn_relative_rename(type, match.call())
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   if (is.null(xform)) {
     xform <- identity
   }
@@ -198,7 +205,7 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
       per_model <- function(f) ecnsec(
         f, nsec = nsec, resolution = resolution, x_range = x_range,
         extrapolate = extrapolate,
-        type = type, xform = xform, prob_vals = prob_vals,
+        type = type, xform = xform, x_scale = x_scale, prob_vals = prob_vals,
         posterior = TRUE, pool = pool, x_control = x_control
       )
       if (identical(pool, "none")) {
@@ -228,14 +235,14 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
         function(level, control_value, range_override) {
           ecnsec(level, nsec = nsec, resolution = resolution,
                  x_range = range_override, extrapolate = extrapolate,
-                 type = type, xform = xform,
+                 type = type, xform = xform, x_scale = x_scale,
                  prob_vals = prob_vals, posterior = TRUE, pool = "none",
                  x_control = control_value)
         },
         pool, posterior, prob_vals, x_control, x_range,
         curve_args = list(nsec = nsec, resolution = resolution,
                           extrapolate = extrapolate,
-                          type = type, xform = xform,
+                          type = type, xform = xform, x_scale = x_scale,
                           prob_vals = prob_vals)
       ))
     }

@@ -621,10 +621,11 @@ joint_level_curve <- function(object, level, resolution = 1000,
 #'
 #' @noRd
 joint_level_ne <- function(object, level, xform = identity) {
+  x_scale <- if (identical(xform, identity)) "fitted" else "recorded"
   lvl_fit <- joint_level_fit(object, level)
   if (!is.null(observed_level_spec(lvl_fit)) &&
       sampled_nec_is_no_effect(lvl_fit$model)) {
-    out <- suppressWarnings(suppressMessages(nec(lvl_fit, xform = xform)))
+    out <- suppressWarnings(suppressMessages(nec(lvl_fit, xform = xform, x_scale = x_scale)))
     vals <- as.numeric(out)
     names(vals) <- c("Estimate", "Q2.5", "Q97.5")
     attr(vals, "censored_summary") <- attr(out, "censored_summary")
@@ -635,7 +636,7 @@ joint_level_ne <- function(object, level, xform = identity) {
     return(estimates_summary(map_draws(lvl_fit$ne_posterior, map,
                                        what = lvl_fit$ne_type)))
   }
-  out <- suppressWarnings(suppressMessages(nsec(lvl_fit, xform = xform)))
+  out <- suppressWarnings(suppressMessages(nsec(lvl_fit, xform = xform, x_scale = x_scale)))
   # Keep the censoring record, which as.numeric() drops; without it a censored
   # NSEC's bound is drawn as a quantile.
   vals <- as.numeric(out)
@@ -1216,10 +1217,11 @@ joint_curve_draws <- function(object, level, prefix = "") {
 #' @importFrom chk chk_lgl
 #' @export
 curve_params.bayesnecjointfit <- function(object, summary = TRUE,
-                                          xform = NULL, ...) {
+                                          xform = NULL,
+                                          x_scale = c("recorded", "fitted"), ...) {
   refuse_joint_level("curve_params", ...)
   chk_lgl(summary)
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   report_scales(object, "joint refit")
   out <- lapply(object$levels, function(l) {
     lvl <- joint_level_fit(object, l)
@@ -1388,11 +1390,12 @@ summary.bayesnecjointfit <- function(object, ..., ecx = FALSE,
   check_divergence_cutoff(divergence_cutoff)
   check_summary_ecx_posterior(list(...))
   ne_xform <- summary_ecx_xform(list(...))
+  ne_x_scale <- summary_ecx_x_scale(list(...))
   ecs <- NULL
   if (ecx) {
     ecs <- joint_summary_ecx_rows(..., .fit = object, .ecx_vals = ecx_vals)
   }
-  ne_args <- list(object, no_effect = TRUE)
+  ne_args <- list(object, no_effect = TRUE, x_scale = ne_x_scale)
   if (!is.null(ne_xform)) {
     ne_args$xform <- ne_xform
   }

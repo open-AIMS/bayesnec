@@ -8,15 +8,45 @@
 \alias{curve_params.bayesnecgroupfit}
 \title{Curve parameter estimates from a fitted model}
 \usage{
-curve_params(object, summary = TRUE, xform = NULL, ...)
+curve_params(
+  object,
+  summary = TRUE,
+  xform = NULL,
+  x_scale = c("recorded", "fitted"),
+  ...
+)
 
-\method{curve_params}{bayesnecfit}(object, summary = TRUE, xform = NULL, ...)
+\method{curve_params}{bayesnecfit}(
+  object,
+  summary = TRUE,
+  xform = NULL,
+  x_scale = c("recorded", "fitted"),
+  ...
+)
 
-\method{curve_params}{bayesmanecfit}(object, summary = TRUE, xform = NULL, ...)
+\method{curve_params}{bayesmanecfit}(
+  object,
+  summary = TRUE,
+  xform = NULL,
+  x_scale = c("recorded", "fitted"),
+  ...
+)
 
-\method{curve_params}{bayesnechurdlefit}(object, summary = TRUE, xform = NULL, ...)
+\method{curve_params}{bayesnechurdlefit}(
+  object,
+  summary = TRUE,
+  xform = NULL,
+  x_scale = c("recorded", "fitted"),
+  ...
+)
 
-\method{curve_params}{bayesnecgroupfit}(object, summary = TRUE, xform = NULL, ...)
+\method{curve_params}{bayesnecgroupfit}(
+  object,
+  summary = TRUE,
+  xform = NULL,
+  x_scale = c("recorded", "fitted"),
+  ...
+)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}},
@@ -26,10 +56,14 @@ curve_params(object, summary = TRUE, xform = NULL, ...)
 \item{summary}{A \code{\link[base]{logical}} vector of length 1. Whether to
 return the summary table (the default) or the underlying posterior draws.}
 
-\item{xform}{\code{NULL}, the default, or a function, applied to
-\code{nec} and \code{ec50} and to no other parameter. \code{NULL} returns
-those two on the scale the predictor was recorded on. A function is applied
-to them on the scale the model was fitted on. See Details.}
+\item{xform}{\code{NULL} or \code{identity} leaves \code{nec} and
+\code{ec50} on \code{x_scale}. Any other function is applied to those
+parameters on the fitted scale and requires \code{x_scale = "recorded"}
+for an inline transformation. No other parameter is transformed; see Details.}
+
+\item{x_scale}{\code{"recorded"} (the default) returns \code{nec} and
+\code{ec50} on the recorded predictor scale. \code{"fitted"} returns
+them on the scale fitted by \code{crf()}.}
 
 \item{...}{Passed to the per-component and per-level calls by the
 \code{\link{bayesnechurdlefit}} and \code{\link{bayesnecgroupfit}} methods,
@@ -146,8 +180,9 @@ the \code{nec} parameter: exactly where the inverse has a closed form, and
 otherwise by interpolating on the prediction grid. A draw beyond that grid
 then has no value, so it is \code{NA}, the row summarising it is
 \code{NA}, and a message names the remedy. A supplied \code{xform} is
-applied to them on the transformed scale, so \code{xform = identity}
-returns that scale. Every other parameter is a response level or a shape
+applied to them on the transformed scale. \code{xform = identity}
+leaves them on the recorded scale; \code{x_scale = "fitted"} returns the
+fitted scale. Every other parameter is a response level or a shape
 parameter and is not on the predictor axis at all, so it is returned as
 sampled.
 

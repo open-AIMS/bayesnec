@@ -689,7 +689,7 @@ test_that("a stored curve-read draw beyond either end is infinite", {
     expect_true(all(is.finite(post[!cens$above & !cens$below])))
     direct <- suppressWarnings(nsec(fit, x_range = ends[[end]],
                                     resolution = 50, posterior = TRUE,
-                                    xform = identity))
+                                    x_scale = "fitted"))
     expect_equal(as.numeric(post), as.numeric(direct))
   }
 })

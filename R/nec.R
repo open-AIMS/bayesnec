@@ -6,11 +6,14 @@
 #' @param posterior A \code{\link[base]{logical}} value indicating if the full
 #' posterior sample of calculated NEC values should be returned instead of
 #' just the median and 95% credible intervals.
-#' @param xform \code{NULL}, the default, or a function. \code{NULL} returns
-#' the estimate on the scale the predictor was recorded on. A function is
-#' applied to the estimate on the scale the model was fitted on. The two
-#' differ only where \code{crf()} transforms the predictor inline; see
-#' Details.
+#' @param xform \code{NULL} or \code{identity} leaves the estimate on
+#' \code{x_scale}. Any other function is applied on the fitted scale and
+#' requires \code{x_scale = "recorded"} when the predictor is
+#' transformed inline; see Details.
+#' @param x_scale \code{"recorded"} (the default) returns the predictor on
+#' its recorded scale. \code{"fitted"} returns it on the scale fitted by
+#' \code{crf()}. The scales differ only where \code{crf()} transforms the
+#' predictor inline.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
@@ -147,9 +150,10 @@
 #' transformation it is read off the prediction grid by linear interpolation,
 #' and a draw beyond that grid that is not censored is an error naming the
 #' remedy. A supplied \code{xform} is applied to the estimate on the
-#' transformed scale instead, so \code{xform = identity} returns that scale
-#' and \code{xform = exp} on \code{crf(log(concentration))} returns the
-#' exact inverse.
+#' transformed scale instead. \code{xform = identity} leaves the estimate
+#' on the recorded scale, while \code{x_scale = "fitted"} returns the fitted
+#' scale. \code{xform = exp} on \code{crf(log(concentration))} returns the
+#' recorded scale again.
 #'
 #' @return A vector containing the estimated no-effect value, including upper
 #' and lower 95% credible interval bounds (or other interval as specified by
@@ -297,7 +301,7 @@
 #' @export
 # no_effect follows `...` so that it appears in \usage, although only one class
 # uses it. The other methods take it through `...` and refuse it.
-nec <- function(object, posterior = FALSE, xform = NULL,
+nec <- function(object, posterior = FALSE, xform = NULL, x_scale = c("recorded", "fitted"),
                 prob_vals = c(0.5, 0.025, 0.975), extrapolate = FALSE, ...,
                 no_effect = FALSE, pool = NULL) {
   UseMethod("nec")
@@ -318,6 +322,7 @@ nec <- function(object, posterior = FALSE, xform = NULL,
 #'
 #' @export
 nec.bayesnecfit <- function(object, posterior = FALSE, xform = NULL,
+                            x_scale = c("recorded", "fitted"),
                             prob_vals = c(0.5, 0.025, 0.975),
                             extrapolate = FALSE, ..., pool = NULL) {
   check_component_arg(list(...), object)
@@ -326,7 +331,7 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = NULL,
   check_removed_args(list(...))
   check_unused_dots(list(...), "nec", nec_curve_args)
   chk_flag(posterior)
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
@@ -363,10 +368,10 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = NULL,
               !sampled_nec_is_no_effect(object$model, object$fit)) {
             nsec(level, sig_val = args$sig_val,
                  resolution = args$resolution, x_range = args$x_range,
-                 posterior = TRUE, xform = xform, prob_vals = prob_vals,
+                 posterior = TRUE, xform = xform, x_scale = x_scale, prob_vals = prob_vals,
                  extrapolate = extrapolate, pool = "none")
           } else {
-            nec(level, posterior = TRUE, xform = xform,
+            nec(level, posterior = TRUE, xform = xform, x_scale = x_scale,
                 prob_vals = prob_vals, extrapolate = extrapolate,
                 pool = "none")
           }
@@ -531,6 +536,7 @@ ne_estimate_label <- function(types) {
 #'
 #' @export
 nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
+                              x_scale = c("recorded", "fitted"),
                               prob_vals = c(0.5, 0.025, 0.975),
                               extrapolate = FALSE, ..., pool = NULL) {
   check_component_arg(list(...), object)
@@ -539,7 +545,7 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
   check_removed_args(list(...))
   check_unused_dots(list(...), "nec", nec_curve_args)
   chk_flag(posterior)
-  check_xform(xform)
+  xform <- resolve_estimator_xform(object, xform, x_scale)
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
@@ -567,11 +573,11 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NULL,
     curve_dots <- dots[names(dots) %in% c("resolution", "x_range")]
     per_model <- function(f) {
       if (sampled_nec_is_no_effect(f$model, f$fit)) {
-        nec(f, posterior = TRUE, xform = xform, prob_vals = prob_vals,
+        nec(f, posterior = TRUE, xform = xform, x_scale = x_scale, prob_vals = prob_vals,
             extrapolate = extrapolate, pool = pool)
       } else {
         do.call(nsec, c(list(f, sig_val = sig_val, posterior = TRUE,
-                             xform = xform, prob_vals = prob_vals,
+                             xform = xform, x_scale = x_scale, prob_vals = prob_vals,
                              extrapolate = extrapolate, pool = pool),
                         curve_dots))
       }

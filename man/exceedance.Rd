@@ -10,6 +10,7 @@ exceedance(
   estimate = c("nec", "nsec", "ecx"),
   ecx_val = 10,
   xform = NULL,
+  x_scale = c("recorded", "fitted"),
   ...
 )
 }
@@ -29,9 +30,14 @@ or \code{\link{ecx}} respectively.}
 \item{ecx_val}{The effect level of the ECx, as in \code{\link{ecx}}. Used
 only where \code{estimate = "ecx"}, and refused for the other two.}
 
-\item{xform}{\code{NULL}, the default, or a function, passed to the
-estimator as in \code{\link{nec}}. It sets the scale \code{threshold} is
-read on; see Details.}
+\item{xform}{\code{NULL} or \code{identity} leaves the estimate on
+\code{x_scale}. Any other function is applied on the fitted scale and
+requires \code{x_scale = "recorded"} for a predictor with an
+inline transformation; see \code{\link{nec}}.}
+
+\item{x_scale}{\code{"recorded"} (the default) reads \code{threshold} on
+the recorded predictor scale. \code{"fitted"} reads it on the scale
+fitted by \code{crf()}.}
 
 \item{...}{Further arguments passed to \code{\link{nec}}, \code{\link{nsec}}
 or \code{\link{ecx}}, such as \code{x_range}, \code{resolution},
@@ -90,8 +96,8 @@ the NSEC of that level's fitted curve instead, as
 \code{threshold} and the estimate are compared on one scale, the scale the
 estimator returns the estimate on. Without \code{xform} that is the scale
 the predictor was recorded on, so under \code{crf(log(concentration))} the
-threshold is a concentration. With \code{xform = identity} it is a log
-concentration, the scale the model was fitted on. A decreasing \code{xform}
+threshold is a concentration. With \code{x_scale = "fitted"} it is a
+log concentration, the scale the model was fitted on. A decreasing \code{xform}
 reverses the order of the scale. A draw then exceeds the threshold on the
 transformed scale where it lies below the corresponding value on the fitted
 scale, and the censoring record is remapped with the draws, so that a draw

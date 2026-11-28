@@ -130,7 +130,7 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   check_plot_dpar(list(...), x)
   blocks <- plot_blocks(x, which)
   x_scale <- plot_x_scale(x, x_scale, xform)
-  summ <- summary(x, ecx = FALSE, xform = identity) |>
+  summ <- summary(x, ecx = FALSE, x_scale = "fitted") |>
     suppressWarnings() |>
     suppressMessages()
   dat <- ggbnec_data(x, add_nec = nec, add_ecx = ecx,
@@ -264,7 +264,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   if (multi_facet) {
     names(all_fits) <- shown$model
     nec_labs <- map_dfr(all_fits, function(x) {
-      summ <- summary(x, ecx = FALSE, xform = identity) |>
+      summ <- summary(x, ecx = FALSE, x_scale = "fitted") |>
         suppressWarnings() |>
         suppressMessages()
       summ$nec_vals |>
@@ -322,7 +322,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                              x_axis = avg$x_axis, xlab = xlab, ylab = ylab)
       } else {
         j <- i - n_average
-        summ_j <- summary(all_fits[[j]], ecx = FALSE, xform = identity) |>
+        summ_j <- summary(all_fits[[j]], ecx = FALSE, x_scale = "fitted") |>
           suppressWarnings() |>
           suppressMessages()
         dat_j <- ggbnec_data(all_fits[[j]], add_nec = nec, add_ecx = ecx,
@@ -373,7 +373,7 @@ manec_average_label <- "Model averaged predictions"
 #' @noRd
 manec_average_plot_data <- function(x, nec, ecx, xform, x_scale, group, group_aes,
                                     ...) {
-  summ <- summary(x, ecx = FALSE, xform = identity) |>
+  summ <- summary(x, ecx = FALSE, x_scale = "fitted") |>
     suppressWarnings() |>
     suppressMessages()
   dat <- ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform,
@@ -1255,7 +1255,7 @@ joint_block_ne <- function(object, dpar) {
     args <- recorded_expand_args(list(object))
     return(suppressMessages(nsec(
       object, sig_val = args$sig_val, resolution = args$resolution,
-      x_range = args$x_range, xform = identity, posterior = TRUE,
+      x_range = args$x_range, x_scale = "fitted", posterior = TRUE,
       dpar = dpar
     )))
   }
@@ -1460,7 +1460,7 @@ autoplot.bayesnecgroupfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                      xform = xform, x_scale = x_scale, group = group, ...)
   x_axis <- attr(dat, "x_axis")
   tags <- vapply(object$fits, function(fit) {
-    summ <- summary(fit, ecx = FALSE, xform = identity) |>
+    summ <- summary(fit, ecx = FALSE, x_scale = "fitted") |>
       suppressWarnings() |>
       suppressMessages()
     rownames(summ$nec_vals)[1]

@@ -1425,7 +1425,7 @@ test_that("nec() combines a crf(I(-x)) pair where the product leaves its plateau
   # An xform reports the same threshold on another scale.
   expect_equal(as.numeric(nec(h, posterior = TRUE, xform = function(z) -z)),
                pmax(g, s))
-  expect_equal(as.numeric(nec(h, posterior = TRUE, xform = identity)),
+  expect_equal(as.numeric(nec(h, posterior = TRUE, x_scale = "fitted")),
                -pmax(g, s))
 })
 
@@ -1830,7 +1830,7 @@ test_that("the hurdle plot draws its no-effect line on the recorded scale (#487)
   # recorded scale. Read as square roots, the stored draws square to values
   # inside the series.
   rooted <- relabelled_pair(bnf(y ~ crf(sqrt(x), model = "nec4param")))
-  on_fitted <- as.numeric(nec(rooted, xform = identity))
+  on_fitted <- as.numeric(nec(rooted, x_scale = "fitted"))
   drawn <- hurdle_legend(rooted)
   line <- as.numeric(drawn$v[[1]])
   expect_equal(line, as.numeric(nec(rooted)))
