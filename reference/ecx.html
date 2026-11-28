@@ -145,8 +145,7 @@ Details.</p></dd>
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
 The default is 500 grid values, matching <span class="pkg">toxval</span>. A finer grid can
-change an interpolated crossing and increases prediction time. With an
-inline predictor transformation the grid is even on the fitted scale.</p></dd>
+change an interpolated crossing and increases prediction time.</p></dd>
 
 
 <dt id="arg-posterior">posterior<a class="anchor" aria-label="anchor" href="#arg-posterior"></a></dt>
@@ -284,15 +283,15 @@ cent rather than truncating it, so <code>ecx_val</code> is not capped at 100.</p
 <p>Where the curve does not reach the target anywhere in the predictor range
 the ECx is not identified. With <code>posterior = TRUE</code> the draw is
 <code>Inf</code>, and a warning reports how many draws were affected.</p>
-<p>Where <code>crf()</code> transforms the predictor inline, as in
-<code>crf(log(concentration))</code>, the curve is searched on a grid even on
-the fitted scale. The crossing is interpolated there and returned on the
-recorded scale through the inverse. <code>x_scale = "fitted"</code> returns the
-fitted-scale crossing. A supplied <code>xform</code> is applied on that scale;
+<p>The curve is searched on a grid of recorded concentrations. Where
+<code>crf()</code> transforms the predictor inline, as in
+<code>crf(log(concentration))</code>, the ECx is therefore returned on the
+recorded scale without <code>xform</code>, and no inverse is involved. A supplied
+<code>xform</code> is applied to the ECx on the transformed scale, so
+<code>xform = identity</code> leaves the estimate on the recorded scale.
+<code>x_scale = "fitted"</code> returns the fitted scale, while
 <code>xform = exp</code> on <code>crf(log(concentration))</code> returns the recorded
-concentration. If a transformed range endpoint is infinite, as at
-<code>log(0)</code>, the search keeps the recorded grid because no finite grid
-spans the fitted interval.</p>
+scale again.</p>
 <p>With a fitted group term whose levels span concentrations, the control and
 curve are predicted for each observed level with its group deviations.
 Terms whose levels each occur at one concentration are set to zero. The
