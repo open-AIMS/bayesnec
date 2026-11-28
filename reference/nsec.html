@@ -107,6 +107,7 @@ object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 <span>  resolution <span class="op">=</span> <span class="fl">500</span>,</span>
 <span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  x_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"recorded"</span>, <span class="st">"fitted"</span><span class="op">)</span>,</span>
 <span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>,</span>
 <span>  extrapolate <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span>,</span>
@@ -144,11 +145,17 @@ change an interpolated crossing and increases prediction time.</p></dd>
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p><code>NULL</code>, the default, or a function. <code>NULL</code> returns
-the estimate on the scale the predictor was recorded on. A function is
-applied to the estimate on the scale the model was fitted on. The two
-differ only where <code>crf()</code> transforms the predictor inline; see
-Details.</p></dd>
+<dd><p><code>NULL</code> or <code>identity</code> leaves the estimate on
+<code>x_scale</code>. Any other function is applied on the fitted scale and
+requires <code>x_scale = "recorded"</code> when the predictor is
+transformed inline; see Details.</p></dd>
+
+
+<dt id="arg-x-scale">x_scale<a class="anchor" aria-label="anchor" href="#arg-x-scale"></a></dt>
+<dd><p><code>"recorded"</code> (the default) returns the predictor on
+its recorded scale. <code>"fitted"</code> returns it on the scale fitted by
+<code>crf()</code>. The scales differ only where <code>crf()</code> transforms the
+predictor inline.</p></dd>
 
 
 <dt id="arg-prob-vals">prob_vals<a class="anchor" aria-label="anchor" href="#arg-prob-vals"></a></dt>
@@ -261,8 +268,10 @@ the decline term starts, remains available through
 <code>crf(log(concentration))</code>, the NSEC is therefore returned on the
 recorded scale without <code>xform</code>, and no inverse is involved. A supplied
 <code>xform</code> is applied to the NSEC on the transformed scale, so
-<code>xform = identity</code> returns that scale and <code>xform = exp</code> on
-<code>crf(log(concentration))</code> returns the recorded scale again.</p>
+<code>xform = identity</code> leaves the estimate on the recorded scale.
+<code>x_scale = "fitted"</code> returns the fitted scale, while
+<code>xform = exp</code> on <code>crf(log(concentration))</code> returns the recorded
+scale again.</p>
 <p>The attached <code>ecnsec</code> attribute is the percent effect at the NSEC,
 defined as <code><a href="ecx.html">ecx</a></code> defines it under <code>type = "absolute"</code>:
 the decline from the control towards zero.</p>

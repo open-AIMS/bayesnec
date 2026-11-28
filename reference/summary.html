@@ -137,8 +137,9 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>With <code>ecx = TRUE</code>, passed to <code><a href="ecx.html">ecx</a></code> for each
 ECx row, so that <code>x_range</code> and <code>resolution</code> in particular apply
-to the ECx rows only. An <code>xform</code> is also applied to the no-effect row,
-with or without <code>ecx = TRUE</code>. See Details.</p></dd>
+to the ECx rows only. <code>xform</code> and <code>x_scale</code> also determine
+the scale of the no-effect row, with or without <code>ecx = TRUE</code>.
+<code>xform = identity</code> is the same as the default; see Details.</p></dd>
 
 
 <dt id="arg-ecx">ecx<a class="anchor" aria-label="anchor" href="#arg-ecx"></a></dt>
@@ -219,7 +220,8 @@ estimates, and is reported as the N(S)EC (see Fisher et al. 2023).</p>
 the prediction grid stored with the fit, which is the grid the no-effect
 estimate is censored at. An <code>x_range</code> supplied in <code>...</code> replaces
 that grid. It and the other arguments in <code>...</code>, such as
-<code>resolution</code> and <code>xform</code>, reach <code><a href="ecx.html">ecx</a></code> as given, so
+<code>resolution</code>, <code>xform</code> and <code>x_scale</code>, reach
+<code><a href="ecx.html">ecx</a></code> as given, so
 an ECx row equals a bare <code><a href="ecx.html">ecx</a></code> call given the same arguments.
 <code>x_range = NULL</code> is the exception: it is not passed on, and
 <code><a href="ecx.html">ecx</a></code> builds its grid from the data, as it does when given no
@@ -230,9 +232,10 @@ fitted, and is censored at the bound of the prediction grid stored then, so
 a range supplied now cannot change it. Where <code>crf()</code> transforms the
 predictor inline, that posterior is on the transformed scale, and the row is
 returned on the recorded scale as <code><a href="nec.html">nec</a></code> returns it. An
-<code>xform</code> supplied in <code>...</code> is applied to the stored draws and to
-the bound they are censored at instead, as <code><a href="nec.html">nec</a></code> applies it,
-so the no-effect row and the ECx rows are reported on one scale.
+<code>x_scale = "fitted"</code> returns that stored posterior on its fitted
+scale. A function other than <code>identity</code> supplied as <code>xform</code>
+is applied to the stored draws and their censoring bounds, as
+<code><a href="nec.html">nec</a></code> applies it. The no-effect and ECx rows use one scale.
 Where more than 7.5% of the draws of a sampled NEC lie within the outer 5%
 of its prior range, the no-effect row has the <code>"prior_bound_summary"</code>
 attribute <code><a href="nec.html">nec</a></code> describes, on the scale of the row, and the

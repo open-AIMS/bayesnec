@@ -109,6 +109,7 @@ bayesnechurdlefit"><meta property="og:image" content="https://open-aims.github.i
 <span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  type <span class="op">=</span> <span class="st">"absolute"</span>,</span>
 <span>  xform <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  x_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"recorded"</span>, <span class="st">"fitted"</span><span class="op">)</span>,</span>
 <span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  posterior <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -151,9 +152,16 @@ matches <code><a href="ecx.html">ecx</a></code> and <code><a href="nsec.html">ns
 
 
 <dt id="arg-xform">xform<a class="anchor" aria-label="anchor" href="#arg-xform"></a></dt>
-<dd><p><code>NULL</code>, the default, or a function applied to
-<code>nsec</code> before the curve is read there. <code>NULL</code> reads <code>nsec</code>
-as given, on the recorded scale. See Details.</p></dd>
+<dd><p><code>NULL</code> or <code>identity</code> reads <code>nsec</code> as
+given. Any other function is applied to <code>nsec</code> before the curve is
+read there and requires <code>x_scale = "recorded"</code> for an
+predictor with an inline transformation. See Details.</p></dd>
+
+
+<dt id="arg-x-scale">x_scale<a class="anchor" aria-label="anchor" href="#arg-x-scale"></a></dt>
+<dd><p><code>"recorded"</code> (the default) or <code>"fitted"</code>.
+<code>"fitted"</code> gives the same result as the former
+<code>xform = identity</code>; <code>nsec</code> is read as given in either case.</p></dd>
 
 
 <dt id="arg-prob-vals">prob_vals<a class="anchor" aria-label="anchor" href="#arg-prob-vals"></a></dt>
