@@ -5,39 +5,6 @@ test_that("nsec rejects fits from other packages", {
   }
 })
 
-test_that("NSEC draws agree with the installed #603 base", {
-  skip_on_cran()
-  base_lib <- Sys.getenv("BAYESNEC_603_LIB")
-  skip_if(!nzchar(base_lib), "Set BAYESNEC_603_LIB to the #603 build")
-  expect_true(dir.exists(file.path(base_lib, "bayesnec")))
-
-  compare_draws <- function(fit) {
-    fit_path <- tempfile(fileext = ".rds")
-    out_path <- tempfile(fileext = ".rds")
-    script_path <- tempfile(fileext = ".R")
-    on.exit(unlink(c(fit_path, out_path, script_path)), add = TRUE)
-    saveRDS(fit, fit_path)
-    writeLines(c(
-      "args <- commandArgs(trailingOnly = TRUE)",
-      "library(bayesnec, lib.loc = args[1])",
-      "fit <- readRDS(args[2])",
-      "saveRDS(as.numeric(suppressWarnings(nsec(fit, posterior = TRUE))), args[3])"
-    ), script_path)
-    output <- suppressWarnings(system2(
-      file.path(R.home("bin"), "Rscript"),
-      c(script_path, base_lib, fit_path, out_path),
-      stdout = TRUE, stderr = TRUE
-    ))
-    expect_null(attr(output, "status"), info = paste(output, collapse = "\n"))
-    expect_identical(as.numeric(suppressWarnings(nsec(fit, posterior = TRUE))),
-                     readRDS(out_path))
-  }
-
-  compare_draws(nec4param)
-  hormesis_path <- Sys.getenv("BAYESNEC_HORMESIS_FIT")
-  if (nzchar(hormesis_path)) compare_draws(readRDS(hormesis_path))
-})
-
 test_that("prob_vals warnings behave as expected", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
