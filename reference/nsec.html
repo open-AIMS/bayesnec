@@ -137,7 +137,8 @@ significance of the predicted posterior values.</p></dd>
 The crossing is located by linear interpolation between the two grid values
 that bracket it, so precision saturates well below the grid spacing.
 The default is 500 grid values, matching <span class="pkg">toxval</span>. A finer grid can
-change an interpolated crossing and increases prediction time.</p></dd>
+change an interpolated crossing and increases prediction time. With an
+inline predictor transformation the grid is even on the fitted scale.</p></dd>
 
 
 <dt id="arg-x-range">x_range<a class="anchor" aria-label="anchor" href="#arg-x-range"></a></dt>
@@ -263,18 +264,22 @@ For a hormesis threshold equation, <code><a href="nec.html">nec</a></code> uses 
 no-effect estimate. Its <code>nec</code> parameter, the concentration at which
 the decline term starts, remains available through
 <code><a href="curve_params.html">curve_params</a></code>.</p>
-<p>The curve is searched on a grid of recorded concentrations. Where
-<code>crf()</code> transforms the predictor inline, as in
-<code>crf(log(concentration))</code>, the NSEC is therefore returned on the
-recorded scale without <code>xform</code>, and no inverse is involved. A supplied
-<code>xform</code> is applied to the NSEC on the transformed scale, so
-<code>xform = identity</code> leaves the estimate on the recorded scale.
-<code>x_scale = "fitted"</code> returns the fitted scale, while
+<p>Where <code>crf()</code> transforms the predictor inline, as in
+<code>crf(log(concentration))</code>, the curve is searched on a grid even on
+the fitted scale. The crossing is interpolated there and returned on the
+recorded scale through the inverse. <code>x_scale = "fitted"</code> returns the
+fitted-scale crossing. A supplied <code>xform</code> is applied on that scale;
 <code>xform = exp</code> on <code>crf(log(concentration))</code> returns the recorded
-scale again.</p>
+concentration. If a transformed range endpoint is infinite, as at
+<code>log(0)</code>, the search keeps the recorded grid because no finite grid
+spans the fitted interval.</p>
 <p>The attached <code>ecnsec</code> attribute is the percent effect at the NSEC,
 defined as <code><a href="ecx.html">ecx</a></code> defines it under <code>type = "absolute"</code>:
-the decline from the control towards zero.</p>
+the decline from the control towards zero. It is the same quantity returned
+by <code><a href="ecnsec.html">ecnsec</a></code> for the same options. It is zero where the NSEC is
+the control concentration, and negative where a draw's control is below
+the reference and its NSEC is a later crossing: the response there exceeds
+that draw's own control.</p>
 <p>The reference is a quantile of the control posterior, so some draws start
 at or below it. A draw with a later decreasing crossing takes that crossing.
 Without one, it takes the control concentration unless its response first
