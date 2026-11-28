@@ -171,7 +171,7 @@
 #' the \pkg{brms} distributional parameter. Supplying one where the other is
 #' expected is an error rather than silently ignored.
 #'
-#' @seealso \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{nsec}}
+#' @seealso \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{nsec}}, \code{\link{epx}}
 #'
 #' @return The ECx estimate and credible bounds, or with
 #' \code{posterior = TRUE} one value per draw. A draw censored above the
@@ -720,13 +720,13 @@ zero_block_asymptote <- function(object, dpar) {
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'
 #' @noRd
-check_combined_relative <- function(family, fun = c("ecx", "ecnsec")) {
+check_combined_relative <- function(family, fun = c("ecx", "ecnsec", "epx")) {
   fun <- match.arg(fun)
   if (!is_hurdle_family(family)) {
     return(invisible(NULL))
   }
   block <- hurdle_dpar(family)
-  remedy <- if (identical(fun, "ecx")) {
+  remedy <- if (fun %in% c("ecx", "epx")) {
     paste0(" Use dpar = \"mu\" or dpar = \"", block, "\" to measure one",
            " block towards its own asymptote, or type = \"absolute\" or",
            " type = \"range\" for the combined curve.")

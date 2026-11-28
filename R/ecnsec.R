@@ -61,11 +61,13 @@
 #' The \code{"absolute"} values equal the \code{ecnsec_relativeP}
 #' attribute of \code{\link{nsec}} under matching options.
 #'
+#' Use \code{\link{epx}} for the effect at a stated concentration.
+#'
 #' The \code{pool}, \code{x_control} and \code{extrapolate} options use
 #' the same rules as \code{\link{nsec}}. \code{type = "relative"} is
 #' unavailable for a joint two-block hurdle curve.
 #'
-#' @seealso \code{\link{bnec}}
+#' @seealso \code{\link{bnec}}, \code{\link{epx}}
 #'
 #' @return A percentage summary or, with \code{posterior = TRUE}, one
 #' percentage per posterior draw. Grouped results follow \code{\link{nsec}}.
@@ -259,12 +261,16 @@ ecnsec.bnecfit <- function(object, ..., resolution = 500, x_range = NA,
 check_ecnsec_dots <- function(dots, forwarded = FALSE) {
   if (length(dots) && (is.null(names(dots)) || any(!nzchar(names(dots))))) {
     stop("ecnsec() returns the effect at each draw's own NSEC and takes no ",
-         "concentration. Name all optional arguments.", call. = FALSE)
+         "concentration. For the effect at a stated concentration, use ",
+         "epx(). Name all optional arguments.", call. = FALSE)
   }
   for (arg in c("nsec", "xform", "x_scale")) {
     if (arg %in% names(dots)) {
       stop("ecnsec() returns the effect at each draw's own NSEC and has no `",
-           arg, "` argument.", call. = FALSE)
+           arg, "` argument.",
+           if (identical(arg, "nsec"))
+             " For the effect at a stated concentration, use epx()."
+           else "", call. = FALSE)
     }
   }
   if (!forwarded) {

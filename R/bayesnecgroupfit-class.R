@@ -585,6 +585,22 @@ ecnsec.bayesnecgroupfit <- function(object, ...) {
 }
 
 #' @noRd
+#' @method epx bayesnecgroupfit
+#' @export
+epx.bayesnecgroupfit <- function(object, x, ...) {
+  dots <- epx_wrapper_dots(list(...))
+  chk::chk_number(x)
+  if (!is.finite(x)) stop("x must be finite.", call. = FALSE)
+  fun <- function(f, ...) {
+    out <- epx(f, ...)
+    if (!isTRUE(list(...)$posterior)) names(out) <- clean_names(out)
+    out
+  }
+  do.call(group_estimate_table,
+          c(list(object = object, what = "epx", fun = fun, x = x), dots))
+}
+
+#' @noRd
 #' @method summary bayesnecgroupfit
 #' @export
 summary.bayesnecgroupfit <- function(object, ...) {

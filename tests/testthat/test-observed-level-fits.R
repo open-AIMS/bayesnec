@@ -143,6 +143,18 @@ test_that("fitted spanning levels exclude one-concentration levels", {
 
   per <- suppressMessages(ecx(fit, pool = "none", resolution = 30))
   expect_equal(nrow(per), 3L)
+  effects <- suppressWarnings(suppressMessages(epx(
+    fit, x = 2, pool = "none", resolution = 30
+  )))
+  expect_equal(nrow(effects), 3L)
+  expect_identical(attr(effects, "x_control"), attr(per, "x_control"))
+  for (pool in c("mixture", "mean_estimate", "mean_curve")) {
+    effect <- suppressWarnings(suppressMessages(epx(
+      fit, x = 2, pool = pool, resolution = 30
+    )))
+    expect_length(effect, 3L)
+    expect_true(all(is.finite(effect)))
+  }
   expect_false(any(grepl("p4", per$level)))
   shared <- suppressWarnings(suppressMessages(ecx(
     fit, pool = "none", x_control = "shared", resolution = 30

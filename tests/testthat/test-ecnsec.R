@@ -142,11 +142,13 @@ test_that("ecnsec refuses removed and invalid arguments", {
   expect_error(ecnsec(nec4param, 2),
                "returns the effect at each draw's own NSEC and takes no concentration",
                fixed = TRUE)
+  expect_error(ecnsec(nec4param, 2), "use epx()", fixed = TRUE)
   for (arg in c("nsec", "xform", "x_scale")) {
     call <- c(list(nec4param), stats::setNames(list(1), arg))
     expect_error(do.call(ecnsec, call),
                  paste0("has no `", arg, "` argument"), fixed = TRUE)
   }
+  expect_error(ecnsec(nec4param, nsec = 1), "use epx()", fixed = TRUE)
   expect_error(ecnsec(nec4param, resolution = 1), "at least 2")
   expect_error(ecnsec(nec4param, sig_val = 1), "sig_val")
   expect_error(ecnsec(nec4param, type = "direct"), "response value")

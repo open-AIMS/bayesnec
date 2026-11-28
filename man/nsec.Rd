@@ -303,5 +303,5 @@ Fisher R, Fox DR (2023). Introducing the no significant effect concentration
 doi: 10.1002/etc.5610.
 }
 \seealso{
-\code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{ecx}}
+\code{\link{epx}}, \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{ecx}}
 }

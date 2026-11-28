@@ -533,6 +533,23 @@ ecx.bayesnecjointfit <- function(object, ...) {
 }
 
 #' @noRd
+#' @method epx bayesnecjointfit
+#' @export
+epx.bayesnecjointfit <- function(object, x, ...) {
+  dots <- epx_wrapper_dots(list(...))
+  chk::chk_number(x)
+  if (!is.finite(x)) stop("x must be finite.", call. = FALSE)
+  tabulate <- !isTRUE(dots$posterior)
+  fun <- function(f, ...) {
+    out <- epx(f, ...)
+    if (tabulate) names(out) <- clean_names(out)
+    out
+  }
+  do.call(joint_estimate_table,
+          c(list(object = object, what = "epx", fun = fun, x = x), dots))
+}
+
+#' @noRd
 #' @method nsec bayesnecjointfit
 #' @export
 nsec.bayesnecjointfit <- function(object, ...) {
