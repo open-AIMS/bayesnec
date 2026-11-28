@@ -134,7 +134,9 @@ refuses any argument it does not use.</p></dd>
 <dd><p>The number of unique x values over which the curve is
 predicted. It affects only <code>type = "range"</code>, where the denominator is
 the lowest response the curve predicts over the grid. The default of 500
-matches <code><a href="ecx.html">ecx</a></code> and <code><a href="nsec.html">nsec</a></code>.</p></dd>
+matches <code><a href="ecx.html">ecx</a></code> and <code><a href="nsec.html">nsec</a></code>. With an inline predictor
+transformation, their search grid is even on the fitted scale and each
+NSEC is returned through the inverse before its effect is reported.</p></dd>
 
 
 <dt id="arg-x-range">x_range<a class="anchor" aria-label="anchor" href="#arg-x-range"></a></dt>
@@ -216,13 +218,14 @@ or whose effect exceeds its original response span is censored at 100
 percent. Its posterior draw is <code>Inf</code>.
 The <code>"absolute"</code> values equal the <code>ecnsec_relativeP</code>
 attribute of <code><a href="nsec.html">nsec</a></code> under matching options.</p>
+<p>Use <code><a href="epx.html">epx</a></code> for the effect at a stated concentration.</p>
 <p>The <code>pool</code>, <code>x_control</code> and <code>extrapolate</code> options use
 the same rules as <code><a href="nsec.html">nsec</a></code>. <code>type = "relative"</code> is
 unavailable for a joint two-block hurdle curve.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
-    <div class="dont-index"><p><code><a href="bnec.html">bnec</a></code></p></div>
+    <div class="dont-index"><p><code><a href="bnec.html">bnec</a></code>, <code><a href="epx.html">epx</a></code></p></div>
     </div>
 
     <div id="ref-examples">
