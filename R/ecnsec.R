@@ -261,7 +261,8 @@ ecnsec.bnecfit <- function(object, ..., resolution = 500, x_range = NA,
 check_ecnsec_dots <- function(dots, forwarded = FALSE) {
   if (length(dots) && (is.null(names(dots)) || any(!nzchar(names(dots))))) {
     stop("ecnsec() returns the effect at each draw's own NSEC and takes no ",
-         "concentration. Name all optional arguments.", call. = FALSE)
+         "concentration. For the effect at a stated concentration, use ",
+         "epx(). Name all optional arguments.", call. = FALSE)
   }
   for (arg in c("nsec", "xform", "x_scale")) {
     if (arg %in% names(dots)) {
