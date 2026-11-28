@@ -407,7 +407,7 @@ test_that("estimators measure from the recorded control by default", {
   )))
   expect_equal(value(nsec(fit, resolution = 50)),
                value(nsec(fit, resolution = 50, x_control = 0.001)))
-  expect_equal(value(ecnsec(fit, nsec = 1, resolution = 50)),
-               value(ecnsec(fit, nsec = 1, resolution = 50,
+  expect_equal(value(ecnsec(fit, resolution = 50)),
+               value(ecnsec(fit, resolution = 50,
                             x_control = 0.001)))
 })

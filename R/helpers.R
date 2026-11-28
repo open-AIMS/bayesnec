@@ -2740,6 +2740,8 @@ lowest_observed_x <- function(grid_obj, x_var = NULL) {
 #'
 #' @return A \code{\link[base]{numeric}} vector, one value per draw, \code{NA}
 #' where the curve does not reach the reference at any tested concentration.
+#' The \code{at_control} attribute flags draws assigned to the control by
+#' this rule.
 #' @noRd
 nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
   if (length(control) != nrow(post)) {
@@ -2767,6 +2769,7 @@ nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
     x_kept <- x_vec
   }
   below_range <- logical(nrow(post))
+  at_control <- logical(nrow(post))
   out <- vapply(seq_len(nrow(post)), function(i) {
     y <- post[i, ]
     val <- nsec_decreasing_crossing(y, reference, x_kept)
@@ -2778,6 +2781,7 @@ nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
           any(is.finite(y) & y > reference)) {
         return(NA_real_)
       }
+      at_control[i] <<- TRUE
       return(x_control)
     }
     if (!is.na(post[i, 1]) && post[i, 1] <= reference) {
@@ -2788,6 +2792,7 @@ nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
   attr(out, "n_below_range") <- sum(below_range)
   # A censoring record needs to know which draws, not only how many.
   attr(out, "below_range") <- below_range
+  attr(out, "at_control") <- at_control
   attr(out, "x_searched_from") <- x_kept[1]
   out
 }

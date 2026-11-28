@@ -338,6 +338,8 @@ test_that("NSEC distinguishes a later effect from no effect after the control", 
   expect_equal(unname(out[2]), 0)
   expect_equal(unname(out[3]), 1 + 1 / 3)
   expect_equal(unname(out[4]), 0)
+  expect_identical(unname(attr(out, "at_control")),
+                   c(FALSE, TRUE, FALSE, TRUE))
 
   restricted <- nsec_from_posterior(matrix(c(1, 0.95), nrow = 1), 0.9,
                                      x_vec = 2:3, x_control = 0,

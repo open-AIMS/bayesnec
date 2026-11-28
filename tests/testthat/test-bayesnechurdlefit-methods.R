@@ -833,23 +833,7 @@ test_that("the estimator methods survive a censored draw", {
   expect_warning(ecx(obj, ecx_val = 50), "not identified for 4 of 4 draws")
 })
 
-test_that("ecnsec honours type and refuses the two it cannot compute", {
-  obj <- mock_hurdle()
-  local_mocked_bindings(
-    hurdle_component_preds = hurdle_preds_stub(control_at = 8,
-                                               curve_at_grid_start = 2)
-  )
-  # The range span ends at the lowest grid response, so a fixed decline is
-  # a larger percentage of it than of the control-to-zero span here.
-  abs_out <- ecnsec(obj, nsec = 5, type = "absolute")
-  rng_out <- ecnsec(obj, nsec = 5, type = "range")
-  expect_gt(rng_out[1], abs_out[1])
-  expect_error(ecnsec(obj, nsec = 5, type = "relative"), "not defined for a")
-  expect_error(ecnsec(obj, nsec = 5, type = "direct"), "names a response value")
-  expect_error(ecnsec(obj, nsec = 5, type = "nonsense"), "type must be one of")
-  expect_error(ecnsec(obj, nsec = 5, hormesis_def = "max"),
-               "hormesis_def has been removed")
-})
+
 
 test_that("the summary ECx grid is read from whichever class the survival block is", {
   # Read either component class's grid slot. Every summary row uses the
@@ -1127,27 +1111,16 @@ test_that("a growth NSEC is searched over the whole series (D44)", {
                "inside the prediction range")
 })
 
-test_that("ecnsec reads the growth curve over the whole series (D44)", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
-  # type = "range" measures towards the lowest response over the grid, so the
-  # grid the curve is read over shows in the answer.
+test_that("the hurdle growth range uses the whole series", {
+  skip_on_cran()
   obj <- hurdle_cut_fixture(1.6)
-  g_range <- range(obj$growth$fit$data$x)
-  s_range <- range(obj$survival$fit$data$x)
-  bare <- ecnsec(obj, nsec = 1.5, which = "growth", type = "range")
-  expect_equal(bare, ecnsec(obj, nsec = 1.5, which = "growth",
-                            type = "range", x_range = s_range))
-  expect_false(isTRUE(all.equal(
-    bare, ecnsec(obj, nsec = 1.5, which = "growth", type = "range",
-                 x_range = g_range)
-  )))
-  # A value above the last survivor is read, not refused, as it is for the
-  # survival and combined curves.
-  expect_length(ecnsec(obj, nsec = 2.5, which = "growth"), 3)
-  expect_equal(ecnsec(obj, nsec = 2.5, which = "growth"),
-               ecnsec(obj, nsec = 2.5, which = "growth", x_range = s_range))
+  growth_range <- range(obj$growth$fit$data$x)
+  survival_range <- range(obj$survival$fit$data$x)
+  bare <- suppressWarnings(ecnsec(obj, which = "growth", type = "range"))
+  expect_equal(bare, suppressWarnings(ecnsec(obj, which = "growth",
+    type = "range", x_range = survival_range)))
+  expect_false(isTRUE(all.equal(bare, suppressWarnings(ecnsec(obj,
+    which = "growth", type = "range", x_range = growth_range)))))
 })
 
 test_that("the plots and posterior_epred() use the whole series (#412)", {
@@ -1226,9 +1199,9 @@ test_that("the hurdle estimators refuse arguments they cannot use", {
   expect_error(ecx(h, ecx_val = NA_real_), "ecx_val")
   expect_error(ecx(h, resolution = 10.5), "whole number")
   expect_error(ecx(h, foo = 1), "ecx() does not use `foo`", fixed = TRUE)
-  expect_error(ecnsec(h, nsec = 1, foo = 1), "ecnsec() does not use `foo`",
+  expect_error(ecnsec(h, foo = 1), "ecnsec() does not use `foo`",
                fixed = TRUE)
-  expect_error(ecnsec(h, nsec = 1, resolution = 0), "at least 2")
+  expect_error(ecnsec(h, resolution = 0), "at least 2")
 })
 
 test_that("a refused relative request on a hurdle fit is not warned about", {
@@ -1239,144 +1212,18 @@ test_that("a refused relative request on a hurdle fit is not warned about", {
     warning = function(w) warned <<- TRUE
   )
   withCallingHandlers(
-    expect_error(ecnsec(h, nsec = 1, type = "relative"),
+    expect_error(ecnsec(h, type = "relative"),
                  "not defined for a hurdle fit"),
     warning = function(w) warned <<- TRUE
   )
   expect_false(warned)
 })
 
-# ECNSEC outside the range, between grid points and under transformations.
 
-test_that("ecnsec refuses an nsec beyond the range on every hurdle curve", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
-  # Refuse a value beyond the range instead of reading the nearest endpoint.
-  obj <- hurdle_pair()
-  x <- obj$survival$fit$data$x
-  for (w in c("combined", "growth", "survival")) {
-    expect_error(ecnsec(obj, nsec = 1000, which = w),
-                 paste0("nsec = 1000 lies outside the observed range of the ",
-                        "predictor, 0.03235 to 3.221. ecnsec() reads the ", w,
-                        " curve over that range only."),
-                 fixed = TRUE)
-    expect_error(ecnsec(obj, nsec = 0.01, which = w),
-                 "lies outside the observed range of the predictor")
-    # A supplied x_range is the range refused against, and the advice is to
-    # widen it.
-    expect_error(ecnsec(obj, nsec = 2.5, x_range = c(0.1, 2), which = w),
-                 paste0("nsec = 2.5 lies outside the x_range supplied, 0.1 to ",
-                        "2. ecnsec() reads the ", w, " curve over that range ",
-                        "only. Supply an x_range that includes nsec."),
-                 fixed = TRUE)
-    expect_length(ecnsec(obj, nsec = 4, x_range = c(min(x), 5), which = w), 3)
-    # The ends are inside, including an end that has been through a
-    # transformation and its inverse, as a censored nsec() bound may have.
-    at_top <- ecnsec(obj, nsec = max(x), which = w)
-    expect_length(at_top, 3)
-    expect_equal(ecnsec(obj, nsec = exp(log(max(x))), which = w), at_top)
-  }
-  # A survival NSEC passed to the combined curve, the likely call, is inside.
-  s_nsec <- suppressWarnings(nsec(obj, which = "survival"))[["Q50"]]
-  expect_length(ecnsec(obj, nsec = s_nsec, which = "combined"), 3)
-  # One value: the curve is interpolated at one point.
-  expect_error(ecnsec(obj, nsec = c(1, 2)), "nsec")
-})
 
-test_that("ecnsec reads a hurdle curve between grid points, not at the nearer", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
-  obj <- hurdle_pair()
-  preds <- bayesnec:::hurdle_component_preds(obj, resolution = 5)
-  x <- preds$x
-  # Three tenths of the way from the second grid point to the third, so the
-  # nearer point is the second.
-  at <- x[2] + 0.3 * (x[3] - x[2])
-  for (w in c("combined", "growth", "survival")) {
-    p <- preds[[w]]
-    control <- preds$control[[w]]
-    got <- ecnsec(obj, nsec = at, resolution = 5, which = w, posterior = TRUE)
-    interpolated <- 0.7 * p[, 2] + 0.3 * p[, 3]
-    expect_equal(got, (control - interpolated) / control * 100,
-                 label = paste(w, "interpolated"))
-    nearer <- (control - p[, 2]) / control * 100
-    expect_false(isTRUE(all.equal(got, nearer)), label = paste(w, "nearer"))
-    # At a grid point the column itself is read.
-    expect_equal(ecnsec(obj, nsec = x[3], resolution = 5, which = w,
-                        posterior = TRUE),
-                 (control - p[, 3]) / control * 100)
-  }
-})
 
-test_that("ecnsec on a fit agrees with the growth curve of a pair built from it", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
-  # Read at grid points, where the hurdle method reads the column itself and
-  # interpolates nothing. x[24] lies inside the spread of the nec draws, and
-  # x[37] above all of them.
-  for (fit in list(nec4param, manec_example)) {
-    obj <- hurdle_pair(fit, fit)
-    x <- bayesnec:::hurdle_component_preds(obj, resolution = 50)$x
-    for (at in x[c(24, 37)]) {
-      for (ty in c("absolute", "range")) {
-        on_fit <- suppressWarnings(ecnsec(fit, nsec = at, resolution = 50,
-                                          type = ty, posterior = TRUE))
-        on_pair <- suppressWarnings(ecnsec(obj, nsec = at, resolution = 50,
-                                           type = ty, which = "growth",
-                                           posterior = TRUE))
-        expect_equal(on_fit, on_pair,
-                     label = paste(class(fit)[1], ty, "at", signif(at, 3)))
-      }
-    }
-  }
-})
 
-test_that("ecnsec applies xform to nsec on a hurdle fit", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
-  # Apply xform to nsec before reading the effect; the percentage returned is
-  # not transformed.
-  obj <- hurdle_pair()
-  plain <- ecnsec(obj, nsec = 1.5)
-  expect_no_warning(via <- ecnsec(obj, nsec = log(1.5), xform = exp))
-  expect_equal(via, plain)
-  expect_no_warning(ecnsec(obj, nsec = 1.5))
-  expect_no_warning(ecnsec(obj, nsec = 1.5, xform = identity))
-  expect_error(ecnsec(obj, nsec = 1.5, xform = "log"),
-               "xform must be a function")
-  # The range is checked after xform, and the message gives both values.
-  expect_error(suppressWarnings(ecnsec(obj, nsec = log(1000), xform = exp)),
-               "nsec = 6.908, which xform takes to 1000, lies outside",
-               fixed = TRUE)
-  expect_error(suppressWarnings(ecnsec(obj, nsec = -1, xform = log)),
-               "nsec = -1, which xform takes to NaN, lies outside",
-               fixed = TRUE)
-})
 
-test_that("ecnsec on a crf(log(x)) hurdle pair reads log(v) under exp at v", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
-  # Relabel the pair without refitting: the stored grid and draws still come
-  # from crf(x), while the declared formula describes logged input.
-  logged <- nec4param
-  logged$bayesnecformula <- bnf(y ~ crf(log(x), model = "nec4param"))
-  h_log <- hurdle_pair(logged, logged)
-  h_plain <- hurdle_pair()
-  for (v in c(0.5, 1.5, 3)) {
-    for (w in c("combined", "growth", "survival")) {
-      expect_equal(
-        suppressWarnings(ecnsec(h_log, nsec = log(v), xform = exp, which = w)),
-        ecnsec(h_plain, nsec = v, which = w),
-        label = paste(w, "at", v)
-      )
-    }
-  }
-})
 
 # ---- The combined no-effect estimate under a transformed predictor ---------
 
@@ -2178,4 +2025,40 @@ test_that("the hurdle diagnostics and accessors return one element per component
   expect_message(priors <- check_priors(h), "check_priors describes a single")
   expect_named(priors, parts)
   expect_s3_class(priors$growth, "ggplot")
+})
+
+
+test_that("hurdle ecnsec agrees with nsec draw by draw", {
+  skip_on_cran()
+  obj <- hurdle_pair()
+  for (which in c("combined", "growth", "survival")) {
+    ns <- suppressWarnings(nsec(obj, which = which, posterior = TRUE,
+                                resolution = 50))
+    effect <- suppressWarnings(ecnsec(obj, which = which, posterior = TRUE,
+                                      resolution = 50))
+    expect_identical(effect, attr(ns, "ecnsec_relativeP"))
+    expect_true(all(effect >= 0))
+  }
+})
+
+test_that("hurdle ecnsec refuses removed concentration and scale arguments", {
+  obj <- hurdle_pair()
+  for (arg in c("nsec", "xform", "x_scale")) {
+    call <- c(list(obj), stats::setNames(list(1), arg))
+    expect_error(do.call(ecnsec, call), paste0("has no `", arg, "` argument"),
+                 fixed = TRUE)
+  }
+})
+
+
+test_that("ecnsec honours the hurdle percentage types", {
+  obj <- hurdle_pair()
+  absolute <- suppressWarnings(ecnsec(obj, which = "growth", resolution = 30))
+  ranged <- suppressWarnings(ecnsec(obj, which = "growth", type = "range",
+                                     resolution = 30))
+  expect_length(absolute, 3)
+  expect_length(ranged, 3)
+  expect_error(ecnsec(obj, type = "relative"), "not defined for a")
+  expect_error(ecnsec(obj, type = "direct"), "names a response value")
+  expect_error(ecnsec(obj, type = "nonsense"), "type must be one of")
 })

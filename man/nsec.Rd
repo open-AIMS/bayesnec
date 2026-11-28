@@ -155,7 +155,11 @@ scale again.
 
 The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
-the decline from the control towards zero.
+the decline from the control towards zero. It is the same quantity returned
+by \code{\link{ecnsec}} for the same options. It is zero where the NSEC is
+the control concentration, and negative where a draw's control is below
+the reference and its NSEC is a later crossing: the response there exceeds
+that draw's own control.
 
 The reference is a quantile of the control posterior, so some draws start
 at or below it. A draw with a later decreasing crossing takes that crossing.

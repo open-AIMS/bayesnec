@@ -118,9 +118,9 @@ test_that("a fit with no inline transformation takes NULL as identity", {
                    q(ecx(ecx4param, resolution = 20, xform = identity)))
   expect_identical(q(nsec(ecx4param, resolution = 20)),
                    q(nsec(ecx4param, resolution = 20, xform = identity)))
-  expect_identical(ecnsec(nec4param, nsec = 1, resolution = 20),
-                   ecnsec(nec4param, nsec = 1, resolution = 20,
-                          xform = identity))
+  expect_identical(ecnsec(nec4param, resolution = 20, posterior = TRUE),
+                   attr(nsec(nec4param, resolution = 20, posterior = TRUE),
+                        "ecnsec_relativeP"))
   expect_identical(q(ggbnec_data(nec4param, add_ecx = TRUE)),
                    q(ggbnec_data(nec4param, add_ecx = TRUE,
                                  xform = identity)))
@@ -174,28 +174,13 @@ test_that("an inline sqrt() is inverted exactly by every estimator", {
                q(nsec(tm, resolution = 20, xform = sq)), tolerance = 1e-12)
 })
 
-test_that("ecnsec() reads the default nsec() at the same concentration", {
+test_that("ecnsec reads the NSEC effect on inline transformed fits", {
   skip_on_cran()
-  for (case in list(list(tr = "log(x)", inv = exp),
-                    list(tr = "sqrt(x)", inv = function(x) x^2))) {
-    tf <- logged_x_fit(nec4param, "nec4param", case$tr)
-    # One draw, so that a quantile taken on either scale does not differ in
-    # the interpolation between two draws.
-    by_default <- q(nsec(tf, resolution = 20, posterior = TRUE))[[1]]
-    fitted <- q(nsec(tf, resolution = 20, x_scale = "fitted",
-                     posterior = TRUE))[[1]]
-    expect_equal(case$inv(fitted), by_default, tolerance = 1e-12)
-    # NULL reads nsec as given, on the recorded scale, which is the scale
-    # nsec() returns by default. The explicit inverse reads a fitted-scale
-    # nsec at the same concentration.
-    expect_equal(ecnsec(tf, nsec = by_default, resolution = 20),
-                 ecnsec(tf, nsec = fitted, resolution = 20, xform = case$inv),
-                 tolerance = 1e-10)
-    h <- fake_scale_hurdle(tf, tf)
-    expect_equal(ecnsec(h, nsec = by_default, resolution = 20),
-                 q(ecnsec(h, nsec = fitted, resolution = 20,
-                          xform = case$inv)),
-                 tolerance = 1e-10)
+  for (term in c("log(x)", "sqrt(x)")) {
+    fit <- logged_x_fit(nec4param, "nec4param", term)
+    ns <- q(nsec(fit, resolution = 20, posterior = TRUE))
+    expect_identical(ecnsec(fit, resolution = 20, posterior = TRUE),
+                     attr(ns, "ecnsec_relativeP"))
   }
 })
 
@@ -548,12 +533,9 @@ test_that("curve estimators and exceedance use the requested predictor scale", {
                q(exceedance(tf, at))$prob)
   expect_error(exceedance(tf, at, xform = exp, x_scale = "fitted"),
                'cannot be combined with a non-identity')
-  expect_identical(q(ecnsec(tf, nsec = 1.5, resolution = 20,
-                            xform = identity)),
-                   q(ecnsec(tf, nsec = 1.5, resolution = 20)))
-  expect_identical(q(ecnsec(tf, nsec = 1.5, resolution = 20,
-                            x_scale = "fitted")),
-                   q(ecnsec(tf, nsec = 1.5, resolution = 20)))
+  expect_identical(ecnsec(tf, resolution = 20, posterior = TRUE),
+                   attr(nsec(tf, resolution = 20, posterior = TRUE),
+                        "ecnsec_relativeP"))
 })
 
 test_that("group and hurdle estimates forward the selected scale", {

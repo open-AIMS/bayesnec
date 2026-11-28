@@ -3,24 +3,15 @@
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
-#' @param nsec A single number, the concentration at which to read the
-#' percentage effect. A vector is refused, including the three values
-#' \code{\link{nsec}} returns; pass the one wanted.
 #' @param resolution The number of unique x values over which the curve is
 #' predicted. It affects only \code{type = "range"}, where the denominator is
 #' the lowest response the curve predicts over the grid. The default of 500
 #' matches \code{\link{ecx}} and \code{\link{nsec}}.
 #' @param type A \code{\link[base]{character}} vector, taking values of
 #' "absolute" (the default), "relative" or "range". See Details.
-#' @param xform \code{NULL} or \code{identity} reads \code{nsec} as
-#' given. Any other function is applied to \code{nsec} before the curve is
-#' read there and requires \code{x_scale = "recorded"} for an
-#' predictor with an inline transformation. See Details.
-#' @param x_scale \code{"recorded"} (the default) or \code{"fitted"}.
-#' \code{"fitted"} gives the same result as the former
-#' \code{xform = identity}; \code{nsec} is read as given in either case.
-#' @param x_range A range of x values over which to predict the curve. An
-#' \code{nsec} outside it is refused; see Details.
+#' @param x_range A range of x values over which to predict the curve.
+#' @param sig_val The control posterior quantile used as the NSEC reference.
+#' The default is 0.01, as in \code{\link{nsec}}.
 #' @param extrapolate \code{FALSE}, the default, uses the prediction range.
 #' A single finite number extends the upper end; two finite numbers may
 #' extend both ends. The original grid points are retained. Limits are on
@@ -53,88 +44,40 @@
 #' posterior sample of calculated ECNSEC values should be returned instead of
 #' just the median and 95 credible intervals.
 #'
-#' @details NSEC is no-effect toxicity metric that estimates the concentration
-#' at which the modelled mean response is statistically indistinguishable from
-#' the mean control response. See the detailed derivation in
-#' Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated
-#' effect size. This function estimates the effect of a given NSEC estimate.
+#' @details Each posterior draw is evaluated at its own NSEC, where its
+#' curve reaches the \code{sig_val} quantile of the control posterior. The
+#' effect is the decline from that draw's control to the reference, divided
+#' by the distance from its control to the floor selected by \code{type}.
+#' The floor is zero for \code{"absolute"}, the fitted asymptote for
+#' \code{"relative"}, and the lowest predicted response over the original
+#' range for \code{"range"}. A draw whose NSEC is the control concentration
+#' has zero effect. A draw whose control is below the reference and whose NSEC
+#' is a later crossing has a negative effect. With
+#' \code{type = "range"}, a draw whose NSEC lies above the prediction range
+#' or whose effect exceeds its original response span is censored at 100
+#' percent. Its posterior draw is \code{Inf}.
+#' The \code{"absolute"} values equal the \code{ecnsec_relativeP}
+#' attribute of \code{\link{nsec}} under matching options.
 #'
-#' With a fitted group term whose levels span concentrations, the curve and
-#' control are predicted for each observed level with its group deviations.
-#' Terms whose levels each occur at one concentration are set to zero. The
-#' level of a spanning term observed at only one concentration is excluded from
-#' the estimate, with a message naming it. The default mixes the remaining
-#' observed levels by their observation counts;
-#' \code{pool = "none"} returns them separately.
-#'
-#' On a \code{\link{bayesnecjointfit}}, each level of the refit is mixed over
-#' its own observed group levels. A group term whose values occur in the data
-#' of more than one level, such as a batch in which two levels were both
-#' tested, is read at the same value for every level at each posterior draw,
-#' as often as their observation counts on that term allow. Terms they do not
-#' share are chosen for each level independently. The levels can therefore be
-#' contrasted draw by draw, as \code{\link{compare_posterior}} does.
-#'
-#' The effect is measured from the control --- the predicted mean at the
-#' control concentration, per posterior draw --- and
-#' \code{type} names what it is measured towards, exactly as in
-#' \code{\link{ecx}}: "absolute" (the default) towards 0, "relative" towards
-#' the equation's theoretical asymptote, "range" towards the lowest response
-#' the curve predicts. \code{ecnsec} is the inverse of the \code{ecx}
-#' reference construction under the same \code{type}, so the two answer the
-#' same question of the same curve. "direct" names a response value rather
-#' than a percentage and is refused here. On a joint two-block fit
-#' (\code{family = "hurdle_gamma"}, \code{"zero_inflated_beta"},
-#' \code{"hurdle_poisson"} or \code{"hurdle_negbinomial"}) the curve read is
-#' the combined one, \code{(1 - hu) * E[Y | Y > 0]}, and "relative" is refused,
-#' because that curve's asymptote is the product of the two blocks' asymptotes
-#' rather than a fitted parameter.
-#'
-#' Each posterior draw of the control is compared with the same draw's value
-#' of the curve at \code{nsec}, as \code{\link{ecx}} reads each draw's own
-#' curve. The interval therefore includes the uncertainty of the curve at
-#' \code{nsec} as well as that of the control. On \code{nec4param}, for
-#' example, every draw returns 0 at an \code{nsec} below the \code{nec} of
-#' every draw, where every draw of the curve still equals its control.
-#'
-#' \code{nsec} is read on the recorded predictor scale once \code{xform} has
-#' been applied to it. \code{\link{nsec}} returns its estimate on that scale
-#' by default, so \code{ecnsec(fit, nsec = nsec(fit)[1])} reads the curve at
-#' the NSEC whether or not \code{crf()} transforms the predictor inline. Where
-#' it does, as in \code{crf(log(concentration))}, an NSEC taken with
-#' \code{nsec(fit, x_scale = "fitted")} instead returns the transformed
-#' scale. That value needs the inverse, here \code{xform = exp}, before
-#' \code{ecnsec()} reads the curve at that concentration.
-#'
-#' The curve is read at \code{nsec} only inside the range it is predicted
-#' over: the observed range of the predictor, or \code{x_range} where one is
-#' supplied. An \code{nsec} outside that range once \code{xform} has been
-#' applied is refused with a message naming the range, rather than read off
-#' the curve extended past the data without a message. Supply an
-#' \code{x_range} or finite \code{extrapolate} that includes \code{nsec} to
-#' read the curve there. On a
-#' \code{\link{bayesnecjointfit}} each level is read over its own observed
-#' range, and the message names the level that refused \code{nsec}.
+#' The \code{pool}, \code{x_control} and \code{extrapolate} options use
+#' the same rules as \code{\link{nsec}}. \code{type = "relative"} is
+#' unavailable for a joint two-block hurdle curve.
 #'
 #' @seealso \code{\link{bnec}}
 #'
-#' @return A vector containing the estimated ECNSEC value, including upper and
-#' lower 95% credible interval bounds, or with \code{posterior = TRUE} the
-#' value for each posterior draw. This percentage is read at the supplied
-#' concentration; no draw is censored by a search for a crossing.
-#'
+#' @return A percentage summary or, with \code{posterior = TRUE}, one
+#' percentage per posterior draw. Grouped results follow \code{\link{nsec}}.
 #' @examples
 #' \donttest{
 #' library(bayesnec)
-#'
 #' data(manec_example)
-#' ecnsec(manec_example, nsec = 2)
+#' ecnsec(manec_example)
 #' }
 #'
 #' @export
-ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
-                   type = "absolute", xform = NULL, x_scale = c("recorded", "fitted"),
-                   prob_vals = c(0.5, 0.025, 0.975), ...,
+ecnsec <- function(object, ..., resolution = 500, x_range = NA,
+                   type = "absolute", sig_val = 0.01,
+                   prob_vals = c(0.5, 0.025, 0.975),
                    posterior = FALSE, pool = NULL, x_control = "own",
                    extrapolate = FALSE) {
   UseMethod("ecnsec")
@@ -152,23 +95,19 @@ ecnsec <- function(object, nsec, resolution = 500, x_range = NA,
 #'
 #' @importFrom stats quantile
 #' @importFrom brms as_draws_df posterior_epred
-#' @importFrom chk chk_flag chk_number
+#' @importFrom chk chk_flag
 #'
 #' @noRd
 #'
 #' @export
-ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
-                             type = "absolute",
-                             xform = NULL,
-                             x_scale = c("recorded", "fitted"),
-                             prob_vals = c(0.5, 0.025, 0.975), ...,
+ecnsec.bnecfit <- function(object, ..., resolution = 500, x_range = NA,
+                             type = "absolute", sig_val = 0.01,
+                             prob_vals = c(0.5, 0.025, 0.975),
                              posterior = FALSE, pool = NULL,
                              x_control = "own", extrapolate = FALSE) {
-  # One value: the curve is read at one point.
-  chk_number(nsec)
   chk_flag(posterior)
-  check_removed_args(list(...))
-  check_unused_dots(list(...), "ecnsec")
+  check_ecnsec_dots(list(...))
+  check_sig_val(sig_val)
   check_resolution(resolution)
   if (!is.null(pool)) validate_pool(pool, "ecnsec")
 
@@ -188,43 +127,53 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
     check_combined_relative(fit_family, "ecnsec")
   }
   warn_relative_rename(type, match.call())
-  xform <- resolve_estimator_xform(object, xform, x_scale)
-  if (is.null(xform)) {
-    xform <- identity
-  }
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
+  if (identical(type, "absolute")) {
+    result <- nsec(object, sig_val = sig_val, resolution = resolution,
+                   x_range = x_range, extrapolate = extrapolate,
+                   prob_vals = prob_vals, posterior = TRUE, pool = pool,
+                   x_control = x_control)
+    return(ecnsec_from_nsec(result, posterior, prob_vals))
+  }
   if (inherits(object, "bayesmanecfit")) {
     x_control <- model_set_control(object, x_control)
     first <- object$mod_fits[[1]]
     finish <- model_set_control_recorder(first, x_control)
-    if (!is.null(observed_level_spec(first))) {
-      per_model <- function(f) ecnsec(
-        f, nsec = nsec, resolution = resolution, x_range = x_range,
-        extrapolate = extrapolate,
-        type = type, xform = xform, x_scale = x_scale, prob_vals = prob_vals,
-        posterior = TRUE, pool = pool, x_control = x_control
-      )
-      if (identical(pool, "none")) {
-        return(finish(model_set_level_estimates(
-          object, "ecnsec", per_model, posterior, prob_vals
-        )))
-      }
-      models <- names(object$mod_fits)
-      idx <- pull_draw_index(object, models, object$sample_size)
-      models <- models[lengths(idx[models]) > 0L]
-      parts <- once_level_note(lapply(models, function(m) {
-        per_model(pull_equation(object, m))[idx[[m]]]
-      }))
-      out <- unlist(parts, use.names = FALSE)
-      if (posterior) return(finish(out))
-      result <- stats::quantile(out, probs = prob_vals, na.rm = TRUE)
-      names(result) <- clean_names(result)
-      return(finish(result))
+    has_levels <- !is.null(observed_level_spec(first))
+    per_model <- function(f) ecnsec(
+      f, resolution = resolution, x_range = x_range,
+      extrapolate = extrapolate,
+      type = type, sig_val = sig_val, prob_vals = prob_vals,
+      posterior = TRUE, pool = pool, x_control = x_control
+    )
+    if (has_levels && identical(pool, "none")) {
+      return(finish(model_set_level_estimates(
+        object, "ecnsec", per_model, posterior, prob_vals
+      )))
     }
+    models <- names(object$mod_fits)
+    idx <- pull_draw_index(object, models, object$sample_size)
+    models <- models[lengths(idx[models]) > 0L]
+    parts <- once_level_note(lapply(models, function(m) {
+      part <- per_model(pull_equation(object, m))
+      list(draws = as.numeric(part)[idx[[m]]],
+           above = if (identical(type, "range")) {
+             attr(part, "censored")$above[idx[[m]]]
+           })
+    }))
+    out <- unlist(lapply(parts, `[[`, "draws"), use.names = FALSE)
+    if (identical(type, "range")) {
+      above <- unlist(lapply(parts, `[[`, "above"), use.names = FALSE)
+      return(finish(ecnsec_range_result(out, above, posterior, prob_vals)))
+    }
+    if (posterior) return(finish(out))
+    result <- stats::quantile(out, probs = prob_vals, na.rm = TRUE)
+    if (has_levels) names(result) <- clean_names(result)
+    return(finish(result))
   }
   if (!inherits(object, "bayesmanecfit") &&
       is.null(object$observed_group)) {
@@ -233,22 +182,20 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
       return(estimate_observed_levels(
         object, level_spec, "ecnsec",
         function(level, control_value, range_override) {
-          ecnsec(level, nsec = nsec, resolution = resolution,
+          ecnsec(level, resolution = resolution,
                  x_range = range_override, extrapolate = extrapolate,
-                 type = type, xform = xform, x_scale = x_scale,
+                 type = type, sig_val = sig_val,
                  prob_vals = prob_vals, posterior = TRUE, pool = "none",
                  x_control = control_value)
         },
         pool, posterior, prob_vals, x_control, x_range,
-        curve_args = list(nsec = nsec, resolution = resolution,
+        curve_args = list(sig_val = sig_val, resolution = resolution,
                           extrapolate = extrapolate,
-                          type = type, xform = xform, x_scale = x_scale,
+                          type = type,
                           prob_vals = prob_vals)
       ))
     }
   }
-  nsec_use <- xform(nsec)
-
   lims <- curve_extrapolate_limits(extrapolate, object, x_range, x_control,
                                    "ECNSEC")
   control_reading <- resolve_x_control(object, x_control, x_range)
@@ -256,28 +203,12 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
     object, resolution = resolution, x_range = control_reading$x_range,
     lims = lims
   )
-  # Refuse an nsec outside the chosen grid. Otherwise the curve is evaluated
-  # past that grid without reporting the extrapolation.
-  check_ecnsec_range(object, nsec, nsec_use, range(newdata_list$x_vec),
-                     x_range, xform)
-
   p_samples <- estimator_epred(object,
                                newdata = newdata_list$newdata,
                                re_formula = if (is.null(object$re_formula)) NA
                                  else object$re_formula)
-  newdat_nsec <- newdata_eval(
-    object, resolution = 2, x_range = c(nsec_use, nsec_use)
-  )
-
-  pred_val_nsec <- estimator_epred(object,
-                                   newdata = newdat_nsec$newdata,
-                                   re_formula = if (is.null(object$re_formula)) NA
-                                     else object$re_formula)
-  at_nsec <- pred_val_nsec[, 2]
-
-  # Each draw's control is compared with the same draw's curve at nsec. Keep
-  # every posterior_epred() call here at the full set of draws: a model set
-  # pairs row i across calls only because each call thins by the stored index.
+  # Keep each prediction call at the full set of draws. A model set pairs
+  # rows only because each call uses the stored draw index.
   control_draws <- control_posterior(
     object, newdata_list$newdata,
     function(nd) estimator_epred(
@@ -295,89 +226,76 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 500, x_range = NA,
     range = apply(p_samples[, newdata_list$original, drop = FALSE], 1, min,
                   na.rm = TRUE)
   )
-  ecnsecP <- (control_draws - at_nsec) / (control_draws - floor_draws) * 100
-  ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-
-    if (!posterior) {
-      ecnsec
-  } else {
-      ecnsecP
+  reference <- stats::quantile(control_draws, sig_val)
+  crossing <- nsec_from_posterior(
+    p_samples, reference, newdata_list$x_vec, control_reading$value,
+    control_draws
+  )
+  ecnsecP <- (control_draws - reference) /
+    (control_draws - floor_draws) * 100
+  ecnsecP[attr(crossing, "at_control")] <- 0
+  if (identical(type, "range")) {
+    above <- (is.na(crossing) & !attr(crossing, "below_range")) | ecnsecP > 100
+    return(ecnsec_range_result(ecnsecP, above, posterior, prob_vals))
   }
+  if (posterior) ecnsecP else
+    stats::quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
 }
 
 
 
 
-#' Refuse an nsec that lies outside the range ecnsec() reads the curve over
-#'
-#' One refusal for every class, so that the same question gets the same kind
-#' of answer whichever object it is asked of.
-#'
-#' The comparison is made on the recorded scale, the scale of the prediction
-#' grid and of \code{nsec} once \code{xform} is applied. The fitted scale would
-#' fail where the transformation is undefined, as \code{log()} is at a
-#' negative \code{nsec}.
-#'
-#' A value within a relative tolerance of an end is accepted: an estimate
-#' censored at the end of the range is reported as that end, and a round trip
-#' such as \code{exp(log(3.22))} can leave it a rounding error outside.
-#'
-#' @param object The object \code{ecnsec()} was called on.
-#' @param nsec The \code{nsec} supplied.
-#' @param nsec_use \code{nsec} after \code{xform}, on the recorded scale.
-#' @param grid_range The range of the prediction grid, on the recorded scale.
-#' @param x_range The \code{x_range} supplied.
-#' @param xform The \code{xform} supplied.
-#' @param curve A noun phrase naming the curve, for the message.
-#'
-#' @return \code{NULL}, invisibly. Called for the error.
+#' Refuse arguments removed when ecnsec became the effect at each draw's NSEC
+#' @param dots The arguments in `...`.
 #' @noRd
-check_ecnsec_range <- function(object, nsec, nsec_use, grid_range, x_range,
-                               xform, curve = "the curve") {
-  tol <- sqrt(.Machine$double.eps) * max(1, abs(grid_range))
-  # A non-finite value, such as log() of a negative nsec, is refused here too,
-  # or it reaches newdata_eval() and is refused there as an x_range.
-  outside <- !is.finite(nsec_use) | nsec_use < grid_range[1] - tol |
-    nsec_use > grid_range[2] + tol
-  if (!any(outside, na.rm = TRUE)) {
-    return(invisible(NULL))
+check_ecnsec_dots <- function(dots, forwarded = FALSE) {
+  if (length(dots) && (is.null(names(dots)) || any(!nzchar(names(dots))))) {
+    stop("ecnsec() returns the effect at each draw's own NSEC and takes no ",
+         "concentration. Name all optional arguments.", call. = FALSE)
   }
-  num <- function(v) paste(signif(v, 4), collapse = ", ")
-  value <- if (identical(xform, identity)) {
-    paste0("nsec = ", num(nsec))
-  } else {
-    paste0("nsec = ", num(nsec), ", which xform takes to ", num(nsec_use), ",")
+  for (arg in c("nsec", "xform", "x_scale")) {
+    if (arg %in% names(dots)) {
+      stop("ecnsec() returns the effect at each draw's own NSEC and has no `",
+           arg, "` argument.", call. = FALSE)
+    }
   }
-  tr <- inline_x_transform(object)
-  on_scale <- if (is.null(tr)) "" else paste(" on the scale of", tr$variable)
-  supplied <- !(length(x_range) == 1 && is.na(x_range))
-  # One level of a joint refit is read over its own rows, unless the level has
-  # no rows to read and the whole data are used.
-  own_level <- !supplied && inherits(object, "bayesnecjointlevel") &&
-    length(object$level_x) > 0
-  where <- if (supplied) {
-    "the x_range supplied"
-  } else if (own_level) {
-    paste0("the observed range of the predictor at level \"", object$level,
-           "\" of ", object$group_var)
-  } else {
-    "the observed range of the predictor"
+  if (!forwarded) {
+    check_removed_args(dots)
+    check_unused_dots(dots, "ecnsec")
   }
-  over <- if (own_level) {
-    "the curve of each level over that level's own range"
-  } else {
-    paste(curve, "over that range")
+}
+
+#' Read and summarise the effect attribute returned by nsec()
+#' @param result A posterior vector or a named list of level vectors.
+#' @param posterior Whether to return draws.
+#' @param prob_vals Summary probabilities.
+#' @noRd
+ecnsec_from_nsec <- function(result, posterior, prob_vals) {
+  if (is.list(result) && is.null(attr(result, "ecnsec_relativeP"))) {
+    draws <- lapply(result, function(x) attr(x, "ecnsec_relativeP"))
+    if (posterior) return(draws)
+    summaries <- lapply(draws, function(x) {
+      out <- stats::quantile(x, prob_vals, na.rm = TRUE)
+      names(out) <- clean_names(out)
+      out
+    })
+    return(estimate_table(summaries, names(result), "ecnsec"))
   }
-  remedy <- if (supplied) {
-    "Supply an x_range that includes nsec."
-  } else if (own_level) {
-    paste0("Supply an x_range that includes nsec to read ", curve,
-           " extended past that level's data.")
-  } else {
-    paste0("Supply an x_range that includes nsec to read ", curve,
-           " extended past the data.")
-  }
-  stop(value, " lies outside ", where, ", ", signif(grid_range[1], 4), " to ",
-       signif(grid_range[2], 4), on_scale, ". ecnsec() reads ", over,
-       " only. ", remedy, call. = FALSE)
+  draws <- attr(result, "ecnsec_relativeP")
+  if (posterior) return(draws)
+  stats::quantile(draws, prob_vals, na.rm = TRUE)
+}
+
+#' Summarise an effect censored beyond the original response span
+#' @param effect The effect at each draw's NSEC.
+#' @param above Draws whose NSEC is above the searched range.
+#' @param posterior Whether to return draws.
+#' @param prob_vals Summary probabilities.
+#' @noRd
+ecnsec_range_result <- function(effect, above, posterior, prob_vals) {
+  cens <- censoring_record(100, 0, above, rep(FALSE, length(effect)))
+  effect[above] <- Inf
+  attr(effect, "censored") <- cens
+  if (posterior) return(censored_infinite(effect))
+  summarise_censored(effect, prob_vals, cens)
 }

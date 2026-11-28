@@ -2,19 +2,17 @@
 % Please edit documentation in R/bayesnechurdlefit-methods.R
 \name{ecnsec.bayesnechurdlefit}
 \alias{ecnsec.bayesnechurdlefit}
-\title{Extracts ECx corresponding to an NSEC from a
+\title{Extracts the percent effect at each draw's own NSEC from a
 \code{\link{bayesnechurdlefit}}}
 \usage{
 \method{ecnsec}{bayesnechurdlefit}(
   object,
-  nsec,
+  ...,
   resolution = 500,
   x_range = NA,
   type = "absolute",
-  xform = NULL,
-  x_scale = c("recorded", "fitted"),
+  sig_val = 0.01,
   prob_vals = c(0.5, 0.025, 0.975),
-  ...,
   posterior = FALSE,
   which = "combined",
   pool = NULL,
@@ -25,36 +23,25 @@
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
 
-\item{nsec}{A single number, the concentration at which to read the
-percentage effect. A vector is refused, including the three values
-\code{\link{nsec}} returns; pass the one wanted.}
+\item{...}{Further arguments to pass to class specific methods. A method
+refuses any argument it does not use.}
 
 \item{resolution}{The number of unique x values over which the curve is
 predicted. It affects only \code{type = "range"}, where the denominator is
 the lowest response the curve predicts over the grid. The default of 500
 matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
-\item{x_range}{A range of x values over which to predict the curve. An
-\code{nsec} outside it is refused; see Details.}
+\item{x_range}{A range of x values over which to predict the curve.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
 "absolute" (the default), "relative" or "range". See Details.}
 
-\item{xform}{\code{NULL} or \code{identity} reads \code{nsec} as
-given. Any other function is applied to \code{nsec} before the curve is
-read there and requires \code{x_scale = "recorded"} for an
-predictor with an inline transformation. See Details.}
-
-\item{x_scale}{\code{"recorded"} (the default) or \code{"fitted"}.
-\code{"fitted"} gives the same result as the former
-\code{xform = identity}; \code{nsec} is read as given in either case.}
+\item{sig_val}{The control posterior quantile used as the NSEC reference.
+The default is 0.01, as in \code{\link{nsec}}.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
-
-\item{...}{Further arguments to pass to class specific methods. A method
-refuses any argument it does not use.}
 
 \item{posterior}{Should the full posterior be returned instead of a summary?}
 
@@ -91,32 +78,19 @@ range before it is extended.}
 A vector of estimates.
 }
 \description{
-Extracts ECx corresponding to an NSEC from a
+Extracts the percent effect at each draw's own NSEC from a
 \code{\link{bayesnechurdlefit}}
 }
 \details{
 \code{type = "absolute"} (the default) and \code{"range"} are
-defined here and invert the \code{\link{ecx}} reference construction under
-the same \code{type}. \code{"relative"} is refused, as it is by
+defined here. \code{"relative"} is refused, as it is by
 \code{\link{ecx}} for this class: a two-block fit has no single \code{bot}
 parameter to measure towards. \code{"direct"} is refused because it names a
 response value rather than a percentage.
 
-\code{xform} is applied to \code{nsec}, and the curve is read at the
-result on the recorded predictor scale, as in \code{\link{ecnsec}} on a
-\code{\link{bayesnecfit}}. \code{NULL}, the default, reads \code{nsec} as
-given, the scale \code{\link{nsec}} returns by default. The percentage
-returned is not transformed; to transform it, apply the function to the
-value returned.
-
-Without \code{x_range}, every curve is read over the whole concentration
+Without \code{x_range}, every curve is searched over the whole concentration
 series, as in \code{\link{ecx.bayesnechurdlefit}}. The range sets the
-lowest predicted response that \code{type = "range"} measures towards. The
-curve is read at \code{nsec} by linear interpolation between the two grid
-points either side of it. An \code{nsec} outside the range is refused with a
-message naming the range, for the combined, growth and survival curves
-alike and whether or not \code{x_range} is supplied. Supply an
-\code{x_range} that includes \code{nsec} to read the curve there.
+lowest predicted response that \code{type = "range"} measures towards.
 For a group term spanning concentrations, each observed level pairs its
 growth and survival predictions before the percentage is read. A level
 observed at one concentration is excluded. \code{pool} and

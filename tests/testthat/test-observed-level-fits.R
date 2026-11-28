@@ -158,7 +158,7 @@ test_that("fitted spanning levels exclude one-concentration levels", {
   expect_null(names(mix))
   expect_true(all(is.finite(suppressMessages(nsec(fit, resolution = 30)))))
   expect_equal(nrow(suppressMessages(ecnsec(
-    fit, nsec = 0.8, pool = "none", resolution = 30
+    fit, pool = "none", resolution = 30
   ))), 3L)
   expect_equal(nrow(suppressWarnings(suppressMessages(
     nec(fit, pool = "none")
@@ -397,7 +397,7 @@ test_that("hurdle endpoints and band read observed levels", {
   for (fun in list(
     function() ecx(fit, pool = "none", resolution = 25),
     function() nsec(fit, pool = "none", resolution = 25),
-    function() ecnsec(fit, nsec = 0.8, pool = "none", resolution = 25),
+    function() ecnsec(fit, pool = "none", resolution = 25),
     function() nec(fit, pool = "none")
   )) {
     expect_equal(nrow(suppressWarnings(suppressMessages(fun()))), 3L)

@@ -366,7 +366,6 @@ joint_estimate_table <- function(object, what, fun, ..., pool = "none",
     record_level_controls(x, level_control_values(fits, dots$x_control))
   }
   if (identical(pool, "mean_curve")) {
-    if (identical(what, "ecnsec")) dots$nsec <- nsec
     return(finish(mean_curve_estimate(fits, as.numeric(table(factor(
       joint_row_levels(object), levels = object$levels))), what, dots)))
   }
@@ -544,18 +543,19 @@ nsec.bayesnecjointfit <- function(object, ...) {
 #' @noRd
 #' @method ecnsec bayesnecjointfit
 #' @export
-ecnsec.bayesnecjointfit <- function(object, nsec, ...) {
+ecnsec.bayesnecjointfit <- function(object, ...) {
+  check_ecnsec_dots(list(...), forwarded = TRUE)
   # Without this method, the inherited ecnsec.bnecfit() would run on the grid
   # of every level together. clean_names() below renames quantile()'s "50%" to
   # Q50, as the other estimators name it.
   tabulate <- !isTRUE(list(...)$posterior)
   joint_estimate_table(object, "ecnsec", function(f, ...) {
-    out <- ecnsec(f, nsec = nsec, ...)
+    out <- ecnsec(f, ...)
     if (tabulate) {
       names(out) <- clean_names(out)
     }
     out
-  }, ..., nsec = nsec)
+  }, ...)
 }
 
 #' The fitted curve at one level of a joint refit

@@ -969,7 +969,7 @@ test_that("the estimators report one row per level of a joint refit", {
   # ecnsec() has to be given a method of its own: a bayesnecjointfit inherits
   # from bnecfit, so without one the inherited ecnsec.bnecfit() ran on the
   # multi-level grid and returned a number for the fit rather than per level.
-  en <- suppressWarnings(suppressMessages(ecnsec(f$joint, nsec = 1.5)))
+  en <- suppressWarnings(suppressMessages(ecnsec(f$joint)))
   expect_equal(en$level, c("a", "b"))
   expect_equal(names(en), names(e))
   # posterior = TRUE has no one-row-per-level form, and unlike a grouped fit
@@ -1609,7 +1609,7 @@ test_that("`which` on a joint refit is refused by the joint class", {
   expect_error(nec(j, which = "growth"), msg)
   expect_error(ecx(j, which = "growth"), msg)
   expect_error(nsec(j, which = "survival"), msg)
-  expect_error(ecnsec(j, nsec = 1, which = "combined"), msg)
+  expect_error(ecnsec(j, which = "combined"), msg)
   expect_error(nec(j, which = "growth"), "one row per level of \"site\"",
                fixed = TRUE)
   expect_no_match(tryCatch(nec(j, which = "growth"),

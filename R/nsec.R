@@ -110,7 +110,11 @@
 #'
 #' The attached \code{ecnsec} attribute is the percent effect at the NSEC,
 #' defined as \code{\link{ecx}} defines it under \code{type = "absolute"}:
-#' the decline from the control towards zero.
+#' the decline from the control towards zero. It is the same quantity returned
+#' by \code{\link{ecnsec}} for the same options. It is zero where the NSEC is
+#' the control concentration, and negative where a draw's control is below
+#' the reference and its NSEC is a later crossing: the response there exceeds
+#' that draw's own control.
 #'
 #' The reference is a quantile of the control posterior, so some draws start
 #' at or below it. A draw with a later decreasing crossing takes that crossing.
@@ -349,14 +353,14 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   control <- control_posterior(object, newdata_list$newdata, epred_fun,
                                x_at = control_reading$value)
   reference <- quantile(control, sig_val)
-  # ecnsec is the percent effect at the NSEC, defined as ecx() defines it: the
-  # decline from the control towards zero, not across the fitted range.
-  ecnsecP <- as.numeric((control - reference) / control * 100)
-  ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
   # The control is the reference whether or not the curve shows hormesis.
   nsec_out <- nsec_from_posterior(p_samples, reference, x_vec,
                                   control_reading$value,
                                   control)
+  at_control <- attr(nsec_out, "at_control")
+  ecnsecP <- as.numeric((control - reference) / control * 100)
+  ecnsecP[at_control] <- 0
+  ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
   # Draws above and below the range return NA for opposite reasons, so each
   # class has its own warning. Count them before the transformations below,
   # which need not keep the attributes.
@@ -406,6 +410,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 500,
   # transformation keeps. The censoring record replaces them.
   attr(nsec_out, "n_below_range") <- NULL
   attr(nsec_out, "below_range") <- NULL
+  attr(nsec_out, "at_control") <- NULL
   attr(nsec_out, "x_searched_from") <- NULL
   attr(nsec_out, "censored") <- cens
   nsec_estimate <- summarise_censored(unlist(nsec_out), prob_vals, cens)

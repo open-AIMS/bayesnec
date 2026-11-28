@@ -238,7 +238,7 @@ test_that("a hormesis threshold fit reports its declining-limb NSEC", {
   expect_identical(attr(reported, "toxicity_estimate"), "nsec")
   expect_equal(as.numeric(reported),
                as.numeric(nsec(fit, resolution = 1000)), tolerance = 0.03)
-  expect_gt(unname(ecnsec(fit, nsec = reported[1])[1]), 0)
+  expect_gt(unname(ecnsec(fit)[1]), 0)
   expect_identical(rownames(summary(fit, check_fit = FALSE)$nec_vals), "NSEC")
   expect_error(nec(fit, extrapolate = TRUE), "read off a fitted curve")
 
@@ -258,7 +258,7 @@ test_that("a hormesis threshold fit reports its declining-limb NSEC", {
   expect_equal(attr(wide$ne_posterior, "censored")$lower, min(x))
 })
 
-test_that("a model average with a hormesis equation has no negative ECNSEC", {
+test_that("a model average with a hormesis equation keeps its ECNSEC summary", {
   skip_on_cran()
   set <- hormesis_set_cache()
   models <- c("nec4param", "neclinhorme", "ecx4param")
@@ -270,7 +270,10 @@ test_that("a model average with a hormesis equation has no negative ECNSEC", {
                "neclinhorme.*read off a fitted curve")
   reported <- suppressMessages(nec(set))
   expect_identical(attr(reported, "toxicity_estimate"), "n(s)ec")
-  expect_gte(unname(ecnsec(set, nsec = reported[1])[1]), 0)
+  expect_identical(ecnsec(set),
+                   stats::quantile(attr(nsec(set, posterior = TRUE),
+                                        "ecnsec_relativeP"),
+                                   c(0.5, 0.025, 0.975)))
 })
 
 test_that("amend() rebuilds a saved hormesis fit and set", {

@@ -159,7 +159,6 @@ group_estimate_table <- function(object, what, fun, ..., pool = "none",
                                                    dots$x_control))
   }
   if (identical(pool, "mean_curve")) {
-    if (identical(what, "ecnsec")) dots$nsec <- nsec
     return(finish(mean_curve_estimate(object$fits, object$n, what, dots)))
   }
   if (identical(pool, "none")) {
@@ -576,12 +575,13 @@ nsec.bayesnecgroupfit <- function(object, ...) {
 #' @noRd
 #' @method ecnsec bayesnecgroupfit
 #' @export
-ecnsec.bayesnecgroupfit <- function(object, nsec, ...) {
+ecnsec.bayesnecgroupfit <- function(object, ...) {
+  check_ecnsec_dots(list(...), forwarded = TRUE)
   group_estimate_table(object, "ecnsec", function(f, ...) {
-    out <- ecnsec(f, nsec = nsec, ...)
+    out <- ecnsec(f, ...)
     if (!isTRUE(list(...)$posterior)) names(out) <- clean_names(out)
     out
-  }, ..., nsec = nsec)
+  }, ...)
 }
 
 #' @noRd
